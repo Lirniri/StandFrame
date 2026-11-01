@@ -16,6 +16,7 @@ Atdar.players = require($"{Atdar.name}/utils/players")
 -- Atdar.directx = require($"{Atdar.name}/utils/directx")
 Atdar.util = require($"{Atdar.name}/utils/util")
 -- Atdar.v3 = require($"{Atdar.name}/utils/v3")
+Atdar.lang = require($"{Atdar.name}/utils/lang")
 Atdar.filesystem = require($"{Atdar.name}/utils/filesystem")
 -- Atdar.memory = require($"{Atdar.name}/utils/memory")
 

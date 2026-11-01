@@ -1,0 +1,81 @@
+--[[
+    Menu translation through Stand's lang API
+
+    Usage:
+        local L = Atdar.lang
+
+        -- The key is the English text itself
+        menu.action(root, L"Teleport", {}, L"Teleports you to the waypoint", function() end)
+
+        -- Or a short key with English text as the default
+        menu.action(root, L("menu.teleport", "Teleport"), {}, "", function() end)
+
+        -- Plain string in the user's current language (toasts, logs, etc.)
+        util.toast(L.get("Teleport"))
+        util.toast(L.get("Killed {name}", { name = "Bob" }))
+
+    Translations live in store/AnitaDarin/language/<code>.json as { "key": "text" }.
+    Every key used in the script is added to the files automatically with
+    English text, so translating means replacing the values in ru.json.
+]]
+
+local module = {}
+
+local storage = require($"{Atdar.name}/core/filesystem/json/storage")
+
+local dir = $"{filesystem.store_dir()}{Atdar.name}\\language\\"
+
+-- English is Stand's base text, set through lang.register
+local en = storage.new()
+en.load(dir .. "en.json")
+
+-- Every other language, set through lang.translate
+local translations = {
+    ru = storage.new(),
+}
+for code, t in pairs(translations) do
+    t.load($"{dir}{code}.json")
+end
+
+local labels = {}
+
+--- Returns the Stand label for a key, registering and translating it on first use.
+local function label(key: string, default: string|nil): int
+    local cached = labels[key]
+    if cached then return cached end
+
+    local text = en.get(key, default)
+    local id = lang.register(text)
+    for code, t in pairs(translations) do
+        lang.set_translate(code)
+        lang.translate(id, t.get(key, text))
+    end
+
+    labels[key] = id
+    return id
+end
+
+--- Returns the text for a key in the user's current language.
+--- {name} placeholders are replaced with values from vars.
+--- @param default string|table|nil  English text, or vars when the key is the English text
+function module.get(key: string, default: string|table|nil, vars: table|nil): string
+    if type(default) == "table" then
+        default, vars = nil, default
+    end
+
+    local text = lang.get_string(label(key, default), lang.get_current())
+    if vars then
+        text = (text:gsub("{(%w+)}", function(name)
+            local value = vars[name]
+            return value ~= nil and tostring(value) or nil
+        end))
+    end
+    return text
+end
+
+-- L"text" / L(key, default) returns a label for menu functions
+setmetatable(module, {
+    __call = function(_, key, default) return label(key, default) end
+})
+
+return module
