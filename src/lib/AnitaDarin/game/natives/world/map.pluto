@@ -1,0 +1,12 @@
+local module = {
+    waypoint = {}
+}
+
+function module.waypoint.get_coords(): vector3
+    local blip = Atdar.visual.hud.waypoint.get_blip()
+        
+    local coords = v3.new(HUD.GET_BLIP_INFO_ID_COORD(infoID))
+    return coords
+end
+
+return module

@@ -1,0 +1,9 @@
+local module = {}
+    
+module = require($"{Atdar.name}/game/natives/entity/entity")
+
+module.ped = require($"{Atdar.name}/game/natives/entity/ped")
+module.vehicle = require($"{Atdar.name}/game/natives/entity/vehicle")
+module.object = require($"{Atdar.name}/game/natives/entity/object")
+
+return module

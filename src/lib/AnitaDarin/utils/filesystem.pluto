@@ -1,0 +1,5 @@
+local module = {}
+
+module.json.storage = require($"{Atdar.name}/core/filesystem/json/storage")
+
+return module

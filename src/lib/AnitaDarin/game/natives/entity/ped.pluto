@@ -1,0 +1,5 @@
+local module = {
+    task = require($"{Atdar.name}/game/natives/entity/ped/task")
+}
+-- body
+return module

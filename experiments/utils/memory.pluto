@@ -1,0 +1,402 @@
+local memory = memory
+local m = {}
+
+function m.read_byte(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_byte(ptr)
+    end
+    return 0
+end
+
+function m.write_byte(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_byte(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_ubyte(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_ubyte(ptr)
+    end
+    return 0
+end
+
+function m.write_ubyte(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_ubyte(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_short(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_short(ptr)
+    end
+    return 0
+end
+
+function m.write_short(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_short(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_ushort(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_ushort(ptr)
+    end
+    return 0
+end
+
+function m.write_ushort(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_ushort(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_int(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_int(ptr)
+    end
+    return 0
+end
+
+function m.write_int(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_int(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_uint(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_uint(ptr)
+    end
+    return 0
+end
+
+function m.write_uint(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_uint(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_long(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_long(ptr)
+    end
+    return 0
+end
+
+function m.write_long(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_long(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_float(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_float(ptr)
+    end
+    return 0
+end
+
+function m.write_float(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_float(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_string(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_string(ptr)
+    end
+    return 0
+end
+
+function m.write_string(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_string(ptr, value)
+    end
+    return 0
+end
+
+
+
+function m.read_vector3(addr, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.read_vector3(ptr)
+    end
+    return 0
+end
+
+function m.write_vector3(addr, value, localScr)
+    local ptr
+
+    if localScr ~= nil then
+        if type(addr) == "string" or math.type(addr) == "number" then
+            ptr = memory.script_local(addr, localScr)
+        end
+    else
+        if math.type(addr) == "number" then
+            ptr = memory.script_global(addr)
+        end
+    end
+
+    if ptr ~= nil and ptr ~= 0 then
+        return memory.write_vector3(ptr, value)
+    end
+    return 0
+end
+
+return m

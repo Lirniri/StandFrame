@@ -1,0 +1,16 @@
+-- Lua Scripts/AnitaDarin.pluto
+
+pluto_use "0.13.2"
+
+_G.Atdar = {
+    name = "AnitaDarin", -- "AnitaDarin"
+    debug = false
+}
+
+local ok, err = xpcall(function()
+    require(Atdar.name .. "/bootstrap")
+end, function(e) return debug.traceback(e) end)
+
+if not ok then util.toast(err) end
+
+-- \,

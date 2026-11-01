@@ -1,0 +1,16 @@
+local module = {}
+
+--@return Returns the local ped identifier, or if a player_id of another player is provided, returns their ped instead
+function module.user_ped(player_id: int): int
+    local ped
+
+    if player_id ~= nil then
+        ped = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player_id)
+    else
+        ped = PLAYER.PLAYER_PED_ID()
+    end
+
+    return ped
+end
+
+return module

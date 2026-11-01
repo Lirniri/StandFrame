@@ -1,0 +1,12 @@
+local module = {
+    waypoint = {}
+}
+
+function module.waypoint.get_blip(): int
+    local enumID = HUD.GET_WAYPOINT_BLIP_ENUM_ID()
+
+    local infoID = HUD.GET_FIRST_BLIP_INFO_ID(enumID)
+    return infoID
+end
+
+return module

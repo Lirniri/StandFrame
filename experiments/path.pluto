@@ -1,0 +1,26 @@
+local m = {}
+
+    local function is_excluded(pos, list, threshold)
+        threshold = threshold or 1.0
+        for _, v in ipairs(list) do
+            if v3.distance(pos, v) < threshold then
+                return true
+            end
+        end
+        return false
+    end
+
+    function m.get_safe_coord_for_ped(entity, get_ground: boolean, excluded: table)
+        local pos = ENTITY.GET_ENTITY_COORDS(entity)
+        local found, out = PATH.GET_SAFE_COORD_FOR_PED(pos.x, pos.y, pos.z, get_ground, 0)
+        if found then
+            local result = v3.new(out)
+            if excluded and is_excluded(result, excluded) then
+                return nil
+            end
+            return result
+        end
+        return nil
+    end
+
+return m

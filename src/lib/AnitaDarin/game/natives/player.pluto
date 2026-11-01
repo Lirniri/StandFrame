@@ -1,0 +1,5 @@
+local module = {}
+
+module = require($"{Atdar.name}/game/natives/player/player")
+
+return module

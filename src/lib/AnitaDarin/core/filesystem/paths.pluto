@@ -1,0 +1,8 @@
+local paths = {
+    scripts = filesystem.scripts_dir(),
+    lib = $"{filesystem.lib_dir()lib\\_G.Atdar.name}\\"
+    store = $"{filesystem.store_dir() _G.Atdar.name}\\"
+    resources = $"{filesystem.resources_dir() _G.Atdar.name}\\"
+}
+
+return paths
