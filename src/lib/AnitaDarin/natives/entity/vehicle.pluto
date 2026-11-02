@@ -9,6 +9,10 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_VEH(net_id)
 end
 
+function module.is_stopped(vehicle: int): bool
+    return VEHICLE.IS_VEHICLE_STOPPED(vehicle)
+end
+
 function module.explode(vehicle, isAudible: bool = true, isInvisible: bool = false): void
     if not util.is_session_started() then
         NETWORK.EXPLODE_VEHICLE(vehicle, isAudible, isInvisible)
