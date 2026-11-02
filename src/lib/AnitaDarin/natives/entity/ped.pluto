@@ -2,6 +2,15 @@ local load = require($"{Atdar.name}/core/loader")
 
 local module = {}
 
+function module.get_net_id(ped): int
+    return NETWORK.PED_TO_NET(ped)
+end
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_PED(net_id)
+end
+
 module.task = load("natives/entity/ped/task")
 module.weapon = load("natives/entity/ped/weapon")
 

@@ -2,6 +2,10 @@ local load = require($"{Atdar.name}/core/loader")
 
 local module = {}
 
+function module.is_net_id_exist(net_id)
+    return NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+end
+
 module.session = load("natives/network/session")
 module.control = load("natives/network/control")
 module.shopping = load("natives/network/shopping")

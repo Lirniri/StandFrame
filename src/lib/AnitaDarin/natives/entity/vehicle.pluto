@@ -1,3 +1,21 @@
 local module = {}
--- body
+
+function module.get_net_id(vehicle): int
+    return NETWORK.VEH_TO_NET(vehicle)
+end
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_VEH(net_id)
+end
+
+function module.explode(vehicle, isAudible: bool = true, isInvisible: bool = false): void
+    if not util.is_session_started() then
+        NETWORK.EXPLODE_VEHICLE(vehicle, isAudible, isInvisible)
+    else
+        local net_id = module.get_net_id(vehicle)
+        NETWORK.NETWORK_EXPLODE_VEHICLE(vehicle, isAudible, isInvisible, net_id)
+    end
+end
+
 return module

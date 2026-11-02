@@ -10,6 +10,11 @@ function module.get_ped_id(player_id: ?int): int
     return PLAYER.PLAYER_PED_ID()
 end
 
+function module.half_godmode(player_id: int, toggle: bool = true): void
+    local player = player_id
+    PLAYER.SET_PLAYER_INVINCIBLE_BUT_HAS_REACTIONS(player, toggle)
+end
+
 -- @return Index of the active character slot
 function module.get_char_slot(): int
     return util.get_char_slot()

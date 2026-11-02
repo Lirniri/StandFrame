@@ -10,7 +10,7 @@ function module.snap_to_ground(coords: vector3, max_height: number|bool = false)
     if not found or coords.z < ground_z then
         return false
     end
-    if max_height ~= false and (coords.z - ground_z) > max_height then
+    if max_height ~= false and found and (coords.z - ground_z) > max_height then
         return false
     end
 

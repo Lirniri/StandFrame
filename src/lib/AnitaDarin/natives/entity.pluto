@@ -1,7 +1,17 @@
 local load = require($"{Atdar.name}/core/loader")
+
 local world = require($"{Atdar.name}/natives/world")
 
 local module = {}
+
+function module.get_net_id(entity): int
+    return NETWORK.ENT_TO_NET(entity)
+end
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_ENT(net_id)
+end
 
 -- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
 function module.is_on_ground(entity: int, max_height: number|bool = false): bool
@@ -28,15 +38,13 @@ end
 -- @desc Sets the coordinates of an entity, optionally snapped to the ground.
 -- @param max_height Maximum height above ground to snap (false — don't snap)
 -- @return false if coords is nil, true otherwise
-function module.set_coords(entity: int, coords: ?vector3, max_height: number|bool = 1000, clear_area: bool = false, x_axis: bool = false, y_axis: bool = false, z_axis: bool = false): bool
+function module.set_coords(entity: int, coords: ?vector3, max_height: number|bool = 1.3, clear_area: bool = false, x_axis: bool = false, y_axis: bool = false, z_axis: bool = false): bool
     if coords == nil then
         return false
     end
 
     local pos = v3.new(coords)
-    if max_height ~= false then
-        world.snap_to_ground(pos, max_height)
-    end
+    world.snap_to_ground(pos, max_height)
 
     ENTITY.SET_ENTITY_COORDS(entity, pos.x, pos.y, pos.z, x_axis, y_axis, z_axis, clear_area)
     return true
