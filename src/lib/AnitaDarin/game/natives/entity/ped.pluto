@@ -1,5 +1,5 @@
 local module = {
-    task = require($"{Atdar.name}/game/natives/entity/ped/task")
+    task = require($"{Atdar.name}/game/natives/entity/ped/task"),
     weapon = require($"{Atdar.name}/game/natives/entity/ped/weapon")
 }
 -- body
