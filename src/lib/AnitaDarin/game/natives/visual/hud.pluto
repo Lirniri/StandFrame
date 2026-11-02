@@ -42,8 +42,8 @@ function module.blip.is_valid(blip: int): bool
     return HUD.DOES_BLIP_EXIST(blip)
 end
 
-function module.blip.get_id(blip: int, next): int
-    return next ? HUD.GET_NEXT_BLIP_INFO_ID(blip) : HUD.GET_FIRST_BLIP_INFO_ID(blip)
+function module.blip.get_id(sprite: int, next): int
+    return next ? HUD.GET_NEXT_BLIP_INFO_ID(sprite) : HUD.GET_FIRST_BLIP_INFO_ID(sprite)
 end
 
 function module.blip.get_type(blip: int): int
@@ -66,13 +66,18 @@ function module.blip.get_color(blip: int, hud_color: bool = false): int
     return hud_color ? HUD.GET_BLIP_HUD_COLOUR(blip) : HUD.GET_BLIP_COLOUR(blip)
 end
 
+function module.blip.get_coords(blip: int): ?vector3
+    if not module.blip.is_valid(blip) then return nil end
+    return v3.new(HUD.GET_BLIP_INFO_ID_COORD(blip))
+end
+
 function module.blip.get_from_entity(entity: int): ?int
     local blip = HUD.GET_BLIP_FROM_ENTITY(entity)
     return module.blip.is_valid(blip) ? blip : nil
 end
 
 -- все блипы с указанным спрайтом
-function module.blip.get_all(sprite: int): table
+function module.blip.get_all(sprite: int = 0): table
     local blips = {}
     local blip = HUD.GET_FIRST_BLIP_INFO_ID(sprite)
     while module.blip.is_valid(blip) do
@@ -148,7 +153,7 @@ function module.waypoint.is_active(): bool
 end
 
 function module.waypoint.get_blip(): ?int
-    local blip = HUD.GET_FIRST_BLIP_INFO_ID(module.waypoint.get_sprite())
+    local blip = HUD.GET_FIRST_BLIP_INFO_ID(module.blip.waypoint.get_sprite())
     return module.blip.is_valid(blip) ? blip : nil
 end
 
