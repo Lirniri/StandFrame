@@ -1,3 +1,45 @@
 local module = {}
--- body
+
+
+-- Session
+function module.is_started()
+    return util.is_session_started()
+end
+function module.is_active()
+    return NETWORK.NETWORK_IS_SESSION_ACTIVE()
+end
+function module.is_busy()
+    return NETWORK.NETWORK_IS_SESSION_BUSY()
+end
+function module.is_visible()
+    return NETWORK.NETWORK_SESSION_IS_VISIBLE()
+end
+
+function module.get_type(): int
+    local is_private = NETWORK.NETWORK_SESSION_IS_PRIVATE()
+    local is_closed_crew = NETWORK.NETWORK_SESSION_IS_CLOSED_CREW()
+    local is_closed_friends = NETWORK.NETWORK_SESSION_IS_CLOSED_FRIENDS()
+    local is_solo = NETWORK.NETWORK_SESSION_IS_SOLO()
+
+    if is_private then
+        return 1
+    end
+    if is_closed_crew then
+        return 2
+    end
+    if is_closed_friends then
+        return 3
+    end
+    if is_solo then
+        return 4
+    end
+
+    return 0
+end
+function module.get_status(): table
+    
+end
+
+module.transition = require($"{Atdar.name}/game/natives/network/session/transition")
+
 return module

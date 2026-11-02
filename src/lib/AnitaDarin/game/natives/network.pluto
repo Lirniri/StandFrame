@@ -1,8 +1,10 @@
 local module = {}
 
+module = require($"{Atdar.name}/game/natives/network/network")
+
 module.session = require($"{Atdar.name}/game/natives/network/session")
 module.control = require($"{Atdar.name}/game/natives/network/control")
 module.shopping = require($"{Atdar.name}/game/natives/network/shopping")
 module.social_club = require($"{Atdar.name}/game/natives/network/social_club")
 
-return module
+return module

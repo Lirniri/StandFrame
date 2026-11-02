@@ -2,7 +2,7 @@ local module = {}
 
 -- Sends a notification using the configured target or an explicit one (stand | game | none)
 function module.toast(message, target: ?string)
-    Atdar.logger:send_text(message, target or Atdar.settings.notify)
+    -- Atdar.logger:send_text(message, target or Atdar.settings.notify)
 end
 
 function module.snap_to_ground(coords: vector3, max_height: number|bool = 1.3): vector3

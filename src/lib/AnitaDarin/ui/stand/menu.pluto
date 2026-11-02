@@ -3,13 +3,15 @@ local module = {}
 local root = menu.my_root()
 
 
-root:action("Test_Action", {}, "", function()
+local testDivider = root:divider("AnitaDarin")
+
+local testAction = root:action("Test_Action", {}, "", function()
     util.toast("Pressed")
 end)
-root:toggle("Test_Toggle", {}, "", function(on)
+local testToggle = root:toggle("Test_Toggle", {}, "", function(on)
     util.toast($"Toggle is {on ? "on" : "off"}")
 end, true)
-root:toggle_loop("Test_ToggleLoop", {}, "", function(on)
+local testToggleLoop = root:toggle_loop("Test_ToggleLoop", {}, "", function(on)
     util.toast("Toggle loop started")
 end, function()
     util.toast("Toggle loop stopped")

@@ -10,4 +10,6 @@ function module.get_ped_id(player_id: int): int
     return player
 end
 
+module.camera = require($"{Atdar.name}/game/natives/player/camera")
+
 return module

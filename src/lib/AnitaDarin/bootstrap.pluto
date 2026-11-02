@@ -4,6 +4,7 @@ util.require_natives("3407a")
 
 -- Libraries
 local UTILS = {
+    "menu",
     "util",
     "players",
     "filesystem",
