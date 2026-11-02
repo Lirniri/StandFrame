@@ -3,7 +3,7 @@ local module = {
     money = {},
     blip = { waypoint = {} },
     minimap = {},
-    thefeed = { begin = {}, end = {} },
+    thefeed = {},
     waypoint = {},
 }
 
@@ -113,8 +113,8 @@ end
 
 -- thefeed
 
-function module.thefeed.is_paused(id): bool
-    return HUD.THEFEED_IS_PAUSED(id)
+function module.thefeed.is_paused(): bool
+    return HUD.THEFEED_IS_PAUSED()
 end
 
 function module.thefeed.pause(): void
@@ -126,23 +126,21 @@ function module.thefeed.resume(): void
 end
 
 function module.thefeed.freeze_next(): void
-    HUD.THEFEED_RESUME()
+    HUD.THEFEED_FREEZE_NEXT_POST()
 end
 
 function module.thefeed.remove(id: int): void
     HUD.THEFEED_REMOVE_ITEM(id)
 end
 
--- thefeed > begin
+-- thefeed > post (begin_post, then end_post_ticker)
 
-function module.thefeed.begin.post(message: string): void
+function module.thefeed.begin_post(message: string): void
     HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
     HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(message)
 end
 
--- thefeed > end
-
-function module.thefeed.end.post_ticker(blink: bool, p1: bool, is_mp: bool): int
+function module.thefeed.end_post_ticker(blink: bool, p1: bool, is_mp: bool): int
     return is_mp ? HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1) : HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
 end
 

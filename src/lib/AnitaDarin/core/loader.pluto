@@ -1,0 +1,20 @@
+-- lib/AnitaDarin/core/loader.pluto
+
+-- Requires lib/AnitaDarin/<path>. On error logs it and returns an empty table,
+-- so one broken file doesn't take down the whole section
+local function load(path: string): table
+    local ok, result = pcall(require, $"{Atdar.name}/{path}")
+    if not ok then
+        util.log($"[Loader] failed to load '{path}': {result}")
+        util.toast($"'{path}' failed to load\n{result}")
+        return {}
+    end
+    -- An empty file makes require return true instead of a table
+    if type(result) ~= "table" then
+        util.log($"[Loader] '{path}' did not return a table")
+        return {}
+    end
+    return result
+end
+
+return load

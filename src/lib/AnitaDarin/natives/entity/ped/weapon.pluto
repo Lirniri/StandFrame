@@ -1,0 +1,12 @@
+local module = {}
+
+-- @return Coordinates of the ped's last weapon impact, or nil if there is none
+function module.last_impact_coord(ped: int): ?vector3
+    local coords_ptr = memory.alloc(24)
+    if WEAPON.GET_PED_LAST_WEAPON_IMPACT_COORD(ped, coords_ptr) then
+        return v3.new(memory.read_vector3(coords_ptr))
+    end
+    return nil
+end
+
+return module

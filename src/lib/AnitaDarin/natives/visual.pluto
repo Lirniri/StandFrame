@@ -1,0 +1,8 @@
+local load = require($"{Atdar.name}/core/loader")
+
+local module = {}
+
+module.hud = load("natives/visual/hud")
+module.graphics = load("natives/visual/graphics")
+
+return module

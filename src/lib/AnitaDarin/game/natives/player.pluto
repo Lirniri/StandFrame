@@ -1,6 +1,0 @@
-local module = {}
-
-module = require($"{Atdar.name}/game/natives/player/player")
-module.switch = require($"{Atdar.name}/game/natives/player/switch")
-
-return module

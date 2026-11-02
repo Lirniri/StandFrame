@@ -1,0 +1,21 @@
+local load = require($"{Atdar.name}/core/loader")
+
+local module = {}
+
+-- @return Ped of the given player, or of the local player if player_id is nil
+function module.get_ped_id(player_id: ?int): int
+    if player_id ~= nil then
+        return PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player_id)
+    end
+    return PLAYER.PLAYER_PED_ID()
+end
+
+-- @return Index of the active character slot
+function module.get_char_slot(): int
+    return util.get_char_slot()
+end
+
+module.camera = load("natives/player/camera")
+module.switch = load("natives/player/switch")
+
+return module

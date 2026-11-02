@@ -1,0 +1,49 @@
+local load = require($"{Atdar.name}/core/loader")
+local world = require($"{Atdar.name}/natives/world")
+
+local module = {}
+
+-- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
+function module.is_on_ground(entity: int, max_height: number|bool = false): bool
+    if ENTITY.IS_ENTITY_IN_AIR(entity) then
+        return false
+    end
+
+    local coords = ENTITY.GET_ENTITY_COORDS(entity)
+    local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
+    if not found or coords.z < ground_z then
+        return false
+    end
+    return max_height == false or (coords.z - ground_z) <= max_height
+end
+
+-- @desc Returns the coordinates of an entity, optionally snapped to the ground.
+-- @param max_height Maximum height above ground to snap (false — snap at any height)
+function module.get_coords(entity: int, max_height: number|bool = 1.3): vector3
+    local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))
+    world.snap_to_ground(coords, max_height)
+    return coords
+end
+
+-- @desc Sets the coordinates of an entity, optionally snapped to the ground.
+-- @param max_height Maximum height above ground to snap (false — don't snap)
+-- @return false if coords is nil, true otherwise
+function module.set_coords(entity: int, coords: ?vector3, max_height: number|bool = 1000, clear_area: bool = false, x_axis: bool = false, y_axis: bool = false, z_axis: bool = false): bool
+    if coords == nil then
+        return false
+    end
+
+    local pos = v3.new(coords)
+    if max_height ~= false then
+        world.snap_to_ground(pos, max_height)
+    end
+
+    ENTITY.SET_ENTITY_COORDS(entity, pos.x, pos.y, pos.z, x_axis, y_axis, z_axis, clear_area)
+    return true
+end
+
+module.ped = load("natives/entity/ped")
+module.vehicle = load("natives/entity/vehicle")
+module.object = load("natives/entity/object")
+
+return module

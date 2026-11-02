@@ -1,0 +1,10 @@
+local load = require($"{Atdar.name}/core/loader")
+
+local module = {}
+
+module.session = load("natives/network/session")
+module.control = load("natives/network/control")
+module.shopping = load("natives/network/shopping")
+module.social_club = load("natives/network/social_club")
+
+return module

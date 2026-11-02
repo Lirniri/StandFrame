@@ -1,0 +1,8 @@
+local load = require($"{Atdar.name}/core/loader")
+
+local module = {}
+
+module.task = load("natives/entity/ped/task")
+module.weapon = load("natives/entity/ped/weapon")
+
+return module

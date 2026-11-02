@@ -1,6 +1,0 @@
-local module = {}
-
-module.hud = require($"{Atdar.name}/game/natives/visual/hud")
-module.graphics = require($"{Atdar.name}/game/natives/visual/graphics")
-
-return module

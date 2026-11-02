@@ -1,14 +1,14 @@
 local module = {}
 
-function module.clear(ped, type: int = 1): void
-    switch type do
-        case 1:
-            TASK.CLEAR_PED_TASKS(ped)
+-- @param mode 1 — all tasks, 2 — secondary task, 3 — all tasks immediately
+function module.clear(ped: int, mode: int = 1): void
+    switch mode do
         case 2:
             TASK.CLEAR_PED_SECONDARY_TASK(ped)
+            break
         case 3:
             TASK.CLEAR_PED_TASKS_IMMEDIATELY(ped)
-        break
+            break
         default:
             TASK.CLEAR_PED_TASKS(ped)
     end
