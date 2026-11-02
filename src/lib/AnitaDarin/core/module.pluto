@@ -1,0 +1,39 @@
+-- lib/AnitaDarin/core/module.pluto
+
+local class Module
+    -- Module description (overridden in subclasses)
+    -- name : string   — unique name, required
+    -- deps : {string} — modules that must be ready first
+    deps = {}
+    
+    function __construct(manager)
+        self.manager = manager
+        self.status = "registered" -- registered | ready | failed
+        self.enabled = true
+        self.error = nil
+    end
+
+    function onTick()
+        -- body
+    end
+    function onEnable()
+        -- body
+    end
+    function onDisable()
+        -- body
+    end
+
+    -- Helpers
+    function get(name)
+        return self.manager:get(name)
+    end
+
+
+    function log(msg)
+        self.manager:log($"[{self.name}] {msg}")
+    end
+
+end
+
+return Module
+-- \,

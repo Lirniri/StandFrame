@@ -12,7 +12,7 @@ local UTILS = {
 for _, name in UTILS do
     local ok, lib = pcall(require, $"{Atdar.name}/utils/{name}")
     if not ok then
-        util.log($"[natives] failed to load '{name}': {lib}")
+        util.log($"[Utils] failed to load '{name}': {lib}")
         util.toast($"Utils '{name}' failed to load\n{lib}")
         lib = {}
     end
@@ -26,6 +26,7 @@ local NATIVES = {
     "network",
     "visual",
     "world",
+    "weapon",
     "audio",
     "input",
     "streaming",
@@ -34,8 +35,8 @@ local NATIVES = {
 for _, name in NATIVES do
     local ok, lib = pcall(require, $"{Atdar.name}/game/natives/{name}")
     if not ok then
-        util.log($"[natives] failed to load '{name}': {lib}")
-        util.toast($"Utils '{name}' failed to load\n{lib}")
+        util.log($"[game/natives] failed to load '{name}': {lib}")
+        util.toast($"game/natives '{name}' failed to load\n{lib}")
         lib = {}
     end
     Atdar[name] = lib
@@ -43,3 +44,5 @@ end
 
 
 Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
+
+-- \,

@@ -1,0 +1,43 @@
+
+local paths = require($"{Atdar.name}/core/filesystem/paths")
+
+local class ModuleManager
+
+    function __construct()
+        -- body
+    end
+
+    function get()
+        -- body
+    end
+    function register()
+        -- body
+    end
+
+    function load()
+        -- body
+    end
+    function load_dir()
+        -- body
+    end
+
+    function unload()
+        -- body
+    end
+    function unload_dir()
+        -- body
+    end
+
+    function start()
+        -- body
+    end
+    function pre_stop()
+        -- body
+    end
+    function stop()
+        -- body
+    end
+
+end
+
+return ModuleManager

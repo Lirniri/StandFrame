@@ -1,0 +1,14 @@
+-- lib/AnitaDarin/core/logger.pluto
+
+local class logger
+
+    function __construct(prefix: public = _G.Atdar.name)
+        self.prefix = prefix
+    end
+
+    
+
+end
+
+return logger
+-- \,
