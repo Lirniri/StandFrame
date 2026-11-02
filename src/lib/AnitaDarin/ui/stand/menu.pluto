@@ -1,3 +1,28 @@
 local module = {}
--- body
+
+local root = menu.my_root()
+
+root:action("Test_Action", {}, "", function()
+    util.toast("Pressed")
+
+    
+    local hud = Atdar.visual.hud
+    hud.thefeed.begin.post("Test1")
+    hud.thefeed.freeze_next(notify)
+    local notify = hud.thefeed.end.post_ticker(false, false, true)
+    util.toast(hud.thefeed.is_paused(notify))
+    
+end)
+root:toggle("Test_Toggle", {}, "", function(on)
+    HUD.DISPLAY_RADAR(on)
+    util.toast($"Toggle is {on ? "on" : "off"}")
+end, true)
+root:toggle_loop("Test_ToggleLoop", {}, "", function(on)
+    
+    util.yield(1500)
+    util.toast("Toggle loop started")
+end, function()
+    util.toast("Toggle loop stopped")
+end)
+
 return module

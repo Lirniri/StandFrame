@@ -1,12 +1,155 @@
 local module = {
-    waypoint = {}
+    wanted_level = {},
+    money = {},
+    blip = { waypoint = {} },
+    minimap = {},
+    thefeed = { begin = {}, end = {} },
+    waypoint = {},
 }
 
-function module.waypoint.get_blip(): int
-    local enumID = HUD.GET_WAYPOINT_BLIP_ENUM_ID()
+-- hud
 
-    local infoID = HUD.GET_FIRST_BLIP_INFO_ID(enumID)
-    return infoID
+function module.is_hidden(): bool
+    return HUD.IS_HUD_HIDDEN()
+end
+
+function module.get_color(hud_color_index: int): table
+    local r, g, b, a = memory.alloc_int(), memory.alloc_int(), memory.alloc_int(), memory.alloc_int()
+    HUD.GET_HUD_COLOUR(hud_color_index, r, g, b, a)
+    return {
+        r = memory.read_int(r),
+        g = memory.read_int(g),
+        b = memory.read_int(b),
+        a = memory.read_int(a),
+    }
+end
+
+-- wanted_level
+
+function module.wanted_level.flash(looped: bool): void
+    HUD.FLASH_WANTED_DISPLAY(looped)
+end
+
+-- money
+
+function module.money.display_cash(toggle: bool): void
+    HUD.DISPLAY_CASH(toggle)
+end
+
+-- blip
+
+function module.blip.is_valid(blip: int): bool
+    return HUD.DOES_BLIP_EXIST(blip)
+end
+
+function module.blip.get_id(blip: int, next): int
+    return next ? HUD.GET_NEXT_BLIP_INFO_ID(blip) : HUD.GET_FIRST_BLIP_INFO_ID(blip)
+end
+
+function module.blip.get_type(blip: int): int
+    return HUD.GET_BLIP_INFO_ID_TYPE(blip)
+end
+
+function module.blip.get_sprite(blip: int): int
+    return HUD.GET_BLIP_SPRITE(blip)
+end
+
+function module.blip.get_alpha(blip: int): int
+    return HUD.GET_BLIP_ALPHA(blip)
+end
+
+function module.blip.get_rotation(blip: int): int
+    return HUD.GET_BLIP_ROTATION(blip)
+end
+
+function module.blip.get_color(blip: int, hud_color: bool = false): int
+    return hud_color ? HUD.GET_BLIP_HUD_COLOUR(blip) : HUD.GET_BLIP_COLOUR(blip)
+end
+
+function module.blip.get_from_entity(entity: int): ?int
+    local blip = HUD.GET_BLIP_FROM_ENTITY(entity)
+    return module.blip.is_valid(blip) ? blip : nil
+end
+
+-- все блипы с указанным спрайтом
+function module.blip.get_all(sprite: int): table
+    local blips = {}
+    local blip = HUD.GET_FIRST_BLIP_INFO_ID(sprite)
+    while module.blip.is_valid(blip) do
+        blips:insert(blip)
+        blip = HUD.GET_NEXT_BLIP_INFO_ID(sprite)
+    end
+    return blips
+end
+
+-- blip > waypoint
+
+function module.blip.waypoint.get_sprite(): int
+    return HUD.GET_WAYPOINT_BLIP_ENUM_ID()
+end
+
+-- minimap
+
+function module.minimap.is_rendering(): bool
+    return HUD.IS_MINIMAP_RENDERING()
+end
+
+function module.minimap.is_hidden(): bool
+    return HUD.IS_RADAR_HIDDEN()
+end
+
+function module.minimap.flash(hud_color_index: ?int): void
+    if hud_color_index ~= nil then
+        HUD.FLASH_MINIMAP_DISPLAY_WITH_COLOR(hud_color_index)
+    else
+        HUD.FLASH_MINIMAP_DISPLAY()
+    end
+end
+
+-- thefeed
+
+function module.thefeed.is_paused(id): bool
+    return HUD.THEFEED_IS_PAUSED(id)
+end
+
+function module.thefeed.pause(): void
+    HUD.THEFEED_PAUSE()
+end
+
+function module.thefeed.resume(): void
+    HUD.THEFEED_RESUME()
+end
+
+function module.thefeed.freeze_next(): void
+    HUD.THEFEED_RESUME()
+end
+
+function module.thefeed.remove(id: int): void
+    HUD.THEFEED_REMOVE_ITEM(id)
+end
+
+-- thefeed > begin
+
+function module.thefeed.begin.post(message: string): void
+    HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(message)
+end
+
+-- thefeed > end
+
+function module.thefeed.end.post_ticker(blink: bool, p1: bool, is_mp: bool): int
+    return is_mp ? HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1) : HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
+end
+
+-- waypoint
+
+function module.waypoint.is_active(): bool
+    return HUD.IS_WAYPOINT_ACTIVE()
+end
+
+function module.waypoint.get_blip(): ?int
+    local blip = HUD.GET_FIRST_BLIP_INFO_ID(module.waypoint.get_sprite())
+    return module.blip.is_valid(blip) ? blip : nil
 end
 
 return module
