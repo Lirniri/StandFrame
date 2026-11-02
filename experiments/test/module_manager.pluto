@@ -1,0 +1,171 @@
+-- lib/AnitaDarin/core/module_manager.pluto
+-- Загружает модули, упорядочивает по зависимостям и управляет их жизненным циклом.
+
+local Module = require($"{Atdar.name}/core/module")
+
+local class ModuleManager
+    function __construct()
+        self.modules = {} -- name -> instance
+        self.order = {}   -- инстансы в порядке инициализации
+        self.ticking = {} -- инстансы с переопределённым on_tick
+    end
+
+    function log(msg)
+        Atdar.logger:log(msg)
+    end
+
+    function fail(mod, err)
+        mod.status = "failed"
+        mod.error = err
+        self:log($"[{mod.name}] ошибка: {err}")
+        Atdar.util.toast($"Модуль '{mod.name}' отключён\n{err}")
+    end
+
+    function get(name)
+        local mod = self.modules[name]
+        if mod ~= nil and mod.status == "ready" then
+            return mod
+        end
+        return nil
+    end
+
+    -- Регистрирует класс модуля, возвращает инстанс или nil
+    function register(cls)
+        local mod = new cls(self)
+
+        if type(mod.name) ~= "string" or mod.name == "" then
+            self:log("модуль без имени пропущен")
+            return nil
+        end
+        if self.modules[mod.name] ~= nil then
+            self:log($"модуль '{mod.name}' уже зарегистрирован, дубликат пропущен")
+            return nil
+        end
+
+        self.modules[mod.name] = mod
+        return mod
+    end
+
+    -- Подключает файл модуля, который возвращает класс
+    function load(path)
+        local ok, cls = pcall(require, path)
+        if not ok then
+            self:log($"не удалось загрузить '{path}': {cls}")
+            return nil
+        end
+        if type(cls) ~= "table" then
+            self:log($"'{path}' должен возвращать класс модуля")
+            return nil
+        end
+        return self:register(cls)
+    end
+
+    -- Подключает все .pluto файлы из lib/<name>/<rel>
+    function load_dir(rel)
+        local dir = filesystem.scripts_dir() .. "lib\\" .. Atdar.name .. "\\" .. (rel:gsub("/", "\\"))
+        if not filesystem.exists(dir) then
+            self:log($"папка модулей не найдена: {dir}")
+            return
+        end
+
+        local names = {}
+        for _, path in filesystem.list_files(dir) do
+            local file = path:match("([^\\/]+)%.pluto$")
+            if file ~= nil then
+                table.insert(names, file)
+            end
+        end
+        table.sort(names)
+
+        for _, file in names do
+            self:load($"{Atdar.name}/{rel}/{file}")
+        end
+    end
+
+    -- Топологическая сортировка; модули с битыми зависимостями помечаются failed
+    function resolve_order()
+        local order, state = {}, {}
+
+        local function visit(mod)
+            local s = state[mod.name]
+            if s == "done" then return true end
+            if s == "failed" then return false end
+            if s == "visiting" then
+                self:fail(mod, "циклическая зависимость")
+                return false
+            end
+
+            state[mod.name] = "visiting"
+            for _, dep_name in mod.deps do
+                local dep = self.modules[dep_name]
+                if dep == nil then
+                    self:fail(mod, $"нет зависимости '{dep_name}'")
+                    state[mod.name] = "failed"
+                    return false
+                end
+                if not visit(dep) then
+                    if mod.status ~= "failed" then
+                        self:fail(mod, $"зависимость '{dep_name}' не загрузилась")
+                    end
+                    state[mod.name] = "failed"
+                    return false
+                end
+            end
+
+            state[mod.name] = "done"
+            table.insert(order, mod)
+            return true
+        end
+
+        local names = {}
+        for name in self.modules do
+            table.insert(names, name)
+        end
+        table.sort(names)
+
+        for _, name in names do
+            visit(self.modules[name])
+        end
+        return order
+    end
+
+    function start()
+        for _, mod in self:resolve_order() do
+            local ok, err = pcall(mod.init, mod)
+            if not ok then
+                self:fail(mod, err)
+                continue
+            end
+            mod.status = "ready"
+            table.insert(self.order, mod)
+
+            if mod.on_tick ~= Module.on_tick then
+                table.insert(self.ticking, mod)
+            end
+        end
+
+        util.create_tick_handler(function()
+            for _, mod in self.ticking do
+                if mod.status == "ready" and mod.enabled then
+                    local ok, err = pcall(mod.on_tick, mod)
+                    if not ok then self:fail(mod, err) end
+                end
+            end
+        end)
+
+        util.on_stop(function() self:stop() end)
+
+        self:log($"запущено модулей: {#self.order}")
+    end
+
+    -- Останавливает в обратном порядке, чтобы зависимости жили дольше зависимых
+    function stop()
+        for i = #self.order, 1, -1 do
+            local mod = self.order[i]
+            local ok, err = pcall(mod.shutdown, mod)
+            if not ok then self:log($"[{mod.name}] ошибка при остановке: {err}") end
+        end
+    end
+end
+
+return ModuleManager

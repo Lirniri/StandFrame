@@ -1,0 +1,21 @@
+-- lib/AnitaDarin/features/settings/notify.pluto
+
+local Module = require($"{Atdar.name}/core/module")
+local Logger = require($"{Atdar.name}/core/logger")
+
+local class Notify extends Module
+    name = "settings.notify"
+
+    function set_target(target)
+        for _, t in Logger.targets do
+            if t.id == target then
+                Atdar.settings.notify = target
+                return true
+            end
+        end
+        self:log($"unknown notification target: {target}")
+        return false
+    end
+end
+
+return Notify

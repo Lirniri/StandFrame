@@ -1,0 +1,20 @@
+-- lib/AnitaDarin/ui/stand/tabs/settings.pluto
+
+local Logger = require($"{Atdar.name}/core/logger")
+
+return function(parent, refs)
+    local notify = Atdar.menu.module("settings.notify")
+    if notify ~= nil then
+        local options, default = {}, 1
+        for i, target in Logger.targets do
+            table.insert(options, { i, target.label })
+            if target.id == Atdar.settings.notify then
+                default = i
+            end
+        end
+
+        refs.notify = parent:list_select("Notifications", {}, "Where to send script notifications", options, default, function(value)
+            notify:set_target(Logger.targets[value].id)
+        end)
+    end
+end

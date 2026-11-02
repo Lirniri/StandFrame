@@ -1,0 +1,32 @@
+-- lib/AnitaDarin/core/toggle_module.pluto
+-- Base class for on/off features. Starts disabled; on_tick runs only while enabled.
+-- Subclasses override on_tick, on_enable and on_disable.
+
+local Module = require($"{Atdar.name}/core/module")
+
+local class ToggleModule extends Module
+    function __construct(manager)
+        parent:__construct(manager)
+        self.enabled = false
+    end
+
+    function set_enabled(on)
+        if on == self.enabled then return end
+        self.enabled = on
+        if on then
+            self:on_enable()
+        else
+            self:on_disable()
+        end
+    end
+
+    -- Toggle hooks
+    function on_enable() end
+    function on_disable() end
+
+    function shutdown()
+        self:set_enabled(false)
+    end
+end
+
+return ToggleModule

@@ -1,8 +1,8 @@
 --[[
-    Translation storage system
+    JSON key-value storage
 
     Usage:
-        local self = require "core/filesystem/json/storage"
+        local self = require($"{Atdar.name}/core/filesystem/json/storage")
 
         -- Create an instance with its own table
         local t = self.new()
@@ -12,10 +12,6 @@
         -- Or pass an existing table (e.g. from your own DB / store)
         local t2 = self.new(my_existing_table)
         t2.get("some.key", "Fallback")
-
-    New keys are not written to disk immediately: they are batched into a
-    single write at the end of the tick (or when the script stops).
-    To save right away, call t.flush()
 ]]
 
 local module = {}
@@ -24,12 +20,9 @@ local json = require "pluto:json"
 
 -- ─── Private helpers (instance-independent) ──────────────────────────────────
 
---- Creates the file (and its parent folders) with an empty JSON object
---- if it does not exist yet.
 local function ensure_file(dir: string)
     if filesystem.exists(dir) then return end
 
-    -- Everything before the last slash / backslash is the folder path
     local folder = string.match(dir, "^(.+)[\\/][^\\/]+$")
     if folder and not filesystem.exists(folder) then
         filesystem.mkdirs(folder)
@@ -37,87 +30,46 @@ local function ensure_file(dir: string)
 
     local file = io.open(dir, "w")
     if not file then
-        util.toast("[AnitaDarin: json.storage.pluto] ERROR: failed to create file:\n" .. dir)
+        util.toast("[AnitaScript | i18n] ERROR: failed to create file:\n" .. dir)
         return
     end
     file:write("{}")
     file:close()
 end
 
---- Writes a raw string to a file, overwriting it.
---- @return boolean  true on success
-local function write_file(dir: string, content: string): boolean
+local function write_table(dir: string, tbl: table, write_pretty: boolean)
     local file = io.open(dir, "w")
     if not file then
-        util.log("[AnitaDarin: json.storage.pluto] ERROR: failed to open file for writing: " .. dir)
-        return false
+        util.log("[AnitaScript | i18n] ERROR: failed to open file for writing: " .. dir)
+        return
     end
-    file:write(content)
-    file:close()
-    return true
-end
 
---- Encodes a table as JSON and writes it to a file.
---- @return boolean  true on success
-local function write_table(dir: string, tbl: table, write_pretty: boolean): boolean
-    -- write_pretty == true -> "pretty", otherwise nil (default compact JSON)
+    -- "pretty" if write_pretty == true, otherwise nil (standard compact JSON)
     local write_style = write_pretty and "pretty" or nil
-    return write_file(dir, json.encode(tbl, write_style))
+    
+    file:write(json.encode(tbl, write_style))
+    file:close()
 end
 
 -- ─── Instance factory ────────────────────────────────────────────────────────
 
---- Creates a new independent translator instance.
---- @param initial_table table|nil  Optional prefilled translation table.
+--- Creates a new independent storage instance.
+--- @param initial_table table|nil  Optional ready-made table.
 ---                                 An empty one is created if omitted.
 function module.new(initial_table: table|nil)
     local instance = {}
 
-    -- Each instance has its own table and file path (kept private in the closure)
+    -- Each instance has its own table and file path
     local data: table = initial_table or {}
     local dir: string = ""
 
-    -- Deferred write state
-    local dirty = false            -- data has changes not yet written to disk
-    local flush_scheduled = false  -- a tick handler is already queued
-    local pretty = true            -- JSON style for the next write
-
-    --- Immediately writes pending changes to the file.
-    --- No-op if there are no changes or no file has been loaded.
-    function instance.flush()
-        if not dirty or dir == "" then return end
-        -- Keep the dirty flag on failure so the next flush retries
-        if write_table(dir, data, pretty) then
-            dirty = false
-        end
-    end
-
-    -- Defers the write to the end of the tick: N new keys per tick = 1 write
-    local function schedule_flush()
-        dirty = true
-        if flush_scheduled then return end
-        flush_scheduled = true
-        util.create_tick_handler(function()
-            flush_scheduled = false
-            instance.flush()
-            return false -- one-shot handler: unregister after the first run
-        end)
-    end
-
-    -- Don't lose keys added during the last tick before the script stops
-    util.on_stop(instance.flush)
-
-    --- Loads a JSON file and fills the instance table with it.
-    --- Creates the file if it does not exist.
+    --- Loads a JSON file and fills the instance table.
     function instance.load(path: string)
-        -- Save pending changes of the previous file while dir still points to it
-        instance.flush()
-
         ensure_file(path)
 
         local file = io.open(path, "r")
         if not file then
-            util.toast("[AnitaDarin: json.storage.pluto] ERROR: failed to open file:\n" .. path)
+            util.toast("[AnitaScript | i18n] ERROR: failed to open file:\n" .. path)
             return
         end
 
@@ -126,23 +78,19 @@ function module.new(initial_table: table|nil)
 
         if content == "" then content = "{}" end
 
-        -- pcall protects against malformed JSON crashing the script
         local ok, result = pcall(json.decode, content)
-        if ok and type(result) == "table" then
+        if ok then
             data = result
         else
-            -- Back up the broken file to .bak, otherwise the first write would wipe it
-            write_file(path .. ".bak", content)
-            util.toast("[AnitaDarin: json.storage.pluto] ERROR: JSON syntax error:\n" .. path .. "\nBackup: " .. path .. ".bak")
+            util.toast("[AnitaScript | i18n] ERROR: JSON syntax error:\n" .. path)
             data = {}
         end
 
         dir = path
-        dirty = false
     end
 
-    --- Replaces the internal table with the given one (no file read).
-    --- Useful when the data was already loaded from another source.
+    --- Replaces the internal table with the given one (without reading a file).
+    --- Useful when the data is already loaded from another source.
     function instance.set_table(tbl: table)
         data = tbl
     end
@@ -152,36 +100,33 @@ function module.new(initial_table: table|nil)
         return data
     end
 
-    --- Resets the table and the file path.
-    --- Unsaved changes are discarded.
+    --- Resets the table and file path.
     function instance.reset()
-        data  = {}
-        dir   = ""
-        dirty = false
+        data = {}
+        dir  = ""
     end
 
-    --- Returns the translation for a key.
-    --- If the key is missing, stores the fallback, schedules a file write and returns it.
-    --- @param path         string        Translation key (e.g. "menu.vehicle.explode")
-    --- @param default_val  any|nil       Default text; if nil or "", the key itself is used
-    --- @param write_pretty boolean|nil   Pretty-print the JSON file (default: true)
-    function instance.get(path: string, default_val: any|nil, write_pretty: boolean|nil): any
-        -- Fast path: a single hash lookup
-        local value = data[path]
-        if value ~= nil then
-            return value
+    --- Returns the value for a key.
+    --- If the key is missing, writes the fallback to the file and returns it.
+    --- @param path         string     Key (e.g. "menu.vehicle.explode")
+    --- @param default_val  any|nil    Default value; if nil, path itself is used
+    --- @param write_pretty boolean|nil
+    function instance.get(path: string, default_val: any|nil, write_pretty: boolean): any
+        local write_pretty = (write_pretty ~= false)
+
+        if data[path] ~= nil then
+            return data[path]
         end
 
-        local fallback = (default_val ~= nil and default_val ~= "") and default_val or path
+        local fallback = (default_val and default_val ~= "") and default_val or path
 
-        -- Store the new key in the table; the file is written at the end of the tick
+        -- Write the new key to the table and file
         data[path] = fallback
 
         if dir ~= "" then
-            pretty = write_pretty ~= false
-            schedule_flush()
+            write_table(dir, data, write_pretty)
         else
-            util.log("[AnitaDarin: json/storage.pluto] WARNING: key '" .. path .. "' requested BEFORE load() was called. File write skipped.")
+            util.log("[AnitaScript | i18n] WARNING: key '" .. path .. "' requested BEFORE load(). Skipped writing to file.")
         end
 
         return fallback

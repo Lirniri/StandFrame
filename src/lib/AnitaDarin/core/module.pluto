@@ -1,0 +1,33 @@
+-- lib/AnitaDarin/core/module.pluto
+-- Base module class. A module is logic and state, without UI.
+-- Modules live in features; the menu is built in ui/stand and calls their methods.
+
+local class Module
+    -- Module description (overridden in subclasses)
+    -- name : string   — unique name, required
+    -- deps : {string} — modules that must be ready first
+    deps = {}
+
+    function __construct(manager)
+        self.manager = manager
+        self.status = "registered" -- registered | ready | failed
+        self.enabled = true
+        self.error = nil
+    end
+
+    -- Lifecycle hooks
+    function init() end
+    function on_tick() end
+    function shutdown() end
+
+    -- Helpers
+    function get(name)
+        return self.manager:get(name)
+    end
+
+    function log(msg)
+        self.manager:log($"[{self.name}] {msg}")
+    end
+end
+
+return Module

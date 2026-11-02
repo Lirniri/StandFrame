@@ -1,0 +1,61 @@
+-- lib/AnitaDarin/core/logger.pluto
+-- Доставка сообщений: лог-файл Stand, уведомление Stand или ленту уведомлений игры.
+
+-- Лимит длины одного текстового компонента в нативках HUD
+local FEED_CHUNK_SIZE = 99
+
+-- Режет строку на куски не длиннее size байт, не разрывая UTF-8 символы
+local function split_utf8(text, size)
+    local chunks, buf = {}, ""
+    for _, code in utf8.codes(text) do
+        local ch = utf8.char(code)
+        if #buf + #ch > size then
+            table.insert(chunks, buf)
+            buf = ""
+        end
+        buf ..= ch
+    end
+    if buf ~= "" then
+        table.insert(chunks, buf)
+    end
+    return chunks
+end
+
+local class Logger
+    -- Способы отправки уведомлений; порядок совпадает с пунктами меню настроек
+    targets = {
+        { id = "stand", label = "Stand" },
+        { id = "game",  label = "Game" },
+        { id = "none",  label = "None" },
+    }
+
+    function __construct(prefix)
+        self.prefix = prefix
+    end
+
+    -- Запись в лог-файл Stand
+    function log(text)
+        util.log($"[{self.prefix}] {text}")
+    end
+
+    -- Отправка уведомления выбранным способом
+    function send_text(text, target)
+        text = tostring(text)
+
+        if target == "stand" then
+            util.toast($"[{self.prefix}] {text}")
+        elseif target == "game" then
+            -- self:send_game_feed(text)
+        end
+    end
+
+    -- function send_game_feed(text)
+    --     HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
+    --     for _, chunk in split_utf8($"{self.prefix}: {text}", FEED_CHUNK_SIZE) do
+    --         HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(chunk)
+    --     end
+    --     HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(false, true)
+    -- end
+end
+
+return Logger

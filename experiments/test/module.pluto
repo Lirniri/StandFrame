@@ -1,0 +1,33 @@
+-- lib/AnitaDarin/core/module.pluto
+-- Базовый класс модуля. Модуль — это логика и состояние, без UI.
+-- Модули лежат в core/menu/functions, меню строится в core/menu и вызывает их методы.
+
+local class Module
+    -- Описание модуля (переопределяется в наследнике)
+    -- name : string   — уникальное имя, обязательно
+    -- deps : {string} — модули, которые должны быть готовы раньше
+    deps = {}
+
+    function __construct(manager)
+        self.manager = manager
+        self.status = "registered" -- registered | ready | failed
+        self.enabled = true
+        self.error = nil
+    end
+
+    -- Хуки жизненного цикла
+    function init() end
+    function on_tick() end
+    function shutdown() end
+
+    -- Хелперы
+    function get(name)
+        return self.manager:get(name)
+    end
+
+    function log(msg)
+        self.manager:log($"[{self.name}] {msg}")
+    end
+end
+
+return Module

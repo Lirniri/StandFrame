@@ -3,11 +3,11 @@ local module = {}
 module = require($"{Atdar.name}/game/natives/world/world")
 
 module.map = require($"{Atdar.name}/game/natives/world/map")
--- module.time = require($"{Atdar.name}/game/natives/world/time")
--- module.weather = require($"{Atdar.name}/game/natives/world/weather")
--- module.interior = require($"{Atdar.name}/game/natives/world/interior")
--- module.path = require($"{Atdar.name}/game/natives/world/path")
--- module.water = require($"{Atdar.name}/game/natives/world/water")
--- module.fire = require($"{Atdar.name}/game/natives/world/fire")
+module.time = require($"{Atdar.name}/game/natives/world/time")
+module.weather = require($"{Atdar.name}/game/natives/world/weather")
+module.interior = require($"{Atdar.name}/game/natives/world/interior")
+module.path = require($"{Atdar.name}/game/natives/world/path")
+module.water = require($"{Atdar.name}/game/natives/world/water")
+module.fire = require($"{Atdar.name}/game/natives/world/fire")
 
 return module

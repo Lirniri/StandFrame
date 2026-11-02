@@ -1,3 +1,17 @@
 local module = {}
--- body
+
+function module.clear(ped, type: int = 1): void
+    switch type do
+        case 1:
+            TASK.CLEAR_PED_TASKS(ped)
+        case 2:
+            TASK.CLEAR_PED_SECONDARY_TASK(ped)
+        case 3:
+            TASK.CLEAR_PED_TASKS_IMMEDIATELY(ped)
+        break
+        default:
+            TASK.CLEAR_PED_TASKS(ped)
+    end
+end
+
 return module

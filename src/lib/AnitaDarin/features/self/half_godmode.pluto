@@ -1,0 +1,20 @@
+-- lib/AnitaDarin/features/self/half_godmode.pluto
+
+local ToggleModule = require($"{Atdar.name}/core/toggle_module")
+
+local class HalfGodmode extends ToggleModule
+    name = "self.half_godmode"
+
+    function on_tick()
+        local player = players.user()
+        if not players.is_godmode(player) then
+            Atdar.util.half_godmode(player, true)
+        end
+    end
+
+    function on_disable()
+        Atdar.util.half_godmode(players.user(), false)
+    end
+end
+
+return HalfGodmode
