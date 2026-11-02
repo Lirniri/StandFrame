@@ -20,7 +20,7 @@ for _, name in UTILS do
     Atdar[name] = lib
 end
 
--- Native wrappers: an error in one section doesn't crash the script, the section stays empty
+-- Native wrappers: Atdar.natives.<section>. An error in one file doesn't crash the script, that file stays empty
 local NATIVES = {
     "entity",
     "player",
@@ -33,14 +33,11 @@ local NATIVES = {
     "streaming",
 }
 
+local load = require($"{Atdar.name}/core/loader")
+
+Atdar.natives = {}
 for _, name in NATIVES do
-    local ok, lib = pcall(require, $"{Atdar.name}/game/natives/{name}")
-    if not ok then
-        util.log($"[game/natives] failed to load '{name}': {lib}")
-        util.toast($"game/natives '{name}' failed to load\n{lib}")
-        lib = {}
-    end
-    Atdar[name] = lib
+    Atdar.natives[name] = load($"natives/{name}")
 end
 
 

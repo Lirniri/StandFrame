@@ -1,4 +1,4 @@
-local hud = Atdar.visual.hud
+local hud = Atdar.natives.visual.hud
 
 local function get_blip_options(sprite: int): table
     local options = {}
@@ -14,5 +14,5 @@ local test_list = root:list_action("test", {}, "", get_blip_options(40), functio
         util.toast("Blip not found")
         return
     end
-    Atdar.entity.set_coords(players.user_ped(), coords)
+    Atdar.natives.entity.set_coords(players.user_ped(), coords)
 end)
