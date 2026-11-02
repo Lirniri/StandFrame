@@ -1,6 +1,0 @@
--- lib/AnitaDarin/ui/stand/tabs/self.pluto
-
-return function(parent, refs)
-    refs.half_godmode = Atdar.menu.toggle(parent, "self.half_godmode", "Half-Godmode")
-    refs.ragdoll_control = Atdar.menu.toggle(parent, "self.ragdoll_control", "Control Ragdoll")
-end

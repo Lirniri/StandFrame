@@ -2,20 +2,22 @@
 
 util.require_natives("3407a")
 
--- Settings
-Atdar.settings = {
-    notify = "stand", -- stand | game | none
+-- Libraries
+local UTILS = {
+    "util",
+    "players",
+    "filesystem",
 }
 
--- Logger
-local Logger = require($"{Atdar.name}/core/logger")
-Atdar.logger = new Logger(Atdar.name)
-
--- Libraries
-Atdar.util = require($"{Atdar.name}/utils/util")
-Atdar.players = require($"{Atdar.name}/utils/players")
-Atdar.filesystem = require($"{Atdar.name}/utils/filesystem")
-Atdar.lang = require($"{Atdar.name}/utils/lang")
+for _, name in UTILS do
+    local ok, lib = pcall(require, $"{Atdar.name}/utils/{name}")
+    if not ok then
+        util.log($"[natives] failed to load '{name}': {lib}")
+        util.toast($"Utils '{name}' failed to load\n{lib}")
+        lib = {}
+    end
+    Atdar[name] = lib
+end
 
 -- Native wrappers: an error in one section doesn't crash the script, the section stays empty
 local NATIVES = {
@@ -32,20 +34,12 @@ local NATIVES = {
 for _, name in NATIVES do
     local ok, lib = pcall(require, $"{Atdar.name}/game/natives/{name}")
     if not ok then
-        Atdar.logger:log($"[natives] failed to load '{name}': {lib}")
-        Atdar.util.toast($"Natives '{name}' failed to load\n{lib}")
+        util.log($"[natives] failed to load '{name}': {lib}")
+        util.toast($"Utils '{name}' failed to load\n{lib}")
         lib = {}
     end
     Atdar[name] = lib
 end
 
--- Modules
-local ModuleManager = require($"{Atdar.name}/core/module_manager")
 
-Atdar.modules = new ModuleManager()
-Atdar.modules:load_dir("features")
-Atdar.modules:start()
-
--- Menu (after modules: sections take ready modules from the manager)
-Atdar.menu = require($"{Atdar.name}/ui/stand/menu")
-Atdar.menu.build()
+Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
