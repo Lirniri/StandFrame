@@ -1,3 +1,7 @@
+local load = require($"{Atdar.name}/core/loader")
+
 local module = {}
--- body
+
+module.phone = load("natives/audio/phone")
+
 return module

@@ -1,0 +1,21 @@
+local module = {}
+
+function module.set_sprite(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_SPRINT(player_id, toggle)
+end
+
+function module.get_infinite_stamina(ped: int): bool -- TODO: maybe don't work
+    return PED.GET_PED_RESET_FLAG(ped, 63)
+end
+function module.set_infinite_stamina(ped: int, toggle: bool): void -- TODO: maybe don't work
+    PED.SET_PED_CONFIG_FLAG(ped, 63, toggle)
+end
+
+function module.get_stamina(player_id: int): float
+    return PLAYER.GET_PLAYER_SPRINT_STAMINA_REMAINING(player_id)
+end
+function module.restore_stamina(player_id: int, value: float): void
+    PLAYER.RESTORE_PLAYER_STAMINA(player_id, value)
+end
+
+return module

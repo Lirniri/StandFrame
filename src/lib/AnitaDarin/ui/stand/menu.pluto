@@ -7,10 +7,7 @@ local testDivider = root:divider("AnitaDarin")
 
 local testAction = root:action("Test_Action", {}, "", function()
     util.toast("Pressed")
-    for _, veh in pairs(entities.get_all_vehicles_as_handles()) do
-        util.yield(500)
-        Atdar.natives.entity.vehicle.explode(veh)
-    end
+    
 end)
 local testToggle = root:toggle("Test_Toggle", {}, "", function(on)
     util.toast($"Toggle is {on ? "on" : "off"}")

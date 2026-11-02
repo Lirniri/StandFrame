@@ -1,18 +1,41 @@
 local load = require($"{Atdar.name}/core/loader")
 
-local module = {}
+local module = { user = {} }
 
 -- @return Ped of the given player, or of the local player if player_id is nil
-function module.get_ped_id(player_id: ?int): int
+function module.get_player_id(player_id: ?int = nil): int
+    if player_id ~= nil then
+        return PLAYER.GET_PLAYER_INDEX(player_id)
+    end
+    return PLAYER.PLAYER_ID()
+end
+
+function module.get_ped_id(player_id: ?int = nil): int
     if player_id ~= nil then
         return PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player_id)
     end
     return PLAYER.PLAYER_PED_ID()
 end
 
-function module.half_godmode(player_id: int, toggle: bool = true): void
+function module.get_net_id(player_id: int)
+    return players.get_net_player(player_id)
+end
+
+function module.is_godmode(player_id: int): bool
+    return players.is_godmode(player_id)
+end
+
+function module.set_godmode(player_id: int, toggle: bool): void
+    local player = player_id
+    PLAYER.SET_PLAYER_INVINCIBLE(player, toggle)
+end
+function module.set_half_godmode(player_id: int, toggle: bool): void
     local player = player_id
     PLAYER.SET_PLAYER_INVINCIBLE_BUT_HAS_REACTIONS(player, toggle)
+end
+
+function module.give_ragdoll_control(player_id: int, toggle: int): void
+    PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player_id)
 end
 
 -- @return Index of the active character slot
@@ -20,7 +43,23 @@ function module.get_char_slot(): int
     return util.get_char_slot()
 end
 
+function module.remove_helmet(player_id: int, p2: bool)
+    PLAYER.REMOVE_PLAYER_HELMET(player_id, p2)
+end
+
+-- player > user
+function module.user.set_max_health(value: int): void
+    HUD.SET_MAX_HEALTH_HUD_DISPLAY(value)
+    PED.SET_PED_MAX_HEALTH(module.get_player_id(nil), value)
+end
+function module.user.set_max_armor(player_id: int, value: int): void
+    HUD.SET_MAX_ARMOUR_HUD_DISPLAY(value)
+    PLAYER.SET_PLAYER_MAX_ARMOUR(module.get_player_id(nil), value)
+end
+
+module.movement = load("natives/player/movement")
 module.camera = load("natives/player/camera")
+module.wanted_level = load("natives/player/wanted_level")
 module.switch = load("natives/player/switch")
 
 return module

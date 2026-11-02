@@ -1,3 +1,7 @@
+local load = require($"{Atdar.name}/core/loader")
+
 local module = {}
--- body
+
+module.asset = load("natives/streaming/asset")
+
 return module
