@@ -9,4 +9,8 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_OBJ(net_id)
 end
 
+function module.get_all(asPointer: bool = false)
+    return asPointer and entities.get_all_peds_as_pointers() or entities.get_all_peds_as_handles()
+end
+
 return module

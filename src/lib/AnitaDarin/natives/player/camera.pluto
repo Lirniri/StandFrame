@@ -1,9 +1,17 @@
-local module = {}
+local module = { user = {} }
 
-function module.get_view_mode()
+function module.user.get_view_mode()
     local context = CAM.GET_CAM_ACTIVE_VIEW_MODE_CONTEXT()
     local mode = CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(context)
     return mode
+end
+
+function module.get_position(player_id: int): vector3
+    return players.get_cam_pos(player_id)
+end
+
+function module.get_rotation(player_id: int): vector3
+    return players.get_cam_rot(player_id)
 end
 
 return module

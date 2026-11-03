@@ -4,6 +4,10 @@ function module.get_active(ped: int, type: int)
     return TASK.GET_IS_TASK_ACTIVE(ped, type)
 end
 
+function module.is_getting_up(ped: int): bool
+    return TASK.IS_PED_GETTING_UP(ped)
+end
+
 -- @param mode 1 — all tasks, 2 — secondary task, 3 — all tasks immediately
 function module.clear(ped: int, mode: int = 0): void
     switch mode do
@@ -16,6 +20,10 @@ function module.clear(ped: int, mode: int = 0): void
         default:
             TASK.CLEAR_PED_TASKS(ped)
     end
+end
+
+function module.sky_dive(ped: int, instant: bool): void
+    TASK.TASK_SKY_DIVE(ped, instant)
 end
 
 return module

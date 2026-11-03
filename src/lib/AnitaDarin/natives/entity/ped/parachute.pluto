@@ -1,0 +1,44 @@
+local module = {}
+
+function module.get_state(ped: int): int
+    --[[ @return:
+        -1: Normal
+        0: Wearing parachute on back
+        1: Parachute opening
+        2: Parachute open
+        3: Falling to doom (e.g. after exiting parachute)
+    ]]
+    return PED.GET_PED_PARACHUTE_STATE(ped)
+end
+
+function module.get_lading_type(ped: int): int
+    --[[ @return:
+        -1: no landing
+        0: landing on both feet
+        1: stumbling
+        2: rolling
+        3: ragdoll
+    ]]
+    return PED.GET_PED_PARACHUTE_LANDING_TYPE(ped)
+end
+
+function module.force_open(ped: int): void
+    PED.FORCE_PED_TO_OPEN_PARACHUTE(ped)
+end
+
+function module.give(ped: int): void
+    local hash = util.joaat("GADGET_PARACHUTE")
+    WEAPON.GIVE_WEAPON_TO_PED(ped, hash, 1, false, false)
+end
+
+function module.get_tint(player_or_ped: int, tint: int): void
+    local id = player_or_ped
+    if id == Atdar.natives.player.get_ped_id(id) then
+        PED.GET_PED_PARACHUTE_TINT_INDEX(ped, tint)
+    end
+end
+function module.set_tint(player_or_ped: int, tint: int): void
+    PED.SET_PED_PARACHUTE_TINT_INDEX(ped, tint)
+end
+
+return module

@@ -2,6 +2,10 @@ local load = require($"{Atdar.name}/core/loader")
 
 local module = {}
 
+function module.is_player(player_id: int): bool
+    return PED.IS_PED_A_PLAYER(player_id)
+end
+
 function module.get_net_id(ped): int
     return NETWORK.PED_TO_NET(ped)
 end
@@ -11,6 +15,27 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_PED(net_id)
 end
 
+function module.get_all(asPointer: bool = false)
+    return asPointer and entities.get_all_peds_as_pointers() or entities.get_all_peds_as_handles()
+end
+
+function module.is_human(ped: int): bool
+    return PED.IS_PED_HUMAN(ped)
+end
+
+function module.is_male(ped: int): bool
+    return PED.IS_PED_MALE(ped)
+end
+
+function module.is_stopped(ped: int): bool
+    return PED.IS_PED_STOPPED(ped)
+end
+
+function module.is_jumping(ped: int): bool
+    return PED.IS_PED_JUMPING(ped)
+end
+
+module.parachute = load("natives/entity/ped/parachute")
 module.task = load("natives/entity/ped/task")
 module.weapon = load("natives/entity/ped/weapon")
 

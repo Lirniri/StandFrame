@@ -50,6 +50,10 @@ function module.set_coords(entity: int, coords: ?vector3, max_height: number|boo
     return true
 end
 
+function module.delete(handle_or_ptr): void
+    entities.delete(handle_or_ptr)
+end
+
 module.ped = load("natives/entity/ped")
 module.vehicle = load("natives/entity/vehicle")
 module.object = load("natives/entity/object")
