@@ -14,7 +14,8 @@ function module.is_stopped(vehicle: int): bool
 end
 
 function module.explode(vehicle, isAudible: bool = true, isInvisible: bool = false): void
-    if not util.is_session_started() then
+    local is_session_stated = util.is_session_started()
+    if not is_session_stated then
         NETWORK.EXPLODE_VEHICLE(vehicle, isAudible, isInvisible)
     else
         local net_id = module.get_net_id(vehicle)
