@@ -5,10 +5,10 @@ function request_action_mode(name, timeout = 2000)
     timeout += util.current_time_millis()
 
     PED.REQUEST_ACTION_MODE_ASSET(name)
-    white (not PED.HAS_ACTION_MODE_ASSET_LOADED and util.current_time_millis() < timeout) do
+    white (not PED.HAS_ACTION_MODE_ASSET_LOADED(name) and util.current_time_millis() < timeout) do
         util.yield()
     end
-    if not PED.HAS_ACTION_MODE_ASSET_LOADED then
+    if not PED.HAS_ACTION_MODE_ASSET_LOADED(name) then
         -- body
     end
 end
@@ -18,10 +18,10 @@ function request_stealth_mode(name, timeout = 2000)
     timeout += util.current_time_millis()
 
     PED.REQUEST_STEALTH_MODE_ASSET(name)
-    white (not PED.HAS_STEALTH_MODE_ASSET_LOADED and util.current_time_millis() < timeout) do
+    white (not PED.HAS_STEALTH_MODE_ASSET_LOADED(name) and util.current_time_millis() < timeout) do
         util.yield()
     end
-    if not PED.HAS_STEALTH_MODE_ASSET_LOADED then
+    if not PED.HAS_STEALTH_MODE_ASSET_LOADED(name) then
         -- body
     end
 end
@@ -31,10 +31,10 @@ function request_ptfx(name, timeout = 2000)
     timeout += util.current_time_millis()
 
     STREAMING.REQUEST_NAMED_PTFX_ASSET(name)
-    white (not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED and util.current_time_millis() < timeout) do
+    white (not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(name) and util.current_time_millis() < timeout) do
         util.yield()
     end
-    if not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED then
+    if not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(name) then
         -- body
     end
 end
@@ -44,10 +44,10 @@ function request_vehicle(hash, asset, timeout = 2000)
     timeout += util.current_time_millis()
 
     VEHICLE.REQUEST_VEHICLE_ASSET(hash, asset)
-    white (not VEHICLE.HAS_VEHICLE_ASSET_LOADED and util.current_time_millis() < timeout) do
+    white (not VEHICLE.HAS_VEHICLE_ASSET_LOADED(asset) and util.current_time_millis() < timeout) do
         util.yield()
     end
-    if not VEHICLE.HAS_VEHICLE_ASSET_LOADED then
+    if not VEHICLE.HAS_VEHICLE_ASSET_LOADED(asset) then
         -- body
     end
 end

@@ -7,7 +7,6 @@ local testDivider = root:divider("AnitaDarin")
 
 local testAction = root:action("Test_Action", {}, "", function()
     util.toast("Pressed")
-    
 end)
 local testToggle = root:toggle("Test_Toggle", {}, "", function(on)
     util.toast($"Toggle is {on ? "on" : "off"}")
