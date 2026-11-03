@@ -10,11 +10,6 @@ function module.get_radius(player_id: int): float
     return PLAYER.GET_WANTED_LEVEL_RADIUS(player_id)
 end
 
-function module.can_start_mission(player_id: int, level: int): void
-    return PLAYER.CAN_PLAYER_START_MISSION(player_id)
-end
-
-
 function module.set_no_drop(player_id: int, level: int, p2: bool = false): void
     return PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player_id)
 end
