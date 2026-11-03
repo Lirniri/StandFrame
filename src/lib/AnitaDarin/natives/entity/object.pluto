@@ -10,7 +10,9 @@ function module.from_net_id(net_id): ?int
 end
 
 function module.get_all(asPointer: bool = false)
-    return asPointer and entities.get_all_peds_as_pointers() or entities.get_all_peds_as_handles()
+    local handle = entities.get_all_peds_as_handles()
+    local pointer = entities.get_all_peds_as_pointers()
+    return asPointer and pointer or handle
 end
 
 return module
