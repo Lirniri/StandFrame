@@ -1,0 +1,48 @@
+local globals = Atdar.globals
+
+-- Declared first and assigned explicitly so methods can reference MenuNode:
+-- neither `local class` nor `class` on a forward-declared local binds it inside the body in Stand's Pluto
+local MenuNode
+
+-- Wraps a Stand command ref and creates child items in it
+MenuNode = class
+
+    function __construct(handle)
+        globals.pluto.fix_class_index(self)
+
+        self.handle = handle
+    end
+
+    function divider(text: string)
+        return menu.divider(self.handle, text)
+    end
+
+    function list(name: string, commands: table = {}, help: string = ""): table
+        return new MenuNode(menu.list(self.handle, name, commands, help))
+    end
+
+    -- Picks the Stand item type from feature.kind
+    function add_feature(feature: table, name: string, commands: table = {}, help: string = "")
+        local kind = feature.kind
+        if kind == "loop" then
+            return menu.toggle_loop(self.handle, name, commands, help,
+                function() feature:tick() end,
+                function() feature:disable() end)
+        elseif kind == "toggle" then
+            return menu.toggle(self.handle, name, commands, help, function(on)
+                if on then
+                    feature:enable()
+                else
+                    feature:disable()
+                end
+            end)
+        elseif kind == "action" then
+            return menu.action(self.handle, name, commands, help,
+                function() feature:trigger() end)
+        end
+        error($"[MenuNode] unknown kind '{kind}' for feature '{feature.id}'")
+    end
+
+end
+
+return MenuNode

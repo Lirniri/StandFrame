@@ -13,6 +13,9 @@ local class ModuleManager
     function register()
         -- body
     end
+    function unregister()
+        -- body
+    end
 
     function load()
         -- body

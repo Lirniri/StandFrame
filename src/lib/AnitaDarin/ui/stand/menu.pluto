@@ -1,8 +1,9 @@
 local load = require($"{Atdar.name}/core/loader")
+local MenuNode = load("ui/stand/menu_node")
 
 local module = {}
 
-module.root = menu.my_root()
+module.root = new MenuNode(menu.my_root())
 module.divider = module.root:divider("AnitaDarin")
 
 local submenus = { "self" }
@@ -10,7 +11,7 @@ local submenus = { "self" }
 for _, name in ipairs(submenus) do
     local submenu = load($"ui/stand/menu/{name}")
     if submenu.build then
-        module[name] = submenu.build(module)
+        module[name] = submenu.build(module.root)
     end
 end
 

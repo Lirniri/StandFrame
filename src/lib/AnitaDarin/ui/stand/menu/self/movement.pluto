@@ -1,15 +1,13 @@
--- ui/stand/menu/self/movement.pluto
 local load = require($"{Atdar.name}/core/loader")
+
 local ragdoll_control = load("features/self/movement/ragdoll_control")
 
 local module = {}
 
 function module.build(parent: table): table
-    local submenu = { command = {} }
-    submenu.root = menu.list(parent.root, "Movement", {}, "")
+    local submenu = { node = parent:list("Movement"), command = {} }
 
-    submenu.command.ragdoll_control = menu.toggle_loop(submenu.root, "Ragdoll Control", {}, "",
-        function() ragdoll_control:tick() end, function() ragdoll_control:disable() end)
+    submenu.command.ragdoll_control = submenu.node:add_feature(ragdoll_control, "Ragdoll Control")
 
     return submenu
 end

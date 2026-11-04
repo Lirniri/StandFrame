@@ -13,13 +13,13 @@ local class Module
         self.error = nil
     end
 
-    function onTick()
+    function on_tick()
         -- body
     end
-    function onEnable()
+    function on_enable()
         -- body
     end
-    function onDisable()
+    function on_disable()
         -- body
     end
 

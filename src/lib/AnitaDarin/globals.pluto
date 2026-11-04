@@ -1,3 +1,14 @@
-local m = {}
+local module = { 
+    pluto = {}
+}
 
-return m
+-- Pluto bug: if Feature was instantiated before a subclass is declared, `extends` copies
+-- Feature.__index into the subclass, so its instances resolve methods straight from Feature
+function module.pluto.fix_class_index(instance: table): void
+    local cls = getmetatable(instance)
+    if rawget(cls, "__index") ~= cls then
+        cls.__index = cls
+    end
+end
+
+return module
