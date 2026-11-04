@@ -9,7 +9,7 @@ function module.build(parent: table): table
     submenu.root = menu.list(parent.root, "Movement", {}, "")
 
     submenu.command.ragdoll_control = menu.toggle_loop(submenu.root, "Ragdoll Control", {}, "",
-        ragdoll_control.enable, ragdoll_control.disable)
+        function() ragdoll_control:tick() end, function() ragdoll_control:disable() end)
 
     return submenu
 end

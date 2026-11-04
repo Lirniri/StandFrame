@@ -13,10 +13,10 @@ function module.build(parent: table): table
     submenu.movement = load("ui/stand/menu/self/movement").build(submenu)
 
     submenu.command.godmode = menu.toggle_loop(submenu.root, "Godmode", {}, "",
-        godmode.enable, godmode.disable)
+        function() godmode:tick() end, function() godmode:disable() end)
 
     submenu.command.half_godmode = menu.toggle_loop(submenu.root, "Half-Godmode", {}, "",
-        half_godmode.enable, half_godmode.disable)
+        function() half_godmode:tick() end, function() half_godmode:disable() end)
 
     return submenu
 end
