@@ -1,0 +1,59 @@
+class Feature
+
+    function __construct(opts: table)
+        self.id = opts.id
+        self.kind = opts.kind
+        self.enabled = false
+
+        self.on_tick = opts.on_tick or self.on_tick
+        self.on_enable = opts.on_enable or self.on_enable
+        self.on_disable = opts.on_disable or self.on_disable
+        self.on_trigger = opts.on_trigger or self.on_trigger
+    end
+
+    function tick()
+        if !self.enabled then
+            self:enable()
+        end
+        self:on_tick()
+    end
+    function on_tick()
+        -- body
+    end
+
+    function is_enabled()
+        return self.enabled
+    end
+
+    function enable()
+        if self.enabled then
+            return
+        end
+        self.enabled = true
+        self:on_enable()
+    end
+    function on_enable()
+        -- body
+    end
+
+    function disable()
+        if !self.enabled then
+            return
+        end
+        self.enabled = false
+        self:on_disable()
+    end
+    function on_disable()
+        -- body
+    end
+
+    function trigger()
+        self:on_trigger()
+    end
+    function on_trigger()
+        -- body
+    end
+
+end
+
+return Feature
