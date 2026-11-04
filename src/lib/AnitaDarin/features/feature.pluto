@@ -1,4 +1,7 @@
 local class_utils = Atdar.globals.pluto.class
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Feature")
 
 -- Declared first and assigned explicitly so methods can reference Feature
 local Feature
@@ -77,12 +80,10 @@ Feature = class
         if !self.enabled then
             self:enable()
         end
-        -- util.toast("Tick: ".. self.id)
         self:on_tick()
     end
     function on_tick()
         -- body
-        -- util.toast("OnTick: ".. self.id)
     end
 
     function is_enabled(): bool
@@ -93,34 +94,31 @@ Feature = class
         if self.enabled then
             return
         end
-        -- util.toast("Enable: ".. self.id)
+        log:debug($"enable {self.id}")
         self.enabled = true
         self:on_enable()
     end
     function on_enable(): void
         -- body
-        -- util.toast("OnEnable: ".. self.id)
     end
 
     function disable(): void
         if !self.enabled then
             return
         end
-        -- util.toast("Disable: ".. self.id)
+        log:debug($"disable {self.id}")
         self.enabled = false
         self:on_disable()
     end
     function on_disable(): void
         -- body
-        -- util.toast("OnDisable: ".. self.id)
     end
 
     function trigger()
-        -- util.toast("Trigger: ".. self.id)
+        log:debug($"trigger {self.id}")
         self:on_trigger()
     end
     function on_trigger()
-        -- util.toast("OnTrigger: ".. self.id)
         -- body
     end
 

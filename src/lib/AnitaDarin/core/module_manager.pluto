@@ -10,6 +10,7 @@ local class ModuleManager
     function get()
         -- body
     end
+    
     function register()
         -- body
     end

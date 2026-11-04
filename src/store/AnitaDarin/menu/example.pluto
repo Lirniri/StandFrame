@@ -1,0 +1,15 @@
+-- Stand
+
+local features = Atdar.features
+
+return {
+    build = function(node, ctx)
+        local self_menu = node:list("Self")
+
+        local movement = self_menu:list("Movement")
+        movement:add_feature(features.get("self.movement.ragdoll_control"), "Ragdoll Control")
+
+        self_menu:add_feature(features.get("self.godmode"), "Godmode")
+        self_menu:add_feature(features.get("self.half_godmode"), "Half-Godmode")
+    end,
+}

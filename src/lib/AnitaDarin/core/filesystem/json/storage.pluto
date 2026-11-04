@@ -17,6 +17,9 @@
 local module = {}
 
 local json = require "pluto:json"
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Storage")
 
 -- ─── Private helpers (instance-independent) ──────────────────────────────────
 
@@ -30,7 +33,7 @@ local function ensure_file(dir: string)
 
     local file = io.open(dir, "w")
     if not file then
-        util.toast("[AnitaScript | i18n] ERROR: failed to create file:\n" .. dir)
+        log:error("failed to create file:\n" .. dir)
         return
     end
     file:write("{}")
@@ -40,7 +43,7 @@ end
 local function write_table(dir: string, tbl: table, write_pretty: boolean)
     local file = io.open(dir, "w")
     if not file then
-        util.log("[AnitaScript | i18n] ERROR: failed to open file for writing: " .. dir)
+        log:error("failed to open file for writing:\n" .. dir)
         return
     end
 
@@ -69,7 +72,7 @@ function module.new(initial_table: table|nil)
 
         local file = io.open(path, "r")
         if not file then
-            util.toast("[AnitaScript | i18n] ERROR: failed to open file:\n" .. path)
+            log:error("failed to open file:\n" .. path)
             return
         end
 
@@ -82,7 +85,7 @@ function module.new(initial_table: table|nil)
         if ok then
             data = result
         else
-            util.toast("[AnitaScript | i18n] ERROR: JSON syntax error:\n" .. path)
+            log:error("JSON syntax error:\n" .. path)
             data = {}
         end
 
@@ -126,7 +129,7 @@ function module.new(initial_table: table|nil)
         if dir ~= "" then
             write_table(dir, data, write_pretty)
         else
-            util.log("[AnitaScript | i18n] WARNING: key '" .. path .. "' requested BEFORE load(). Skipped writing to file.")
+            log:info("key '" .. path .. "' requested before load(), skipped writing to file")
         end
 
         return fallback

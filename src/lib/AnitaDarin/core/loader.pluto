@@ -1,5 +1,9 @@
 -- lib/AnitaDarin/core/loader.pluto
 
+-- Plain require: the loader is what loads everything else
+local Logger = require($"{Atdar.name}/core/logger")
+local log = new Logger("Loader")
+
 local module = {}
 
 -- Requires lib/AnitaDarin/<path>. On error logs it and returns an empty table,
@@ -7,13 +11,12 @@ local module = {}
 function module.load(path: string): table
     local ok, result = pcall(require, $"{Atdar.name}/{path}")
     if not ok then
-        util.log($"[Loader] failed to load '{path}': {result}")
-        util.toast($"'{path}' failed to load\n{result}")
+        log:error($"failed to load '{path}'\n{result}")
         return {}
     end
     -- An empty file makes require return true instead of a table
     if type(result) ~= "table" then
-        util.log($"[Loader] '{path}' did not return a table")
+        log:warn($"'{path}' did not return a table")
         return {}
     end
     return result

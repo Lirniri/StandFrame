@@ -2,8 +2,11 @@ local load = Atdar.loader.load
 local MenuNode = load("ui/stand/menu_node")
 local builder = load("ui/stand/menu_builder")
 local settings = load("ui/stand/settings")
+local Logger = load("core/logger")
 local features = Atdar.features
 local paths = Atdar.filesystem.paths
+
+local log = new Logger("Menu")
 
 local PACKS_DIR = $"{paths.store}menu\\"
 -- Built-in menu has the same shape as a pack: main.pluto here, features in lib features/
@@ -75,7 +78,7 @@ local function load_menu(kind: string, feature_files: table, build: function): v
     local settings_mark = settings.mark()
     local loaded = builder.load_feature_files(feature_files)
     if loaded < #feature_files then
-        util.toast($"[Menu] ran {loaded} of {#feature_files} feature file(s)")
+        log:warn($"ran {loaded} of {#feature_files} feature file(s)")
     end
 
     -- A separate node on the root ref tracks only this menu's items
@@ -103,10 +106,10 @@ end
 local function copy_pack(info: table): void
     local ok, result = builder.copy_pack_to_core(info, paths.lib)
     if not ok then
-        util.toast($"[Menu] '{info.name}' not copied: {result}")
+        log:warn($"'{info.name}' not copied: {result}")
         return
     end
-    util.toast($"[Menu] '{info.name}': copied {result} file(s) to core and loaded it as the built-in menu")
+    log:notify($"'{info.name}': copied {result} file(s) to core and loaded it as the built-in menu")
     load_builtin()
 end
 
@@ -117,9 +120,9 @@ local function remove_builtin(): void
     end
     local ok, result = builder.remove_copied_core(paths.lib)
     if ok then
-        util.toast($"[Menu] removed {result} copied file(s) from core")
+        log:notify($"removed {result} copied file(s) from core")
     else
-        util.toast($"[Menu] nothing removed: {result}")
+        log:warn($"nothing removed: {result}")
     end
     -- Refreshes Load Menu so the built-in entry disappears
     rebuild_settings()
@@ -177,7 +180,7 @@ end)
 if has_builtin() then
     load_builtin()
 else
-    util.toast("[Menu] built-in menu not found, a menu can be loaded from store")
+    log:warn("built-in menu not found, a menu can be loaded from store")
     notice = module.root:divider("Built-in menu not found")
     module.settings = settings.build(module.root)
 end

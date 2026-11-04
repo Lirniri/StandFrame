@@ -1,14 +1,47 @@
 -- lib/AnitaDarin/core/logger.pluto
+-- Uses Stand's own output for now: util.log goes to Stand's log file, util.toast shows on screen
 
-local class logger
+local class Logger
 
-    function __construct(prefix: public = _G.Atdar.name)
-        self.prefix = prefix
+    -- source: what's logging, e.g. "MenuBuilder"; nil logs with the script name only
+    function __construct(source: ?string = nil)
+        self.tag = source and $"[{Atdar.name} | {source}]" or $"[{Atdar.name}]"
     end
 
-    
+    function write(level: string, msg: string, toast: bool): void
+        local line = $"{self.tag} {level}: {msg}"
+        util.log(line)
+        if toast then
+            util.toast(line)
+        end
+    end
+
+    -- Only when Atdar.debug is on
+    function debug(msg: string): void
+        if Atdar.debug then
+            self:write("DEBUG", msg, false)
+        end
+    end
+
+    function info(msg: string): void
+        self:write("INFO", msg, false)
+    end
+
+    -- Info the user should see, e.g. the result of something they clicked
+    function notify(msg: string): void
+        self:write("INFO", msg, true)
+    end
+
+    -- Something the user should know about, but the script keeps working
+    function warn(msg: string): void
+        self:write("WARN", msg, true)
+    end
+
+    function error(msg: string): void
+        self:write("ERROR", msg, true)
+    end
 
 end
 
-return logger
+return Logger
 -- \,

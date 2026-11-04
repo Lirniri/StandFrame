@@ -1,4 +1,7 @@
 -- Script's own section at the bottom of the root, shown with any menu (built-in or a pack)
+local Logger = Atdar.loader.load("core/logger")
+local log = new Logger("Settings")
+
 local module = {}
 
 -- Builders rather than built items, so the section can be recreated without losing what was added
@@ -47,8 +50,7 @@ function module.build(root: table): table
     for _, build_fn in ipairs(contributors) do
         local ok, err = pcall(build_fn, section.node)
         if not ok then
-            util.log($"[Settings] contributor failed: {err}")
-            util.toast($"[Settings] contributor failed:\n{err}")
+            log:error($"contributor failed\n{err}")
         end
     end
     return section
