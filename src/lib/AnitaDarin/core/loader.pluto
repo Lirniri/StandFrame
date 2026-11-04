@@ -1,8 +1,10 @@
 -- lib/AnitaDarin/core/loader.pluto
 
+local module = {}
+
 -- Requires lib/AnitaDarin/<path>. On error logs it and returns an empty table,
 -- so one broken file doesn't take down the whole section
-local function load(path: string): table
+function module.load(path: string): table
     local ok, result = pcall(require, $"{Atdar.name}/{path}")
     if not ok then
         util.log($"[Loader] failed to load '{path}': {result}")
@@ -17,5 +19,5 @@ local function load(path: string): table
     return result
 end
 
-return load
+return module
 -- \,

@@ -1,4 +1,4 @@
-local load = require($"{Atdar.name}/core/loader")
+local load = Atdar.loader.load
 
 local module = {}
 

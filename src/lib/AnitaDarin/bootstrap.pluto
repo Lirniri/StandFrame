@@ -2,9 +2,9 @@
 
 util.require_natives("3407a")
 
-local loader = require($"{Atdar.name}/core/loader")
+Atdar.loader = require($"{Atdar.name}/core/loader")
 
-Atdar.globals = loader("globals")
+Atdar.globals = Atdar.loader.load("globals")
 
 -- Libraries
 local UTILS = {
@@ -38,7 +38,7 @@ local NATIVES = {
 
 Atdar.natives = {}
 for _, name in NATIVES do
-    Atdar.natives[name] = loader($"natives/{name}")
+    Atdar.natives[name] = Atdar.loader.load($"natives/{name}")
 end
 
 

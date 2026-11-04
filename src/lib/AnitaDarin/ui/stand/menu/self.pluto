@@ -1,4 +1,4 @@
-local load = require($"{Atdar.name}/core/loader")
+local load = Atdar.loader.load
 
 local godmode = load("features/self/godmode")
 local half_godmode = load("features/self/half_godmode")
