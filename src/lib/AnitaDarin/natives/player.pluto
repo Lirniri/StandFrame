@@ -31,6 +31,7 @@ function module.get_waypoint(player_id: int): vector3
     return players.get_waypoint(player_id)
 end
 
+-- Player ID
 function module.is_exist(player_id: ?int = nil): int
     local player = player_id
     return NETWORK.NETWORK_IS_PLAYER_ACTIVE(player)
@@ -47,6 +48,8 @@ function module.get_all_id(include_user: bool = true): int
     return ids
 end
 
+
+-- Player Ped ID
 function module.get_ped_from_id(player_id: int): int
     return PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player_id)
 end
@@ -56,7 +59,6 @@ function module.get_ped_id(player_id: ?int = nil): int
     end
     return PLAYER.PLAYER_PED_ID()
 end
-
 -- @return Tables of peds and matching player ids for every player in session
 -- @return Table of { [player_id] = ped } for every player in session
 function module.get_all_peds(include_user: bool = true): table
@@ -66,7 +68,6 @@ function module.get_all_peds(include_user: bool = true): table
     end
     return peds -- and player_id
 end
-
 -- @return Player id that owns the given ped (-1 if the ped is not a player), or the local player if ped is nil
 function module.from_ped_to_id(ped: ?int = nil): int
     if ped ~= nil then
@@ -74,6 +75,7 @@ function module.from_ped_to_id(ped: ?int = nil): int
     end
     return PLAYER.PLAYER_ID()
 end
+
 
 function module.get_net(player_id: int)
     local player = player_id
@@ -87,12 +89,12 @@ function module.is_friend(player_id: int): bool
     return isFriend
 end
 
+-- Godmode funcs
 function module.is_godmode(player_id: int): bool
     local player = player_id
     -- return PLAYER.GET_PLAYER_INVINCIBLE(player)
     return players.is_godmode(player)
 end
-
 function module.set_godmode(player_id: int, toggle: bool): void
     local player = player_id
     PLAYER.SET_PLAYER_INVINCIBLE(player, toggle)
@@ -102,9 +104,14 @@ function module.set_half_godmode(player_id: int, toggle: bool): void
     PLAYER.SET_PLAYER_INVINCIBLE_BUT_HAS_REACTIONS(player, toggle)
 end
 
-function module.give_ragdoll_control(player_id: int, toggle: int): void
-    local player = player_id
-    PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player)
+function module.is_ragdoll(ped: int): bool
+    return PED.IS_PED_RAGDOLL(ped)
+end
+function module.can_ragdoll(ped: int): bool
+    return PED.CAN_PED_RAGDOLL(ped)
+end
+function module.give_ragdoll_control(player_id: int, toggle: bool): void
+    PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player_id, toggle)
 end
 
 function module.remove_helmet(player_id: int, p2: bool)

@@ -1,22 +1,17 @@
+local load = require($"{Atdar.name}/core/loader")
+
 local module = {}
 
-local root = menu.my_root()
+module.root = menu.my_root()
+module.divider = module.root:divider("AnitaDarin")
 
+local submenus = { "self" }
 
-local testDivider = root:divider("AnitaDarin")
-
-local testAction = root:action("Test_Action", {}, "", function()
-    util.toast("Pressed")
-end)
-local testToggle = root:toggle("Test_Toggle", {}, "", function(on)
-    util.toast($"Toggle is {on ? "on" : "off"}")
-end, false)
-local testToggleLoop = root:toggle_loop("Test_ToggleLoop", {}, "", function(on_tick)
-    util.toast("Toggle loop started")
-
-    util.toast(Atdar.natives.player.is_godmode(players.user()))
-end, function()
-    util.toast("Toggle loop stopped")
-end)
+for _, name in ipairs(submenus) do
+    local submenu = load($"ui/stand/menu/{name}")
+    if submenu.build then
+        module[name] = submenu.build(module)
+    end
+end
 
 return module

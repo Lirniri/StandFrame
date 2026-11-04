@@ -1,6 +1,6 @@
 local module = {}
 
-function module.user.get_view_mode()
+function module.get_view_mode()
     local context = CAM.GET_CAM_ACTIVE_VIEW_MODE_CONTEXT()
     local mode = CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(context)
     return mode

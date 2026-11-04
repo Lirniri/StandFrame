@@ -1,0 +1,41 @@
+-- features/self/movement/ragdoll_control.pluto
+local module = {}
+
+local is_enabled = false
+local is_given = false
+
+local function set_control(toggle: bool): void
+    local n_player = Atdar.natives.player
+    local player = n_player.get_id()
+    n_player.give_ragdoll_control(player, toggle)
+    is_given = toggle
+    util.toast("is_given: ".. is_given)
+end
+
+function module.is_enabled(): bool
+    return is_enabled
+end
+
+function module.is_given(): bool
+    return is_given
+end
+
+-- Called every tick: control is held only while the ped is ragdolling
+function module.enable(): void
+    is_enabled = true
+    local n_player = Atdar.natives.player
+    local ped = n_player.get_ped_id()
+    local is_ragdoll = n_player.is_ragdoll(ped)
+    if is_ragdoll ~= is_given then
+        set_control(is_ragdoll)
+    end
+end
+
+function module.disable(): void
+    is_enabled = false
+    if is_given then
+        set_control(false)
+    end
+end
+
+return module
