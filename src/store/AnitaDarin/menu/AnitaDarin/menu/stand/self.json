@@ -1,0 +1,15 @@
+[
+    {
+        "list": "Self",
+        "items": [
+            { "feature": "self.godmode", "name": "Godmode" },
+            { "feature": "self.half_godmode", "name": "Half-Godmode" },
+            {
+                "list": "Movement",
+                "items": [
+                    { "feature": "self.movement.ragdoll_control", "name": "Ragdoll Control" }
+                ]
+            }
+        ]
+    }
+]

@@ -8,7 +8,7 @@ local MenuNode
 MenuNode = class
 
     function __construct(handle)
-        globals.pluto.fix_class_index(self)
+        globals.pluto.class.fix_index(self)
 
         self.handle = handle
     end

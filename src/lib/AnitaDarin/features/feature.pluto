@@ -1,9 +1,53 @@
-local globals = Atdar.globals
+local class_utils = Atdar.globals.pluto.class
 
-class Feature
+-- Declared first and assigned explicitly so methods can reference Feature
+local Feature
+
+-- Lifecycle methods hold the re-entry guards; subclasses override on_* hooks instead
+local SEALED = { 
+    "tick",
+    "enable",
+    "disable",
+    "trigger",
+    "is_enabled"
+}
+
+local HOOKS = { on_tick = true, on_enable = true, on_disable = true, on_trigger = true }
+
+-- Hook each kind can't work without (from opts or a subclass override)
+local REQUIRED_HOOK = { loop = "on_tick", action = "on_trigger" }
+
+local function validate_opts(instance: table, opts: table): void
+    if type(opts.id) ~= "string" or opts.id == "" then
+        error($"[Feature] id must be a non-empty string, got {type(opts.id)}")
+    end
+    local label = $"[Feature '{opts.id}']"
+
+    for key, value in pairs(opts) do
+        if key ~= "id" and key ~= "kind" and not HOOKS[key] then
+            error($"{label} unknown option '{key}'")
+        end
+        if HOOKS[key] and type(value) ~= "function" then
+            error($"{label} '{key}' must be a function, got {type(value)}")
+        end
+    end
+
+    if opts.kind ~= "loop" and opts.kind ~= "toggle" and opts.kind ~= "action" then
+        error($"{label} unknown kind '{tostring(opts.kind)}', expected loop, toggle or action")
+    end
+
+    local hook = REQUIRED_HOOK[opts.kind]
+    if hook and opts[hook] == nil and instance[hook] == Feature[hook] then
+        error($"{label} kind '{opts.kind}' requires {hook}")
+    end
+end
+
+Feature = class
 
     function __construct(opts: table)
-        globals.pluto.fix_class_index(self) 
+        class_utils.fix_index(self)
+        class_utils.construct.check_sealed(self, Feature, SEALED, $"Feature '{opts.id}'")
+        validate_opts(self, opts)
 
         self.id = opts.id
         self.kind = opts.kind
