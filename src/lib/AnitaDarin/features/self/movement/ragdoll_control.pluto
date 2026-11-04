@@ -9,7 +9,6 @@ local function set_control(toggle: bool): void
     local player = n_player.get_id()
     n_player.give_ragdoll_control(player, toggle)
     is_given = toggle
-    util.toast("is_given: ".. is_given)
 end
 
 function module.is_enabled(): bool
