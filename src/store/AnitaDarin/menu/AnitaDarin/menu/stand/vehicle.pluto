@@ -4,7 +4,9 @@ return {
     build = function(node, ctx)
         builder.build_items(node, {
             { list = "Vehicle", items = {
-                { list = "Last Vehicle" },
+                { list = "Last Vehicle", items = {
+                    { divider = "Vehicles" },
+                } },
                 { list = "Movement" },
                 { feature = "self.explode", name = "Explode" },
             } },

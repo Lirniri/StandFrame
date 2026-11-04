@@ -19,23 +19,69 @@ local function read_json(path: string)
     return json.decode(content)
 end
 
+local ITEM_TYPES = { "list", "feature", "divider" }
+local ITEM_FIELDS = { list = true, items = true, feature = true, name = true, divider = true, commands = true, help = true }
+
+-- Catches layout typos that are valid Lua and would otherwise be silently skipped
+-- @return Whether the item can be built
+local function check_item(item, where: string): bool
+    if type(item) ~= "table" then
+        warn($"{where}: item must be a table, got {type(item)}")
+        return false
+    end
+    for key in pairs(item) do
+        if not ITEM_FIELDS[key] then
+            warn($"{where}: unknown field '{tostring(key)}'")
+        end
+    end
+    if item.items ~= nil and item.list == nil then
+        warn($"{where}: 'items' belongs to a list item, add list = \"Name\" next to it")
+        return false
+    end
+    local types = {}
+    for _, name in ipairs(ITEM_TYPES) do
+        if item[name] ~= nil then
+            table.insert(types, name)
+        end
+    end
+    if #types ~= 1 then
+        local found = #types == 0 and "none" or table.concat(types, " and ")
+        warn($"{where}: item needs exactly one of list, feature or divider, found {found}")
+        return false
+    end
+    return true
+end
+
 -- Declarative helper for menu files that prefer describing a submenu as a table:
 -- { list = "Name", items = {...} }, { feature = "id", name = "Label" }, { divider = "Text" }
-function module.build_items(node: table, items: table): void
-    for _, item in ipairs(items) do
-        if item.list then
-            module.build_items(node:list(item.list, item.commands or {}, item.help or ""), item.items or {})
-        elseif item.feature then
-            if Atdar.features.has(item.feature) then
-                node:add_feature(Atdar.features.get(item.feature), item.name or item.feature,
-                    item.commands or {}, item.help or "")
+function module.build_items(node: table, items: table, where: string = "menu"): void
+    if type(items) ~= "table" then
+        warn($"{where}: items must be a table, got {type(items)}")
+        return
+    end
+    -- Only the numbered part is built; a named field here is an item that lost its own braces
+    for key in pairs(items) do
+        if type(key) ~= "number" then
+            warn($"{where}: '{tostring(key)}' is not an item, wrap each item in its own table")
+        end
+    end
+
+    for i, item in ipairs(items) do
+        local item_where = $"{where} #{i}"
+        if check_item(item, item_where) then
+            if item.list then
+                module.build_items(node:list(item.list, item.commands or {}, item.help or ""),
+                    item.items or {}, $"{where} > {item.list}")
+            elseif item.feature then
+                if Atdar.features.has(item.feature) then
+                    node:add_feature(Atdar.features.get(item.feature), item.name or item.feature,
+                        item.commands or {}, item.help or "")
+                else
+                    warn($"{item_where}: unknown feature '{item.feature}', skipped")
+                end
             else
-                warn($"unknown feature '{item.feature}', skipped")
+                node:divider(item.divider)
             end
-        elseif item.divider then
-            node:divider(item.divider)
-        else
-            warn("unknown item type, expected list, feature or divider")
         end
     end
 end
