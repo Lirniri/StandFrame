@@ -107,10 +107,6 @@ function module.give_ragdoll_control(player_id: int, toggle: int): void
     PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player)
 end
 
-function module.can_start_mission(player_id: int, level: int): void
-    return PLAYER.CAN_PLAYER_START_MISSION(player_id)
-end
-
 function module.remove_helmet(player_id: int, p2: bool)
     local player = player_id
     PLAYER.REMOVE_PLAYER_HELMET(player, p2)
@@ -119,9 +115,17 @@ end
 
 module.user = load("natives/player/user")
 
-module.movement = load("natives/player/movement")
+
+
 module.camera = load("natives/player/camera")
-module.wanted_level = load("natives/player/wanted_level")
+
 module.switch = load("natives/player/switch")
+
+module.mission = load("natives/player/mission")
+
+module.movement = load("natives/player/movement")
+
+module.wanted_level = load("natives/player/wanted_level")
+
 
 return module

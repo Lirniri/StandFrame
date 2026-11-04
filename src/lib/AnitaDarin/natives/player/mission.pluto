@@ -1,0 +1,7 @@
+local module = {}
+
+function module.can_start(player_id: int, level: int): void
+    return PLAYER.CAN_PLAYER_START_MISSION(player_id)
+end
+
+return module

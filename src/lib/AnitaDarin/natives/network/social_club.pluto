@@ -1,3 +1,15 @@
 local module = {}
--- body
+
+function module.is_blocked(rockstar_id: int): bool
+    return util.sc_is_blocked()
+end
+
+function module.block(rockstar_id: int): void
+    return util.sc_block()
+end
+
+function module.unblock(rockstar_id: int): void
+    return util.sc_unblock()
+end
+
 return module
