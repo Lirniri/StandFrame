@@ -1,0 +1,269 @@
+local json = require "pluto:json"
+
+local module = {}
+
+local function warn(msg: string): void
+    util.log($"[MenuBuilder] {msg}")
+    util.toast($"[MenuBuilder] {msg}")
+end
+
+-- @return Decoded JSON, or nil if the file can't be opened
+local function read_json(path: string)
+    local file = io.open(path, "r")
+    if not file then
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
+    return json.decode(content)
+end
+
+-- Declarative helper for menu files that prefer describing a submenu as a table:
+-- { list = "Name", items = {...} }, { feature = "id", name = "Label" }, { divider = "Text" }
+function module.build_items(node: table, items: table): void
+    for _, item in ipairs(items) do
+        if item.list then
+            module.build_items(node:list(item.list, item.commands or {}, item.help or ""), item.items or {})
+        elseif item.feature then
+            if Atdar.features.has(item.feature) then
+                node:add_feature(Atdar.features.get(item.feature), item.name or item.feature,
+                    item.commands or {}, item.help or "")
+            else
+                warn($"unknown feature '{item.feature}', skipped")
+            end
+        elseif item.divider then
+            node:divider(item.divider)
+        else
+            warn("unknown item type, expected list, feature or divider")
+        end
+    end
+end
+
+-- @return The table a menu file returns, or nil if it's missing or failed
+local function load_menu_file(path: string): ?table
+    local chunk, err = loadfile(path)
+    if not chunk then
+        warn($"menu file failed: {path}\n{err}")
+        return nil
+    end
+    local ok, result = pcall(chunk)
+    if not ok then
+        warn($"menu file failed: {path}\n{result}")
+        return nil
+    end
+    if type(result) ~= "table" then
+        warn($"menu file must return a table: {path}")
+        return nil
+    end
+    return result
+end
+
+-- Builds the menu in dir: main.pluto returns { build = function(node, ctx) }.
+-- ctx.load(name) returns another menu file from the same dir (loaded once per build)
+-- @return Whether main.pluto built without errors
+function module.build_menu(node: table, dir: string): bool
+    local cache = {}
+    local ctx = { dir = dir }
+    function ctx.load(name: string): ?table
+        if cache[name] == nil then
+            cache[name] = load_menu_file($"{dir}{name}.pluto") or false
+        end
+        return cache[name] or nil
+    end
+
+    local main = ctx.load("main")
+    if not main or type(main.build) ~= "function" then
+        warn($"{dir}main.pluto must return a table with build(node, ctx)")
+        return false
+    end
+    local ok, err = pcall(main.build, node, ctx)
+    if not ok then
+        warn($"menu build failed in {dir}\n{err}")
+    end
+    return ok
+end
+
+function module.layout_dir(pack_dir: string): string
+    return $"{pack_dir}menu\\stand\\"
+end
+
+-- @return Info of every folder in packs_dir that has an info.json with a name, sorted by name
+function module.find_packs(packs_dir: string): table
+    local packs = {}
+    for _, path in ipairs(filesystem.list_files(packs_dir)) do
+        if filesystem.is_dir(path) then
+            local info = read_json($"{path}\\info.json")
+            if type(info) == "table" and type(info.name) == "string" then
+                info.dir = $"{path}\\"
+                table.insert(packs, info)
+            end
+        end
+    end
+    table.sort(packs, |a, b| -> a.name < b.name)
+    return packs
+end
+
+local function collect_pluto_files(dir: string, out: table): void
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        if filesystem.is_dir(path) then
+            collect_pluto_files($"{path}\\", out)
+        elseif path:match("%.pluto$") then
+            table.insert(out, path)
+        end
+    end
+end
+
+-- @return Paths of all .pluto files in dir and its subfolders, sorted; empty if dir doesn't exist
+function module.find_feature_files(dir: string): table
+    local files = {}
+    if filesystem.is_dir(dir) then
+        collect_pluto_files(dir, files)
+        table.sort(files)
+    end
+    return files
+end
+
+-- Runs each feature file; a broken file or a taken feature id skips only that file
+-- @return Number of files that ran without errors
+function module.load_feature_files(files: table): int
+    local loaded = 0
+    for _, path in ipairs(files) do
+        local chunk, err = loadfile(path)
+        local ok = chunk ~= nil
+        if ok then
+            ok, err = pcall(chunk)
+        end
+        if ok then
+            loaded += 1
+        else
+            warn($"feature file failed: {path}\n{err}")
+        end
+    end
+    return loaded
+end
+
+local function copy_file(from: string, to: string): bool
+    local src = io.open(from, "rb")
+    if not src then
+        return false
+    end
+    local content = src:read("*a")
+    src:close()
+
+    local folder = to:match("^(.+)[\\/][^\\/]+$")
+    if folder and not filesystem.exists(folder) then
+        filesystem.mkdirs(folder)
+    end
+    local dst = io.open(to, "wb")
+    if not dst then
+        return false
+    end
+    dst:write(content)
+    dst:close()
+    return true
+end
+
+-- Lists what copy_pack_to_core put into lib, so remove_copied_core can take exactly that out
+local function manifest_path(lib_dir: string): string
+    return $"{lib_dir}ui\\stand\\menu\\.copied.json"
+end
+
+-- @return { pack = name, files = { paths relative to lib } } if the built-in menu came from a copy, else nil
+function module.read_core_manifest(lib_dir: string): ?table
+    local manifest = read_json(manifest_path(lib_dir))
+    if type(manifest) ~= "table" or type(manifest.files) ~= "table" then
+        return nil
+    end
+    return manifest
+end
+
+-- Deletes the files a pack copy added to lib, then the manifest itself
+-- @return true and the number of deleted files, or false and a reason
+function module.remove_copied_core(lib_dir: string): (bool, any)
+    local manifest = module.read_core_manifest(lib_dir)
+    if not manifest then
+        return false, "the built-in menu wasn't copied from a pack"
+    end
+    local removed = 0
+    for _, relative in ipairs(manifest.files) do
+        if os.remove($"{lib_dir}{relative}") then
+            removed += 1
+        end
+    end
+    os.remove(manifest_path(lib_dir))
+    return true, removed
+end
+
+-- Copies a pack's features and menu files into the script, where they become the built-in menu.
+-- Nothing is overwritten: if any target file exists, nothing is copied
+-- @return true and the number of copied files, or false and a reason
+function module.copy_pack_to_core(info: table, lib_dir: string): (bool, any)
+    if module.read_core_manifest(lib_dir) then
+        return false, "another copied menu is already in the script, remove it first"
+    end
+    local plan = {}
+    local features_dir = $"{info.dir}features\\"
+    for _, path in ipairs(info.feature_files) do
+        table.insert(plan, { from = path, to = $"{lib_dir}features\\{path:sub(#features_dir + 1)}" })
+    end
+    local layout = module.layout_dir(info.dir)
+    for _, path in ipairs(module.find_feature_files(layout)) do
+        table.insert(plan, { from = path, to = $"{lib_dir}ui\\stand\\menu\\{path:sub(#layout + 1)}" })
+    end
+
+    local conflicts = 0
+    for _, step in ipairs(plan) do
+        if filesystem.exists(step.to) then
+            conflicts += 1
+        end
+    end
+    if conflicts > 0 then
+        return false, $"{conflicts} file(s) already exist in the script"
+    end
+
+    local copied = {}
+    for _, step in ipairs(plan) do
+        if not copy_file(step.from, step.to) then
+            -- Don't leave a half-copied menu behind
+            for _, path in ipairs(copied) do
+                os.remove(path)
+            end
+            return false, $"failed to copy {step.from}"
+        end
+        table.insert(copied, step.to)
+    end
+
+    local relative = {}
+    for _, path in ipairs(copied) do
+        table.insert(relative, path:sub(#lib_dir + 1))
+    end
+    local file = io.open(manifest_path(lib_dir), "w")
+    if file then
+        file:write(json.encode({ pack = info.name, files = relative }, "pretty"))
+        file:close()
+    end
+    return true, #plan
+end
+
+-- @return Packs that have a Stand menu, each with feature_files filled in
+function module.find_loadable_packs(packs_dir: string): table
+    local packs = {}
+    for _, info in ipairs(module.find_packs(packs_dir)) do
+        if filesystem.exists($"{module.layout_dir(info.dir)}main.pluto") then
+            info.feature_files = module.find_feature_files($"{info.dir}features\\")
+            table.insert(packs, info)
+        end
+    end
+    return packs
+end
+
+-- @return Label and help text for a pack in a picker.
+-- A pack is code with the same access as this script, so the choice has to be informed
+function module.describe_pack(info: table): (string, string)
+    local help = $"v{info.version or '?'} by {info.author or 'unknown'}\n"
+        .. "Runs the pack's own code with full script access. Only load packs you trust."
+    return info.name, help
+end
+
+return module

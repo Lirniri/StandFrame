@@ -1,18 +1,185 @@
 local load = Atdar.loader.load
 local MenuNode = load("ui/stand/menu_node")
+local builder = load("ui/stand/menu_builder")
+local settings = load("ui/stand/settings")
+local features = Atdar.features
+local paths = Atdar.filesystem.paths
+
+local PACKS_DIR = $"{paths.store}menu\\"
+-- Built-in menu has the same shape as a pack: main.pluto here, features in lib features/
+local BUILTIN_MENU_DIR = $"{paths.lib}ui\\stand\\menu\\"
 
 local module = {}
 
 module.root = new MenuNode(menu.my_root())
-module.divider = module.root:divider("AnitaDarin")
 
-local submenus = { "self" }
-
-for _, name in ipairs(submenus) do
-    local submenu = load($"ui/stand/menu/{name}")
-    if submenu.build then
-        module[name] = submenu.build(module.root)
+-- @return Built-in feature files: everything in the category folders of lib features/.
+-- Top-level files there (Feature, registry) are the core, not features
+local function find_builtin_features(): table
+    local files = {}
+    local dir = $"{paths.lib}features\\"
+    if not filesystem.is_dir(dir) then
+        return files
     end
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        if filesystem.is_dir(path) then
+            for _, file in ipairs(builder.find_feature_files($"{path}\\")) do
+                table.insert(files, file)
+            end
+        end
+    end
+    table.sort(files)
+    return files
+end
+
+-- Checked on demand: copying a pack to core can add a built-in menu while the script runs
+local function has_builtin(): bool
+    return filesystem.exists($"{BUILTIN_MENU_DIR}main.pluto")
+end
+
+-- Everything the loaded menu added (items, features, settings), so it can be taken out again
+local current = nil
+-- Divider shown at start when there is no built-in menu; gone once a menu loads
+local notice = nil
+
+local function unload_current(): void
+    if not current then
+        return
+    end
+    for _, id in ipairs(current.feature_ids) do
+        features.remove(id)
+    end
+    current.node:clear()
+    settings.restore(current.settings_mark)
+    current = nil
+end
+
+-- Stand only appends, so anything built after settings lands below them; recreate them at the bottom
+local function rebuild_settings(): void
+    if module.settings then
+        settings.remove(module.settings)
+    end
+    module.settings = settings.build(module.root)
+end
+
+-- Replaces the loaded menu: runs feature_files, then build(node) adds the items.
+-- kind ("builtin" or "pack") tells later whether the built-in menu is the one loaded
+local function load_menu(kind: string, feature_files: table, build: function): void
+    if notice then
+        menu.delete(notice)
+        notice = nil
+    end
+    unload_current()
+
+    local ids_before = features.ids()
+    local settings_mark = settings.mark()
+    local loaded = builder.load_feature_files(feature_files)
+    if loaded < #feature_files then
+        util.toast($"[Menu] ran {loaded} of {#feature_files} feature file(s)")
+    end
+
+    -- A separate node on the root ref tracks only this menu's items
+    local node = new MenuNode(module.root.handle)
+    build(node)
+
+    local feature_ids = {}
+    for id in pairs(features.ids()) do
+        if not ids_before[id] then
+            table.insert(feature_ids, id)
+        end
+    end
+    current = { kind = kind, node = node, feature_ids = feature_ids, settings_mark = settings_mark }
+    rebuild_settings()
+end
+
+local function load_builtin(): void
+    load_menu("builtin", find_builtin_features(), |node| -> builder.build_menu(node, BUILTIN_MENU_DIR))
+end
+
+local function load_pack(info: table): void
+    load_menu("pack", info.feature_files, |node| -> builder.build_menu(node, builder.layout_dir(info.dir)))
+end
+
+local function copy_pack(info: table): void
+    local ok, result = builder.copy_pack_to_core(info, paths.lib)
+    if not ok then
+        util.toast($"[Menu] '{info.name}' not copied: {result}")
+        return
+    end
+    util.toast($"[Menu] '{info.name}': copied {result} file(s) to core and loaded it as the built-in menu")
+    load_builtin()
+end
+
+-- Takes a copied pack back out of the script; unloads it first if it's the loaded menu
+local function remove_builtin(): void
+    if current and current.kind == "builtin" then
+        unload_current()
+    end
+    local ok, result = builder.remove_copied_core(paths.lib)
+    if ok then
+        util.toast($"[Menu] removed {result} copied file(s) from core")
+    else
+        util.toast($"[Menu] nothing removed: {result}")
+    end
+    -- Refreshes Load Menu so the built-in entry disappears
+    rebuild_settings()
+end
+
+local PACK_OPTIONS = { "Load", "Copy to core" }
+local COPIED_BUILTIN_OPTIONS = { "Load", "Remove from core" }
+
+-- Adds an entry per available menu: the built-in one (if any) and every pack in store
+local function fill_picker(node: table): void
+    local builtin = has_builtin()
+    local manifest = builtin and builder.read_core_manifest(paths.lib)
+    -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
+    if not manifest then
+        node:divider("Menus")
+    end
+    if builtin then
+        local name = $"{Atdar.name} (built-in)"
+        if manifest then
+            node:list_action(name, COPIED_BUILTIN_OPTIONS, function(index)
+                if index == 1 then
+                    load_builtin()
+                else
+                    remove_builtin()
+                end
+            end, {}, $"Copied from pack '{manifest.pack}'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded.")
+            node:divider("Menus")
+        else
+            node:action(name, load_builtin, {}, "The menu that ships with the script")
+        end
+    end
+    local packs = builder.find_loadable_packs(PACKS_DIR)
+    for _, info in ipairs(packs) do
+        local name, help = builder.describe_pack(info)
+        help = $"{help}\nCopy to core: puts the pack into the script as its built-in menu; its code will then run on every start. Existing files are never overwritten."
+        node:list_action(name, PACK_OPTIONS, function(index)
+            if index == 1 then
+                load_pack(info)
+            else
+                copy_pack(info)
+            end
+        end, {}, help)
+    end
+    if not builtin and #packs == 0 then
+        node:divider("No menus found")
+    end
+end
+
+-- Added before any menu loads, so unloading a menu never drops it
+settings.add(function(node)
+    fill_picker(node:list("Load Menu", {},
+        "Replace the current menu. Menus from store are made outside the script and run their own code"))
+end)
+
+if has_builtin() then
+    load_builtin()
+else
+    util.toast("[Menu] built-in menu not found, a menu can be loaded from store")
+    notice = module.root:divider("Built-in menu not found")
+    module.settings = settings.build(module.root)
 end
 
 return module

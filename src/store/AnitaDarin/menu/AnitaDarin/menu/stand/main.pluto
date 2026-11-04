@@ -1,0 +1,7 @@
+return {
+    build = function(node, ctx)
+        node:divider("AnitaDarin")
+        ctx.load("self").build(node, ctx)
+        ctx.load("vehicle").build(node, ctx)
+    end,
+}

@@ -32,6 +32,9 @@ for _, name in NATIVES do
     Atdar.natives[name] = Atdar.loader.load($"natives/{name}")
 end
 
+-- Features register themselves in Atdar.features; the menu looks them up by id.
+-- Which features get loaded depends on the menu: built-in ones or the chosen pack's
+Atdar.features = Atdar.loader.load("features/registry")
 
 Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
 

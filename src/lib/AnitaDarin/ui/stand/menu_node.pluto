@@ -1,46 +1,105 @@
 local globals = Atdar.globals
+local Feature = Atdar.loader.load("features/feature")
+
+-- Stand item for each Feature kind
+local ITEM_FOR_KIND = {
+
+    loop = function(handle, feature: table, name: string, commands: table, help: string)
+        return menu.toggle_loop(handle, name, commands, help,
+            function() feature:tick() end,
+            function() feature:disable() end)
+    end,
+
+    toggle = function(handle, feature: table, name: string, commands: table, help: string)
+        return menu.toggle(handle, name, commands, help, function(on)
+            if on then
+                feature:enable()
+            else
+                feature:disable()
+            end
+        end)
+    end,
+
+    action = function(handle, feature: table, name: string, commands: table, help: string)
+        return menu.action(handle, name, commands, help,
+            function() feature:trigger() end)
+    end,
+
+    -- readonly = function(name: string, value: string = "")
+    --     return menu.readonly(handle, name, value = "")
+    -- end,
+
+    -- readonly_name = function(name: string, value: string = "")
+    --     return menu.readonly_name(handle, name, value = "")
+    -- end,
+}
+
+-- A kind added to Feature.KINDS without a menu item would only fail once some feature uses it
+for kind in pairs(Feature.KINDS) do
+    if not ITEM_FOR_KIND[kind] then
+        error($"[MenuNode] no menu item for feature kind '{kind}'")
+    end
+end
 
 -- Declared first and assigned explicitly so methods can reference MenuNode:
 -- neither `local class` nor `class` on a forward-declared local binds it inside the body in Stand's Pluto
 local MenuNode
 
--- Wraps a Stand command ref and creates child items in it
+-- Wraps a Stand command ref and creates child items in it.
+-- Several nodes may wrap the same ref: each one tracks only the items created through it
 MenuNode = class
 
     function __construct(handle)
         globals.pluto.class.fix_index(self)
 
         self.handle = handle
+        self.children = {}
+    end
+
+    function track(child_handle)
+        table.insert(self.children, child_handle)
+        return child_handle
     end
 
     function divider(text: string)
-        return menu.divider(self.handle, text)
+        return self:track(menu.divider(self.handle, text))
     end
 
     function list(name: string, commands: table = {}, help: string = ""): table
-        return new MenuNode(menu.list(self.handle, name, commands, help))
+        local child = new MenuNode(menu.list(self.handle, name, commands, help))
+        self:track(child.handle)
+        return child
     end
 
-    -- Picks the Stand item type from feature.kind
-    function add_feature(feature: table, name: string, commands: table = {}, help: string = "")
-        local kind = feature.kind
-        if kind == "loop" then
-            return menu.toggle_loop(self.handle, name, commands, help,
-                function() feature:tick() end,
-                function() feature:disable() end)
-        elseif kind == "toggle" then
-            return menu.toggle(self.handle, name, commands, help, function(on)
-                if on then
-                    feature:enable()
-                else
-                    feature:disable()
-                end
-            end)
-        elseif kind == "action" then
-            return menu.action(self.handle, name, commands, help,
-                function() feature:trigger() end)
+    -- Removes this node and everything in it from the Stand menu
+    function delete(): void
+        menu.delete(self.handle)
+    end
+
+    -- Removes every item created through this node, leaving the node itself
+    function clear(): void
+        for _, child_handle in ipairs(self.children) do
+            menu.delete(child_handle)
         end
-        error($"[MenuNode] unknown kind '{kind}' for feature '{feature.id}'")
+        self.children = {}
+    end
+
+    -- List of options where picking one calls on_select(index, option_name, click_type)
+    function list_action(name: string, options: table, on_select: function, commands: table = {}, help: string = "")
+        return self:track(menu.list_action(self.handle, name, commands, help, options, on_select))
+    end
+
+    -- Plain button that isn't backed by a feature
+    function action(name: string, on_click: function, commands: table = {}, help: string = "")
+        return self:track(menu.action(self.handle, name, commands, help, on_click))
+    end
+
+    function add_feature(feature: table, name: string, commands: table = {}, help: string = "")
+        local create = ITEM_FOR_KIND[feature.kind]
+        if not create then
+            error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")
+        end
+        return self:track(create(self.handle, feature, name, commands, help))
     end
 
 end

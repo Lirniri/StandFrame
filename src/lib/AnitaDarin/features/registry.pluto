@@ -1,0 +1,42 @@
+local module = {}
+
+local features = {}
+
+function module.add(feature: table): table
+    local id = feature.id
+    if features[id] then
+        error($"[Registry] feature '{id}' is already registered")
+    end
+    features[id] = feature
+    return feature
+end
+
+function module.get(id: string): table
+    local feature = features[id]
+    if not feature then
+        error($"[Registry] unknown feature '{id}'")
+    end
+    return feature
+end
+
+function module.has(id: string): bool
+    return features[id] ~= nil
+end
+
+-- Disables the feature first, so unloading never leaves an effect running
+function module.remove(id: string): void
+    local feature = module.get(id)
+    feature:disable()
+    features[id] = nil
+end
+
+-- @return Set of all registered ids: { [id] = true }
+function module.ids(): table
+    local ids = {}
+    for id in pairs(features) do
+        ids[id] = true
+    end
+    return ids
+end
+
+return module

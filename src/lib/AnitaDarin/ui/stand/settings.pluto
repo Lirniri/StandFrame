@@ -1,0 +1,64 @@
+-- Script's own section at the bottom of the root, shown with any menu (built-in or a pack)
+local module = {}
+
+-- Builders rather than built items, so the section can be recreated without losing what was added
+local contributors = {}
+
+-- Applied each time the section is built (at start and after every menu load)
+local config = {
+    name = Atdar.name,
+    divider = nil,
+}
+
+-- Adds items to the section's list: build_fn(node) gets its MenuNode each time the section is built
+function module.add(build_fn: function): void
+    table.insert(contributors, build_fn)
+end
+
+function module.set_name(name: string): void
+    config.name = name
+end
+
+-- Divider above the list; nil removes it
+function module.set_divider(text: ?string): void
+    config.divider = text
+end
+
+-- mark() before loading something and restore() with it later undoes everything set or added in between
+function module.mark(): table
+    return { count = #contributors, name = config.name, divider = config.divider }
+end
+
+function module.restore(mark: table): void
+    for i = #contributors, mark.count + 1, -1 do
+        table.remove(contributors, i)
+    end
+    config.name = mark.name
+    config.divider = mark.divider
+end
+
+-- @return Section handles, pass them to remove()
+function module.build(root: table): table
+    local section = {}
+    if config.divider then
+        section.divider = root:divider(config.divider)
+    end
+    section.node = root:list(config.name)
+    for _, build_fn in ipairs(contributors) do
+        local ok, err = pcall(build_fn, section.node)
+        if not ok then
+            util.log($"[Settings] contributor failed: {err}")
+            util.toast($"[Settings] contributor failed:\n{err}")
+        end
+    end
+    return section
+end
+
+function module.remove(section: table): void
+    if section.divider then
+        menu.delete(section.divider)
+    end
+    section.node:delete()
+end
+
+return module

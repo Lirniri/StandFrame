@@ -4,7 +4,7 @@ function module.get_net_id(vehicle): int
     return NETWORK.VEH_TO_NET(vehicle)
 end
 function module.from_net_id(net_id): ?int
-    local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
     if not is_net_id_exist then return nil end
     return NETWORK.NET_TO_VEH(net_id)
 end
@@ -22,7 +22,7 @@ end
 function module.explode(vehicle, isAudible: bool = true, isInvisible: bool = false, net_id: int): void
     local is_session_stated = util.is_session_started()
     if not is_session_stated then
-        NETWORK.EXPLODE_VEHICLE(vehicle, isAudible, isInvisible)
+        VEHICLE.EXPLODE_VEHICLE(vehicle, isAudible, isInvisible)
     else
         local netId = net_id or module.get_net_id(vehicle)
         NETWORK.NETWORK_EXPLODE_VEHICLE(vehicle, isAudible, isInvisible, netId)

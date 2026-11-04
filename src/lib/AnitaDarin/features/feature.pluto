@@ -14,8 +14,21 @@ local SEALED = {
 
 local HOOKS = { on_tick = true, on_enable = true, on_disable = true, on_trigger = true }
 
--- Hook each kind can't work without (from opts or a subclass override)
-local REQUIRED_HOOK = { loop = "on_tick", action = "on_trigger" }
+-- Valid kinds and the hook each can't work without (from opts or a subclass override)
+local KINDS = {
+    loop = { requires = "on_tick" },
+    toggle = {},
+    action = { requires = "on_trigger" },
+}
+
+local function kind_names(): string
+    local names = {}
+    for name in pairs(KINDS) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return table.concat(names, ", ")
+end
 
 local function validate_opts(instance: table, opts: table): void
     if type(opts.id) ~= "string" or opts.id == "" then
@@ -32,11 +45,12 @@ local function validate_opts(instance: table, opts: table): void
         end
     end
 
-    if opts.kind ~= "loop" and opts.kind ~= "toggle" and opts.kind ~= "action" then
-        error($"{label} unknown kind '{tostring(opts.kind)}', expected loop, toggle or action")
+    local kind = KINDS[opts.kind]
+    if not kind then
+        error($"{label} unknown kind '{tostring(opts.kind)}', expected one of: {kind_names()}")
     end
 
-    local hook = REQUIRED_HOOK[opts.kind]
+    local hook = kind.requires
     if hook and opts[hook] == nil and instance[hook] == Feature[hook] then
         error($"{label} kind '{opts.kind}' requires {hook}")
     end
@@ -111,5 +125,7 @@ Feature = class
     end
 
 end
+
+Feature.KINDS = KINDS
 
 return Feature

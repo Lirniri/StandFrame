@@ -33,4 +33,4 @@ class RagdollControl extends Feature
     end
 end
 
-return new RagdollControl()
+return Atdar.features.add(new RagdollControl())
