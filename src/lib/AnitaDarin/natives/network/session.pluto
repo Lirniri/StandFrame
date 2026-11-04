@@ -17,11 +17,24 @@ function module.is_visible()
     return NETWORK.NETWORK_SESSION_IS_VISIBLE()
 end
 
+function module.is_private(): bool
+    return NETWORK.NETWORK_SESSION_IS_PRIVATE()
+end
+function module.is_closed_crew(): bool
+    return NETWORK.NETWORK_SESSION_IS_CLOSED_CREW()
+end
+function module.is_closed_friends(): bool
+    return NETWORK.NETWORK_SESSION_IS_CLOSED_FRIENDS()
+end
+function module.is_solo(): bool
+    return NETWORK.NETWORK_SESSION_IS_SOLO()
+end
+
 function module.get_type(): int
-    local is_private = NETWORK.NETWORK_SESSION_IS_PRIVATE()
-    local is_closed_crew = NETWORK.NETWORK_SESSION_IS_CLOSED_CREW()
-    local is_closed_friends = NETWORK.NETWORK_SESSION_IS_CLOSED_FRIENDS()
-    local is_solo = NETWORK.NETWORK_SESSION_IS_SOLO()
+    local is_private = module.is_private()
+    local is_closed_crew = module.is_closed_crew()
+    local is_closed_friends = module.is_closed_friends()
+    local is_solo =  module.is_solo()
 
     if is_private then
         return 1
