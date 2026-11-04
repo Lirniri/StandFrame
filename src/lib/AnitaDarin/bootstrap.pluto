@@ -11,15 +11,8 @@ local UTILS = {
     "util",
     "filesystem",
 }
-
 for _, name in UTILS do
-    local ok, lib = pcall(require, $"{Atdar.name}/utils/{name}")
-    if not ok then
-        util.log($"[Utils] failed to load '{name}': {lib}")
-        util.toast($"Utils '{name}' failed to load\n{lib}")
-        lib = {}
-    end
-    Atdar[name] = lib
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
 
 -- Native wrappers: Atdar.natives.<section>. An error in one file doesn't crash the script, that file stays empty
@@ -34,8 +27,6 @@ local NATIVES = {
     "input",
     "streaming",
 }
-
-
 Atdar.natives = {}
 for _, name in NATIVES do
     Atdar.natives[name] = Atdar.loader.load($"natives/{name}")
