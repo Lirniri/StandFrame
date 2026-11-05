@@ -27,13 +27,6 @@ local ITEM_FOR_KIND = {
             function() feature:trigger() end)
     end,
 
-    -- readonly = function(name: string, value: string = "")
-    --     return menu.readonly(handle, name, value = "")
-    -- end,
-
-    -- readonly_name = function(name: string, value: string = "")
-    --     return menu.readonly_name(handle, name, value = "")
-    -- end,
 }
 
 -- A kind added to Feature.KINDS without a menu item would only fail once some feature uses it
@@ -108,6 +101,10 @@ MenuNode = class
 
     function divider(text: string|int)
         return self:track(menu.divider(self.handle, text))
+    end
+
+    function readonly_name(name: string|int)
+        return self:track(menu.readonly_name(self.handle, name))
     end
 
     function list(name: string|int, commands: table = {}, help: string|int = ""): table

@@ -18,7 +18,15 @@ local function read_json(path: string)
 end
 
 local ITEM_TYPES = { "list", "feature", "divider" }
-local ITEM_FIELDS = { list = true, items = true, feature = true, name = true, divider = true, commands = true, help = true }
+local ITEM_FIELDS = {
+    list = true,
+    items = true,
+    feature = true,
+    name = true,
+    divider = true,
+    commands = true,
+    help = true
+}
 
 -- Catches layout typos that are valid Lua and would otherwise be silently skipped
 -- @return Whether the item can be built

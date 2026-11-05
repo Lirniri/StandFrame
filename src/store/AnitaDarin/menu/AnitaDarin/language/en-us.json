@@ -19,7 +19,9 @@
             "menu_name": "Vehicle",
             "last_vehicle": {
                 "menu_name": "Last Vehicle",
-                "divider": "Vehicles"
+                "divider": {
+                    "menu_name": "Vehicle"
+                }
             },
             "movement": {
                 "menu_name": "Movement"

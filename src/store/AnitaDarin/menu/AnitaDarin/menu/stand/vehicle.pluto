@@ -7,7 +7,7 @@ return {
         builder.build_items(node, {
             { list = lang.translate("menu.vehicle.menu_name"), items = {
                 { list = lang.translate("menu.vehicle.last_vehicle.menu_name"), items = {
-                    { divider = lang.translate("menu.vehicle.last_vehicle.divider") },
+                    { divider = lang.translate("menu.vehicle.last_vehicle.divider.menu_name") },
                 } },
                 { list = lang.translate("menu.vehicle.movement.menu_name") },
                 { feature = "self.explode", name = lang.translate("menu.vehicle.destroy.menu_name"), commands = { "destroyvehicle" } },

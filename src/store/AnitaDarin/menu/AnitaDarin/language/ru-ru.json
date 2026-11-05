@@ -19,7 +19,9 @@
             "menu_name": "Транспорт",
             "last_vehicle": {
                 "menu_name": "Последний Транспорт",
-                "divider": "Транспорт"
+                "divider": {
+                    "menu_name": "Транспорт"
+                }
             },
             "movement": {
                 "menu_name": "Передвижение"
