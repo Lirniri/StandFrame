@@ -103,8 +103,23 @@ MenuNode = class
         return self:track(menu.divider(self.handle, text))
     end
 
+    function readonly(name: string|int, value: string = "")
+        return self:track(menu.readonly(self.handle, name, value))
+    end
+
+    -- Text-only line, like a divider but in the normal item style
     function readonly_name(name: string|int)
         return self:track(menu.readonly_name(self.handle, name))
+    end
+
+    -- "Name: value" line; change the value later with menu.set_value(ref, "...")
+    function readonly(name: string|int, value: string = "")
+        return self:track(menu.readonly(self.handle, name, value))
+    end
+
+    -- Opens the link in the browser when clicked
+    function hyperlink(name: string|int, link: string, help: string|int = "")
+        return self:track(menu.hyperlink(self.handle, name, link, help))
     end
 
     function list(name: string|int, commands: table = {}, help: string|int = ""): table
@@ -148,6 +163,23 @@ MenuNode = class
     -- Plain button that isn't backed by a feature
     function action(name: string|int, on_click: function, commands: table = {}, help: string|int = "")
         return self:track(menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)
+    end
+
+    -- Plain on/off switch that isn't backed by a feature; on_change(on, click_type).
+    -- Stand calls it only on a change, so nothing keeps running and it needn't be stopped on delete
+    function toggle(name: string|int, on_change: function, commands: table = {}, help: string|int = "", default: bool = false)
+        return self:track(menu.toggle(self.handle, name, Commands.names(commands), help, on_change, default), commands)
+    end
+
+    -- Number picker; on_change(value, prev_value, click_type)
+    function slider(name: string|int, min: int, max: int, default: int, step: int, on_change: function, commands: table = {}, help: string|int = "")
+        return self:track(menu.slider(self.handle, name, Commands.names(commands), help,
+            min, max, default, step, on_change), commands)
+    end
+
+    -- Options picked with left/right, without a submenu; on_click(index, option_name, click_type)
+    function text_slider(name: string|int, options: table, on_click: function, commands: table = {}, help: string|int = "")
+        return self:track(menu.textslider(self.handle, name, Commands.names(commands), help, options, on_click), commands)
     end
 
     function add_feature(feature: table, name: string|int, commands: table = {}, help: string|int = "")

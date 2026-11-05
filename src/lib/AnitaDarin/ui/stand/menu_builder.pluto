@@ -17,23 +17,97 @@ local function read_json(path: string)
     return json.decode(content)
 end
 
-local ITEM_TYPES = { "list", "feature", "divider" }
-local ITEM_FIELDS = {
-    list = true,
-    items = true,
-    feature = true,
-    name = true,
-    divider = true,
-    commands = true,
-    help = true
+-- Item types for build_items: the field named after the type holds the item's name (or the
+-- feature id), `required` lists the other fields it needs, `build` creates it in the node.
+-- A new type is added here only; check_item and build_items read this table
+local ITEM_TYPES = {
+    list = {
+        build = |node, item, where| -> module.build_items(node:list(item.list, item.commands or {}, item.help or ""),
+            item.items or {}, $"{where} > {item.list}"),
+    },
+    feature = {
+        build = function(node, item, where)
+            if not Atdar.features.has(item.feature) then
+                log:warn($"{where}: unknown feature '{item.feature}', skipped")
+                return
+            end
+            node:add_feature(Atdar.features.get(item.feature), item.name or item.feature,
+                item.commands or {}, item.help or "")
+        end,
+    },
+    divider = {
+        build = |node, item| -> node:divider(item.divider),
+    },
+    readonly_name = {
+        build = |node, item| -> node:readonly_name(item.readonly_name),
+    },
+    readonly = {
+        build = |node, item| -> node:readonly(item.readonly, item.value or ""),
+    },
+    hyperlink = {
+        required = { "link" },
+        build = |node, item| -> node:hyperlink(item.hyperlink, item.link, item.help or ""),
+    },
+    action = {
+        required = { "on_click" },
+        build = |node, item| -> node:action(item.action, item.on_click, item.commands or {}, item.help or ""),
+    },
+    toggle = {
+        required = { "on_change" },
+        build = |node, item| -> node:toggle(item.toggle, item.on_change, item.commands or {}, item.help or "",
+            item.default == true),
+    },
+    slider = {
+        required = { "min", "max", "on_change" },
+        build = |node, item| -> node:slider(item.slider, item.min, item.max, item.default or item.min,
+            item.step or 1, item.on_change, item.commands or {}, item.help or ""),
+    },
+    text_slider = {
+        required = { "options", "on_click" },
+        build = |node, item| -> node:textslider(item.textslider, item.options, item.on_click,
+            item.commands or {}, item.help or ""),
+    },
+    list_action = {
+        required = { "options", "on_select" },
+        build = |node, item| -> node:list_action(item.list_action, item.options, item.on_select,
+            item.commands or {}, item.help or ""),
+    },
+    text_input = {
+        -- Stand takes the text through its command box, so the field can't work without a command
+        required = { "on_change", "commands" },
+        build = |node, item| -> node:text_input(item.text_input, item.commands or {}, item.on_change,
+            item.help or "", item.default or ""),
+    },
 }
 
+-- Fields any item may have besides its type field; the rest are collected from `required` below
+local ITEM_FIELDS = {
+    items = true,
+    name = true,
+    commands = true,
+    help = true,
+    value = true,
+    default = true,
+    step = true,
+}
+
+-- Sorted type names for messages
+local TYPE_NAMES = {}
+for type_name, spec in pairs(ITEM_TYPES) do
+    ITEM_FIELDS[type_name] = true
+    for _, field in ipairs(spec.required or {}) do
+        ITEM_FIELDS[field] = true
+    end
+    table.insert(TYPE_NAMES, type_name)
+end
+table.sort(TYPE_NAMES)
+
 -- Catches layout typos that are valid Lua and would otherwise be silently skipped
--- @return Whether the item can be built
-local function check_item(item, where: string): bool
+-- @return The item's type name, or nil if the item can't be built
+local function check_item(item, where: string): ?string
     if type(item) ~= "table" then
         log:warn($"{where}: item must be a table, got {type(item)}")
-        return false
+        return nil
     end
     for key in pairs(item) do
         if not ITEM_FIELDS[key] then
@@ -42,24 +116,33 @@ local function check_item(item, where: string): bool
     end
     if item.items ~= nil and item.list == nil then
         log:warn($"{where}: 'items' belongs to a list item, add list = \"Name\" next to it")
-        return false
+        return nil
     end
     local types = {}
-    for _, name in ipairs(ITEM_TYPES) do
-        if item[name] ~= nil then
-            table.insert(types, name)
+    for _, type_name in ipairs(TYPE_NAMES) do
+        if item[type_name] ~= nil then
+            table.insert(types, type_name)
         end
     end
     if #types ~= 1 then
         local found = #types == 0 and "none" or table.concat(types, " and ")
-        log:warn($"{where}: item needs exactly one of list, feature or divider, found {found}")
-        return false
+        log:warn($"{where}: item needs exactly one of {table.concat(TYPE_NAMES, ', ')}, found {found}")
+        return nil
     end
-    return true
+    local type_name = types[1]
+    for _, field in ipairs(ITEM_TYPES[type_name].required or {}) do
+        if item[field] == nil then
+            log:warn($"{where}: {type_name} item needs '{field}'")
+            return nil
+        end
+    end
+    return type_name
 end
 
 -- Declarative helper for menu files that prefer describing a submenu as a table:
--- { list = "Name", items = {...} }, { feature = "id", name = "Label" }, { divider = "Text" }
+-- { list = "Name", items = {...} }, { feature = "id", name = "Label" }, { divider = "Text" },
+-- { readonly = "Name", value = "..." }, { toggle = "Name", on_change = fn }, { slider = "Name", min = 0, max = 10, on_change = fn }...
+-- see ITEM_TYPES for every type and the fields it needs
 function module.build_items(node: table, items: table, where: string = "menu"): void
     if type(items) ~= "table" then
         log:warn($"{where}: items must be a table, got {type(items)}")
@@ -74,20 +157,9 @@ function module.build_items(node: table, items: table, where: string = "menu"): 
 
     for i, item in ipairs(items) do
         local item_where = $"{where} #{i}"
-        if check_item(item, item_where) then
-            if item.list then
-                module.build_items(node:list(item.list, item.commands or {}, item.help or ""),
-                    item.items or {}, $"{where} > {item.list}")
-            elseif item.feature then
-                if Atdar.features.has(item.feature) then
-                    node:add_feature(Atdar.features.get(item.feature), item.name or item.feature,
-                        item.commands or {}, item.help or "")
-                else
-                    log:warn($"{item_where}: unknown feature '{item.feature}', skipped")
-                end
-            else
-                node:divider(item.divider)
-            end
+        local type_name = check_item(item, item_where)
+        if type_name then
+            ITEM_TYPES[type_name].build(node, item, item_where)
         end
     end
 end
