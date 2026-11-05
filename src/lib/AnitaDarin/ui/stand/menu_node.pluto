@@ -41,6 +41,12 @@ for kind in pairs(Feature.KINDS) do
     end
 end
 
+-- Feature kinds whose menu item is an on/off toggle
+local TOGGLE_KINDS = { loop = true, toggle = true }
+
+-- Ticks to wait after switching toggles off, so Stand's toggle_loop threads see it and stop
+local STOP_TICKS = 2
+
 -- Declared first and assigned explicitly so methods can reference MenuNode:
 -- neither `local class` nor `class` on a forward-declared local binds it inside the body in Stand's Pluto
 local MenuNode
@@ -54,11 +60,36 @@ MenuNode = class
 
         self.handle = handle
         self.children = {}
+        self.sublists = {}
+        self.toggles = {}
     end
 
     function track(child_handle)
         table.insert(self.children, child_handle)
         return child_handle
+    end
+
+    -- Switches off every toggle in this node and its sublists, then waits for Stand to stop them.
+    -- A toggle_loop deleted while on keeps ticking in Stand and fails with "CommandRef is not valid"
+    function stop_toggles(): void
+        local stopped = false
+        local function stop_in(node)
+            for _, ref in ipairs(node.toggles) do
+                if menu.get_value(ref) then
+                    menu.set_value(ref, false)
+                    stopped = true
+                end
+            end
+            for _, sublist in ipairs(node.sublists) do
+                stop_in(sublist)
+            end
+        end
+        stop_in(self)
+        if stopped then
+            for _ = 1, STOP_TICKS do
+                util.yield()
+            end
+        end
     end
 
     function divider(text: string)
@@ -68,20 +99,25 @@ MenuNode = class
     function list(name: string, commands: table = {}, help: string = ""): table
         local child = new MenuNode(menu.list(self.handle, name, commands, help))
         self:track(child.handle)
+        table.insert(self.sublists, child)
         return child
     end
 
     -- Removes this node and everything in it from the Stand menu
     function delete(): void
+        self:stop_toggles()
         menu.delete(self.handle)
     end
 
     -- Removes every item created through this node, leaving the node itself
     function clear(): void
+        self:stop_toggles()
         for _, child_handle in ipairs(self.children) do
             menu.delete(child_handle)
         end
         self.children = {}
+        self.sublists = {}
+        self.toggles = {}
     end
 
     -- List of options where picking one calls on_select(index, option_name, click_type)
@@ -99,7 +135,11 @@ MenuNode = class
         if not create then
             error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")
         end
-        return self:track(create(self.handle, feature, name, commands, help))
+        local ref = self:track(create(self.handle, feature, name, commands, help))
+        if TOGGLE_KINDS[feature.kind] then
+            table.insert(self.toggles, ref)
+        end
+        return ref
     end
 
 end

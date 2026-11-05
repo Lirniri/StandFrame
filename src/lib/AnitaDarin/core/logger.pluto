@@ -1,5 +1,21 @@
 -- lib/AnitaDarin/core/logger.pluto
--- Uses Stand's own output for now: util.log goes to Stand's log file, util.toast shows on screen
+
+
+--[[ Example:
+    local Logger = Atdar.loader.load("core/logger")
+    local log = new Logger("HalfGodmode")   -- name shown in the brackets
+
+    log:debug("...")   -- only when Atdar.debug = true; to Stand's log and console
+    log:info("...")    -- to the log and console
+    log:notify("...")  -- log, console and an on-screen toast (messages for the user)
+    log:warn("...")    -- log, console and a toast
+    log:error("...")   -- log, console and a toast
+]]
+
+
+
+-- Uses Stand's own output for now: util.log goes to Stand's log file and its console,
+-- util.toast shows on screen
 
 local class Logger
 

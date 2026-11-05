@@ -1,5 +1,9 @@
 local load = Atdar.loader.load
+
 local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("RagdollControl")
 
 -- Control is held only while the ped is ragdolling
 class RagdollControl extends Feature
@@ -15,7 +19,9 @@ class RagdollControl extends Feature
     function set_control(toggle: bool): void
         local n_player = Atdar.natives.player
         n_player.give_ragdoll_control(n_player.get_id(), toggle)
+        local text = toggle and "is given" or "is removed"
         self.given = toggle
+        log:debug($"{self.id} {text}")
     end
 
     function on_tick()

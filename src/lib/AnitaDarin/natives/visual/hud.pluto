@@ -6,6 +6,7 @@ module.blip = load("natives/visual/hud/blip")
 
 module.money = load("natives/visual/hud/money")
 module.minimap = load("natives/visual/hud/minimap")
+module.text = load("natives/visual/hud/text")
 module.thefeed = load("natives/visual/hud/thefeed")
 module.waypoint = load("natives/visual/hud/waypoint")
 module.wanted_level = load("natives/visual/hud/wanted_level")

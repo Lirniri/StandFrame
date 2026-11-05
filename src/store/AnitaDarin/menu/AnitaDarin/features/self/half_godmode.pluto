@@ -1,5 +1,9 @@
 local load = Atdar.loader.load
+
 local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("HalfGodmode")
 
 -- Ticks because the game resets the flag on death/respawn
 return Atdar.features.add(new Feature({
@@ -10,6 +14,7 @@ return Atdar.features.add(new Feature({
         local n_player = Atdar.natives.player
         local player = n_player.get_id()
         if not n_player.is_godmode(player) then
+            log:debug($"{self.id} is given")
             n_player.set_half_godmode(player, true)
         end
     end,
@@ -17,5 +22,6 @@ return Atdar.features.add(new Feature({
     on_disable = function(self)
         local n_player = Atdar.natives.player
         n_player.set_half_godmode(n_player.get_id(), false)
+        log:debug($"{self.id} is removed")
     end,
 }))

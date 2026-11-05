@@ -19,13 +19,16 @@ function module.is_stopped(vehicle: int): bool
     return VEHICLE.IS_VEHICLE_STOPPED(vehicle)
 end
 
-function module.explode(vehicle, isAudible: bool = true, isInvisible: bool = false, net_id: int): void
-    local is_session_stated = util.is_session_started()
-    if not is_session_stated then
-        VEHICLE.EXPLODE_VEHICLE(vehicle, isAudible, isInvisible)
+-- opts: { vehicle, is_audible = true, is_invisible = false, net_id = nil }
+-- net_id given: networked explosion (NETWORK_EXPLODE_VEHICLE), otherwise a local one
+function module.explode(opts: table): void
+    local vehicle = opts.vehicle
+    local is_audible = opts.is_audible ~= false
+    local is_invisible = opts.is_invisible == true
+    if opts.net_id ~= nil then
+        NETWORK.NETWORK_EXPLODE_VEHICLE(vehicle, is_audible, is_invisible, opts.net_id)
     else
-        local netId = net_id or module.get_net_id(vehicle)
-        NETWORK.NETWORK_EXPLODE_VEHICLE(vehicle, isAudible, isInvisible, netId)
+        VEHICLE.EXPLODE_VEHICLE(vehicle, is_audible, is_invisible)
     end
 end
 

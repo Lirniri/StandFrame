@@ -76,11 +76,25 @@ Feature = class
         self.on_trigger = opts.on_trigger or self.on_trigger
     end
 
+    -- Calls a hook, logs which version runs and catches its errors
+    private function call_hook(name: string): void
+        local overridden = self[name] ~= Feature[name]
+        if name ~= "on_tick" then -- on_tick runs every frame, would flood the log
+            log:debug($"{self.id}: {name} ({overridden ? "overridden" : "default"})")
+        end
+        local ok, err = pcall(self[name], self)
+        if not ok then
+            log:error($"{self.id}: {name} failed\n{err}")
+        end
+    end
+
+    
+
     function tick()
         if !self.enabled then
             self:enable()
         end
-        self:on_tick()
+        self:call_hook("on_tick")
     end
     function on_tick()
         -- body
@@ -94,9 +108,8 @@ Feature = class
         if self.enabled then
             return
         end
-        log:debug($"enable {self.id}")
         self.enabled = true
-        self:on_enable()
+        self:call_hook("on_enable")
     end
     function on_enable(): void
         -- body
@@ -106,17 +119,15 @@ Feature = class
         if !self.enabled then
             return
         end
-        log:debug($"disable {self.id}")
         self.enabled = false
-        self:on_disable()
+        self:call_hook("on_disable")
     end
     function on_disable(): void
         -- body
     end
 
     function trigger()
-        log:debug($"trigger {self.id}")
-        self:on_trigger()
+        self:call_hook("on_trigger")
     end
     function on_trigger()
         -- body
@@ -124,6 +135,7 @@ Feature = class
 
 end
 
+-- Read by menu_node.pluto to check that every kind has a menu item
 Feature.KINDS = KINDS
 
 return Feature

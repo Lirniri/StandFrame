@@ -1,4 +1,4 @@
-local module = { begin = {}, end = {} }
+local module = { begin = {}, end = {}, color = {} }
 
 function module.is_paused(): bool
     return HUD.THEFEED_IS_PAUSED()
@@ -20,15 +20,64 @@ function module.remove(id: int): void
     HUD.THEFEED_REMOVE_ITEM(id)
 end
 
+-- thefeed > color
+
+function module.color.set_text_background(color)
+    HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(color)
+end
+
 -- thefeed > begin
-function module.begin.post(message: string): void
+function module.begin.post(): void
     HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
-    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(message)
+    -- visual.hud.text.add_string
 end
 
 -- thefeed > end
-function module.end.post_ticker(blink: bool, p1: bool, is_mp: bool): int
-    return is_mp ? HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1) : HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
+function module.end.post_message(
+    sender: string, 
+    subject: string,
+    flash: bool = false,
+    icon_type: int = 0,
+    txd_name,
+    texture_name
+): int
+
+
+    --[[
+        iconTypes:
+        1 : Chat Box
+        2 : Email
+        3 : Add Friend Request
+        4 : Nothing
+        5 : Nothing
+        6 : Nothing
+        7 : Right Jumping Arrow
+        8 : RP Icon
+        9 : $ Icon
+    ]]
+    -- "sender" is the very top header. This can be any old string.
+    -- "subject" is the header under the sender.
+
+    local txd = txd_name
+    local texture = texture_name
+    local icon = icon_type
+
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(
+        txd,
+        texture,
+        flash,
+        icon,
+        sender,
+        subject
+    )
 end
+
+function module.end.post_ticker(blink: bool, p1: bool, is_mp: bool): int
+    return is_mp ? 
+    HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1) : 
+    HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
+end
+
+
 
 return module

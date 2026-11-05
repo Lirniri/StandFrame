@@ -49,10 +49,11 @@ local function unload_current(): void
     if not current then
         return
     end
+    -- Items first: switching their toggles off disables features the normal way, through Stand
+    current.node:clear()
     for _, id in ipairs(current.feature_ids) do
         features.remove(id)
     end
-    current.node:clear()
     settings.restore(current.settings_mark)
     current = nil
 end
@@ -113,6 +114,16 @@ local function copy_pack(info: table): void
     load_builtin()
 end
 
+
+-- Opens the pack's folder in Windows Explorer
+local function open_menu_folder(info: table): void
+    util.open_folder(info.dir.. "menu")
+end
+local function open_features_folder(info: table): void
+    util.open_folder(info.dir.. "features")
+end
+
+
 -- Takes a copied pack back out of the script; unloads it first if it's the loaded menu
 local function remove_builtin(): void
     if current and current.kind == "builtin" then
@@ -128,7 +139,7 @@ local function remove_builtin(): void
     rebuild_settings()
 end
 
-local PACK_OPTIONS = { "Load", "Copy to core" }
+local PACK_OPTIONS = { "Load", "Copy to core", "Open Menu Folder", "Open Features Folder" }
 local COPIED_BUILTIN_OPTIONS = { "Load", "Remove from core" }
 
 -- Adds an entry per available menu: the built-in one (if any) and every pack in store
@@ -157,12 +168,16 @@ local function fill_picker(node: table): void
     local packs = builder.find_loadable_packs(PACKS_DIR)
     for _, info in ipairs(packs) do
         local name, help = builder.describe_pack(info)
-        help = $"{help}\nCopy to core: puts the pack into the script as its built-in menu; its code will then run on every start. Existing files are never overwritten."
+        help = $"{help}\nCopy to core: puts the pack into the script as its built-in menu; its code will then run on every start. Existing files are never overwritten.\nMenu Folder / Features Folder: show the pack's files."
         node:list_action(name, PACK_OPTIONS, function(index)
             if index == 1 then
                 load_pack(info)
-            else
+            elseif index == 2 then
                 copy_pack(info)
+            elseif index == 3 then
+                open_menu_folder(info)
+            elseif index == 4 then
+                open_features_folder(info)
             end
         end, {}, help)
     end

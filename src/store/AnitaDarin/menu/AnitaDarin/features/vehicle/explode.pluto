@@ -1,5 +1,9 @@
 local load = Atdar.loader.load
+
 local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("Explode")
 
 -- Ticks because the game resets the flag on death/respawn
 return Atdar.features.add(new Feature({
@@ -7,7 +11,20 @@ return Atdar.features.add(new Feature({
     kind = "action",
 
     on_trigger = function(self)
+        local n_vehicle = Atdar.natives.entity.vehicle
         local handle = Atdar.natives.player.user.get_vehicle()
-        Atdar.natives.entity.vehicle.explode(handle)
+
+        local is_online = util.is_session_started()
+        if is_online then
+            local netID = n_vehicle.get_net_id(handle)
+            n_vehicle.explode({
+                vehicle = handle,
+                net_id = netID
+            })
+        else
+            n_vehicle.explode({
+                vehicle = handle
+            })
+        end
     end
 }))
