@@ -13,6 +13,7 @@ local DEFAULTS = {
     command_prefix = "atdar",
     command_separator = "",     -- "" -> atdargodmode, "_" -> atdar_godmode
     log_name = "short",         -- name in log and toast lines: "short" | "display"
+    debug = false,              -- show debug-level log lines
 }
 
 local DEFAULT_PROFILE = "main"
@@ -197,5 +198,13 @@ load_profile(start_profile)
 if not filesystem.exists(CONFIG_PATH) then
     write_json(CONFIG_PATH, { profile = active })
 end
+
+-- Keep Atdar.debug in sync with the profile value at all times
+Atdar.debug = values.debug == true
+table.insert(listeners, function(key: string, value)
+    if key == "debug" then
+        Atdar.debug = value == true
+    end
+end)
 
 return module

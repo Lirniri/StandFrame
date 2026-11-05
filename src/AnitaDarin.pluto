@@ -7,7 +7,7 @@ _G.Atdar = {
     ui = {},
     -- Taken from this file's name, so a renamed script finds its lib/store/resources folders of the same name
     name = SCRIPT_FILENAME:match("^(.+)%.[^%.]+$") or SCRIPT_FILENAME,
-    debug = true,
+    debug = false, -- will be set from the active profile once profile.pluto loads
 }
 
 

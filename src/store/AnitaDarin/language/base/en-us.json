@@ -81,6 +81,10 @@
             "name": "Save Profile",
             "help": "Writes the current values into the active profile",
             "done": "Profile '%s' saved"
+        },
+        "debug": {
+            "name": "Debug Mode",
+            "help": "Show debug-level log lines in the Stand console and notifications"
         }
     }
 }

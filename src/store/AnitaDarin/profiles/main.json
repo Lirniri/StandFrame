@@ -1,7 +1,8 @@
 {
-    "short_name": "AniDar",
-    "command_prefix": "atdar",
     "command_separator": "",
+    "command_prefix": "atdar",
+    "debug": false,
     "display_name": "AnitaDarin",
+    "short_name": "AniDar",
     "log_name": "short"
 }

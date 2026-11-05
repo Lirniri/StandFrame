@@ -26,8 +26,8 @@
             "movement": {
                 "menu_name": "Movement"
             },
-            "destroy": {
-                "menu_name": "Destroy"
+            "explode": {
+                "menu_name": "Explode"
             }
         },
         "settings": {

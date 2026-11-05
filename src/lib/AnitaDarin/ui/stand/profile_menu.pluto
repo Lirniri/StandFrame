@@ -133,6 +133,10 @@ function module.build(parent: table, refresh: function): void
         profile.set("log_name", LOG_NAMES[index])
     end, { "profilelogname" }, label("log_name.help"))
 
+    node:toggle(label("debug.name"), function(on)
+        profile.set("debug", on)
+    end, { "profiledebug" }, label("debug.help"), profile.get("debug") == true)
+
     node:divider(label("manage"))
 
     node:text_input(label("create.name"), { "profilenew" }, function(value)
