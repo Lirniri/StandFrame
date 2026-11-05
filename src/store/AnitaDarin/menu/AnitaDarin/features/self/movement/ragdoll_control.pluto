@@ -6,7 +6,7 @@ local Logger = load("core/logger")
 local log = new Logger("RagdollControl")
 
 -- Control is held only while the ped is ragdolling
-class RagdollControl extends Feature
+local class RagdollControl extends Feature
     function __construct()
         parent:__construct({ id = "self.movement.ragdoll_control", kind = "loop" })
         self.given = false

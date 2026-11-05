@@ -1,0 +1,22 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("RestoreStamina")
+
+local class RestoreStamina extends Feature
+    function __construct()
+        parent:__construct({
+            id = "self.state.restore_stamina",
+            kind = "action" 
+        })
+    end
+
+    function on_trigger()
+        local player = Atdar.natives.player.user
+        player.restore_stamina()
+    end
+end
+
+return Atdar.features.add(new RestoreStamina())

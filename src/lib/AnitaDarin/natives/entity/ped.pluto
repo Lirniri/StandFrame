@@ -2,9 +2,32 @@ local load = Atdar.loader.load
 
 local module = {}
 
+function module.is_ped(ped): bool
+    return ENTITY.IS_ENTITY_A_PED(ped)
+end
+
+function module.is_human(ped: int): bool
+    return PED.IS_PED_HUMAN(ped)
+end
+
+function module.is_male(ped: int): bool
+    return PED.IS_PED_MALE(ped)
+end
+
+
 function module.is_player(player_id: int): bool
     return PED.IS_PED_A_PLAYER(player_id)
 end
+
+
+function module.is_stopped(ped: int): bool
+    return PED.IS_PED_STOPPED(ped)
+end
+
+function module.is_jumping(ped: int): bool
+    return PED.IS_PED_JUMPING(ped)
+end
+
 
 function module.get_net_id(ped): int
     return NETWORK.PED_TO_NET(ped)
@@ -21,20 +44,61 @@ function module.get_all(as_pointer: bool = false)
     return as_pointer and pointer or handle
 end
 
-function module.is_human(ped: int): bool
-    return PED.IS_PED_HUMAN(ped)
+
+function module.get_health(ped): int
+    local entity = Atdar.natives.entity
+    local is_ped = module.is_ped(ped)
+    if is_ped then
+        return entity.get_health(ped)
+    else
+        return nil
+    end
+end
+function module.get_max_health(ped): int
+    local entity = Atdar.natives.entity
+    local is_ped = module.is_ped(ped)
+    if is_ped then
+        return entity.get_max_health(ped)
+    else
+        return nil
+    end
 end
 
-function module.is_male(ped: int): bool
-    return PED.IS_PED_MALE(ped)
+function module.is_max_health(ped: int): bool
+    local health = module.get_health(ped)
+    return health ~= nil and health >= module.get_max_health(ped)
 end
 
-function module.is_stopped(ped: int): bool
-    return PED.IS_PED_STOPPED(ped)
+function module.set_health(ped: int, value: ?int, instigator: int = 0, weaponType: int = 0): ?int
+    local entity = Atdar.natives.entity
+    local is_ped = module.is_ped(ped)
+    if is_ped then
+        entity.set_health(ped, value, instigator, weaponType)
+    else
+        return nil
+    end
 end
 
-function module.is_jumping(ped: int): bool
-    return PED.IS_PED_JUMPING(ped)
+function module.set_max_health(ped: int, value: ?int, instigator: int = 0, weaponType: int = 0): ?int
+    local entity = Atdar.natives.entity
+    local is_ped = module.is_ped(ped)
+    if is_ped then
+        entity.set_health(ped, value, instigator, weaponType)
+    else
+        return nil
+    end
+end
+
+function module.get_armor(ped: int, value: int): int
+    return PED.GET_PED_ARMOUR(ped, value)
+end
+
+function module.set_armor(ped: int, value: int): int
+    return PED.SET_PED_ARMOUR(ped, value)
+end
+
+function module.add_armor(ped: int, value: int): int
+    return PED.ADD_ARMOUR_TO_PED(ped, value)
 end
 
 module.task = load("natives/entity/ped/task")

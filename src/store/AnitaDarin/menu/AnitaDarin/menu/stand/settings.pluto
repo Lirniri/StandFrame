@@ -6,7 +6,10 @@ local lang = Atdar.lang
 -- The section goes back to the root when another menu is loaded
 return {
     build = function(node, ctx)
-        local settings_menu = node:list(lang.translate("menu.settings.menu_name"))
+        local settings_menu = node:list(
+            lang.translate("menu.settings.menu_name"),
+            { "settings" }
+        )
 
         settings.set_parent(settings_menu)
         settings.set_divider($"{Atdar.name}")

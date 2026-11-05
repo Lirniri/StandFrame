@@ -8,6 +8,33 @@
                     "menu_name": "Контролировать Ragdoll"
                 }
             },
+            "state": {
+                "menu_name": "Состояние",
+                "health": {
+                    "divider": {
+                        "menu_name": "Здоровье"
+                    }
+                },
+                "restore_health": {
+                    "menu_name": "Восстановить здоровье"
+                },
+                "armor": {
+                    "divider": {
+                        "menu_name": "Броня"
+                    }
+                },
+                "restore_armor": {
+                    "menu_name": "Восстановить броню"
+                },
+                "stamina": {
+                    "divider": {
+                        "menu_name": "Выносливость"
+                    }
+                },
+                "restore_stamina": {
+                    "menu_name": "Восстановить выносливость"
+                }
+            },
             "godmode": {
                 "menu_name": "Режим бога"
             },
@@ -28,6 +55,18 @@
             },
             "explode": {
                 "menu_name": "Взорвать"
+            }
+        },
+        "modes": {
+            "menu_name": "Режимы",
+            "singleplayer": {
+                "menu_name": "Одиночная игра"
+            },
+            "multiplayer": {
+                "menu_name": "Многопользовательская игра",
+                "players": {
+                    "menu_name": "Игроки"
+                }
             }
         },
         "settings": {

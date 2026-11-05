@@ -1,6 +1,9 @@
 local load = Atdar.loader.load
+local Logger = load("core/logger")
 
 local world = require($"{Atdar.name}/natives/world")
+
+local log = new Logger("natives/entity")
 
 local module = {}
 
@@ -11,6 +14,33 @@ function module.from_net_id(net_id): ?int
     local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
     if not is_net_id_exist then return nil end
     return NETWORK.NET_TO_ENT(net_id)
+end
+
+-- HEALTH
+function module.get_health(entity: int): int
+    return ENTITY.GET_ENTITY_HEALTH(entity)
+end
+
+function module.get_max_health(entity: int): int
+    return ENTITY.GET_ENTITY_MAX_HEALTH(entity)
+end
+
+-- @param "value" Health to set; nil or true restores the maximum
+function module.set_health(entity: int, value: ?int, instigator: int = 0, weaponType: int = 0): void
+    if value == nil or value == true then
+        value = module.get_max_health(entity)
+        log:debug($"set_health: value is {value}!")
+    end
+    ENTITY.SET_ENTITY_HEALTH(entity, value, instigator, weaponType)
+end
+
+-- @param "value" Health to set; nil or true restores the maximum
+function module.set_max_health(entity: int, value: ?int, instigator: int = 0, weaponType: int = 0): void
+    if value == nil or value == true then
+        value = module.get_max_health(entity)
+        log:debug($"set_max_health: value is {value}!")
+    end
+    ENTITY.SET_ENTITY_MAX_HEALTH(entity, value)
 end
 
 -- @param max_height Maximum height above ground still counted as "on ground" (false — any height)

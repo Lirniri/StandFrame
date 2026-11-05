@@ -120,6 +120,16 @@ function module.remove_helmet(player_id: int, p2: bool)
     PLAYER.REMOVE_PLAYER_HELMET(player, p2)
 end
 
+function module.get_max_armor(player_id: int): int
+    local player = player_id
+    return PLAYER.GET_PLAYER_MAX_ARMOUR(player)
+end
+
+function module.set_max_armor(player_id: int, value: int): int
+    local player = player_id
+    return PLAYER.SET_PLAYER_MAX_ARMOUR(player, value)
+end
+
 
 module.user = load("natives/player/user")
 

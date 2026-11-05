@@ -8,6 +8,33 @@
                     "menu_name": "Ragdoll Control"
                 }
             },
+            "state": {
+                "menu_name": "State",
+                "health": {
+                    "divider": {
+                        "menu_name": "Health"
+                    }
+                },
+                "restore_health": {
+                    "menu_name": "Restore Health"
+                },
+                "armor": {
+                    "divider": {
+                        "menu_name": "Armor"
+                    }
+                },
+                "restore_armor": {
+                    "menu_name": "Restore Armor"
+                },
+                "stamina": {
+                    "divider": {
+                        "menu_name": "Stamina"
+                    }
+                },
+                "restore_stamina": {
+                    "menu_name": "Restore Stamina"
+                }
+            },
             "godmode": {
                 "menu_name": "Godmode"
             },
@@ -28,6 +55,18 @@
             },
             "explode": {
                 "menu_name": "Explode"
+            }
+        },
+        "modes": {
+            "menu_name": "Режимы",
+            "singleplayer": {
+                "menu_name": "Одиночная игра"
+            },
+            "multiplayer": {
+                "menu_name": "Многопользовательская игра",
+                "players": {
+                    "menu_name": "Игроки"
+                }
             }
         },
         "settings": {
