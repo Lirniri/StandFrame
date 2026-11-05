@@ -1,0 +1,14 @@
+local blip = Atdar.loader.load("natives/visual/hud/blip")
+
+local module = {}
+
+function module.is_active(): bool
+    return HUD.IS_WAYPOINT_ACTIVE()
+end
+
+function module.get_blip(): ?int
+    local handle = HUD.GET_FIRST_BLIP_INFO_ID(blip.waypoint.get_sprite())
+    return blip.is_exist(handle) ? handle : nil
+end
+
+return module

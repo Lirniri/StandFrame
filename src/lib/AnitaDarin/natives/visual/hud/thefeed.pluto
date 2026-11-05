@@ -1,0 +1,34 @@
+local module = { begin = {}, end = {} }
+
+function module.is_paused(): bool
+    return HUD.THEFEED_IS_PAUSED()
+end
+
+function module.pause(): void
+    HUD.THEFEED_PAUSE()
+end
+
+function module.resume(): void
+    HUD.THEFEED_RESUME()
+end
+
+function module.freeze_next(): void
+    HUD.THEFEED_FREEZE_NEXT_POST()
+end
+
+function module.remove(id: int): void
+    HUD.THEFEED_REMOVE_ITEM(id)
+end
+
+-- thefeed > begin
+function module.begin.post(message: string): void
+    HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(message)
+end
+
+-- thefeed > end
+function module.end.post_ticker(blink: bool, p1: bool, is_mp: bool): int
+    return is_mp ? HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1) : HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
+end
+
+return module

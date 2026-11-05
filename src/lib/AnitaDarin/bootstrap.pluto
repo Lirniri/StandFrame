@@ -17,16 +17,20 @@ end
 
 -- Native wrappers: Atdar.natives.<section>. An error in one file doesn't crash the script, that file stays empty
 local NATIVES = {
+    -- Game systems
+    "streaming",
+    "input",
+    "visual",
+    "audio",
+
+    -- Game objects and the world
     "entity",
     "player",
     "network",
-    "visual",
     "world",
     "weapon",
-    "audio",
-    "input",
-    "streaming",
 }
+
 Atdar.natives = {}
 for _, name in NATIVES do
     Atdar.natives[name] = Atdar.loader.load($"natives/{name}")

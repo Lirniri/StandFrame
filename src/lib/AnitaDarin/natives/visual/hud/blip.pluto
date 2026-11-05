@@ -1,0 +1,56 @@
+local module = { waypoint = {} }
+
+function module.is_exist(blip: int): bool
+    return HUD.DOES_BLIP_EXIST(blip)
+end
+
+function module.get_id(sprite: int, next): int
+    return next ? HUD.GET_NEXT_BLIP_INFO_ID(sprite) : HUD.GET_FIRST_BLIP_INFO_ID(sprite)
+end
+
+function module.get_type(blip: int): int
+    return HUD.GET_BLIP_INFO_ID_TYPE(blip)
+end
+
+function module.get_sprite(blip: int): int
+    return HUD.GET_BLIP_SPRITE(blip)
+end
+
+function module.get_alpha(blip: int): int
+    return HUD.GET_BLIP_ALPHA(blip)
+end
+
+function module.get_rotation(blip: int): int
+    return HUD.GET_BLIP_ROTATION(blip)
+end
+
+function module.get_color(blip: int, hud_color: bool = false): int
+    return hud_color ? HUD.GET_BLIP_HUD_COLOUR(blip) : HUD.GET_BLIP_COLOUR(blip)
+end
+
+function module.get_coords(blip: int): ?vector3
+    if not module.is_exist(blip) then return nil end
+    return v3.new(HUD.GET_BLIP_INFO_ID_COORD(blip))
+end
+
+function module.get_from_entity(entity: int): ?int
+    local blip = HUD.GET_BLIP_FROM_ENTITY(entity)
+    return module.is_exist(blip) ? blip : nil
+end
+
+-- all blips with the specified sprite
+function module.get_all(sprite: int = 0): table
+    local blips = {}
+    local blip = HUD.GET_FIRST_BLIP_INFO_ID(sprite)
+    while module.is_exist(blip) do
+        blips:insert(blip)
+        blip = HUD.GET_NEXT_BLIP_INFO_ID(sprite)
+    end
+    return blips
+end
+
+function module.waypoint.get_sprite(): int
+    return HUD.GET_WAYPOINT_BLIP_ENUM_ID()
+end
+
+return module

@@ -1,4 +1,4 @@
-local hud = require($"{Atdar.name}/natives/visual/hud")
+local hud = Atdar.loader.load("natives/visual/hud")
 
 local module = {
     waypoint = {}
