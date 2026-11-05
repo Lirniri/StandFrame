@@ -58,14 +58,14 @@
             }
         },
         "modes": {
-            "menu_name": "Режимы",
+            "menu_name": "Modes",
             "singleplayer": {
-                "menu_name": "Одиночная игра"
+                "menu_name": "Singleplayer"
             },
             "multiplayer": {
-                "menu_name": "Многопользовательская игра",
+                "menu_name": "Multiplayer",
                 "players": {
-                    "menu_name": "Игроки"
+                    "menu_name": "Player"
                 }
             }
         },
