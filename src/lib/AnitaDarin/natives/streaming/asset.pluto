@@ -42,4 +42,26 @@ function module.request_vehicle(model: int|string, asset: int, timeout: int = 20
     return wait_loaded($"vehicle asset {asset} of '{model}'", || -> VEHICLE.HAS_VEHICLE_ASSET_LOADED(asset), timeout)
 end
 
+
+-- Asset type -> its request function, picked by request()
+local REQUEST = {
+    action_mode = |opts| -> module.request_action_mode(opts.name, opts.timeout),
+    stealth_mode = |opts| -> module.request_stealth_mode(opts.name, opts.timeout),
+    ptfx = |opts| -> module.request_ptfx(opts.name, opts.timeout),
+    vehicle = |opts| -> module.request_vehicle(opts.model, opts.asset, opts.timeout),
+}
+
+-- One entry point for all asset types; opts.what picks the type, the rest are its arguments:
+--   { what = "action_mode" | "stealth_mode" | "ptfx", name = "...", timeout = 2000 }
+--   { what = "vehicle", model = "adder", asset = 0, timeout = 2000 }
+-- @return Whether the asset loaded
+function module.request(opts: table): bool
+    local request = REQUEST[opts.what]
+    if not request then
+        log:error($"unknown asset type '{tostring(opts.what)}', expected action_mode, stealth_mode, ptfx or vehicle")
+        return false
+    end
+    return request(opts)
+end
+
 return module

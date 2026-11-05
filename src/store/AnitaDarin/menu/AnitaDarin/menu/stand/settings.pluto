@@ -1,0 +1,18 @@
+local settings = Atdar.loader.load("ui/stand/settings")
+
+-- The pack's own Settings list; the script's section (Load Menu etc.) is built inside it.
+-- The section goes back to the root when another menu is loaded
+return {
+    build = function(node, ctx)
+        local settings_menu = node:list("Settings")
+
+        settings.set_parent(settings_menu)
+        settings.set_name("Settings")
+        settings.set_divider($"{Atdar.name}")
+
+        -- Items for the section go here:
+        -- settings.add(function(settings_node)
+        --     settings_node:add_feature(Atdar.features.get("..."), "...")
+        -- end)
+    end,
+}

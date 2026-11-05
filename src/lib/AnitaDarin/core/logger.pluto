@@ -28,7 +28,13 @@ local class Logger
         local line = $"{self.tag} {level}: {msg}"
         util.log(line)
         if toast then
-            util.toast(line)
+            -- utils/util loads after the logger, so errors during early loading use Stand's toast
+            local utils = Atdar.util
+            if utils and utils.toast then
+                utils.toast(line)
+            else
+                util.toast(line)
+            end
         end
     end
 
