@@ -23,6 +23,7 @@ return Atdar.features.add(new Feature({
             local netID = n_vehicle.get_net_id(handle)
             if netID == 0 then
                 log:notify($"{self.id}: net_id is 0 :(")
+                return
             end
             n_vehicle.explode({
                 vehicle = handle,
