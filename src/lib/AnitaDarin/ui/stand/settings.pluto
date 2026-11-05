@@ -8,9 +8,12 @@ local module = {}
 -- Builders rather than built items, so the section can be recreated without losing what was added
 local contributors = {}
 
+-- The section currently in the menu, renamed in place when the profile's display name changes
+local shown = nil
+
 -- Applied each time the section is built (at start and after every menu load)
 local config = {
-    name = Atdar.name,
+    name = nil, -- nil: the profile's display name
     divider = nil,
     parent = nil, -- MenuNode to build the section in; nil means the root
 }
@@ -55,21 +58,36 @@ function module.build(root: table): table
     if config.divider then
         section.divider = host:divider(config.divider)
     end
-    section.node = host:list(config.name)
+    local profile = Atdar.profile
+    section.node = host:list(config.name or (profile.get and profile.get("display_name")) or Atdar.name)
     for _, build_fn in ipairs(contributors) do
         local ok, err = pcall(build_fn, section.node)
         if not ok then
             log:error($"contributor failed\n{err}")
         end
     end
+    shown = section
     return section
 end
 
 function module.remove(section: table): void
+    if shown == section then
+        shown = nil
+    end
     if section.divider then
         menu.delete(section.divider)
     end
     section.node:delete()
+end
+
+-- Renamed in place rather than rebuilt: the user may be inside the section when the name changes
+local profile = Atdar.profile
+if profile and profile.on_change then
+    profile.on_change(function(key: string, value)
+        if key == "display_name" and shown and config.name == nil then
+            menu.set_menu_name(shown.node.handle, value)
+        end
+    end)
 end
 
 return module

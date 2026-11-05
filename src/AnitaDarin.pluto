@@ -5,7 +5,8 @@ pluto_use "0.13.2"
 
 _G.Atdar = {
     ui = {},
-    name = "AnitaDarin", -- "AnitaDarin"
+    -- Taken from this file's name, so a renamed script finds its lib/store/resources folders of the same name
+    name = SCRIPT_FILENAME:match("^(.+)%.[^%.]+$") or SCRIPT_FILENAME,
     debug = true,
 }
 

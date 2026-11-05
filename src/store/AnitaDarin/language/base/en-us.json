@@ -25,5 +25,62 @@
             "open_menu_folder": "Open Menu Folder",
             "open_features_folder": "Open Features Folder"
         }
+    },
+    "profile": {
+        "title": "Profile",
+        "help": "Script profile: names and command prefix. Stand's own profiles still keep item states.",
+        "active": {
+            "name": "Profile: %s",
+            "help": "Switch to another saved profile. * means the current one has unsaved changes",
+            "unsaved": "Profile '%s' has unsaved changes. Switch anyway and lose them?"
+        },
+        "values": "Values",
+        "display_name": {
+            "name": "Display Name",
+            "help": "Name shown in the menu, e.g. the settings section"
+        },
+        "short_name": {
+            "name": "Short Name",
+            "help": "Short name, e.g. for log and notification lines"
+        },
+        "command_prefix": {
+            "name": "Command Prefix",
+            "help": "Prefix of the script's command names; empty for none. Commands are renamed right away"
+        },
+        "separator": {
+            "name": "Separator: %s",
+            "help": "Between the prefix and the command name",
+            "none": "None",
+            "underscore": "_ (underscore)"
+        },
+        "log_name": {
+            "name": "Name In Logs: %s",
+            "help": "Which name log and notification lines start with",
+            "short": "Short Name",
+            "display": "Display Name"
+        },
+        "manage": "Profiles",
+        "create": {
+            "name": "New Profile",
+            "help": "Saves the current values as a new profile and switches to it. Name: a-z, 0-9, _ and -"
+        },
+        "delete": {
+            "name": "Delete Profile",
+            "help": "The main profile can't be deleted; deleting the active one switches to main"
+        },
+        "script": "Script",
+        "rename": {
+            "name": "Rename Script",
+            "help": "Renames the script's file and its lib/store/resources folders, then restarts it under the new name. Letters, digits and _ only",
+            "warning": "Rename the script '%s' to '%s'?\nIts file and folders will be renamed and it will restart.\nStand profile states saved under the old name won't apply to the new one.",
+            "invalid": "'%s' isn't a valid name: use letters, digits and _",
+            "failed": "Not renamed: %s",
+            "done": "Renamed to %s. If it doesn't start by itself, start %s in Stand > Lua Scripts"
+        },
+        "save": {
+            "name": "Save Profile",
+            "help": "Writes the current values into the active profile",
+            "done": "Profile '%s' saved"
+        }
     }
 }

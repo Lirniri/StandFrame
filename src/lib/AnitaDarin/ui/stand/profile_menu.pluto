@@ -1,0 +1,185 @@
+-- Profile submenu in the script's settings section: pick, save, create and delete profiles,
+-- edit the names and the command prefix. Strings live in language/base under "profile".
+--
+-- Changes apply right away but reach the profile file only on Save, like Stand's own profiles.
+-- Items are updated in place (captions, field values) rather than by rebuilding the section:
+-- rebuilding deletes the list the user is in, which Stand doesn't do cleanly
+
+local i18n = Atdar.loader.load("core/i18n")
+local installer = Atdar.loader.load("core/installer")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Profile")
+
+local module = {}
+
+local function label(key: string): int
+    return i18n.label($"profile.{key}")
+end
+
+local function text(key: string): string
+    return i18n.text($"profile.{key}")
+end
+
+-- Option index -> profile value for the two fixed-choice settings
+local SEPARATORS = { "", "_" }
+local LOG_NAMES = { "short", "display" }
+
+-- Profile keys edited through text fields
+local INPUT_KEYS = { "display_name", "short_name", "command_prefix" }
+
+-- Items of the latest build, updated in place when profile values change
+local view = {}
+-- Set while field values are written from code, so their on_change doesn't count as an edit
+local updating = false
+
+local function active_caption(): string
+    local profile = Atdar.profile
+    local name = profile.active_name() .. (profile.is_dirty() and "*" or "")
+    return text("active.name"):format(name)
+end
+
+local function separator_caption(): string
+    local key = Atdar.profile.get("command_separator") == "_" and "separator.underscore" or "separator.none"
+    return text("separator.name"):format(text(key))
+end
+
+local function log_name_caption(): string
+    local key = Atdar.profile.get("log_name") == "display" and "log_name.display" or "log_name.short"
+    return text("log_name.name"):format(text(key))
+end
+
+-- The refs may belong to a section that was already removed, so a failed update is just skipped
+local function rename(ref, caption: string): void
+    if ref then
+        pcall(menu.set_menu_name, ref, caption)
+    end
+end
+
+local function update_captions(): void
+    rename(view.active, active_caption())
+    rename(view.separator, separator_caption())
+    rename(view.log_name, log_name_caption())
+end
+
+-- @return Whether every field took its new value; if not, the caller rebuilds the section instead
+local function update_fields(): bool
+    local ok = true
+    updating = true
+    for _, key in ipairs(INPUT_KEYS) do
+        local ref = view.inputs and view.inputs[key]
+        if ref and not pcall(menu.set_value, ref, Atdar.profile.get(key)) then
+            ok = false
+        end
+    end
+    updating = false
+    return ok
+end
+
+-- Any change (an edit, a switch, a save) can change the captions, e.g. the unsaved mark
+Atdar.profile.on_change(|| -> update_captions())
+
+-- refresh() rebuilds the settings section: needed after a profile is created or deleted
+-- so the profile lists show it
+function module.build(parent: table, refresh: function): void
+    local profile = Atdar.profile
+    local node = parent:list(label("title"), { "profile" }, label("help"))
+    view = { inputs = {} }
+
+    local names = profile.list()
+    view.active = node:list_action(active_caption(), names, function(index, _, click_type)
+        local function switch_profile(): void
+            profile.switch(names[index])
+            update_captions()
+            if not update_fields() then
+                refresh()
+            end
+        end
+        if profile.is_dirty() then
+            menu.show_warning(view.active, click_type, text("active.unsaved"):format(profile.active_name()), switch_profile)
+        else
+            switch_profile()
+        end
+    end, { "profileswitch" }, label("active.help"))
+
+    node:action(label("save.name"), function()
+        profile.save()
+        update_captions()
+        log:notify(text("save.done"):format(profile.active_name()))
+    end, { "profilesave" }, label("save.help"))
+
+    node:divider(label("values"))
+
+    local function input(key: string, allow_empty: bool): void
+        local command = "profile" .. key:gsub("_", "")
+        view.inputs[key] = node:text_input(label($"{key}.name"), { command }, function(value)
+            if updating or (value == "" and not allow_empty) then
+                return
+            end
+            profile.set(key, value)
+        end, label($"{key}.help"), profile.get(key))
+    end
+    input("display_name", false)
+    input("short_name", false)
+    input("command_prefix", true)
+
+    view.separator = node:list_action(separator_caption(),
+        { label("separator.none"), label("separator.underscore") }, function(index)
+        profile.set("command_separator", SEPARATORS[index])
+    end, { "profileseparator" }, label("separator.help"))
+
+    view.log_name = node:list_action(log_name_caption(),
+        { label("log_name.short"), label("log_name.display") }, function(index)
+        profile.set("log_name", LOG_NAMES[index])
+    end, { "profilelogname" }, label("log_name.help"))
+
+    node:divider(label("manage"))
+
+    node:text_input(label("create.name"), { "profilenew" }, function(value)
+        if value ~= "" and profile.create(value) then
+            refresh()
+        end
+    end, label("create.help"))
+
+    local deletable = {}
+    for _, name in ipairs(names) do
+        if name ~= "main" then
+            table.insert(deletable, name)
+        end
+    end
+    if #deletable > 0 then
+        node:list_action(label("delete.name"), deletable, function(index)
+            if profile.delete(deletable[index]) then
+                refresh()
+            end
+        end, { "profiledelete" }, label("delete.help"))
+    end
+
+    node:divider(label("script"))
+
+    local rename_ref
+    -- Stand calls the field again while the script stops after a rename; showing a warning then is an error
+    local renaming = false
+    rename_ref = node:text_input(label("rename.name"), { "renamescript" }, function(value, click_type)
+        if renaming then
+            return
+        end
+        if not installer.valid_name(value) then
+            log:warn(text("rename.invalid"):format(value))
+            return
+        end
+        menu.show_warning(rename_ref, click_type, text("rename.warning"):format(Atdar.name, value), function()
+            renaming = true
+            local ok, reason = installer.rename(value)
+            if not ok then
+                renaming = false
+                log:warn(text("rename.failed"):format(reason))
+                return
+            end
+            log:notify(text("rename.done"):format(value, value))
+            installer.restart_as(value)
+        end)
+    end, label("rename.help"), Atdar.name)
+end
+
+return module

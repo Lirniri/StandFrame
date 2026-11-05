@@ -104,4 +104,19 @@ function module.get_config(): table
     return { prefix = config.prefix, use_prefix = config.use_prefix, separator = config.separator }
 end
 
+-- Prefix and separator come from the script profile and follow its changes; an empty prefix means none
+local profile = Atdar.profile
+if profile and profile.get then
+    config.prefix = module.sanitize(profile.get("command_prefix") or "")
+    local separator = profile.get("command_separator")
+    config.separator = (separator == "_") ? "_" : ""
+    profile.on_change(function(key: string, value)
+        if key == "command_prefix" then
+            module.set_prefix(value)
+        elseif key == "command_separator" then
+            module.set_separator(value)
+        end
+    end)
+end
+
 return module

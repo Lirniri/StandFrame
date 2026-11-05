@@ -1,0 +1,201 @@
+-- Script profiles: store/<script>/profiles/<name>.json, the active one named in store/<script>/config.json.
+-- Defaults live here in code; a missing profile file is created from them, so profiles never need to ship in git.
+-- Stand's own profiles already keep item states, these only hold what Stand doesn't have.
+
+local json = require "pluto:json"
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Profile")
+
+local DEFAULTS = {
+    display_name = Atdar.name,  -- shown to the user: settings section, built-in menu entry
+    short_name = "AniDar",
+    command_prefix = "atdar",
+    command_separator = "",     -- "" -> atdargodmode, "_" -> atdar_godmode
+    log_name = "short",         -- name in log and toast lines: "short" | "display"
+}
+
+local DEFAULT_PROFILE = "main"
+
+local STORE_DIR = $"{Atdar.filesystem.paths.store}"
+local PROFILES_DIR = $"{STORE_DIR}profiles\\"
+local CONFIG_PATH = $"{STORE_DIR}config.json"
+
+local module = {}
+
+local active = DEFAULT_PROFILE
+local values = {}
+local listeners = {}
+-- Changes apply right away but reach the file only on save(), like Stand's own profiles
+local dirty = false
+
+local function read_json(path: string): ?table
+    local file = io.open(path, "r")
+    if not file then
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
+    local data = json.decode(content)
+    return type(data) == "table" ? data : nil
+end
+
+local function write_json(path: string, data: table): bool
+    local folder = path:match("^(.+)[\\/][^\\/]+$")
+    if folder and not filesystem.exists(folder) then
+        filesystem.mkdirs(folder)
+    end
+    local file = io.open(path, "w")
+    if not file then
+        log:error($"can't write {path}")
+        return false
+    end
+    file:write(json.encode(data, "pretty"))
+    file:close()
+    return true
+end
+
+local function profile_path(name: string): string
+    return $"{PROFILES_DIR}{name}.json"
+end
+
+-- Profile names become file names: a-z, 0-9, _ and -
+function module.sanitize_name(name: string): string
+    local clean = name:lower():gsub("[^%w_%-]", "")
+    return clean
+end
+
+local function notify_all(): void
+    for key in pairs(DEFAULTS) do
+        for _, listener in ipairs(listeners) do
+            listener(key, values[key])
+        end
+    end
+end
+
+-- Reads the profile, fills in keys it lacks from the defaults and writes it back if anything was missing
+local function load_profile(name: string): void
+    local data = read_json(profile_path(name)) or {}
+    local changed = false
+    values = {}
+    for key, default in pairs(DEFAULTS) do
+        if data[key] == nil then
+            values[key] = default
+            changed = true
+        else
+            values[key] = data[key]
+        end
+    end
+    active = name
+    dirty = false
+    if changed then
+        write_json(profile_path(name), values)
+    end
+end
+
+-- Writes the current values into the active profile
+function module.save(): void
+    if write_json(profile_path(active), values) then
+        dirty = false
+    end
+end
+
+-- Whether there are changes not saved to the active profile yet
+function module.is_dirty(): bool
+    return dirty
+end
+
+-- Calls fn(key, value) whenever a value changes, including when another profile is loaded
+function module.on_change(fn: function): void
+    table.insert(listeners, fn)
+end
+
+function module.get(key: string)
+    return values[key]
+end
+
+function module.set(key: string, value): void
+    if DEFAULTS[key] == nil then
+        log:warn($"unknown profile key '{key}'")
+        return
+    end
+    if values[key] == value then
+        return
+    end
+    values[key] = value
+    dirty = true
+    for _, listener in ipairs(listeners) do
+        listener(key, value)
+    end
+end
+
+function module.active_name(): string
+    return active
+end
+
+-- @return Names of the saved profiles, sorted
+function module.list(): table
+    local names = {}
+    if filesystem.is_dir(PROFILES_DIR) then
+        for _, path in ipairs(filesystem.list_files(PROFILES_DIR)) do
+            local name = path:match("([^\\/]+)%.json$")
+            if name then
+                table.insert(names, name)
+            end
+        end
+    end
+    table.sort(names)
+    return names
+end
+
+-- Loads a saved profile; unsaved changes of the current one are dropped
+function module.switch(name: string): void
+    load_profile(name)
+    write_json(CONFIG_PATH, { profile = name })
+    notify_all()
+end
+
+-- Creates a profile from the current values (saved or not) and switches to it; the old profile's file is untouched
+-- @return The created name, or nil if the name is empty or taken
+function module.create(name: string): ?string
+    local clean = module.sanitize_name(name)
+    if clean == "" then
+        log:warn($"profile name '{name}' has no allowed characters (a-z, 0-9, _, -)")
+        return nil
+    end
+    if filesystem.exists(profile_path(clean)) then
+        log:warn($"profile '{clean}' already exists")
+        return nil
+    end
+    write_json(profile_path(clean), values)
+    module.switch(clean)
+    return clean
+end
+
+-- Deletes a profile; the main one stays, and deleting the active one switches to main
+function module.delete(name: string): bool
+    if name == DEFAULT_PROFILE then
+        log:warn($"the '{DEFAULT_PROFILE}' profile can't be deleted")
+        return false
+    end
+    os.remove(profile_path(name))
+    if name == active then
+        module.switch(DEFAULT_PROFILE)
+    end
+    return true
+end
+
+-- Name for log and toast lines, as the profile chooses
+function module.log_name(): string
+    return values.log_name == "display" ? values.display_name : values.short_name
+end
+
+local config = read_json(CONFIG_PATH) or {}
+local start_profile = type(config.profile) == "string" ? config.profile : DEFAULT_PROFILE
+load_profile(start_profile)
+if not filesystem.exists(CONFIG_PATH) then
+    write_json(CONFIG_PATH, { profile = active })
+end
+
+return module

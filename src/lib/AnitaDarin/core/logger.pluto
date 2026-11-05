@@ -21,11 +21,19 @@ local class Logger
 
     -- source: what's logging, e.g. "MenuBuilder"; nil logs with the script name only
     function __construct(source: ?string = nil)
-        self.tag = source and $"[{Atdar.name} | {source}]" or $"[{Atdar.name}]"
+        self.source = source
+    end
+
+    -- Built per line: the profile's name can change while the script runs.
+    -- The logger loads before the profile, so early lines use the script's name
+    function tag(): string
+        local profile = Atdar.profile
+        local name = profile and profile.log_name and profile.log_name() or Atdar.name
+        return self.source and $"[{name} | {self.source}]" or $"[{name}]"
     end
 
     function write(level: string, msg: string, toast: bool): void
-        local line = $"{self.tag} {level}: {msg}"
+        local line = $"{self:tag()} {level}: {msg}"
         util.log(line)
         if toast then
             -- utils/util loads after the logger, so errors during early loading use Stand's toast

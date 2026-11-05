@@ -1,0 +1,74 @@
+-- Changes to the script's own installation, e.g. renaming it.
+-- The script's name is its file's name (see the launcher), and its lib/store/resources folders carry the same name
+
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Installer")
+
+local module = {}
+
+-- Letters, digits and _: the name is a file name and becomes Stand's command startlua<name>
+function module.valid_name(name: string): bool
+    return name:match("^[%w_]+$") ~= nil
+end
+
+-- @return { from, to } for every part of the installation that exists, the launcher first
+local function rename_plan(old_name: string, new_name: string): table
+    local scripts = filesystem.scripts_dir()
+    local plan = {
+        { from = $"{scripts}{old_name}.pluto", to = $"{scripts}{new_name}.pluto" },
+    }
+    for _, dir in ipairs({ $"{scripts}lib\\", filesystem.store_dir(), filesystem.resources_dir() }) do
+        if filesystem.exists($"{dir}{old_name}") then
+            table.insert(plan, { from = $"{dir}{old_name}", to = $"{dir}{new_name}" })
+        end
+    end
+    return plan
+end
+
+-- Renames the launcher and the script's folders. Either everything is renamed or nothing:
+-- a failed step undoes the ones before it, so the script is never left half-renamed
+-- @return true, or false and a reason
+function module.rename(new_name: string): (bool, string)
+    local old_name = Atdar.name
+    if not module.valid_name(new_name) then
+        return false, $"'{new_name}' isn't a valid name, use letters, digits and _"
+    end
+    if new_name == old_name then
+        return false, "the name is the same"
+    end
+
+    local plan = rename_plan(old_name, new_name)
+    for _, step in ipairs(plan) do
+        if filesystem.exists(step.to) then
+            return false, $"{step.to} already exists"
+        end
+    end
+
+    local done = {}
+    for _, step in ipairs(plan) do
+        local ok, err = os.rename(step.from, step.to)
+        if not ok then
+            for i = #done, 1, -1 do
+                os.rename(done[i].to, done[i].from)
+            end
+            log:error($"rename failed at {step.from}: {err}; undone")
+            return false, $"couldn't rename {step.from}"
+        end
+        table.insert(done, step)
+    end
+    log:info($"renamed {old_name} -> {new_name} ({#done} part(s))")
+    return true, ""
+end
+
+-- Starts the script under its new name and stops this copy.
+-- Stand may not see the renamed file until its script list refreshes, so the notice says how to start it by hand
+function module.restart_as(new_name: string): void
+    util.create_thread(function()
+        menu.trigger_commands($"startlua{new_name:lower()}")
+        util.yield()
+        util.stop_script()
+    end)
+end
+
+return module

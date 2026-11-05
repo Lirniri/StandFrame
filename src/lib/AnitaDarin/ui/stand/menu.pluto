@@ -2,6 +2,7 @@ local load = Atdar.loader.load
 local MenuNode = load("ui/stand/menu_node")
 local builder = load("ui/stand/menu_builder")
 local settings = load("ui/stand/settings")
+local profile_menu = load("ui/stand/profile_menu")
 local i18n = load("core/i18n")
 local Logger = load("core/logger")
 local features = Atdar.features
@@ -181,7 +182,7 @@ local function fill_picker(node: table): void
         node:divider(label("menus"))
     end
     if builtin then
-        local name = text("builtin.name"):format(Atdar.name)
+        local name = text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name)
         if manifest then
             node:list_action(name, copied_builtin_options(), function(index)
                 if index == 1 then
@@ -217,7 +218,11 @@ local function fill_picker(node: table): void
     end
 end
 
--- Added before any menu loads, so unloading a menu never drops it
+-- Added before any menu loads, so unloading a menu never drops them
+settings.add(function(node)
+    profile_menu.build(node, rebuild_settings)
+end)
+
 settings.add(function(node)
     fill_picker(node:list(label("load_menu.name"), {}, label("load_menu.help")))
 end)

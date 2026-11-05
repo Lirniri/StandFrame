@@ -142,6 +142,12 @@ MenuNode = class
         return self:track(menu.list_action(self.handle, name, Commands.names(commands), help, options, on_select), commands)
     end
 
+    -- Text field; on_change(value, click_type) runs when the user enters text.
+    -- Stand takes the text through its command box, so the field needs command names
+    function text_input(name: string|int, commands: table, on_change: function, help: string|int = "", default: string = "")
+        return self:track(menu.text_input(self.handle, name, Commands.names(commands), help, on_change, default), commands)
+    end
+
     -- Plain button that isn't backed by a feature
     function action(name: string|int, on_click: function, commands: table = {}, help: string|int = "")
         return self:track(menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)

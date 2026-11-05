@@ -16,6 +16,9 @@ for _, name in UTILS do
     Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
 
+-- Script profile: display/short name, command prefix. Needs filesystem paths, used by the logger and menu
+Atdar.profile = Atdar.loader.load("core/profile")
+
 -- Native wrappers: Atdar.natives.<section>. An error in one file doesn't crash the script, that file stays empty
 local NATIVES = {
     -- Game systems
