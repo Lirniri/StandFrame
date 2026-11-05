@@ -1,0 +1,47 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("InfiniteStamina")
+
+local class InfiniteStamina extends Feature
+    function __construct()
+        parent:__construct({
+            id = "self.state.infinite_stamina",
+            kind = "loop"
+        })
+        self.restored = false
+    end
+
+    function is_restored(): bool
+        local restored = self.restored
+        local text = restored and "is true!" or "!is false!"
+        log:debug($"id: {self.id}: {text}")
+        return restored
+    end
+
+    function set_stamina(toggle)
+        local n_player = Atdar.natives.player
+
+        local debug_text = toggle and "is restored :)" or "is not restored :("
+        n_player.user.infinite_stamina(toggle)
+        self.restored = toggle
+        log:debug($"id: {self.id}: {debug_text}")
+    end
+
+    function on_tick()
+        local n_player = Atdar.natives.player
+        local n_ped = Atdar.natives.entity.ped
+        local is_sprinting = n_ped.is_sprinting(n_player.get_ped_id())
+
+        self:set_stamina(is_sprinting)
+        util.toast(tostring(n_player.movement.get_infinite_sprint_stamina(n_player.get_ped_id())))
+    end
+
+    function on_disable()
+        self:set_stamina(false)
+    end
+end
+
+return Atdar.features.add(new InfiniteStamina())

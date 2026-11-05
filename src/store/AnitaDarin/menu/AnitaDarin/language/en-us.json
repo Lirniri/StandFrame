@@ -6,6 +6,15 @@
                 "menu_name": "Movement",
                 "ragdoll_control": {
                     "menu_name": "Ragdoll Control"
+                },
+                "scuba_mode": {
+                    "menu_name": "Scuba Mode"
+                },
+                "disables": {
+                    "menu_name": "Disables",
+                    "disable_sprint": {
+                        "menu_name": "Disable Sprint"
+                    }
                 }
             },
             "state": {
@@ -31,8 +40,14 @@
                         "menu_name": "Stamina"
                     }
                 },
+                "infinite_stamina": {
+                    "menu_name": "Infinite Stamina"
+                },
                 "restore_stamina": {
                     "menu_name": "Restore Stamina"
+                },
+                "reset_stamina": {
+                    "menu_name": "Reset Stamina"
                 }
             },
             "godmode": {
@@ -65,7 +80,7 @@
             "multiplayer": {
                 "menu_name": "Multiplayer",
                 "players": {
-                    "menu_name": "Player"
+                    "menu_name": "Players"
                 }
             }
         },

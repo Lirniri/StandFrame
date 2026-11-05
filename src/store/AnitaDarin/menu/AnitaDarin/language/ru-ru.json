@@ -6,6 +6,15 @@
                 "menu_name": "Движение",
                 "ragdoll_control": {
                     "menu_name": "Контролировать Ragdoll"
+                },
+                "scuba_mode": {
+                    "menu_name": "Режим акваланга"
+                },
+                "disables": {
+                    "menu_name": "Отключить",
+                    "disable_sprint": {
+                        "menu_name": "Отключить быстрый бег"
+                    }
                 }
             },
             "state": {
@@ -31,15 +40,21 @@
                         "menu_name": "Выносливость"
                     }
                 },
+                "infinite_stamina": {
+                    "menu_name": "Бесконечная выносливость"
+                },
                 "restore_stamina": {
                     "menu_name": "Восстановить выносливость"
+                },
+                "reset_stamina": {
+                    "menu_name": "Сбросить выносливость"
                 }
             },
             "godmode": {
                 "menu_name": "Режим бога"
             },
             "half_godmode": {
-                "menu_name": "Режим Полу-бога"
+                "menu_name": "Режим полубога"
             }
         },
         "vehicle": {

@@ -1,21 +1,27 @@
 local module = {}
 
-function module.set_sprite(player_id: int, toggle: bool): void
+function module.set_sprint(player_id: int, toggle: bool): void
     PLAYER.SET_PLAYER_SPRINT(player_id, toggle)
 end
 
-function module.get_infinite_stamina(ped: int): bool -- TODO: maybe don't work
-    return PED.GET_PED_RESET_FLAG(ped, 63)
-end
-function module.set_infinite_stamina(ped: int, toggle: bool): void -- TODO: maybe don't work
-    PED.SET_PED_CONFIG_FLAG(ped, 63, toggle)
-end
+-- function module.get_infinite_sprint_stamina(ped: int): bool -- TODO: maybe don't work
+--     return PED.GET_PED_CONFIG_FLAG(ped, 63)
+-- end
+-- function module.set_infinite_sprint_stamina(ped: int, toggle: bool): void -- TODO: maybe don't work
+--     PED.SET_PED_CONFIG_FLAG(ped, 63, toggle)
+-- end
 
-function module.get_stamina(player_id: int): float
-    return PLAYER.GET_PLAYER_SPRINT_STAMINA_REMAINING(player_id)
+function module.get_sprint_stamina(player_id: int): float
+    local player = player_id
+    return PLAYER.GET_PLAYER_SPRINT_STAMINA_REMAINING(player)
 end
-function module.restore_stamina(player_id: int, value: float): void
-    PLAYER.RESTORE_PLAYER_STAMINA(player_id, value)
+function module.restore_sprint_stamina(player_id: int, value: float): void
+    local player = player_id
+    return PLAYER.RESTORE_PLAYER_STAMINA(player, value)
+end
+function module.reset_sprint_stamina(player_id: int): void
+    local player = player_id
+    return PLAYER.RESET_PLAYER_STAMINA(player)
 end
 
 return module

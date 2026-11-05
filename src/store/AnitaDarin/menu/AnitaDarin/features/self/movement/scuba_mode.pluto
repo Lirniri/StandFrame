@@ -1,0 +1,37 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("ScubaMode")
+
+-- Control is held only while the ped is ragdolling
+local class ScubaMode extends Feature
+    function __construct()
+        parent:__construct({
+            id = "self.movement.scuba_mode",
+            kind = "loop"
+        })
+    end
+
+    function set_scuba(toggle)
+        local n_player = Atdar.natives.player
+        local n_ped = Atdar.natives.entity.ped
+        local ped = n_player.get_ped_id()
+        n_ped.set_scuba(ped, toggle)
+    end
+
+    function on_tick()
+        local n_player = Atdar.natives.player
+        local n_ped = Atdar.natives.entity.ped
+        local ped = n_player.get_ped_id()
+        
+        self:set_scuba(n_ped.is_swimming(ped, true))
+    end
+    
+    function on_disable()
+        self:set_scuba(false)
+    end
+end
+
+return Atdar.features.add(new ScubaMode())

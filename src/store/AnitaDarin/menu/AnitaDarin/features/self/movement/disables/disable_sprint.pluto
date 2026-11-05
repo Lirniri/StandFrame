@@ -1,0 +1,33 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("DisableSprint")
+
+-- Control is held only while the ped is ragdolling
+local class DisableSprint extends Feature
+    function __construct()
+        parent:__construct({
+            id = "self.movement.disables.disable_sprint",
+            kind = "loop"
+        })
+    end
+
+    function set_sprint(toggle)
+        local n_player = Atdar.natives.player
+        local player = n_player.get_id()
+
+        n_player.movement.set_sprint(player, toggle)
+    end
+
+    function on_tick()
+        self:set_sprint(false)
+    end
+    
+    function on_disable()
+        self:set_sprint(true)
+    end
+end
+
+return Atdar.features.add(new DisableSprint())

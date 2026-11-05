@@ -16,6 +16,21 @@ return {
             lang.translate("menu.self.movement.ragdoll_control.menu_name"),
             { "ragcontrol" }
         )
+        movement_submenu:add_feature(
+            features.get("self.movement.scuba_mode"),
+            lang.translate("menu.self.movement.scuba_mode.menu_name"),
+            { "scubamode" }
+        )
+
+        local movement_disables_submenu = movement_submenu:list(
+            lang.translate("menu.self.movement.disables.menu_name")
+        )
+        movement_disables_submenu:add_feature(
+            features.get("self.movement.disables.disable_sprint"),
+            lang.translate("menu.self.movement.disables.disable_sprint.menu_name"),
+            { "disablesprint" }
+        )
+
 
         local state_submenu = self_menu:list(
             lang.translate("menu.self.state.menu_name")
@@ -42,10 +57,20 @@ return {
         state_submenu:divider(
             lang.translate("menu.self.state.stamina.divider.menu_name")
         )
+        -- state_submenu:add_feature(
+        --     features.get("self.state.infinite_stamina"),
+        --     lang.translate("menu.self.state.infinite_stamina.menu_name"),
+        --     { "infinitestamina" }
+        -- )
         state_submenu:add_feature(
             features.get("self.state.restore_stamina"),
             lang.translate("menu.self.state.restore_stamina.menu_name"),
             { "restorestamina" }
+        )
+        state_submenu:add_feature(
+            features.get("self.state.reset_stamina"),
+            lang.translate("menu.self.state.reset_stamina.menu_name"),
+            { "resetstamina" }
         )
 
 

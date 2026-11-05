@@ -8,7 +8,9 @@ local log = new Logger("RagdollControl")
 -- Control is held only while the ped is ragdolling
 local class RagdollControl extends Feature
     function __construct()
-        parent:__construct({ id = "self.movement.ragdoll_control", kind = "loop" })
+        parent:__construct({
+            id = "self.movement.ragdoll_control", kind = "loop"
+        })
         self.given = false
     end
 
@@ -22,9 +24,9 @@ local class RagdollControl extends Feature
     function set_control(toggle: bool): void
         local n_player = Atdar.natives.player
         n_player.give_ragdoll_control(n_player.get_id(), toggle)
-        local text = toggle and "control is given :)" or "control is removed :("
+        local debug_text = toggle and "control is given :)" or "control is removed :("
         self.given = toggle
-        log:debug($"id: {self.id}: {text}")
+        log:debug($"id: {self.id}: {debug_text}")
     end
 
     function on_tick()
