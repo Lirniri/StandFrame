@@ -5,11 +5,11 @@ local lang = Atdar.lang
 return {
     build = function(node, ctx)
         builder.build_items(node, {
-            { list = lang.translate("menu.vehicle.title"), items = {
-                { list = lang.translate("menu.vehicle.last_vehicle.title"), items = {
+            { list = lang.translate("menu.vehicle.menu_name"), items = {
+                { list = lang.translate("menu.vehicle.last_vehicle.menu_name"), items = {
                     { divider = lang.translate("menu.vehicle.last_vehicle.divider") },
                 } },
-                { list = lang.translate("menu.vehicle.movement.title") },
+                { list = lang.translate("menu.vehicle.movement.menu_name") },
                 { feature = "self.explode", name = lang.translate("menu.vehicle.destroy.menu_name"), commands = { "destroyvehicle" } },
             } },
         })

@@ -4,11 +4,11 @@ local lang = Atdar.lang
 return {
     build = function(node, ctx)
         local self_menu = node:list(
-            lang.translate("menu.self.title")
+            lang.translate("menu.self.menu_name")
         )
 
         local movement = self_menu:list(
-            lang.translate("menu.self.movement.title")
+            lang.translate("menu.self.movement.menu_name")
         )
         movement:add_feature(
             features.get("self.movement.ragdoll_control"),

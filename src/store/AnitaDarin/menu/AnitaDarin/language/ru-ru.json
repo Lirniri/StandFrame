@@ -1,9 +1,9 @@
 {
     "menu": {
         "self": {
-            "title": "Себя",
+            "menu_name": "Себя",
             "movement": {
-                "title": "Движение",
+                "menu_name": "Движение",
                 "ragdoll_control": {
                     "menu_name": "Контролировать Ragdoll"
                 }
@@ -16,22 +16,23 @@
             }
         },
         "vehicle": {
-            "title": "Транспорт",
+            "menu_name": "Транспорт",
             "last_vehicle": {
-                "title": "Последний Транспорт",
+                "menu_name": "Последний Транспорт",
                 "divider": "Транспорт"
             },
             "movement": {
-                "title": "Передвижение"
+                "menu_name": "Передвижение"
             },
             "destroy": {
                 "menu_name": "Уничтожить"
             }
         },
         "settings": {
+            "menu_name": "Настройки",
             "anidar": {
                 "settings": {
-                    "title": "Настройки"
+                    "menu_name": "Настройки"
                 }
             }
         }

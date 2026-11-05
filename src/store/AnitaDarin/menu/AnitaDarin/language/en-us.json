@@ -1,9 +1,9 @@
 {
     "menu": {
         "self": {
-            "title": "Self",
+            "menu_name": "Self",
             "movement": {
-                "title": "Movement",
+                "menu_name": "Movement",
                 "ragdoll_control": {
                     "menu_name": "Ragdoll Control"
                 }
@@ -16,22 +16,23 @@
             }
         },
         "vehicle": {
-            "title": "Vehicle",
+            "menu_name": "Vehicle",
             "last_vehicle": {
-                "title": "Last Vehicle",
+                "menu_name": "Last Vehicle",
                 "divider": "Vehicles"
             },
             "movement": {
-                "title": "Movement"
+                "menu_name": "Movement"
             },
             "destroy": {
                 "menu_name": "Destroy"
             }
         },
         "settings": {
+            "menu_name": "Settings",
             "anidar": {
                 "settings": {
-                    "title": "Settings"
+                    "menu_name": "Settings"
                 }
             }
         }
