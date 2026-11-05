@@ -19,14 +19,14 @@ end
 --     n_player.movement.set_infinite_sprint_stamina(ped, toggle)
 -- end
 function module.restore_stamina(value: float = 1.0): void
-    local n_movement = Atdar.natives.player.movement
+    local n_player = Atdar.natives.player
     local player = n_player.get_id()
-    n_movement.restore_sprint_stamina(player, value)
+    n_player.movement.restore_sprint_stamina(player, value)
 end
 function module.reset_stamina(): void
-    local n_movement = Atdar.natives.player.movement
+    local n_player = Atdar.natives.player
     local player = n_player.get_id()
-    n_movement.reset_sprint_stamina(player)
+    n_player.movement.reset_sprint_stamina(player)
 end
 
 -- @return Index of the active character slot

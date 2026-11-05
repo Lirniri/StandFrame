@@ -5,7 +5,6 @@ local Logger = load("core/logger")
 
 local log = new Logger("Explode")
 
--- Ticks because the game resets the flag on death/respawn
 return Atdar.features.add(new Feature({
     id = "self.explode",
     kind = "action",

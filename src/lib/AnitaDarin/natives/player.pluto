@@ -37,7 +37,7 @@ function module.is_exist(player_id: ?int = nil): int
     return NETWORK.NETWORK_IS_PLAYER_ACTIVE(player)
 end
 -- @return Ped of the given player, or of the local player if player_id is nil
-function module.get_id(player_id: ?int = nil): int
+function module.get_id(): int
     return PLAYER.PLAYER_ID()
 end
 function module.get_all_id(include_user: bool = true): int
@@ -84,8 +84,8 @@ end
 
 function module.is_friend(player_id: int): bool
     local player_handle = memory.alloc(104)
-    NETWORK_HANDLE_FROM_PLAYER(player_id, player_handle, 13)
-    local isFriend = NETWORK_IS_HANDLE_VALID(player_handle, 13) and NETWORK_IS_FRIEND(player_handle)
+    NETWORK.NETWORK_HANDLE_FROM_PLAYER(player_id, player_handle, 13)
+    local isFriend = NETWORK.NETWORK_IS_HANDLE_VALID(player_handle, 13) and NETWORK.NETWORK_IS_FRIEND(player_handle)
     return isFriend
 end
 

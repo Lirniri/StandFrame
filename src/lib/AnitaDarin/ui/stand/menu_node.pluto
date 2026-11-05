@@ -103,6 +103,7 @@ MenuNode = class
         return self:track(menu.divider(self.handle, text))
     end
 
+    -- "Name: value" line; change the value later with menu.set_value(ref, "...")
     function readonly(name: string|int, value: string = "")
         return self:track(menu.readonly(self.handle, name, value))
     end
@@ -110,11 +111,6 @@ MenuNode = class
     -- Text-only line, like a divider but in the normal item style
     function readonly_name(name: string|int)
         return self:track(menu.readonly_name(self.handle, name))
-    end
-
-    -- "Name: value" line; change the value later with menu.set_value(ref, "...")
-    function readonly(name: string|int, value: string = "")
-        return self:track(menu.readonly(self.handle, name, value))
     end
 
     -- Opens the link in the browser when clicked

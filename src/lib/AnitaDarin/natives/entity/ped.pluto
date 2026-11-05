@@ -99,14 +99,14 @@ function module.set_max_health(ped: int, value: ?int, instigator: int = 0, weapo
     local entity = Atdar.natives.entity
     local is_ped = module.is_ped(ped)
     if is_ped then
-        entity.set_health(ped, value, instigator, weaponType)
+        entity.set_max_health(ped, value, instigator, weaponType)
     else
         return nil
     end
 end
 
-function module.get_armor(ped: int, value: int): int
-    return PED.GET_PED_ARMOUR(ped, value)
+function module.get_armor(ped: int): int
+    return PED.GET_PED_ARMOUR(ped)
 end
 
 function module.set_armor(ped: int, value: int): int
