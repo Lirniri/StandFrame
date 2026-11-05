@@ -1,0 +1,80 @@
+-- Translations from store/AnitaDarin/language/<language>.json
+-- Keys are dot paths into nested JSON: "menu.self.godmode" -> { "menu": { "self": { "godmode": "..." } } }
+
+local json = require "pluto:json"
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("i18n")
+
+local DEFAULT_LANGUAGE = "en"
+
+local module = {}
+
+local language = DEFAULT_LANGUAGE
+local strings = {}
+local fallback_strings = {}
+-- Missing keys already logged, so a key used every tick doesn't flood the log
+local reported = {}
+
+-- @return Decoded language file, or an empty table if it's missing or broken
+local function read_language(name: string): table
+    local path = $"{Atdar.filesystem.paths.store}language\\{name}.json"
+    local file = io.open(path, "r")
+    if not file then
+        log:warn($"language file not found: {path}")
+        return {}
+    end
+    local content = file:read("*a")
+    file:close()
+    -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
+    local data = json.decode(content)
+    return type(data) == "table" ? data : {}
+end
+
+local function lookup(data: table, key: string)
+    local value = data
+    for part in key:gmatch("[^%.]+") do
+        if type(value) ~= "table" then
+            return nil
+        end
+        value = value[part]
+    end
+    return value
+end
+
+function module.set_language(name: string): void
+    language = name
+    strings = read_language(name)
+    fallback_strings = name == DEFAULT_LANGUAGE ? strings : read_language(DEFAULT_LANGUAGE)
+    reported = {}
+end
+
+function module.get_language(): string
+    return language
+end
+
+-- @return The value at key in the current language as is, or nil
+function module.get(key: string)
+    return lookup(strings, key)
+end
+
+-- @return Text for key: current language, then English, then fallback, then the key itself
+function module.translate(key: string, fallback: ?string = nil): string
+    local text = lookup(strings, key)
+    if type(text) == "string" then
+        return text
+    end
+    text = lookup(fallback_strings, key)
+    if type(text) ~= "string" and not reported[key] then
+        reported[key] = true
+        log:debug($"no translation for '{key}' in {language}")
+    end
+    if type(text) == "string" then
+        return text
+    end
+    return fallback or key
+end
+
+module.set_language(DEFAULT_LANGUAGE)
+
+return module

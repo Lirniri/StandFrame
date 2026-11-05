@@ -1,1 +1,13 @@
-{}
+{
+    "menu": {
+        "self": {
+            "title": "Персонаж",
+            "godmode": {
+                "menu_name": "Режим бога"
+            },
+            "half_godmode": {
+                "menu_name": "Полубог"
+            }
+        }
+    }
+}

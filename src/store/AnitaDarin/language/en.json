@@ -1,1 +1,13 @@
-{}
+{
+    "menu": {
+        "self": {
+            "title": "Self",
+            "godmode": {
+                "menu_name": "Godmode"
+            },
+            "half_godmode": {
+                "menu_name": "Half-Godmode"
+            }
+        }
+    }
+}

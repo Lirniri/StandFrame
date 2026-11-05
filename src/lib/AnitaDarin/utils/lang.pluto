@@ -1,0 +1,23 @@
+local i18n = Atdar.loader.load("core/i18n")
+
+local module = {}
+
+-- Wrappers over core/i18n
+
+function module.translate(key: string, fallback: ?string = nil): string
+    return i18n.translate(key, fallback)
+end
+
+function module.get_language()
+    return i18n.get_language(key)
+end
+
+function module.set_language(name: string)
+    return i18n.set_language(name)
+end
+
+function module.get_key(key: string)
+    return i18n.get(key)
+end
+
+return module

@@ -10,6 +10,7 @@ Atdar.globals = Atdar.loader.load("globals")
 local UTILS = {
     "util",
     "filesystem",
+    "lang", -- after filesystem: reads language files from store
 }
 for _, name in UTILS do
     Atdar[name] = Atdar.loader.load($"utils/{name}")
