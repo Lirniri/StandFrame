@@ -21,10 +21,12 @@ return Atdar.features.add(new Feature({
                 vehicle = handle,
                 net_id = netID
             })
+            log:debug($"{self.id}: vehicle: {handle} is explode with net_id: {netID}".. " :)")
         else
             n_vehicle.explode({
                 vehicle = handle
             })
+            log:debug($"{self.id}: vehicle: {handle} is explode".. " :)")
         end
     end
 }))

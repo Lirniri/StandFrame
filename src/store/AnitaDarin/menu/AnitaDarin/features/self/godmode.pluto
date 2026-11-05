@@ -14,7 +14,7 @@ return Atdar.features.add(new Feature({
         local n_player = Atdar.natives.player
         local player = n_player.get_id()
         if not n_player.is_godmode(player) then
-            log:debug($"{self.id} is given")
+            log:debug($"id: {self.id}: godmode is given")
             n_player.set_godmode(player, true)
         end
     end,
@@ -22,6 +22,6 @@ return Atdar.features.add(new Feature({
     on_disable = function(self)
         local n_player = Atdar.natives.player
         n_player.set_godmode(n_player.get_id(), false)
-        log:debug($"{self.id} is removed")
+        log:debug($"id: {self.id}: godmode is removed")
     end,
 }))

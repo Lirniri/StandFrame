@@ -6,19 +6,19 @@ function module.get_char_slot(): int
     return util.get_char_slot()
 end
 
-function module.get_vehicle(include_last_vehicle: bool = true, asPointer: bool = false)
+function module.get_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false)
     local handle = entities.get_user_vehicle_as_handle(include_last_vehicle)
     local pointer = entities.get_user_vehicle_as_pointer(include_last_vehicle)
-    return asPointer and pointer or handle
+    return as_pointer and pointer or handle
 end
 
-function module.get_personal_vehicle(include_last_vehicle: bool = true, asPointer: bool = false): int
+function module.get_personal_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false): int
     if not util.is_session_started() then
         return nil
     end
     local handle = entities.get_user_personal_vehicle_as_handle(include_last_vehicle)
     local pointer = entities.handle_to_pointer(handle)
-    return asPointer and pointer or handle
+    return as_pointer and pointer or handle
 end
 
 

@@ -15,10 +15,10 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_PED(net_id)
 end
 
-function module.get_all(asPointer: bool = false)
+function module.get_all(as_pointer: bool = false)
     local handle = entities.get_all_peds_as_handles()
     local pointer = entities.get_all_peds_as_pointers()
-    return asPointer and pointer or handle
+    return as_pointer and pointer or handle
 end
 
 function module.is_human(ped: int): bool
@@ -37,8 +37,10 @@ function module.is_jumping(ped: int): bool
     return PED.IS_PED_JUMPING(ped)
 end
 
-module.parachute = load("natives/entity/ped/parachute")
 module.task = load("natives/entity/ped/task")
 module.weapon = load("natives/entity/ped/weapon")
+module.parachute = load("natives/entity/ped/parachute")
+
+module.vehicle = load("natives/entity/ped/vehicle")
 
 return module

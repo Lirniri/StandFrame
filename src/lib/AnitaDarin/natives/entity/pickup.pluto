@@ -1,9 +1,9 @@
 local module = {}
 
-function module.gel_all(asPointer: bool = false)
+function module.gel_all(as_pointer: bool = false)
     local handle = entities.get_all_pickups_as_handles()
     local pointer = entities.get_all_pickups_as_pointers()
-    return asPointer and pointer or handle
+    return as_pointer and pointer or handle
 end
 
 return module

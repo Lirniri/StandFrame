@@ -111,7 +111,8 @@ function module.can_ragdoll(ped: int): bool
     return PED.CAN_PED_RAGDOLL(ped)
 end
 function module.give_ragdoll_control(player_id: int, toggle: bool): void
-    PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player_id, toggle)
+    local player = player_id
+    PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player, toggle)
 end
 
 function module.remove_helmet(player_id: int, p2: bool)
@@ -121,8 +122,6 @@ end
 
 
 module.user = load("natives/player/user")
-
-
 
 module.camera = load("natives/player/camera")
 

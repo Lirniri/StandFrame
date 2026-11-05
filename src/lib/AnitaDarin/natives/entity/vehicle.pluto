@@ -9,10 +9,10 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_VEH(net_id)
 end
 
-function module.get_all(asPointer: bool = false): table
+function module.get_all(as_pointer: bool = false): table
     local handle = entities.get_all_vehicles_as_handles()
     local pointer = entities.get_all_vehicles_as_pointer()
-    return asPointer and pointer or handle
+    return as_pointer and pointer or handle
 end
 
 function module.is_stopped(vehicle: int): bool
