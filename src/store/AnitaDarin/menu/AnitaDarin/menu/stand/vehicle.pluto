@@ -10,7 +10,7 @@ return {
                     { divider = lang.translate("menu.vehicle.last_vehicle.divider.menu_name") },
                 } },
                 { list = lang.translate("menu.vehicle.movement.menu_name") },
-                { feature = "self.explode", name = lang.translate("menu.vehicle.destroy.menu_name"), commands = { "destroyvehicle" } },
+                { feature = "self.explode", name = lang.translate("menu.vehicle.explode.menu_name"), commands = { "destroyvehicle" } },
             } },
         })
     end,

@@ -18,7 +18,7 @@
         "vehicle": {
             "menu_name": "Транспорт",
             "last_vehicle": {
-                "menu_name": "Последний Транспорт",
+                "menu_name": "Последний транспорт",
                 "divider": {
                     "menu_name": "Транспорт"
                 }
@@ -27,7 +27,7 @@
                 "menu_name": "Передвижение"
             },
             "explode": {
-                "menu_name": "Уничтожить"
+                "menu_name": "Взорвать"
             }
         },
         "settings": {
