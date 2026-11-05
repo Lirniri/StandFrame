@@ -7,8 +7,8 @@ return {
         local settings_menu = node:list("Settings")
 
         settings.set_parent(settings_menu)
-        settings.set_name("Settings")
         settings.set_divider($"{Atdar.name}")
+        settings.set_name("Settings")
 
         -- Items for the section go here:
         -- settings.add(function(settings_node)
