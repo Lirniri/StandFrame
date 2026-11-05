@@ -3,16 +3,16 @@ local Feature = Atdar.loader.load("features/feature")
 -- Capitalized: methods below take a `commands` parameter with the item's base command names
 local Commands = Atdar.loader.load("ui/stand/commands")
 
--- Stand item for each Feature kind
+-- Stand item for each Feature kind; names and help may be Stand labels (int) from i18n
 local ITEM_FOR_KIND = {
 
-    loop = function(handle, feature: table, name: string, commands: table, help: string)
+    loop = function(handle, feature: table, name: string|int, commands: table, help: string|int)
         return menu.toggle_loop(handle, name, commands, help,
             function() feature:tick() end,
             function() feature:disable() end)
     end,
 
-    toggle = function(handle, feature: table, name: string, commands: table, help: string)
+    toggle = function(handle, feature: table, name: string|int, commands: table, help: string|int)
         return menu.toggle(handle, name, commands, help, function(on)
             if on then
                 feature:enable()
@@ -22,7 +22,7 @@ local ITEM_FOR_KIND = {
         end)
     end,
 
-    action = function(handle, feature: table, name: string, commands: table, help: string)
+    action = function(handle, feature: table, name: string|int, commands: table, help: string|int)
         return menu.action(handle, name, commands, help,
             function() feature:trigger() end)
     end,
@@ -106,11 +106,11 @@ MenuNode = class
         end
     end
 
-    function divider(text: string)
+    function divider(text: string|int)
         return self:track(menu.divider(self.handle, text))
     end
 
-    function list(name: string, commands: table = {}, help: string = ""): table
+    function list(name: string|int, commands: table = {}, help: string|int = ""): table
         local child = new MenuNode(menu.list(self.handle, name, Commands.names(commands), help))
         self:track(child.handle, commands)
         table.insert(self.sublists, child)
@@ -138,16 +138,16 @@ MenuNode = class
     end
 
     -- List of options where picking one calls on_select(index, option_name, click_type)
-    function list_action(name: string, options: table, on_select: function, commands: table = {}, help: string = "")
+    function list_action(name: string|int, options: table, on_select: function, commands: table = {}, help: string|int = "")
         return self:track(menu.list_action(self.handle, name, Commands.names(commands), help, options, on_select), commands)
     end
 
     -- Plain button that isn't backed by a feature
-    function action(name: string, on_click: function, commands: table = {}, help: string = "")
+    function action(name: string|int, on_click: function, commands: table = {}, help: string|int = "")
         return self:track(menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)
     end
 
-    function add_feature(feature: table, name: string, commands: table = {}, help: string = "")
+    function add_feature(feature: table, name: string|int, commands: table = {}, help: string|int = "")
         local create = ITEM_FOR_KIND[feature.kind]
         if not create then
             error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")

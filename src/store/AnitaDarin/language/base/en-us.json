@@ -1,14 +1,6 @@
 {
-    "language": {
-        "name": "English (US)"
-    },
     "menu_loader": {
         "not_found": "Built-in menu not found",
-        "language": {
-            "name": "Language",
-            "auto": "Auto (Stand)",
-            "help": "Language of the script. Auto follows Stand's language."
-        },
         "load_menu": {
             "name": "Load Menu",
             "help": "Replace the current menu. Menus from store are made outside the script and run their own code"

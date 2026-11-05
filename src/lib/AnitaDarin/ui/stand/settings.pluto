@@ -20,12 +20,12 @@ function module.add(build_fn: function): void
     table.insert(contributors, build_fn)
 end
 
-function module.set_name(name: string): void
+function module.set_name(name: string|int): void
     config.name = name
 end
 
 -- Divider above the list; nil removes it
-function module.set_divider(text: ?string): void
+function module.set_divider(text: ?string|int): void
     config.divider = text
 end
 

@@ -103,30 +103,19 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
         end
     end
     current = { kind = kind, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
+    -- Stand applies the active profile only to items created during the script's main body,
+    -- so a menu loaded later by hand starts without the profile's states
     rebuild_settings()
-
-    -- Stand applies the active profile to a script's items only once, after the script's main body.
-    -- A menu loaded later (Load Menu, language switch) has to ask for it
-    if menu.apply_command_states then
-        menu.apply_command_states()
-    else
-        log:debug("menu.apply_command_states isn't available, profile states not applied")
-    end
 end
 
-local load_builtin
-
--- reload: loads the same menu again, e.g. after the language changes
-load_builtin = function(): void
+local function load_builtin(): void
     load_menu("builtin", $"{paths.lib}language\\", find_builtin_features(),
         |node| -> builder.build_menu(node, BUILTIN_MENU_DIR))
-    current.reload = load_builtin
 end
 
 local function load_pack(info: table): void
     load_menu("pack", $"{info.dir}language\\", info.feature_files,
         |node| -> builder.build_menu(node, builder.layout_dir(info.dir)))
-    current.reload = || -> load_pack(info)
 end
 
 local function copy_pack(info: table): void
@@ -164,18 +153,23 @@ local function remove_builtin(): void
     rebuild_settings()
 end
 
--- Strings of the independent menu live in store/AnitaDarin/language/base/ under "menu_loader"
-local function t(key: string): string
-    return Atdar.lang.translate($"menu_loader.{key}")
+-- Strings of the independent menu live in store/AnitaDarin/language/base/ under "menu_loader".
+-- label(): Stand label for item names and help, shown in Stand's language;
+-- text(): ready string in Stand's current language, for strings filled with format()
+local function label(key: string): int
+    return i18n.label($"menu_loader.{key}")
 end
 
--- Built per call: the language may have changed since the last build
+local function text(key: string): string
+    return i18n.text($"menu_loader.{key}")
+end
+
 local function pack_options(): table
-    return { t("options.load"), t("options.copy_to_core"), t("options.open_menu_folder"), t("options.open_features_folder") }
+    return { label("options.load"), label("options.copy_to_core"), label("options.open_menu_folder"), label("options.open_features_folder") }
 end
 
 local function copied_builtin_options(): table
-    return { t("options.load"), t("options.remove_from_core") }
+    return { label("options.load"), label("options.remove_from_core") }
 end
 
 -- Adds an entry per available menu: the built-in one (if any) and every pack in store
@@ -184,10 +178,10 @@ local function fill_picker(node: table): void
     local manifest = builtin and builder.read_core_manifest(paths.lib)
     -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
     if not manifest then
-        node:divider(t("menus"))
+        node:divider(label("menus"))
     end
     if builtin then
-        local name = t("builtin.name"):format(Atdar.name)
+        local name = text("builtin.name"):format(Atdar.name)
         if manifest then
             node:list_action(name, copied_builtin_options(), function(index)
                 if index == 1 then
@@ -195,17 +189,17 @@ local function fill_picker(node: table): void
                 else
                     remove_builtin()
                 end
-            end, {}, t("builtin.copied_help"):format(manifest.pack))
-            node:divider(t("menus"))
+            end, {}, text("builtin.copied_help"):format(manifest.pack))
+            node:divider(label("menus"))
         else
-            node:action(name, load_builtin, {}, t("builtin.help"))
+            node:action(name, load_builtin, {}, label("builtin.help"))
         end
     end
     local packs = builder.find_loadable_packs(PACKS_DIR)
     for _, info in ipairs(packs) do
-        local version = info.version or t("pack.unknown_version")
-        local author = info.author or t("pack.unknown_author")
-        local help = t("pack.help"):format(version, author) .. "\n" .. t("pack.options_help")
+        local version = info.version or text("pack.unknown_version")
+        local author = info.author or text("pack.unknown_author")
+        local help = text("pack.help"):format(version, author) .. "\n" .. text("pack.options_help")
         node:list_action(info.name, pack_options(), function(index)
             if index == 1 then
                 load_pack(info)
@@ -219,49 +213,20 @@ local function fill_picker(node: table): void
         end, {}, help)
     end
     if not builtin and #packs == 0 then
-        node:divider(t("no_menus"))
+        node:divider(label("no_menus"))
     end
 end
-
--- Rebuilds what's on screen so it shows the current language
-local function reload_current(): void
-    if current and current.reload then
-        current.reload()
-        return
-    end
-    if notice then
-        menu.set_menu_name(notice, t("not_found"))
-    end
-    rebuild_settings()
-end
-
--- Language picker; added before any menu loads, so unloading a menu never drops it
-settings.add(function(node)
-    local codes = i18n.available()
-    local options = { t("language.auto") }
-    for _, code in ipairs(codes) do
-        table.insert(options, i18n.language_name(code))
-    end
-    node:list_action(t("language.name"), options, function(index)
-        if index == 1 then
-            i18n.set_auto()
-        else
-            i18n.set_language(codes[index - 1])
-        end
-        reload_current()
-    end, { "language" }, t("language.help"))
-end)
 
 -- Added before any menu loads, so unloading a menu never drops it
 settings.add(function(node)
-    fill_picker(node:list(t("load_menu.name"), {}, t("load_menu.help")))
+    fill_picker(node:list(label("load_menu.name"), {}, label("load_menu.help")))
 end)
 
 if has_builtin() then
     load_builtin()
 else
     log:warn("built-in menu not found, a menu can be loaded from store")
-    notice = module.root:divider(t("not_found"))
+    notice = module.root:divider(label("not_found"))
     module.settings = settings.build(module.root)
 end
 

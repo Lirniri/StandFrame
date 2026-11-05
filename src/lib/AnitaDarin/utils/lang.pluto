@@ -4,16 +4,19 @@ local module = {}
 
 -- Wrappers over core/i18n
 
-function module.translate(key: string, fallback: ?string = nil): string
-    return i18n.translate(key, fallback)
+-- Stand label for menu items (names, help texts): shown in Stand's language, saved in English in profiles
+function module.translate(key: string, fallback: ?string = nil): int
+    return i18n.label(key, fallback)
 end
 
-function module.get_language()
-    return i18n.get_language(key)
+-- Ready text in Stand's current language, for strings built from parts
+function module.text(key: string, fallback: ?string = nil): string
+    return i18n.text(key, fallback)
 end
 
-function module.set_language(name: string)
-    return i18n.set_language(name)
+-- Stand's current language code ("en", "ru", ...)
+function module.get_language(): string
+    return lang.get_current()
 end
 
 function module.get_key(key: string)
