@@ -2,7 +2,9 @@ local load = Atdar.loader.load
 
 local module = {}
 
-module.user = load("natives/player/camera/user")
+-- State
+
+-- Get
 
 function module.get_position(player_id: int): vector3
     return players.get_cam_pos(player_id)
@@ -11,5 +13,11 @@ end
 function module.get_rotation(player_id: int): vector3
     return players.get_cam_rot(player_id)
 end
+
+-- Set
+
+-- Actions
+
+module.user = load("natives/player/camera/user")
 
 return module

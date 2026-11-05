@@ -1,15 +1,15 @@
 local module = {}
 
-function module.get(ped: int, include_entering: bool = false): int
-    return PED.GET_VEHICLE_PED_IS_IN(ped, include_entering)
-end
-
 function module.is_in_any(ped: int, include_entering: bool = false): bool
     return PED.IS_PED_IN_ANY_VEHICLE(ped, include_entering)
 end
 
 function module.is_in_this(ped: int, vehicle: int, include_entering: bool = false): bool
     return PED.IS_PED_IN_VEHICLE(ped, vehicle, include_entering)
+end
+
+function module.get(ped: int, include_entering: bool = false): int
+    return PED.GET_VEHICLE_PED_IS_IN(ped, include_entering)
 end
 
 return module

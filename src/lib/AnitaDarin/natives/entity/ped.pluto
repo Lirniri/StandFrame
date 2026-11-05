@@ -2,8 +2,14 @@ local load = Atdar.loader.load
 
 local module = {}
 
+-- State
+
 function module.is_ped(ped): bool
     return ENTITY.IS_ENTITY_A_PED(ped)
+end
+
+function module.is_player(player_id: int): bool
+    return PED.IS_PED_A_PLAYER(player_id)
 end
 
 function module.is_human(ped: int): bool
@@ -14,17 +20,12 @@ function module.is_male(ped: int): bool
     return PED.IS_PED_MALE(ped)
 end
 
-function module.is_player(player_id: int): bool
-    return PED.IS_PED_A_PLAYER(player_id)
+function module.is_stopped(ped: int): bool
+    return PED.IS_PED_STOPPED(ped)
 end
-
 
 function module.is_sprinting(ped: int): bool
     return TASK.IS_PED_SPRINTING(ped)
-end
-
-function module.is_stopped(ped: int): bool
-    return PED.IS_PED_STOPPED(ped)
 end
 
 function module.is_jumping(ped: int): bool
@@ -35,31 +36,22 @@ function module.is_swimming(ped: int, under_water: bool = false): bool
     return under_water and PED.IS_PED_SWIMMING_UNDER_WATER(ped) or PED.IS_PED_SWIMMING(ped)
 end
 
-
 function module.is_scuba(ped: int): bool
     return module.flags.get_config(ped, module.flags.CONFIG.IS_SCUBA)
 end
 
-function module.set_scuba(ped: int, toggle: bool): void
-    module.flags.set_config(ped, module.flags.CONFIG.IS_SCUBA, toggle)
+function module.is_max_health(ped: int): bool
+    local health = module.get_health(ped)
+    return health ~= nil and health >= module.get_max_health(ped)
 end
 
-
-function module.get_net_id(ped): int
-    return NETWORK.PED_TO_NET(ped)
-end
-function module.from_net_id(net_id): ?int
-    local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
-    return NETWORK.NET_TO_PED(net_id)
-end
+-- Get
 
 function module.get_all(as_pointer: bool = false)
     local handle = entities.get_all_peds_as_handles()
     local pointer = entities.get_all_peds_as_pointers()
     return as_pointer and pointer or handle
 end
-
 
 function module.get_health(ped): int
     local entity = Atdar.natives.entity
@@ -70,6 +62,7 @@ function module.get_health(ped): int
         return nil
     end
 end
+
 function module.get_max_health(ped): int
     local entity = Atdar.natives.entity
     local is_ped = module.is_ped(ped)
@@ -80,9 +73,24 @@ function module.get_max_health(ped): int
     end
 end
 
-function module.is_max_health(ped: int): bool
-    local health = module.get_health(ped)
-    return health ~= nil and health >= module.get_max_health(ped)
+function module.get_armor(ped: int): int
+    return PED.GET_PED_ARMOUR(ped)
+end
+
+function module.get_net_id(ped): int
+    return NETWORK.PED_TO_NET(ped)
+end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_PED(net_id)
+end
+
+-- Set
+
+function module.set_scuba(ped: int, toggle: bool): void
+    module.flags.set_config(ped, module.flags.CONFIG.IS_SCUBA, toggle)
 end
 
 function module.set_health(ped: int, value: ?int, instigator: int = 0, weaponType: int = 0): ?int
@@ -105,10 +113,6 @@ function module.set_max_health(ped: int, value: ?int, instigator: int = 0, weapo
     end
 end
 
-function module.get_armor(ped: int): int
-    return PED.GET_PED_ARMOUR(ped)
-end
-
 function module.set_armor(ped: int, value: int): int
     return PED.SET_PED_ARMOUR(ped, value)
 end
@@ -120,9 +124,7 @@ end
 module.task = load("natives/entity/ped/task")
 module.weapon = load("natives/entity/ped/weapon")
 module.parachute = load("natives/entity/ped/parachute")
-
 module.vehicle = load("natives/entity/ped/vehicle")
-
 module.flags = load("natives/entity/ped/flags")
 
 return module

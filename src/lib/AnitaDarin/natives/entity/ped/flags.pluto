@@ -14,16 +14,20 @@ module.RESET = {
     -- body
 }
 
+-- Get
+
 function module.get_config(ped: int, flag: int): bool
     return PED.GET_PED_CONFIG_FLAG(ped, flag, true)
 end
 
-function module.set_config(ped: int, flag: int, toggle: bool): void
-    PED.SET_PED_CONFIG_FLAG(ped, flag, toggle)
-end
-
 function module.get_reset(ped: int, flag: int): bool
     return PED.GET_PED_RESET_FLAG(ped, flag)
+end
+
+-- Set
+
+function module.set_config(ped: int, flag: int, toggle: bool): void
+    PED.SET_PED_CONFIG_FLAG(ped, flag, toggle)
 end
 
 function module.set_reset(ped: int, flag: int, toggle: bool): void

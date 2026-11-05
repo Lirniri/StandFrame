@@ -1,33 +1,8 @@
 local module = {}
 
-function module.restore_health(): void
-    local ped = players.user_ped()
-    local entity = Atdar.natives.entity
-    entity.set_health(ped, entity.get_max_health(ped))
-end
-function module.restore_armor(): void
-    local n_player = Atdar.natives.player
-    local n_ped = Atdar.natives.entity.ped
-    local player = n_player.get_id()
-    local ped = n_player.get_ped_id()
-    n_ped.set_armor(ped, n_player.get_max_armor(player))
-end
+-- State
 
--- function module.infinite_stamina(toggle: bool): void
---     local n_player = Atdar.natives.player
---     local ped = n_player.get_ped_id()
---     n_player.movement.set_infinite_sprint_stamina(ped, toggle)
--- end
-function module.restore_stamina(value: float = 1.0): void
-    local n_player = Atdar.natives.player
-    local player = n_player.get_id()
-    n_player.movement.restore_sprint_stamina(player, value)
-end
-function module.reset_stamina(): void
-    local n_player = Atdar.natives.player
-    local player = n_player.get_id()
-    n_player.movement.reset_sprint_stamina(player)
-end
+-- Get
 
 -- @return Index of the active character slot
 function module.get_char_slot(): int
@@ -49,5 +24,40 @@ function module.get_personal_vehicle(include_last_vehicle: bool = true, as_point
     return as_pointer and pointer or handle
 end
 
+-- Set
+
+-- Actions
+
+function module.restore_health(): void
+    local ped = players.user_ped()
+    local entity = Atdar.natives.entity
+    entity.set_health(ped, entity.get_max_health(ped))
+end
+
+function module.restore_armor(): void
+    local n_player = Atdar.natives.player
+    local n_ped = Atdar.natives.entity.ped
+    local player = n_player.get_id()
+    local ped = n_player.get_ped_id()
+    n_ped.set_armor(ped, n_player.get_max_armor(player))
+end
+
+function module.restore_stamina(value: float = 1.0): void
+    local n_player = Atdar.natives.player
+    local player = n_player.get_id()
+    n_player.movement.restore_sprint_stamina(player, value)
+end
+
+function module.reset_stamina(): void
+    local n_player = Atdar.natives.player
+    local player = n_player.get_id()
+    n_player.movement.reset_sprint_stamina(player)
+end
+
+-- function module.infinite_stamina(toggle: bool): void
+--     local n_player = Atdar.natives.player
+--     local ped = n_player.get_ped_id()
+--     n_player.movement.set_infinite_sprint_stamina(ped, toggle)
+-- end
 
 return module

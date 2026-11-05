@@ -1,13 +1,12 @@
 local module = {}
 
-function module.get_net_id(vehicle): int
-    return NETWORK.VEH_TO_NET(vehicle)
+-- State
+
+function module.is_stopped(vehicle: int): bool
+    return VEHICLE.IS_VEHICLE_STOPPED(vehicle)
 end
-function module.from_net_id(net_id): ?int
-    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
-    return NETWORK.NET_TO_VEH(net_id)
-end
+
+-- Get
 
 function module.get_all(as_pointer: bool = false): table
     local handle = entities.get_all_vehicles_as_handles()
@@ -15,9 +14,17 @@ function module.get_all(as_pointer: bool = false): table
     return as_pointer and pointer or handle
 end
 
-function module.is_stopped(vehicle: int): bool
-    return VEHICLE.IS_VEHICLE_STOPPED(vehicle)
+function module.get_net_id(vehicle): int
+    return NETWORK.VEH_TO_NET(vehicle)
 end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_VEH(net_id)
+end
+
+-- Actions
 
 -- opts: { vehicle, is_audible = true, is_invisible = false, net_id = nil }
 -- net_id given: networked explosion (NETWORK_EXPLODE_VEHICLE), otherwise a local one

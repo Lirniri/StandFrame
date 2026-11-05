@@ -1,18 +1,19 @@
 local module = {}
 
-function module.get_net_id(obj): int
-    return NETWORK.OBJ_TO_NET(obj)
-end
-function module.from_net_id(net_id): ?int
-    local is_net_id_exist NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
-    return NETWORK.NET_TO_OBJ(net_id)
-end
-
 function module.get_all(as_pointer: bool = false)
     local handle = entities.get_all_peds_as_handles()
     local pointer = entities.get_all_peds_as_pointers()
     return as_pointer and pointer or handle
+end
+
+function module.get_net_id(obj): int
+    return NETWORK.OBJ_TO_NET(obj)
+end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_OBJ(net_id)
 end
 
 return module

@@ -1,13 +1,6 @@
 local module = {}
 
--- @return Coordinates of the ped's last weapon impact, or nil if there is none
-function module.last_impact_coord(ped: int): ?vector3
-    local coords_ptr = memory.alloc(24)
-    if WEAPON.GET_PED_LAST_WEAPON_IMPACT_COORD(ped, coords_ptr) then
-        return v3.new(memory.read_vector3(coords_ptr))
-    end
-    return nil
-end
+-- State
 
 function module.is_reloading(ped: int): bool
     return PED.IS_PED_RELOADING(ped)
@@ -17,14 +10,30 @@ function module.has(ped: int, weaponHash: int|string, p2: bool = false): bool
     local hash = util.joaat(weaponHash)
     return WEAPON.HAS_PED_GOT_WEAPON(ped, hash, p2)
 end
+
 function module.has_with_component(ped: int, weaponHash: int|string, componentHash: int|string): bool
     local hash = util.joaat(weaponHash)
     local compHash = util.joaat(componentHash)
     return WEAPON.HAS_PED_GOT_WEAPON_COMPONENT(ped, hash, compHash)
 end
+
 function module.has_manager(ped: int): bool
     return WEAPON.HAS_PED_GOT_WEAPON_MANAGER(ped)
 end
+
+-- Get
+
+-- @return Coordinates of the ped's last weapon impact, or nil if there is none
+function module.last_impact_coord(ped: int): ?vector3
+    local coords_ptr = memory.alloc(24)
+    if WEAPON.GET_PED_LAST_WEAPON_IMPACT_COORD(ped, coords_ptr) then
+        return v3.new(memory.read_vector3(coords_ptr))
+    end
+    return nil
+end
+
+-- Actions
+
 function module.give(ped: int, weaponHash: int|string, ammoCount: int = 1, isHidden: bool = false, bForceInHand: bool = false): void
     local hash = util.joaat(weaponHash)
     WEAPON.GIVE_WEAPON_TO_PED(ped, hash, ammoCount, isHidden, bForceInHand)
