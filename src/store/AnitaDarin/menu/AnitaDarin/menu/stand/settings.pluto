@@ -1,5 +1,7 @@
 local settings = Atdar.loader.load("ui/stand/settings")
 
+local lang = Atdar.lang
+
 -- The pack's own Settings list; the script's section (Load Menu etc.) is built inside it.
 -- The section goes back to the root when another menu is loaded
 return {
@@ -8,7 +10,7 @@ return {
 
         settings.set_parent(settings_menu)
         settings.set_divider($"{Atdar.name}")
-        settings.set_name("Settings")
+        settings.set_name(lang.translate("menu.settings.anidar.settings.title"))
 
         -- Items for the section go here:
         -- settings.add(function(settings_node)

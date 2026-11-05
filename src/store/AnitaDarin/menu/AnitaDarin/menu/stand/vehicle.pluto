@@ -1,15 +1,18 @@
 local builder = Atdar.loader.load("ui/stand/menu_builder")
 
+local lang = Atdar.lang
+
 return {
     build = function(node, ctx)
         builder.build_items(node, {
-            { list = "Vehicle", items = {
-                { list = "Last Vehicle", items = {
-                    { divider = "Vehicles" },
+            { list = lang.translate("menu.vehicle.title"), items = {
+                { list = lang.translate("menu.vehicle.last_vehicle.title"), items = {
+                    { divider = lang.translate("menu.vehicle.last_vehicle.divider") },
                 } },
-                { list = "Movement" },
-                { feature = "self.explode", name = "Explode" },
+                { list = lang.translate("menu.vehicle.movement.title") },
+                { feature = "self.explode", name = lang.translate("menu.vehicle.destroy.menu_name"), commands = { "destroyvehicle" } },
             } },
         })
     end,
 }
+

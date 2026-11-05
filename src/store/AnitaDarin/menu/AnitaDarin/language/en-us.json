@@ -1,0 +1,39 @@
+{
+    "menu": {
+        "self": {
+            "title": "Self",
+            "movement": {
+                "title": "Movement",
+                "ragdoll_control": {
+                    "menu_name": "Ragdoll Control"
+                }
+            },
+            "godmode": {
+                "menu_name": "Godmode"
+            },
+            "half_godmode": {
+                "menu_name": "Half-Godmode"
+            }
+        },
+        "vehicle": {
+            "title": "Vehicle",
+            "last_vehicle": {
+                "title": "Last Vehicle",
+                "divider": "Vehicles"
+            },
+            "movement": {
+                "title": "Movement"
+            },
+            "destroy": {
+                "menu_name": "Destroy"
+            }
+        },
+        "settings": {
+            "anidar": {
+                "settings": {
+                    "title": "Settings"
+                }
+            }
+        }
+    }
+}

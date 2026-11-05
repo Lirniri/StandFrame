@@ -1,0 +1,107 @@
+-- Builds Stand command names for menu items: base name -> prefix + separator + base,
+-- and renames every tracked item right away when the prefix settings change
+
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Commands")
+
+local module = {}
+
+local config = {
+    prefix = "atdar",
+    use_prefix = true,
+    separator = "", -- "" -> atdargodmode, "_" -> atdar_godmode
+}
+
+-- ref -> base names it was created with
+local tracked = {}
+
+-- Lowercase, keeps only a-z, 0-9 and _
+function module.sanitize(name: string): string
+    local clean = name:lower():gsub("[^%w_]", "")
+    return clean
+end
+
+-- @return Sanitized base names without empty ones and duplicates
+local function clean_bases(bases: table, warn: bool): table
+    local clean, seen = {}, {}
+    for _, base in ipairs(bases) do
+        local name = module.sanitize(base)
+        if name == "" then
+            if warn then
+                log:warn($"command '{base}' has no allowed characters (a-z, 0-9, _), skipped")
+            end
+        elseif not seen[name] then
+            seen[name] = true
+            table.insert(clean, name)
+        end
+    end
+    return clean
+end
+
+local function full_name(clean: string): string
+    if config.use_prefix and config.prefix ~= "" then
+        return $"{config.prefix}{config.separator}{clean}"
+    end
+    return clean
+end
+
+-- @return Full command names for a list of base names
+function module.names(bases: table): table
+    local names = {}
+    for _, clean in ipairs(clean_bases(bases, true)) do
+        table.insert(names, full_name(clean))
+    end
+    return names
+end
+
+-- Remembers an item so refresh() can rename it; items without valid commands aren't tracked
+function module.track(ref, bases: table): void
+    -- Quiet: names() already warned about these when the item was created
+    local clean = clean_bases(bases, false)
+    if #clean > 0 then
+        tracked[ref] = clean
+    end
+end
+
+-- Must be called before an item is deleted, or refresh() would touch a deleted item
+function module.untrack(ref): void
+    tracked[ref] = nil
+end
+
+-- Renames every tracked item with the current settings
+function module.refresh(): void
+    for ref, clean in pairs(tracked) do
+        local names = {}
+        for _, name in ipairs(clean) do
+            table.insert(names, full_name(name))
+        end
+        menu.set_command_names(ref, names)
+    end
+end
+
+function module.set_prefix(prefix: string): void
+    config.prefix = module.sanitize(prefix)
+    module.refresh()
+end
+
+function module.set_use_prefix(use: bool): void
+    config.use_prefix = use
+    module.refresh()
+end
+
+-- "" or "_"
+function module.set_separator(separator: string): void
+    if separator ~= "" and separator ~= "_" then
+        log:warn($"separator must be '' or '_', got '{separator}'")
+        return
+    end
+    config.separator = separator
+    module.refresh()
+end
+
+function module.get_config(): table
+    return { prefix = config.prefix, use_prefix = config.use_prefix, separator = config.separator }
+end
+
+return module

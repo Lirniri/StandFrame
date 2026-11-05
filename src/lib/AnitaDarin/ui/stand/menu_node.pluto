@@ -1,5 +1,7 @@
 local globals = Atdar.globals
 local Feature = Atdar.loader.load("features/feature")
+-- Capitalized: methods below take a `commands` parameter with the item's base command names
+local Commands = Atdar.loader.load("ui/stand/commands")
 
 -- Stand item for each Feature kind
 local ITEM_FOR_KIND = {
@@ -64,9 +66,21 @@ MenuNode = class
         self.toggles = {}
     end
 
-    function track(child_handle)
+    -- commands: the item's base command names, so they can be renamed when the prefix settings change
+    function track(child_handle, commands: table = {})
         table.insert(self.children, child_handle)
+        Commands.track(child_handle, commands)
         return child_handle
+    end
+
+    -- Forgets every item in this node and its sublists in Commands, before they're deleted
+    function untrack_commands(): void
+        for _, child_handle in ipairs(self.children) do
+            Commands.untrack(child_handle)
+        end
+        for _, sublist in ipairs(self.sublists) do
+            sublist:untrack_commands()
+        end
     end
 
     -- Switches off every toggle in this node and its sublists, then waits for Stand to stop them.
@@ -97,8 +111,8 @@ MenuNode = class
     end
 
     function list(name: string, commands: table = {}, help: string = ""): table
-        local child = new MenuNode(menu.list(self.handle, name, commands, help))
-        self:track(child.handle)
+        local child = new MenuNode(menu.list(self.handle, name, Commands.names(commands), help))
+        self:track(child.handle, commands)
         table.insert(self.sublists, child)
         return child
     end
@@ -106,12 +120,15 @@ MenuNode = class
     -- Removes this node and everything in it from the Stand menu
     function delete(): void
         self:stop_toggles()
+        self:untrack_commands()
+        Commands.untrack(self.handle)
         menu.delete(self.handle)
     end
 
     -- Removes every item created through this node, leaving the node itself
     function clear(): void
         self:stop_toggles()
+        self:untrack_commands()
         for _, child_handle in ipairs(self.children) do
             menu.delete(child_handle)
         end
@@ -122,12 +139,12 @@ MenuNode = class
 
     -- List of options where picking one calls on_select(index, option_name, click_type)
     function list_action(name: string, options: table, on_select: function, commands: table = {}, help: string = "")
-        return self:track(menu.list_action(self.handle, name, commands, help, options, on_select))
+        return self:track(menu.list_action(self.handle, name, Commands.names(commands), help, options, on_select), commands)
     end
 
     -- Plain button that isn't backed by a feature
     function action(name: string, on_click: function, commands: table = {}, help: string = "")
-        return self:track(menu.action(self.handle, name, commands, help, on_click))
+        return self:track(menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)
     end
 
     function add_feature(feature: table, name: string, commands: table = {}, help: string = "")
@@ -135,7 +152,7 @@ MenuNode = class
         if not create then
             error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")
         end
-        local ref = self:track(create(self.handle, feature, name, commands, help))
+        local ref = self:track(create(self.handle, feature, name, Commands.names(commands), help), commands)
         if TOGGLE_KINDS[feature.kind] then
             table.insert(self.toggles, ref)
         end

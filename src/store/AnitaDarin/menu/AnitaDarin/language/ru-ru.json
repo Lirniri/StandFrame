@@ -1,0 +1,39 @@
+{
+    "menu": {
+        "self": {
+            "title": "Себя",
+            "movement": {
+                "title": "Движение",
+                "ragdoll_control": {
+                    "menu_name": "Контролировать Ragdoll"
+                }
+            },
+            "godmode": {
+                "menu_name": "Режим бога"
+            },
+            "half_godmode": {
+                "menu_name": "Режим Полу-бога"
+            }
+        },
+        "vehicle": {
+            "title": "Транспорт",
+            "last_vehicle": {
+                "title": "Последний Транспорт",
+                "divider": "Транспорт"
+            },
+            "movement": {
+                "title": "Передвижение"
+            },
+            "destroy": {
+                "menu_name": "Уничтожить"
+            }
+        },
+        "settings": {
+            "anidar": {
+                "settings": {
+                    "title": "Настройки"
+                }
+            }
+        }
+    }
+}

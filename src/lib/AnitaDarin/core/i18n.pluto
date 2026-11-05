@@ -1,4 +1,5 @@
--- Translations from store/AnitaDarin/language/<language>.json
+-- Translations from <source>/<language>.json files. The script's own strings live in
+-- store/AnitaDarin/language/base/; a loaded menu adds its own folder on top (add_source) and takes it away on unload.
 -- Keys are dot paths into nested JSON: "menu.self.godmode" -> { "menu": { "self": { "godmode": "..." } } }
 
 local json = require "pluto:json"
@@ -6,22 +7,27 @@ local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("i18n")
 
-local DEFAULT_LANGUAGE = "en"
+local DEFAULT_LANGUAGE = "en-us"
 
 local module = {}
 
 local language = DEFAULT_LANGUAGE
-local strings = {}
-local fallback_strings = {}
+-- Searched from last to first, so a menu's strings win over the script's
+local sources = {}
 -- Missing keys already logged, so a key used every tick doesn't flood the log
 local reported = {}
 
 -- @return Decoded language file, or an empty table if it's missing or broken
-local function read_language(name: string): table
-    local path = $"{Atdar.filesystem.paths.store}language\\{name}.json"
+local function read_language(dir: string, name: string, required: bool): table
+    local path = $"{dir}{name}.json"
     local file = io.open(path, "r")
     if not file then
-        log:warn($"language file not found: {path}")
+        -- A menu may simply not have this language; the English fallback covers it
+        if required then
+            log:warn($"language file not found: {path}")
+        else
+            log:debug($"no {name} strings in {dir}")
+        end
         return {}
     end
     local content = file:read("*a")
@@ -29,6 +35,13 @@ local function read_language(name: string): table
     -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
     local data = json.decode(content)
     return type(data) == "table" ? data : {}
+end
+
+local function load_source(source: table): void
+    source.strings = read_language(source.dir, language, source.required)
+    source.fallback = language == DEFAULT_LANGUAGE
+        ? source.strings
+        : read_language(source.dir, DEFAULT_LANGUAGE, source.required)
 end
 
 local function lookup(data: table, key: string)
@@ -42,10 +55,51 @@ local function lookup(data: table, key: string)
     return value
 end
 
+-- @return The first string at key in field ("strings" or "fallback"), newest source first
+local function find(field: string, key: string): ?string
+    for i = #sources, 1, -1 do
+        local text = lookup(sources[i][field], key)
+        if type(text) == "string" then
+            return text
+        end
+    end
+    return nil
+end
+
+-- Adds a folder with <language>.json files; its strings win over the ones added before it
+-- @return Handle for remove_source
+function module.add_source(dir: string, required: bool = false): table
+    local source = { dir = dir, required = required }
+    load_source(source)
+    table.insert(sources, source)
+    reported = {}
+    return source
+end
+
+function module.remove_source(source: table): void
+    for i, s in ipairs(sources) do
+        if s == source then
+            table.remove(sources, i)
+            break
+        end
+    end
+    reported = {}
+end
+
+local BASE_DIR = $"{Atdar.filesystem.paths.store}language\\base\\"
+
+-- Stand's language codes that don't match the ISO code our files start with
+local STAND_CODE_ALIASES = { jp = "ja" }
+
+-- Whether the language follows Stand's (set_auto) rather than a fixed choice
+local auto = true
+
 function module.set_language(name: string): void
+    auto = false
     language = name
-    strings = read_language(name)
-    fallback_strings = name == DEFAULT_LANGUAGE ? strings : read_language(DEFAULT_LANGUAGE)
+    for _, source in ipairs(sources) do
+        load_source(source)
+    end
     reported = {}
 end
 
@@ -53,28 +107,76 @@ function module.get_language(): string
     return language
 end
 
--- @return The value at key in the current language as is, or nil
+function module.is_auto(): bool
+    return auto
+end
+
+-- @return Codes of the languages that have a base file, e.g. { "en-us", "ru-ru" }
+function module.available(): table
+    local codes = {}
+    if filesystem.is_dir(BASE_DIR) then
+        for _, path in ipairs(filesystem.list_files(BASE_DIR)) do
+            local code = path:match("([^\\/]+)%.json$")
+            if code then
+                table.insert(codes, code)
+            end
+        end
+    end
+    table.sort(codes)
+    return codes
+end
+
+-- @return The language's own name from its base file ("language.name"), or the code
+function module.language_name(code: string): string
+    local name = lookup(read_language(BASE_DIR, code, false), "language.name")
+    return type(name) == "string" ? name : code
+end
+
+-- @return Our language code for Stand's current language (Stand gives "ru", our files are "ru-ru"), or the default
+function module.from_stand(): string
+    local stand_code = lang.get_current()
+    stand_code = STAND_CODE_ALIASES[stand_code] or stand_code
+    for _, code in ipairs(module.available()) do
+        if code == stand_code or code:sub(1, #stand_code + 1) == $"{stand_code}-" then
+            return code
+        end
+    end
+    return DEFAULT_LANGUAGE
+end
+
+-- Follows Stand's language
+function module.set_auto(): void
+    module.set_language(module.from_stand())
+    auto = true
+end
+
+-- @return The value at key in the current language as is (newest source first), or nil
 function module.get(key: string)
-    return lookup(strings, key)
+    for i = #sources, 1, -1 do
+        local value = lookup(sources[i].strings, key)
+        if value ~= nil then
+            return value
+        end
+    end
+    return nil
 end
 
 -- @return Text for key: current language, then English, then fallback, then the key itself
 function module.translate(key: string, fallback: ?string = nil): string
-    local text = lookup(strings, key)
-    if type(text) == "string" then
+    local text = find("strings", key) or find("fallback", key)
+    if text then
         return text
     end
-    text = lookup(fallback_strings, key)
-    if type(text) ~= "string" and not reported[key] then
+    if not reported[key] then
         reported[key] = true
         log:debug($"no translation for '{key}' in {language}")
-    end
-    if type(text) == "string" then
-        return text
     end
     return fallback or key
 end
 
-module.set_language(DEFAULT_LANGUAGE)
+-- The script's own strings (independent menu and the rest), always there
+module.add_source(BASE_DIR, true)
+-- Starts in Stand's language
+module.set_auto()
 
 return module

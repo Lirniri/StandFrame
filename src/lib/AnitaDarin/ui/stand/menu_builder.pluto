@@ -255,6 +255,15 @@ function module.copy_pack_to_core(info: table, lib_dir: string): (bool, any)
     for _, path in ipairs(module.find_feature_files(layout)) do
         table.insert(plan, { from = path, to = $"{lib_dir}ui\\stand\\menu\\{path:sub(#layout + 1)}" })
     end
+    -- The menu's translations, where the built-in menu looks for them
+    local language_dir = $"{info.dir}language\\"
+    if filesystem.is_dir(language_dir) then
+        for _, path in ipairs(filesystem.list_files(language_dir)) do
+            if path:match("%.json$") then
+                table.insert(plan, { from = path, to = $"{lib_dir}language\\{path:sub(#language_dir + 1)}" })
+            end
+        end
+    end
 
     local conflicts = 0
     for _, step in ipairs(plan) do
@@ -300,14 +309,6 @@ function module.find_loadable_packs(packs_dir: string): table
         end
     end
     return packs
-end
-
--- @return Label and help text for a pack in a picker.
--- A pack is code with the same access as this script, so the choice has to be informed
-function module.describe_pack(info: table): (string, string)
-    local help = $"v{info.version or '?'} by {info.author or 'unknown'}\n"
-        .. "Runs the pack's own code with full script access. Only load packs you trust."
-    return info.name, help
 end
 
 return module
