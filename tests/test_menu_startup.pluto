@@ -129,7 +129,7 @@ stand.clear_logs()
 stand.click(stand.find_item(load_menu(), "Unload"))
 stand.check(stand.find_log("No menu is loaded"), "a second Unload says there's nothing to unload")
 
--- ─── Delete Script: asks, deletes the whole install, stops ───────────────────
+-- ─── Delete Script: a second click within 5 seconds deletes the whole install, stops ─
 
 -- The name is part of every path it deletes: an empty or odd name is refused
 local installer = Atdar.loader.load("core/installer")
@@ -145,11 +145,30 @@ io.makedirs(resources .. "AnitaDarin/sub")
 stand.write_file(resources .. "AnitaDarin/sub/image.png", "x")
 local profiles = stand.store .. "AnitaDarin/profiles/"
 local delete_list = stand.find_item(stand.find_item(stand.root, "Debug"), "Delete Script")
-local real_warning = menu.show_warning
-menu.show_warning = |_, _, _, proceed| -> proceed()
+local confirm = stand.find_item(delete_list, "Delete Script For Good")
+
+-- One click and a second one too late: nothing is deleted
+stand.click(confirm)
+stand.clock += 6000
+stand.frame()
+stand.click(confirm)
+stand.check(io.exists(scripts .. "AnitaDarin.pluto") and io.exists(lib), "a second click after 5 seconds only asks again")
+stand.clock += 6000
+stand.frame()
+
+-- A first click, then back out of the list: the next click only asks again
+stand.click(confirm)
+delete_list.on_back()
+stand.frame()
+stand.click(confirm)
+stand.check(io.exists(scripts .. "AnitaDarin.pluto") and io.exists(lib), "after going back a click only asks again")
+delete_list.on_back()
+stand.frame()
 
 -- By default profiles and settings stay: what build.py never touches either
-stand.click(stand.find_item(delete_list, "Delete Script For Good"))
+stand.click(confirm)
+stand.clock += 1000
+stand.click(confirm)
 stand.check(not io.exists(scripts .. "AnitaDarin.pluto"), "the launcher is deleted")
 stand.check(not io.exists(lib), "lib/AnitaDarin is deleted")
 stand.check(not io.exists(resources .. "AnitaDarin"), "resources/AnitaDarin is deleted, with its subfolders")
@@ -160,9 +179,9 @@ stand.check(stand.stopped, "the script stops after deleting itself")
 
 -- With Keep Profiles And Settings off, store goes too
 stand.click(stand.find_item(delete_list, "Keep Profiles"))
-stand.click(stand.find_item(delete_list, "Delete Script For Good"))
+stand.click(confirm)
+stand.click(confirm)
 stand.check(not io.exists(stand.store .. "AnitaDarin"), "without keeping, store/AnitaDarin is deleted with the profiles")
-menu.show_warning = real_warning
 stand.check(io.exists(stand.SRC .. "lib/AnitaDarin/bootstrap.pluto"), "src is untouched")
 
 stand.finish()

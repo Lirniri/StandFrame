@@ -38,31 +38,54 @@ local function stub(node: table, key: string): void
     node:action(label($"{key}.name"), || -> log:notify(text("stub")), {}, label("stub"))
 end
 
+-- How long the confirm button of Delete Script waits for its second click
+local CONFIRM_MS = 5000
+
 -- Delete Script: a list, so deleting takes its own confirm button and never happens on one click.
--- menu.show_warning alone isn't enough: in the game it once let the delete through without asking.
--- The confirm button still shows Stand's warning as a second step, with the click type Stand gave the
--- button (CLICK_MENU there let the delete through without a warning; Clear All Log Files, which passes
--- its own click type, shows one).
+-- The button deletes on a second click within CONFIRM_MS: the first one renames it and says what goes;
+-- going back out of the list cancels it.
+-- Not menu.show_warning: in the game it let the delete through without showing anything, whatever the
+-- click type. Not a toggle either: Stand keeps toggle states in its profile, so it could start on.
 -- Profiles and settings are kept unless switched off. Then the script deletes its files (core/installer) and stops
 -- @return The list's handle
 local function delete_script(node: table)
-    local list = node:list(label("delete_script.name"), {}, label("delete_script.help"))
+    local confirm_ref
+    -- Until when a second click deletes; nil - not armed
+    local armed_until = nil
+    -- Going back out of the list cancels a first click: the button's name comes back on the next tick
+    local list = node:list(label("delete_script.name"), {}, label("delete_script.help"), function()
+        armed_until = nil
+    end)
     list:divider(label("delete_script.cannot_undo"))
     local keep = true
     list:toggle(label("delete_script.keep.name"), function(on) keep = on end, {},
         label("delete_script.keep.help"), true)
-    local confirm_ref
-    confirm_ref = list:action(label("delete_script.confirm.name"), function(click_type)
-        local warning = text(keep ? "delete_script.warning_keep" : "delete_script.warning"):format(Atdar.name)
-        menu.show_warning(confirm_ref, click_type, warning, function()
-            local ok, result = installer.delete(keep)
-            if not ok then
-                log:warn(text("delete_script.failed"):format(result))
-                return
-            end
-            log:notify(text("delete_script.done"):format(Atdar.name, result))
-            installer.stop()
-        end)
+    confirm_ref = list:action(label("delete_script.confirm.name"), function()
+        local now = util.current_time_millis()
+        if armed_until == nil or now > armed_until then
+            armed_until = now + CONFIRM_MS
+            pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.again"))
+            local warning = text(keep ? "delete_script.warning_keep" : "delete_script.warning"):format(Atdar.name)
+            log:warn($"{warning}\n{text('delete_script.confirm.again_notice'):format(CONFIRM_MS // 1000)}")
+            -- The button gets its name back when the time is up (or after the delete was cancelled)
+            util.create_tick_handler(function()
+                if armed_until ~= nil and util.current_time_millis() <= armed_until then
+                    return true
+                end
+                armed_until = nil
+                pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.name"))
+                return false
+            end)
+            return
+        end
+        armed_until = nil
+        local ok, result = installer.delete(keep)
+        if not ok then
+            log:warn(text("delete_script.failed"):format(result))
+            return
+        end
+        log:notify(text("delete_script.done"):format(Atdar.name, result))
+        installer.stop()
     end, {}, label("delete_script.confirm.help"))
     return list.handle
 end

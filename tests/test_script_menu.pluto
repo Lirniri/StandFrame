@@ -137,7 +137,7 @@ local background = stand.find_item(game, "Day Background Color")
 stand.equal(background.transparency, true, "the colours have Opacity, as in Stand")
 stand.equal(profile.get("notify_background_day"), "008B8BFF", "the day background is dark cyan by default")
 stand.equal(profile.get("notify_background_night"), "1A3D54FF", "the night one dark teal")
-stand.equal(profile.get("notify_flash_color_day"), "", "the flash colours are the game's own until picked")
+stand.equal(profile.get("notify_flash_color_day"), profile.default("notify_flash_color_day"), "the flash colours start at their defaults")
 stand.equal(background.value.g, 139 / 255, "the item shows the default colour")
 background.on_change({ r = 1, g = 0.5, b = 0, a = 0.5 }, 0)
 stand.equal(profile.get("notify_background_day"), "FF800080", "a picked colour is kept as hex with its opacity")
@@ -255,22 +255,29 @@ stand.equal(Atdar.load_timing, false, "and off again")
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
 
--- Delete Script is a list with its own confirm button, so one click never deletes anything.
--- The answer to the warning is never "yes" here: this test runs on the real src folder,
+-- Delete Script is a list with its own confirm button that deletes only on a second click within
+-- 5 seconds. Only the first click happens here: this test runs on the real src folder,
 -- deleting is tested in test_menu_startup on a temp install
 local delete_list = stand.find_item(debug_list, "Delete Script")
 stand.equal(delete_list.kind, "list", "Delete Script opens a list")
 stand.equal(names_in(delete_list), "This can't be undone | Keep Profiles And Settings | Delete Script For Good",
     "the list: a divider, Keep Profiles And Settings, the confirm button")
 stand.equal(stand.find_item(delete_list, "Keep Profiles").value, true, "profiles are kept by default")
-local asked, asked_click = nil, nil
-local real_warning = menu.show_warning
-menu.show_warning = function(_, click_type, message) asked = message asked_click = click_type end
-stand.click(stand.find_item(delete_list, "Delete Script For Good"))
-stand.check(asked and asked:find("Profiles and settings are kept", 1, true), "the confirm button asks once more")
-stand.equal(asked_click, CLICK_MENU, "with CLICK_MENU, like other scripts")
-stand.check(io.exists($"{stand.SRC}lib/AnitaDarin/bootstrap.pluto"), "nothing is deleted without a yes")
-menu.show_warning = real_warning
+local confirm = stand.find_item(delete_list, "Delete Script For Good")
+stand.clear_logs()
+stand.click(confirm)
+stand.check(io.exists($"{stand.SRC}lib/AnitaDarin/bootstrap.pluto"), "the first click deletes nothing")
+stand.equal(stand.name_of(confirm), "Click Again To Delete", "it asks for a second click")
+stand.check(stand.find_log("Profiles and settings are kept") and stand.find_log("within 5 seconds"),
+    "and says what would go and how long it waits")
+stand.clock += 6000
+stand.frame()
+stand.equal(stand.name_of(confirm), "Delete Script For Good", "after 5 seconds the button is back as it was")
+-- Going back out of the list cancels the first click at once
+stand.click(confirm)
+delete_list.on_back()
+stand.frame()
+stand.equal(stand.name_of(confirm), "Delete Script For Good", "going back out of the list cancels it")
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(false), "turning debug mode off hides them again")
 

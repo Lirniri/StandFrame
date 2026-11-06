@@ -177,7 +177,7 @@
             },
             "flash_color_day": {
                 "name": "Day Flash Color",
-                "help": "The color notifications flash in during the day when Flash Notifications is on. Until one is picked, the game's own is used"
+                "help": "The color notifications flash in during the day when Flash Notifications is on"
             },
             "subject_color_day": {
                 "name": "Day Subject Color: %s",
@@ -189,7 +189,7 @@
             },
             "flash_color_night": {
                 "name": "Night Flash Color",
-                "help": "The color notifications flash in at night when Flash Notifications is on. Until one is picked, the game's own is used"
+                "help": "The color notifications flash in at night when Flash Notifications is on"
             },
             "subject_color_night": {
                 "name": "Night Subject Color: %s",
@@ -276,7 +276,7 @@
             "help": "Takes the loaded menu out of the script; Load Menu brings one back",
             "nothing": "No menu is loaded",
             "done": "Menu unloaded",
-            "notice": "No menu loaded: see Load Menu"
+            "notice": "Built-in menu not loaded"
         },
         "command_box": {
             "name": "Command Box",
@@ -331,7 +331,9 @@
             },
             "confirm": {
                 "name": "Delete Script For Good",
-                "help": "Deletes the launcher and the lib, store and resources folders, then stops the script"
+                "help": "Click twice within 5 seconds: deletes the launcher and the lib, store and resources folders, then stops the script",
+                "again": "Click Again To Delete",
+                "again_notice": "Click it again within %d seconds to delete"
             },
             "warning_keep": "Delete the script '%s' (launcher, lib, store and resources folders)? Profiles and settings are kept.\nThis can't be undone."
         }

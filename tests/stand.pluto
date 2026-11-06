@@ -258,7 +258,8 @@ end
 
 _G.menu = {
     my_root = || -> stand.root,
-    list = |parent, name, commands, help| -> item("list", parent, name, help, { commands = commands }),
+    list = |parent, name, commands, help, on_click, on_back| -> item("list", parent, name, help,
+        { commands = commands, on_click = on_click, on_back = on_back }),
     divider = |parent, name| -> item("divider", parent, name, ""),
     readonly = |parent, name, value| -> item("readonly", parent, name, "", { value = value }),
     readonly_name = |parent, name| -> item("readonly_name", parent, name, ""),
@@ -324,8 +325,10 @@ end
 -- One game frame: tick handlers, then the toggle_loops that are on
 function stand.frame(count: int = 1): void
     for _ = 1, count do
-        for _, fn in tick_handlers do
-            fn()
+        for i = #tick_handlers, 1, -1 do
+            if tick_handlers[i]() == false then
+                table.remove(tick_handlers, i)
+            end
         end
         local function tick_loops(it)
             for _, child in it.children do
