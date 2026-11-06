@@ -1,0 +1,9 @@
+local module = {}
+
+function module.spoiler(parent, menu_name, value = "", hidding_text)
+    -- TODO: сделать спойлер
+    -- Сначала показать: AnitaDarin: Hidden
+    -- После нажатия показать: AnitaDarin: Hello!
+end
+
+return module
