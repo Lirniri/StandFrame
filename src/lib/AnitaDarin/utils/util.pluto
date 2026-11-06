@@ -63,7 +63,7 @@ local POST = {
             sender = opts.sender or sender_name(),
             subject = subject,
             picture = picture,
-            icon = opts.icon,
+            icon = opts.icon or thefeed.ICON[setting("notify_feed_icon") or ""],
             important = flash,
         })
     end,

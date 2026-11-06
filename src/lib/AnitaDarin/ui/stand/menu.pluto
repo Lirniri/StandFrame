@@ -110,8 +110,7 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
     end
 
     -- A separate node on the root ref tracks only this menu's items; their custom names apply as they're made
-    local commands_file = new JsonFile($"{menu_dir}commands.json")
-    commands.begin_menu(commands_file:read() or {})
+    commands.begin_menu(new JsonFile($"{menu_dir}commands.json"))
     local node = new MenuNode(module.root.handle)
     local built, err = pcall(build, node)
     commands.end_menu()
@@ -125,8 +124,7 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
             table.insert(feature_ids, id)
         end
     end
-    current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings,
-        commands_file = commands_file }
+    current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
     -- Stand applies the active profile only to items created during the script's main body,
     -- so a menu loaded later by hand starts without the profile's states
     rebuild_settings()
@@ -284,20 +282,6 @@ local function fill_picker(node: table): void
     end
 end
 
--- Writes the loaded menu's custom command names into its commands.json; nothing to keep -> the file goes
--- @return Whether it was written
-local function save_command_names(): bool
-    if not current then
-        return false
-    end
-    local names = commands.custom_names()
-    if next(names) == nil then
-        current.commands_file:remove()
-        return true
-    end
-    return current.commands_file:write(names)
-end
-
 -- The script's own section (script_menu lays it out). Added before any menu loads,
 -- so unloading a menu never drops it
 settings.add(function(node)
@@ -306,7 +290,6 @@ settings.add(function(node)
         packs = builder.find_loadable_packs(PACKS_DIR),
         fill_menus = fill_picker,
         unload = unload_menu,
-        save_command_names = save_command_names,
     })
 end)
 

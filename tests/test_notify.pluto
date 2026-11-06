@@ -16,6 +16,8 @@ local default_picture = profile.default("notify_feed_picture")
 profile.set("notify_feed_style", "ticker")
 profile.set("notify_subject_color_day", "white")
 profile.set("notify_subject_color_night", "white")
+profile.set("notify_flash", false)
+profile.set("notify_feed_icon", "CHAT_BOX")
 
 -- The game's feed: what was posted, and how the last post looked
 local feed = {}
@@ -35,8 +37,9 @@ _G.HUD = {
         table.insert(feed, text)
         return #feed
     end,
-    END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT = function(txd, _, flash, _, sender, subject)
+    END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT = function(txd, _, flash, icon, sender, subject)
         look.flash = flash
+        look.icon = icon
         table.insert(feed, $"{txd}|{sender}|{subject}|{text}")
         return #feed
     end,
@@ -196,6 +199,18 @@ stand.equal(thefeed.remove_all(), 0, "and forgets them")
 for i = 1, 105 do log:notify($"many {i}") end
 stand.equal(thefeed.remove_all(), 100, "only the last 100 are kept")
 feed = {}
+
+-- The card's icon: the profile's, opts.icon overrides it
+profile.set("notify_feed_style", "message")
+log:notify("with an icon")
+stand.equal(look.icon, 1, "the profile's icon (Chat)")
+profile.set("notify_feed_icon", "MONEY")
+log:notify("money")
+stand.equal(look.icon, 9, "a picked icon")
+Atdar.util.toast("own icon", { target = "game", style = "message", icon = 2 })
+stand.equal(look.icon, 2, "opts.icon overrides it")
+profile.set("notify_feed_icon", "CHAT_BOX")
+profile.set("notify_feed_style", "ticker")
 
 -- notify() gives the FeedPost back, so a caller can take its card away again
 local posted = log:notify("removable by the caller")

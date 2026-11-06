@@ -67,9 +67,11 @@ profile.set("notify_feed_style", "ticker")
 profile.set("notify_subject_color_day", "white")
 profile.set("notify_subject_color_night", "white")
 profile.set("auto_copy_menu", "")
+profile.set("notify_flash", false)
+profile.set("notify_feed_icon", "CHAT_BOX")
 local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
 stand.equal(names_in(notifications), "Type: Stand | Errors Always In Stand | Test Notification"
-    .. " | Game | Notification Type: Post | Picture: " .. default_picture_title .. " | Flash Notifications | Day Starts At | Night Starts At"
+    .. " | Game | Notification Type: Post | Picture: " .. default_picture_title .. " | Icon: Chat | Flash Notifications | Day Starts At | Night Starts At"
     .. " | Day Background Color | Day Flash Color | Day Subject Color: White"
     .. " | Night Background Color | Night Flash Color | Night Subject Color: White",
     "Notifications, the game's feed under the Game divider")
@@ -96,10 +98,17 @@ stand.click(test_button)
 stand.check(feed_items == 1 and #removed_items == 0, "the first test card is posted, nothing to take away")
 stand.click(test_button)
 stand.check(feed_items == 2 and #removed_items == 1 and removed_items[1] == 1, "the next click takes the previous card away first")
+notifications.on_back()
+stand.check(#removed_items == 2 and removed_items[2] == 2, "going back out of Notifications takes the test card away")
+notifications.on_back()
+stand.equal(#removed_items, 2, "and only once")
 stand.click(stand.find_item(notifications, "Type"), 1)
-stand.click(stand.find_item(notifications, "Flash Notifications"))
-stand.equal(profile.get("notify_flash"), true, "Flash Notifications")
-stand.click(stand.find_item(notifications, "Flash Notifications"))
+local flash_toggle = stand.find_item(notifications, "Flash Notifications")
+stand.click(flash_toggle)
+stand.equal(profile.get("notify_flash"), flash_toggle.value, "Flash Notifications sets the profile")
+stand.click(flash_toggle)
+stand.equal(profile.get("notify_flash"), flash_toggle.value, "both ways")
+profile.set("notify_flash", false)
 
 local game = notifications
 stand.click(stand.find_item(game, "Notification Type"), 1)
@@ -113,6 +122,12 @@ _G.GRAPHICS = {
 }
 local picture = stand.find_item(game, "Picture")
 stand.equal(picture.visible, true, "Picture shows while Message is picked")
+local icon = stand.find_item(game, "Icon")
+stand.equal(icon.visible, true, "Icon shows while Message is picked")
+stand.click(icon, 2)
+stand.equal(profile.get("notify_feed_icon"), "EMAIL", "Icon picks the card's icon")
+stand.equal(stand.name_of(icon), "Icon: Email", "and the caption follows")
+stand.click(icon, 1)
 stand.equal(#picture.options, #Atdar.loader.load("natives/visual/feed_picture").list(), "every feed picture is offered")
 stand.click(picture, 3)
 stand.equal(profile.get("notify_feed_picture"), "CHAR_ALL_PLAYERS_CONF", "picking one keeps its full name")
@@ -132,6 +147,7 @@ stand.click(day_subject, 3)
 stand.click(night_subject, 3)
 stand.click(stand.find_item(game, "Notification Type"), 2)
 stand.equal(picture.visible, false, "Picture hides while Post is picked")
+stand.equal(stand.find_item(game, "Icon").visible, false, "Icon too")
 stand.check(not day_subject.visible and not night_subject.visible, "the subject colors too")
 local background = stand.find_item(game, "Day Background Color")
 stand.equal(background.transparency, true, "the colours have Opacity, as in Stand")
@@ -176,7 +192,7 @@ menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
-stand.equal(names_in(find("Command Box")), "Command Prefix | Separator: None | Found Commands", "Command Box")
+stand.equal(names_in(find("Command Box")), "Command Prefix | Separator: None | Base Commands | Found Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
 
 -- Open Folder opens the script's own folders; a missing one is made first
@@ -198,8 +214,11 @@ stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save 
 stand.click(stand.find_item(find("Load Menu"), "Unload"))
 stand.check(UNLOADED, "Unload calls the menu's unload")
 
--- Found Commands: one row per item with commands, built after the whole section
-local found = stand.find_item(find("Command Box"), "Found Commands")
+-- Base Commands: the script's own, one list per item with commands, built after the whole section.
+-- Found Commands is the loaded menu's: none here
+local found = stand.find_item(find("Command Box"), "Base Commands")
+stand.equal(names_in(stand.find_item(find("Command Box"), "Found Commands")), "No menu is loaded or it has no commands",
+    "Found Commands: no menu, no commands")
 local function row(command)
     for _, child in found.children do
         if stand.name_of(child) == command then
@@ -208,10 +227,29 @@ local function row(command)
     end
     return nil
 end
-stand.check(#found.children > 5, $"Found Commands lists the section's commands ({#found.children})")
-stand.equal(row("debug") and row("debug").value, "Debug Mode", "a row shows the command without the prefix and its item")
+stand.check(#found.children > 5, $"Base Commands lists the section's commands ({#found.children})")
+local debug_row = row("debug")
+stand.equal(debug_row and debug_row.kind, "list", "a row is a list named by the command without the prefix")
+stand.equal(debug_row.help, "Debug Mode", "its help is the item's name")
 stand.check(row("scriptsettings"), "lists also show their command")
-stand.equal(row("debug").kind, "readonly", "the script's own commands are plain rows: only the menu's can be renamed")
+-- The script's own commands get custom names too, kept in store/<script>/commands.json
+-- Go To Item takes the cursor to the item itself
+stand.click(stand.find_item(debug_row, "Go To Item"))
+stand.check(stand.focused and stand.name_of(stand.focused) == "Debug Mode", "Go To Item focuses the item")
+local script_names = $"{stand.store}AnitaDarin/commands.json"
+menu.set_value(stand.find_item(debug_row, "Custom Name"), "dbg")
+stand.equal(stand.name_of(debug_row), "dbg", "a script command renamed: the row follows")
+stand.equal(stand.find_item(debug_row, "Command").value, "atdardbg", "and the command, with the prefix")
+stand.check(stand.read_file(script_names) and stand.read_file(script_names):find('"debug": "dbg"', 1, true),
+    "kept in store/AnitaDarin/commands.json")
+-- Made again (a rebuild, the next start), the item gets its custom name right away
+rebuild()
+found = stand.find_item(find("Command Box"), "Base Commands")
+debug_row = row("dbg")
+stand.check(debug_row and stand.find_item(debug_row, "Command").value == "atdardbg", "a rebuilt item keeps its custom name")
+stand.click(stand.find_item(debug_row, "Reset Name"))
+stand.equal(stand.name_of(debug_row), "debug", "Reset Name gives it back")
+stand.check(not io.exists(script_names), "with no custom names left the file goes")
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")

@@ -148,6 +148,17 @@
                 "name": "Picture: %s",
                 "help": "The picture on the script's message cards. Shown only while Notification Type is Message"
             },
+            "icon": {
+                "name": "Icon: %s",
+                "help": "The small icon at the top right of the script's message cards. Shown only while Notification Type is Message",
+                "chat_box": "Chat",
+                "email": "Email",
+                "friend_request": "Friend Request",
+                "arrow": "Arrow",
+                "rp": "RP",
+                "money": "Money",
+                "none": "None"
+            },
             "subject_color": {
                 "level": "By Type",
                 "default": "Default",
@@ -282,20 +293,31 @@
             "name": "Command Box",
             "help": "Command names of the script's items"
         },
+        "base_commands": {
+            "name": "Base Commands",
+            "help": "The script's own commands, without the prefix. Each opens a list where it can be renamed; the names are kept in store/AnitaDarin/commands.json",
+            "none": "No commands"
+        },
         "found_commands": {
             "name": "Found Commands",
-            "help": "The script's commands for Stand's command box, without the prefix. The loaded menu's commands open a list: rename them there",
-            "none": "No commands",
+            "help": "The loaded menu's commands, without the prefix. Each opens a list where it can be renamed; the names are kept in the menu's commands.json (the pack's folder in store, or core)",
+            "none": "No menu is loaded or it has no commands",
             "command": "Command",
+            "focus": {
+                "name": "Go To Item",
+                "help": "Takes the cursor to this command's item in the menu",
+                "failed": "Can't go to the item: it may be hidden now"
+            },
             "rename": {
                 "name": "Custom Name",
-                "help": "A name of your own for this command, instead of the menu's; the prefix stays. Kept in the menu's commands.json (the pack's folder in store, or core). Empty: the menu's own name",
+                "help": "A name of your own for this command; the prefix stays. Empty: its own name",
                 "taken": "'%s' is already a command of another item",
-                "failed": "'%s' can't be used as a command name"
+                "failed": "'%s' can't be used as a command name",
+                "done": "The command is now '%s'"
             },
             "reset": {
                 "name": "Reset Name",
-                "help": "Gives the command back the menu's own name",
+                "help": "Gives the command back its own name",
                 "done": "The command is '%s' again"
             },
             "not_saved": "The custom command names couldn't be saved"

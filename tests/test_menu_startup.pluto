@@ -77,11 +77,20 @@ stand.equal(stand.name_of(godmode), "god", "a custom name renames the row")
 stand.equal(stand.find_item(godmode, "Command").value, "atdargod", "and the command: the prefix stays")
 stand.check(stand.read_file(core_names) and stand.read_file(core_names):find('"godmode": "god"', 1, true),
     "the built-in menu's names are kept in core, next to its main.pluto")
+-- Stand puts fields back to their default by itself (restoring its profile's state, click type 4):
+-- that must not undo the name
+local rename_field = stand.find_item(godmode, "Custom Name")
+rename_field.on_change("", 4)
+stand.equal(stand.name_of(godmode), "god", "Stand's own call with the empty default doesn't reset the name")
+stand.check(io.exists(core_names), "and the file stays")
 stand.clear_logs()
 menu.set_value(stand.find_item(godmode, "Custom Name"), "halfgodmode")
 stand.check(stand.find_log("already a command"), "another item's command can't be taken")
 stand.equal(stand.name_of(godmode), "god", "and the name stays")
-stand.equal(found_row("debug").kind, "readonly", "the script's own commands can't be renamed")
+stand.equal(found_row("debug"), nil, "the script's own commands aren't among the menu's")
+local base_commands = stand.find_item(stand.find_item(stand.root, "Command Box"), "Base Commands")
+stand.check(stand.find_item(base_commands, "debug"), "they're in Base Commands")
+stand.equal(stand.find_item(base_commands, "godmode"), nil, "and the menu's aren't there")
 
 stand.click(stand.find_item(godmode, "Reset Name"))
 stand.equal(stand.name_of(found_row("godmode")), "godmode", "Reset Name gives the menu's name back")
@@ -150,6 +159,7 @@ stand.check(stand.read_file($"{stand.store}AnitaDarin/menu/AnitaDarin/commands.j
     "a store pack's names go to its folder in store")
 stand.click(entry("AnitaDarin: loaded"), 1)
 stand.check(found_row("gm") and found_row("gm").kind == "list", "loading it again gives its items the saved names")
+stand.equal(stand.find_item(found_row("gm"), "Custom Name").value, "gm", "the field starts with the custom name")
 stand.check(stand.read_file(core_names):find('"god"', 1, true), "and core's file is untouched")
 
 stand.clear_logs()

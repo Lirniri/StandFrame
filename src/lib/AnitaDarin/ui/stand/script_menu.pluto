@@ -117,56 +117,94 @@ local function full_names(ref): string
     return table.concat(commands.names_of(ref) or {}, ", ")
 end
 
--- A command of the loaded menu: a list with its full command, its custom name and a reset
-local function command_entry(list: table, ref, save: function): table
+-- Click types of calls Stand makes by itself: restoring the state from its profile (the field's default
+-- for an item it has no state of), bulk changes. Seen as 4 in the game; the names when Stand has them
+local NOT_USER_CLICKS = { [4] = true }
+for _, name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
+    if _G[name] ~= nil then
+        NOT_USER_CLICKS[_G[name]] = true
+    end
+end
+
+-- Stand calls text fields again while the script stops; nothing it sends then is the user's
+local stopping = false
+util.on_stop(function() stopping = true end)
+
+-- A command: a list with its full command, its custom name and a reset. The name is kept by
+-- ui/stand/commands: the menu's in its folder, the script's in store/<script>/commands.json
+local function command_entry(list: table, ref): table
     local entry = list:list(short_names(ref), {}, item_name(ref))
     local found = { ref = ref, row = entry.handle }
     found.command = entry:readonly(label("found_commands.command"), full_names(ref))
 
-    local function renamed(): void
-        if not save() then
-            log:warn(text("found_commands.not_saved"))
+    -- Takes the cursor to the item itself. One hidden for now (debug mode is off) can't be reached
+    entry:action(label("found_commands.focus.name"), function()
+        if not pcall(menu.focus, ref) then
+            log:warn(text("found_commands.focus.failed"))
         end
+    end, {}, label("found_commands.focus.help"))
+
+    local function renamed(): void
         pcall(menu.set_menu_name, found.row, short_names(ref))
         pcall(menu.set_value, found.command, full_names(ref))
     end
 
     -- A text field takes its text through the command box, so it needs a command: rename<base>.
-    -- Made without commands.track, so it isn't one of the found commands itself
-    local base = (commands.bases_of(ref) or { "" })[1]
+    -- Made without commands.track, so it isn't one of the found commands itself.
+    -- Its default is the custom name now: when Stand puts a field back to its default (restoring its
+    -- profile's state), that's no change. Only the user's own entries rename
+    local base = commands.base_of(ref) or ""
     menu.text_input(entry.handle, label("found_commands.rename.name"), commands.names({ $"rename{base}" }),
-        label("found_commands.rename.help"), function(value)
+        label("found_commands.rename.help"), function(value, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        if commands.sanitize(value) == commands.custom_of(ref) then
+            return
+        end
         local ok, reason = commands.set_custom(ref, value)
+        if reason == "not_saved" then
+            -- Renamed for now, but it won't be there at the next start
+            renamed()
+            log:warn(text("found_commands.not_saved"))
+            return
+        end
         if not ok then
             log:warn(text(reason == "taken" and "found_commands.rename.taken" or "found_commands.rename.failed"):format(value))
             return
         end
         renamed()
-    end, "")
+        log:notify(text("found_commands.rename.done"):format(full_names(ref)))
+    end, commands.custom_of(ref))
 
     entry:action(label("found_commands.reset.name"), function()
-        commands.set_custom(ref, "")
+        local _, reason = commands.set_custom(ref, "")
+        if reason == "not_saved" then
+            log:warn(text("found_commands.not_saved"))
+        end
         renamed()
         log:notify(text("found_commands.reset.done"):format(short_names(ref)))
     end, {}, label("found_commands.reset.help"))
     return found
 end
 
--- One row per item that has commands, its commands without the prefix: a line with the item's name, or
--- for the loaded menu's items a list to rename it. Filled at the end of the build, so the section's own
--- items are in it too (the loaded menu's are made before the section)
-local function fill_found_commands(list: table, save: function): void
+-- One list per item that has commands, named by its commands without the prefix, to rename it:
+-- the script's own in Base Commands, the loaded menu's in Found Commands. Filled at the end of the build,
+-- so the section's own items are in it too (the loaded menu's are made before the section)
+local function fill_command_lists(base: table, found: table): void
     found_rows = {}
-    local items = commands.list()
-    for _, item in ipairs(items) do
-        if commands.is_renamable(item.ref) then
-            table.insert(found_rows, command_entry(list, item.ref, save))
-        else
-            table.insert(found_rows, { ref = item.ref, row = list:readonly(short_names(item.ref), item_name(item.ref)) })
-        end
+    local counts = { script = 0, menu = 0 }
+    for _, item in ipairs(commands.list()) do
+        local who = commands.owner_of(item.ref)
+        local list = who == "menu" and found or base
+        table.insert(found_rows, command_entry(list, item.ref))
+        counts[who] = (counts[who] or 0) + 1
     end
-    if #items == 0 then
-        list:readonly_name(label("found_commands.none"))
+    if counts.script == 0 then
+        base:readonly_name(label("base_commands.none"))
+    end
+    if counts.menu == 0 then
+        found:readonly_name(label("found_commands.none"))
     end
 end
 
@@ -215,13 +253,12 @@ end
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)
 -- opts.packs:      menu packs in store, offered for copying to core
 -- opts.fill_menus: fill_menus(node) adds the Menus divider and an entry per menu (menu.pluto)
--- opts.save_command_names: writes the loaded menu's custom command names (menu.pluto)
 function module.build(section: table, opts: table): void
     profile_menu.begin(opts.packs)
 
     profile_menu.header(section)
 
-    local settings = section:list(i18n.label("profile.settings.name"), { "scriptsettings" },
+    local settings = section:list(i18n.label("profile.settings.name"), { "settings" },
         i18n.label("profile.settings.help"))
     profile_menu.language(settings)
     profile_menu.log_name(settings)
@@ -238,6 +275,7 @@ function module.build(section: table, opts: table): void
 
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
     profile_menu.command_box(command_box)
+    local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
     local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
 
     local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
@@ -257,7 +295,7 @@ function module.build(section: table, opts: table): void
     modules_menu.debug_only(delete_script(debug))
 
     -- Last, once every item of the section has its commands
-    fill_found_commands(found, opts.save_command_names or || -> false)
+    fill_command_lists(base_commands, found)
 end
 
 return module

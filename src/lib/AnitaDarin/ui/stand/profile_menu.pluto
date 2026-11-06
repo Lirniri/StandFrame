@@ -111,6 +111,15 @@ local function subject_color_caption(period: string): string
     return text($"feed.subject_color_{period}.name"):format(text($"feed.subject_color.{name}"))
 end
 
+-- Message icons in the menu's order (natives/visual/hud/thefeed ICON names)
+local FEED_ICONS = { "CHAT_BOX", "EMAIL", "FRIEND_REQUEST", "ARROW", "RP", "MONEY", "NONE" }
+
+-- "Icon: Chat"
+local function feed_icon_caption(): string
+    local name = Atdar.profile.get("notify_feed_icon") or "CHAT_BOX"
+    return text("feed.icon.name"):format(text($"feed.icon.{name:lower()}"))
+end
+
 -- Asks the game to load the profile's picture now, without waiting, so message cards show it
 local function load_feed_picture(): void
     local name = Atdar.profile.get("notify_feed_picture")
@@ -186,12 +195,14 @@ local function update_captions(): void
     rename(view.notify_target, notify_caption())
     rename(view.feed_style, feed_style_caption())
     rename(view.feed_picture, feed_picture_caption())
+    rename(view.feed_icon, feed_icon_caption())
     for period, ref in pairs(view.subject_colors) do
         rename(ref, subject_color_caption(period))
     end
     -- The picture and the subject are the message card's only: hidden while posts are chosen
     local is_message = Atdar.profile.get("notify_feed_style") == "message"
     pcall(menu.set_visible, view.feed_picture, is_message)
+    pcall(menu.set_visible, view.feed_icon, is_message)
     for _, ref in pairs(view.subject_colors) do
         pcall(menu.set_visible, ref, is_message)
     end
@@ -280,7 +291,7 @@ end
 
 -- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
 function module.language(node: table): void
-    local list = node:list(language_caption(), { "scriptlanguage" }, label("language.help"))
+    local list = node:list(language_caption(), { "language" }, label("language.help"))
     view.language = list.handle
     local function pick(code: string): void
         Atdar.profile.set("language", code)
@@ -305,6 +316,17 @@ end
 
 -- ─── Appearance ──────────────────────────────────────────────────────────────
 
+-- The card Test Notification put in the game's feed last, or nil
+local test_post = nil
+
+-- Takes the test card away from the game's feed (Stand's own notifications can't be taken away)
+local function remove_test_post(): void
+    if test_post then
+        pcall(|| -> test_post:remove())
+        test_post = nil
+    end
+end
+
 -- Flashing, where notifications show (Stand, the game's feed, log only), errors always in Stand, a test
 local function notifications(list: table): void
     local profile = Atdar.profile
@@ -312,22 +334,19 @@ local function notifications(list: table): void
     view.notify_target = list:list_action(notify_caption(),
         { label("notify.target.stand"), label("notify.target.game"), label("notify.target.none") }, function(index)
         profile.set("notify", NOTIFY_TARGETS[index])
-    end, { "notify" }, label("notify.target.help"))
+    end, { "" }, label("notify.target.help"))
 
     view.notify_errors = list:toggle(label("notify.errors.name"), function(on)
         if not updating then
             profile.set("notify_errors_in_stand", on)
         end
-    end, { "notifyerrors" }, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
+    end, {}, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
 
     -- The previous test card is taken away from the game's feed first, so clicking again doesn't pile them up
     -- (Stand's own notifications can't be taken away)
-    local last_test = nil
     list:action(label("notify.test.name"), function()
-        if last_test then
-            pcall(|| -> last_test:remove())
-        end
-        last_test = log:notify(text("notify.test.text"))
+        remove_test_post()
+        test_post = log:notify(text("notify.test.text"))
     end, {}, label("notify.test.help"))
 end
 
@@ -377,7 +396,7 @@ local function feed(list: table): void
     view.feed_style = list:list_action(feed_style_caption(),
         { label("feed.style.message"), label("feed.style.ticker") }, function(index)
         Atdar.profile.set("notify_feed_style", FEED_STYLES[index])
-    end, { "feedstyle" }, label("feed.style.help"))
+    end, {}, label("feed.style.help"))
 
     local pictures = feed_picture.list()
     local titles = {}
@@ -387,34 +406,44 @@ local function feed(list: table): void
     view.feed_picture = list:list_action(feed_picture_caption(), titles, function(index)
         Atdar.profile.set("notify_feed_picture", pictures[index])
         load_feed_picture()
-    end, { "feedpicture" }, label("feed.picture.help"))
+    end, {}, label("feed.picture.help"))
     pcall(menu.set_visible, view.feed_picture, Atdar.profile.get("notify_feed_style") == "message")
     load_feed_picture()
+
+    local icon_names = {}
+    for _, name in ipairs(FEED_ICONS) do
+        table.insert(icon_names, label($"feed.icon.{name:lower()}"))
+    end
+    view.feed_icon = list:list_action(feed_icon_caption(), icon_names, function(index)
+        Atdar.profile.set("notify_feed_icon", FEED_ICONS[index])
+    end, {}, label("feed.icon.help"))
+    pcall(menu.set_visible, view.feed_icon, Atdar.profile.get("notify_feed_style") == "message")
 
     -- Flashing is the game feed's only (Stand's notifications don't flash), so it's here
     view.notify_flash = list:toggle(label("notify.flash.name"), function(on)
         if not updating then
             Atdar.profile.set("notify_flash", on)
         end
-    end, { "notifyflash" }, label("notify.flash.help"), Atdar.profile.get("notify_flash") == true)
+    end, {}, label("notify.flash.help"), Atdar.profile.get("notify_flash") == true)
 
     -- Made with updating set: the profile's values are put in after (show_profile_value), not saved as changes
     updating = true
-    hour_item(list, "notify_day_start", "day_start", { "feeddaystart" })
-    hour_item(list, "notify_night_start", "night_start", { "feednightstart" })
-    color_item(list, "notify_background_day", "background_day", { "feedbgday" })
-    color_item(list, "notify_flash_color_day", "flash_color_day", { "feedflashday" })
+    hour_item(list, "notify_day_start", "day_start", { "notifyfeeddaystart" })
+    hour_item(list, "notify_night_start", "night_start", { "notifyfeednightstart" })
+    color_item(list, "notify_background_day", "background_day", { "notifyfeedbgday" })
+    color_item(list, "notify_flash_color_day", "flash_color_day", { "notifyfeedflashday" })
     subject_color_item(list, "day")
-    color_item(list, "notify_background_night", "background_night", { "feedbgnight" })
-    color_item(list, "notify_flash_color_night", "flash_color_night", { "feedflashnight" })
+    color_item(list, "notify_background_night", "background_night", { "notifyfeedbgnight" })
+    color_item(list, "notify_flash_color_night", "flash_color_night", { "notifyfeedflashnight" })
     subject_color_item(list, "night")
     updating = false
 end
 
 -- Appearance > Notifications, with the game's feed under the Game divider (utils/util.toast reads what they set)
 function module.appearance(node: table): void
-    local appearance = node:list(label("appearance.name"), { "scriptappearance" }, label("appearance.help"))
-    local list = appearance:list(label("notify.name"), { "scriptnotify" }, label("notify.help"))
+    local appearance = node:list(label("appearance.name"), { "appearance" }, label("appearance.help"))
+    -- Going back out of Notifications takes the test card away too: it was only there to look at
+    local list = appearance:list(label("notify.name"), { "notify" }, label("notify.help"), remove_test_post)
     notifications(list)
     feed(list)
 end

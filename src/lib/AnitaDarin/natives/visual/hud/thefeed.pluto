@@ -12,11 +12,12 @@ local hud_color = Atdar.loader.load("natives/visual/hud_color")
 
 local module = {}
 
--- Message icons (post_message's opts.icon)
+-- Message icons (post_message's opts.icon): the small sign at the card's top right. 4 - 6 show none
 module.ICON = {
     CHAT_BOX = 1,
     EMAIL = 2,
     FRIEND_REQUEST = 3,
+    NONE = 4,
     ARROW = 7,
     RP = 8,
     MONEY = 9,

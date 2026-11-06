@@ -18,6 +18,9 @@ stand.equal(table.concat(commands.names({ "godmode", "God Mode!", "godmode" }), 
 stand.clear_logs()
 stand.equal(#commands.names({ "!!!" }), 0, "a name with no allowed characters is skipped")
 stand.check(stand.find_log("has no allowed characters"), "and that's logged")
+stand.clear_logs()
+stand.equal(#commands.names({ "" }), 0, "{ \"\" } is no command, like {}")
+stand.equal(stand.find_log("has no allowed characters"), nil, "and isn't warned about")
 
 -- Items are renamed in place when the profile's prefix or separator changes
 local item = menu.action(stand.root, "God", commands.names({ "godmode" }), "", || -> nil)

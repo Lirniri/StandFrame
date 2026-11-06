@@ -298,6 +298,8 @@ _G.menu = {
     set_help_text = function(it, help) it.help = help end,
     set_visible = function(it, visible) it.visible = visible end,
     set_command_names = function(it, names) it.commands = names end,
+    -- Where the cursor was sent last (stand.focused)
+    focus = function(it) stand.focused = it end,
     -- Proceeds right away, as if the user confirmed
     show_warning = |_, _, _, proceed| -> proceed(),
 }
