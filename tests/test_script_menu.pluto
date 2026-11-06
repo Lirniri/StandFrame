@@ -209,11 +209,9 @@ local function row(command)
     return nil
 end
 stand.check(#found.children > 5, $"Found Commands lists the section's commands ({#found.children})")
-stand.equal(row("atdardebug") and row("atdardebug").value, "Debug Mode", "a row shows the command and its item")
-stand.check(row("atdarscriptsettings"), "lists also show their command")
-menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "ad")
-stand.check(row("addebug") and not row("atdardebug"), "rows follow a new prefix in place")
-menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "atdar")
+stand.equal(row("debug") and row("debug").value, "Debug Mode", "a row shows the command without the prefix and its item")
+stand.check(row("scriptsettings"), "lists also show their command")
+stand.equal(row("debug").kind, "readonly", "the script's own commands are plain rows: only the menu's can be renamed")
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")

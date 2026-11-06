@@ -284,8 +284,21 @@
         },
         "found_commands": {
             "name": "Found Commands",
-            "help": "Command names of the script's items, for Stand's command box. They follow the prefix and separator",
-            "none": "No commands"
+            "help": "The script's commands for Stand's command box, without the prefix. The loaded menu's commands open a list: rename them there",
+            "none": "No commands",
+            "command": "Command",
+            "rename": {
+                "name": "Custom Name",
+                "help": "A name of your own for this command, instead of the menu's; the prefix stays. Kept in the menu's commands.json (the pack's folder in store, or core). Empty: the menu's own name",
+                "taken": "'%s' is already a command of another item",
+                "failed": "'%s' can't be used as a command name"
+            },
+            "reset": {
+                "name": "Reset Name",
+                "help": "Gives the command back the menu's own name",
+                "done": "The command is '%s' again"
+            },
+            "not_saved": "The custom command names couldn't be saved"
         },
         "open_folder": {
             "name": "Open Folder",

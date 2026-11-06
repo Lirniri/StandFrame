@@ -5,6 +5,8 @@ local settings = load("ui/stand/settings")
 local script_menu = load("ui/stand/script_menu")
 local i18n = load("core/i18n")
 local Logger = load("core/logger")
+local commands = load("ui/stand/commands")
+local JsonFile = load("core/filesystem/json/file")
 local features = Atdar.features
 local paths = Atdar.filesystem.paths
 
@@ -88,8 +90,10 @@ end
 
 -- Replaces the loaded menu: adds its translations (language_dir), runs feature_files,
 -- then build(node) adds the items. kind ("builtin" or "pack") tells later whether the built-in menu is loaded;
--- pack: the pack's folder, so Load Menu can show which pack is loaded
-local function load_menu(kind: string, language_dir: string, feature_files: table, build: function, pack: ?string): void
+-- menu_dir: the menu's folder, where its commands.json (custom command names) is: the pack's in store,
+-- or the built-in menu's in core; pack: the pack's folder name, so Load Menu can show which pack is loaded
+local function load_menu(kind: string, language_dir: string, feature_files: table, build: function, menu_dir: string,
+        pack: ?string): void
     if notice then
         menu.delete(notice)
         notice = nil
@@ -105,9 +109,15 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
         log:warn($"ran {loaded} of {#feature_files} feature file(s)")
     end
 
-    -- A separate node on the root ref tracks only this menu's items
+    -- A separate node on the root ref tracks only this menu's items; their custom names apply as they're made
+    local commands_file = new JsonFile($"{menu_dir}commands.json")
+    commands.begin_menu(commands_file:read() or {})
     local node = new MenuNode(module.root.handle)
-    build(node)
+    local built, err = pcall(build, node)
+    commands.end_menu()
+    if not built then
+        log:error($"menu build failed: {err}")
+    end
 
     local feature_ids = {}
     for id in pairs(features.ids()) do
@@ -115,7 +125,8 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
             table.insert(feature_ids, id)
         end
     end
-    current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
+    current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings,
+        commands_file = commands_file }
     -- Stand applies the active profile only to items created during the script's main body,
     -- so a menu loaded later by hand starts without the profile's states
     rebuild_settings()
@@ -123,12 +134,12 @@ end
 
 local function load_builtin(): void
     load_menu("builtin", $"{paths.lib}language\\", find_builtin_features(),
-        |node| -> builder.build_menu(node, BUILTIN_MENU_DIR))
+        |node| -> builder.build_menu(node, BUILTIN_MENU_DIR), BUILTIN_MENU_DIR)
 end
 
 local function load_pack(info: table): void
     load_menu("pack", $"{info.dir}language\\", info.feature_files,
-        |node| -> builder.build_menu(node, builder.layout_dir(info.dir)), info.folder)
+        |node| -> builder.build_menu(node, builder.layout_dir(info.dir)), info.dir, info.folder)
 end
 
 -- Load Menu > Unload: takes the loaded menu out. Like a start without a menu, the root then says so;
@@ -273,6 +284,20 @@ local function fill_picker(node: table): void
     end
 end
 
+-- Writes the loaded menu's custom command names into its commands.json; nothing to keep -> the file goes
+-- @return Whether it was written
+local function save_command_names(): bool
+    if not current then
+        return false
+    end
+    local names = commands.custom_names()
+    if next(names) == nil then
+        current.commands_file:remove()
+        return true
+    end
+    return current.commands_file:write(names)
+end
+
 -- The script's own section (script_menu lays it out). Added before any menu loads,
 -- so unloading a menu never drops it
 settings.add(function(node)
@@ -281,6 +306,7 @@ settings.add(function(node)
         packs = builder.find_loadable_packs(PACKS_DIR),
         fill_menus = fill_picker,
         unload = unload_menu,
+        save_command_names = save_command_names,
     })
 end)
 

@@ -57,6 +57,37 @@ stand.check(stand.find_item(stand.root, "Self"), "the pack's Self list is in the
 stand.check(Atdar.features.has("self.godmode"), "its features are registered")
 stand.equal(stand.find_log("not found"), nil, "no 'menu not found' notice")
 
+-- ─── Found Commands: the menu's commands get custom names, kept in its commands.json ─────
+
+local function found_commands() return stand.find_item(stand.find_item(stand.root, "Command Box"), "Found Commands") end
+local function found_row(name)
+    for _, child in found_commands().children do
+        if stand.name_of(child) == name then
+            return child
+        end
+    end
+    return nil
+end
+local core_names = $"{lib}ui\\stand\\menu\\commands.json"
+local godmode = found_row("godmode")
+stand.check(godmode and godmode.kind == "list", "the menu's command is a list, shown without the prefix")
+stand.equal(stand.find_item(godmode, "Command").value, "atdargodmode", "inside: the full command")
+menu.set_value(stand.find_item(godmode, "Custom Name"), "god")
+stand.equal(stand.name_of(godmode), "god", "a custom name renames the row")
+stand.equal(stand.find_item(godmode, "Command").value, "atdargod", "and the command: the prefix stays")
+stand.check(stand.read_file(core_names) and stand.read_file(core_names):find('"godmode": "god"', 1, true),
+    "the built-in menu's names are kept in core, next to its main.pluto")
+stand.clear_logs()
+menu.set_value(stand.find_item(godmode, "Custom Name"), "halfgodmode")
+stand.check(stand.find_log("already a command"), "another item's command can't be taken")
+stand.equal(stand.name_of(godmode), "god", "and the name stays")
+stand.equal(found_row("debug").kind, "readonly", "the script's own commands can't be renamed")
+
+stand.click(stand.find_item(godmode, "Reset Name"))
+stand.equal(stand.name_of(found_row("godmode")), "godmode", "Reset Name gives the menu's name back")
+stand.check(not io.exists(core_names), "with no custom names left the file goes")
+menu.set_value(stand.find_item(found_row("godmode"), "Custom Name"), "god")
+
 -- Disable Sprint: the native is called every frame, but the debug log only shows changes
 local running = true
 _G.PLAYER = { PLAYER_ID = || -> 0, PLAYER_PED_ID = || -> 1, SET_PLAYER_SPRINT = || -> nil }
@@ -112,6 +143,14 @@ end
 stand.click(entry("AnitaDarin"), 1)
 stand.check(stand.find_item(stand.root, "Self"), "Load on the pack loads it")
 stand.check(entry("AnitaDarin: loaded"), "Load Menu shows the pack as loaded")
+-- The pack from store has its own commands.json: core's names stay with the built-in menu
+stand.equal(stand.name_of(found_row("godmode")), "godmode", "the store pack doesn't get core's names")
+menu.set_value(stand.find_item(found_row("godmode"), "Custom Name"), "gm")
+stand.check(stand.read_file($"{stand.store}AnitaDarin/menu/AnitaDarin/commands.json"):find('"gm"', 1, true),
+    "a store pack's names go to its folder in store")
+stand.click(entry("AnitaDarin: loaded"), 1)
+stand.check(found_row("gm") and found_row("gm").kind == "list", "loading it again gives its items the saved names")
+stand.check(stand.read_file(core_names):find('"god"', 1, true), "and core's file is untouched")
 
 stand.clear_logs()
 local thefeed = Atdar.natives.visual.hud.thefeed

@@ -92,7 +92,8 @@ end
 
 -- ─── Found Commands ──────────────────────────────────────────────────────────
 
--- Rows of the latest build: readonly item -> the item whose commands it shows
+-- Rows of the latest build: { ref = the item, row = its row (a line or a list), command = the line with
+-- the full command inside a list, or nil }
 local found_rows = {}
 
 -- An item's name for its row; names may be Stand labels
@@ -107,29 +108,76 @@ local function item_name(ref): string
     return tostring(name)
 end
 
--- One row per item that has commands: its command names and its name. Filled at the end of the build,
--- so the section's own items are in it too (the loaded menu's are made before the section)
-local function fill_found_commands(list: table): void
+-- "godmode" - an item's commands without the prefix, easier to read; the full one is inside its list
+local function short_names(ref): string
+    return table.concat(commands.bases_of(ref) or {}, ", ")
+end
+
+local function full_names(ref): string
+    return table.concat(commands.names_of(ref) or {}, ", ")
+end
+
+-- A command of the loaded menu: a list with its full command, its custom name and a reset
+local function command_entry(list: table, ref, save: function): table
+    local entry = list:list(short_names(ref), {}, item_name(ref))
+    local found = { ref = ref, row = entry.handle }
+    found.command = entry:readonly(label("found_commands.command"), full_names(ref))
+
+    local function renamed(): void
+        if not save() then
+            log:warn(text("found_commands.not_saved"))
+        end
+        pcall(menu.set_menu_name, found.row, short_names(ref))
+        pcall(menu.set_value, found.command, full_names(ref))
+    end
+
+    -- A text field takes its text through the command box, so it needs a command: rename<base>.
+    -- Made without commands.track, so it isn't one of the found commands itself
+    local base = (commands.bases_of(ref) or { "" })[1]
+    menu.text_input(entry.handle, label("found_commands.rename.name"), commands.names({ $"rename{base}" }),
+        label("found_commands.rename.help"), function(value)
+        local ok, reason = commands.set_custom(ref, value)
+        if not ok then
+            log:warn(text(reason == "taken" and "found_commands.rename.taken" or "found_commands.rename.failed"):format(value))
+            return
+        end
+        renamed()
+    end, "")
+
+    entry:action(label("found_commands.reset.name"), function()
+        commands.set_custom(ref, "")
+        renamed()
+        log:notify(text("found_commands.reset.done"):format(short_names(ref)))
+    end, {}, label("found_commands.reset.help"))
+    return found
+end
+
+-- One row per item that has commands, its commands without the prefix: a line with the item's name, or
+-- for the loaded menu's items a list to rename it. Filled at the end of the build, so the section's own
+-- items are in it too (the loaded menu's are made before the section)
+local function fill_found_commands(list: table, save: function): void
     found_rows = {}
     local items = commands.list()
     for _, item in ipairs(items) do
-        local row = list:readonly(table.concat(item.names, ", "), item_name(item.ref))
-        found_rows[row] = item.ref
+        if commands.is_renamable(item.ref) then
+            table.insert(found_rows, command_entry(list, item.ref, save))
+        else
+            table.insert(found_rows, { ref = item.ref, row = list:readonly(short_names(item.ref), item_name(item.ref)) })
+        end
     end
     if #items == 0 then
         list:readonly_name(label("found_commands.none"))
     end
 end
 
--- A new prefix or separator renames the commands (ui/stand/commands); the rows follow, in place
+-- A new prefix or separator renames the commands (ui/stand/commands): the full ones inside the lists follow
 Atdar.profile.on_change(function(key: string)
     if key ~= "command_prefix" and key ~= "command_separator" then
         return
     end
-    for row, ref in pairs(found_rows) do
-        local names = commands.names_of(ref)
-        if names then
-            pcall(menu.set_menu_name, row, table.concat(names, ", "))
+    for _, found in ipairs(found_rows) do
+        if found.command then
+            pcall(menu.set_value, found.command, full_names(found.ref))
         end
     end
 end)
@@ -167,6 +215,7 @@ end
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)
 -- opts.packs:      menu packs in store, offered for copying to core
 -- opts.fill_menus: fill_menus(node) adds the Menus divider and an entry per menu (menu.pluto)
+-- opts.save_command_names: writes the loaded menu's custom command names (menu.pluto)
 function module.build(section: table, opts: table): void
     profile_menu.begin(opts.packs)
 
@@ -208,7 +257,7 @@ function module.build(section: table, opts: table): void
     modules_menu.debug_only(delete_script(debug))
 
     -- Last, once every item of the section has its commands
-    fill_found_commands(found)
+    fill_found_commands(found, opts.save_command_names or || -> false)
 end
 
 return module

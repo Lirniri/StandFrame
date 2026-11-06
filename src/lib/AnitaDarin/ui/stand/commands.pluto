@@ -1,5 +1,9 @@
 -- Builds Stand command names for menu items: base name -> prefix + separator + base,
--- and renames every tracked item right away when the prefix settings change
+-- and renames every tracked item right away when the prefix settings change.
+--
+-- The loaded menu's items can have custom names (ui/stand/menu keeps them in the menu's commands.json):
+-- a custom name takes the base name's place, the prefix stays: godmode -> god gives atdargod.
+-- Items made between begin_menu() and end_menu() are the menu's; the script's own aren't renamable
 
 local Logger = Atdar.loader.load("core/logger")
 
@@ -15,6 +19,12 @@ local config = {
 
 -- ref -> base names it was created with
 local tracked = {}
+-- The loaded menu's custom names: base name -> custom base name (both sanitized)
+local custom = {}
+-- Items of the loaded menu, the ones custom names apply to: ref -> true
+local renamable = {}
+-- Set while the loaded menu builds: items tracked then are its own
+local building_menu = false
 
 -- Lowercase, keeps only a-z, 0-9 and _
 function module.sanitize(name: string): string
@@ -39,6 +49,14 @@ local function clean_bases(bases: table, warn: bool): table
     return clean
 end
 
+-- The base a custom name replaces it with, for the loaded menu's items
+local function effective(clean: string, is_menu_item: bool): string
+    if is_menu_item and custom[clean] then
+        return custom[clean]
+    end
+    return clean
+end
+
 local function full_name(clean: string): string
     if config.use_prefix and config.prefix ~= "" then
         return $"{config.prefix}{config.separator}{clean}"
@@ -50,7 +68,7 @@ end
 function module.names(bases: table): table
     local names = {}
     for _, clean in ipairs(clean_bases(bases, true)) do
-        table.insert(names, full_name(clean))
+        table.insert(names, full_name(effective(clean, building_menu)))
     end
     return names
 end
@@ -61,12 +79,16 @@ function module.track(ref, bases: table): void
     local clean = clean_bases(bases, false)
     if #clean > 0 then
         tracked[ref] = clean
+        if building_menu then
+            renamable[ref] = true
+        end
     end
 end
 
 -- Must be called before an item is deleted, or refresh() would touch a deleted item
 function module.untrack(ref): void
     tracked[ref] = nil
+    renamable[ref] = nil
 end
 
 -- @return An item's full command names with the current settings, or nil if it isn't tracked
@@ -77,9 +99,84 @@ function module.names_of(ref): ?table
     end
     local names = {}
     for _, name in ipairs(clean) do
-        table.insert(names, full_name(name))
+        table.insert(names, full_name(effective(name, renamable[ref] == true)))
     end
     return names
+end
+
+-- @return An item's command names without the prefix ("godmode", or its custom name), or nil if it isn't tracked
+function module.bases_of(ref): ?table
+    local clean = tracked[ref]
+    if not clean then
+        return nil
+    end
+    local names = {}
+    for _, name in ipairs(clean) do
+        table.insert(names, effective(name, renamable[ref] == true))
+    end
+    return names
+end
+
+-- ─── The loaded menu's custom names ──────────────────────────────────────────
+
+-- The menu starts building: custom_names (base -> custom, from its commands.json) apply to what it makes
+function module.begin_menu(custom_names: table = {}): void
+    custom = {}
+    for base, name in pairs(custom_names) do
+        if type(base) == "string" and type(name) == "string" then
+            local clean_base, clean_name = module.sanitize(base), module.sanitize(name)
+            if clean_base ~= "" and clean_name ~= "" and clean_name ~= clean_base then
+                custom[clean_base] = clean_name
+            end
+        end
+    end
+    building_menu = true
+end
+
+function module.end_menu(): void
+    building_menu = false
+end
+
+-- Whether the item belongs to the loaded menu, so it can have a custom name
+function module.is_renamable(ref): bool
+    return renamable[ref] == true
+end
+
+-- @return The custom names now (base -> custom), to save
+function module.custom_names(): table
+    local copy = {}
+    for base, name in pairs(custom) do
+        copy[base] = name
+    end
+    return copy
+end
+
+-- Gives a menu item's first command a custom base name; "" (or its own base) goes back to the base.
+-- @return true, or false and why ("taken": another item has that command already)
+function module.set_custom(ref, name: string): (bool, ?string)
+    local clean = tracked[ref]
+    if not clean or not renamable[ref] then
+        return false, "not a menu item"
+    end
+    local base = clean[1]
+    local new_name = module.sanitize(name)
+    if new_name == "" or new_name == base then
+        custom[base] = nil
+    else
+        -- Two items with one command: Stand would only find one of them
+        for other in pairs(tracked) do
+            if other ~= ref then
+                for _, other_name in ipairs(module.bases_of(other)) do
+                    if other_name == new_name then
+                        return false, "taken"
+                    end
+                end
+            end
+        end
+        custom[base] = new_name
+    end
+    menu.set_command_names(ref, module.names_of(ref))
+    return true, nil
 end
 
 -- @return { ref, names } for every item that has commands, sorted by the first name
@@ -97,7 +194,7 @@ function module.refresh(): void
     for ref, clean in pairs(tracked) do
         local names = {}
         for _, name in ipairs(clean) do
-            table.insert(names, full_name(name))
+            table.insert(names, full_name(effective(name, renamable[ref] == true)))
         end
         menu.set_command_names(ref, names)
     end
