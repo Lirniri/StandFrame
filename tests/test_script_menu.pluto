@@ -231,7 +231,7 @@ stand.check(#found.children > 5, $"Base Commands lists the section's commands ({
 local debug_row = row("debug")
 stand.equal(debug_row and debug_row.kind, "list", "a row is a list named by the command without the prefix")
 stand.equal(debug_row.help, "Debug Mode", "its help is the item's name")
-stand.check(row("scriptsettings"), "lists also show their command")
+stand.check(row("settings"), "lists also show their command")
 -- The script's own commands get custom names too, kept in store/<script>/commands.json
 -- Go To Item takes the cursor to the item itself
 stand.click(stand.find_item(debug_row, "Go To Item"))
