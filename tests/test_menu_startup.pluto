@@ -8,6 +8,9 @@ stand.boot()
 local scripts = stand.tmpdir("startup_scripts")
 local lib = $"{scripts}lib\\AnitaDarin\\"
 filesystem.scripts_dir = || -> scripts
+-- resources too, so nothing here can reach src (Delete Script below deletes for real)
+local resources = stand.tmpdir("startup_resources")
+filesystem.resources_dir = || -> resources
 
 -- store: the real AnitaDarin pack and base language files, and a profile that copies the pack
 stand.store = stand.tmpdir("startup_store")
@@ -94,5 +97,55 @@ stand.equal(stand.name_of(stand.root.children[1]), "Built-in menu not found", "t
 stand.equal(stand.root.children[1].kind, "divider", "as a divider")
 stand.check(not stand.find_item(stand.root, "Self"), "the menu's items are gone")
 stand.check(stand.find_log("will be copied again at the next start"), "it says auto-copy will bring the copy back")
+
+-- ─── Load Menu: a pack's state, Unload ───────────────────────────────────────
+
+local function load_menu() return stand.find_item(stand.root, "Load Menu") end
+local function entry(name)
+    for _, child in load_menu().children do
+        if stand.name_of(child) == name then
+            return child
+        end
+    end
+    return nil
+end
+stand.click(entry("AnitaDarin"), 1)
+stand.check(stand.find_item(stand.root, "Self"), "Load on the pack loads it")
+stand.check(entry("AnitaDarin: loaded"), "Load Menu shows the pack as loaded")
+
+stand.clear_logs()
+stand.click(stand.find_item(load_menu(), "Unload"))
+stand.check(not stand.find_item(stand.root, "Self"), "Unload takes the menu's items out")
+stand.equal(stand.name_of(stand.root.children[1]), "Built-in menu not found", "the notice is at the top again")
+stand.check(entry("AnitaDarin"), "the pack is no longer shown as loaded")
+stand.check(stand.find_log("Menu unloaded"), "Unload says so")
+stand.clear_logs()
+stand.click(stand.find_item(load_menu(), "Unload"))
+stand.check(stand.find_log("No menu is loaded"), "a second Unload says there's nothing to unload")
+
+-- ─── Delete Script: asks, deletes the whole install, stops ───────────────────
+
+-- The name is part of every path it deletes: an empty or odd name is refused
+local installer = Atdar.loader.load("core/installer")
+local real_name = Atdar.name
+for _, bad in { "", "..", "a\b" } do
+    Atdar.name = bad
+    stand.check(not installer.delete(), $"delete refuses the name '{bad}'")
+end
+Atdar.name = real_name
+
+stand.write_file(scripts .. "AnitaDarin.pluto", "-- launcher")
+io.makedirs(resources .. "AnitaDarin/sub")
+stand.write_file(resources .. "AnitaDarin/sub/image.png", "x")
+local real_warning = menu.show_warning
+menu.show_warning = |_, _, _, proceed| -> proceed()
+stand.click(stand.find_item(stand.find_item(stand.root, "Debug"), "Delete Script"))
+menu.show_warning = real_warning
+stand.check(not io.exists(scripts .. "AnitaDarin.pluto"), "the launcher is deleted")
+stand.check(not io.exists(lib), "lib/AnitaDarin is deleted")
+stand.check(not io.exists(stand.store .. "AnitaDarin"), "store/AnitaDarin is deleted, profiles too")
+stand.check(not io.exists(resources .. "AnitaDarin"), "resources/AnitaDarin is deleted, with its subfolders")
+stand.check(stand.stopped, "the script stops after deleting itself")
+stand.check(io.exists(stand.SRC .. "lib/AnitaDarin/bootstrap.pluto"), "src is untouched")
 
 stand.finish()

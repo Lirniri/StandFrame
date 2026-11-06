@@ -26,6 +26,11 @@
             "remove_from_core": "Remove from core",
             "open_menu_folder": "Open Menu Folder",
             "open_features_folder": "Open Features Folder"
+        },
+        "state": {
+            "name": "%s: %s",
+            "loaded": "loaded",
+            "in_core": "in core"
         }
     },
     "profile": {
@@ -181,14 +186,20 @@
     "script_menu": {
         "stub": "Not made yet",
         "unload": {
-            "name": "Unload"
+            "name": "Unload",
+            "help": "Takes the loaded menu out of the script; Load Menu brings one back",
+            "nothing": "No menu is loaded",
+            "done": "Menu unloaded",
+            "notice": "No menu loaded: see Load Menu"
         },
         "command_box": {
             "name": "Command Box",
             "help": "Command names of the script's items"
         },
         "found_commands": {
-            "name": "Found Commands"
+            "name": "Found Commands",
+            "help": "Command names of the script's items, for Stand's command box. They follow the prefix and separator",
+            "none": "No commands"
         },
         "open_folder": {
             "name": "Open Folder",
@@ -213,7 +224,9 @@
         "delete_script": {
             "name": "Delete Script",
             "help": "Deletes the script with all its files. Asks first",
-            "warning": "Delete the script '%s' with all its files (launcher, lib, store and resources folders)?\nThis can't be undone."
+            "warning": "Delete the script '%s' with all its files (launcher, lib, store and resources folders)?\nThis can't be undone.",
+            "done": "Script '%s' deleted (%d file(s)). It stops now",
+            "failed": "Not deleted: %s"
         }
     }
 }

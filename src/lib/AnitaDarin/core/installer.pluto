@@ -71,4 +71,77 @@ function module.restart_as(new_name: string): void
     end)
 end
 
+-- Pluto's io.remove also removes (empty) folders; plain Lua's os.remove can't on Windows
+local remove_path = io.remove or os.remove
+
+-- Deletes a folder with everything in it: files first, then the folders from the deepest up
+-- @return Number of files deleted, and whether the folder itself is gone
+local function remove_tree(dir: string): (int, bool)
+    local files, folders = {}, {}
+    local function collect(path: string)
+        for _, child in ipairs(filesystem.list_files(path)) do
+            if filesystem.is_dir(child) then
+                collect($"{child}\\")
+                table.insert(folders, child)
+            else
+                table.insert(files, child)
+            end
+        end
+    end
+    collect(dir)
+    local removed = 0
+    for _, file in ipairs(files) do
+        if os.remove(file) then
+            removed += 1
+        end
+    end
+    -- A folder is added after everything inside it, so in this order every folder is already empty
+    for _, folder in ipairs(folders) do
+        pcall(remove_path, folder)
+    end
+    pcall(remove_path, dir)
+    return removed, not filesystem.exists(dir)
+end
+
+-- Deletes the whole script: its launcher and its lib, store (profiles too) and resources folders.
+-- Can't be undone; the menu asks first. The script keeps running from memory until stop()
+-- @return true and the number of deleted files, or false and a reason
+function module.delete(): (bool, any)
+    local name = Atdar.name
+    -- The name is part of every path below: never delete with an empty or odd one
+    if not module.valid_name(name) then
+        return false, $"'{name}' isn't a valid script name"
+    end
+    local scripts = filesystem.scripts_dir()
+    local removed = 0
+    local left = {}
+    for _, dir in ipairs({ $"{scripts}lib\\{name}\\", $"{filesystem.store_dir()}{name}\\", $"{filesystem.resources_dir()}{name}\\" }) do
+        if filesystem.exists(dir) then
+            local count, gone = remove_tree(dir)
+            removed += count
+            if not gone then
+                table.insert(left, dir)
+            end
+        end
+    end
+    local launcher = $"{scripts}{name}.pluto"
+    if filesystem.exists(launcher) and os.remove(launcher) then
+        removed += 1
+    end
+    if #left > 0 then
+        log:warn($"deleted {removed} file(s); empty folders left behind: {table.concat(left, ', ')}")
+    else
+        log:info($"deleted {name}: {removed} file(s)")
+    end
+    return true, removed
+end
+
+-- Stops this script, e.g. after it was deleted
+function module.stop(): void
+    util.create_thread(function()
+        util.yield()
+        util.stop_script()
+    end)
+end
+
 return module

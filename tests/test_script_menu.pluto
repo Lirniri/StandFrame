@@ -28,6 +28,7 @@ local function rebuild()
         refresh = rebuild,
         packs = { { folder = "AnitaDarin", name = "AnitaDarin" } },
         fill_menus = |node| -> node:divider("Menus"),
+        unload = function() UNLOADED = true end,
     })
 end
 rebuild()
@@ -84,10 +85,26 @@ stand.equal(names_in(find("Debug")), "Debug Mode | Debug | Modules | Delete Scri
 stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Delete", "a profile's own list")
 
--- Stubs say they aren't made yet
-stand.clear_logs()
+-- Unload runs menu.pluto's unload (tested in test_menu_startup)
 stand.click(stand.find_item(find("Load Menu"), "Unload"))
-stand.check(stand.find_log("Not made yet"), "a stub says it isn't made yet")
+stand.check(UNLOADED, "Unload calls the menu's unload")
+
+-- Found Commands: one row per item with commands, built after the whole section
+local found = stand.find_item(find("Command Box"), "Found Commands")
+local function row(command)
+    for _, child in found.children do
+        if stand.name_of(child) == command then
+            return child
+        end
+    end
+    return nil
+end
+stand.check(#found.children > 5, $"Found Commands lists the section's commands ({#found.children})")
+stand.equal(row("atdarprofiledebug") and row("atdarprofiledebug").value, "Debug Mode", "a row shows the command and its item")
+stand.check(row("atdarscriptsettings"), "lists also show their command")
+menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "ad")
+stand.check(row("adprofiledebug") and not row("atdarprofiledebug"), "rows follow a new prefix in place")
+menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "atdar")
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
@@ -102,14 +119,14 @@ stand.check(all_visible(false), "divider, Modules and Delete Script are hidden w
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
 
--- Delete Script asks first
+-- Delete Script asks first. The answer is never "yes" here: this test runs on the real src folder,
+-- deleting is tested in test_delete_script on a temp copy
 local asked = nil
 local real_warning = menu.show_warning
-menu.show_warning = function(_, _, message, proceed) asked = message proceed() end
-stand.clear_logs()
+menu.show_warning = function(_, _, message) asked = message end
 stand.click(stand.find_item(debug_list, "Delete Script"))
 stand.check(asked and asked:find("Delete the script 'AnitaDarin'", 1, true), "Delete Script asks before deleting")
-stand.check(stand.find_log("Not made yet"), "and after that it's still a stub")
+stand.check(io.exists($"{stand.SRC}lib/AnitaDarin/bootstrap.pluto"), "nothing is deleted without a yes")
 menu.show_warning = real_warning
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(false), "turning debug mode off hides them again")

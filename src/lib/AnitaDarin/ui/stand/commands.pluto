@@ -69,6 +69,29 @@ function module.untrack(ref): void
     tracked[ref] = nil
 end
 
+-- @return An item's full command names with the current settings, or nil if it isn't tracked
+function module.names_of(ref): ?table
+    local clean = tracked[ref]
+    if not clean then
+        return nil
+    end
+    local names = {}
+    for _, name in ipairs(clean) do
+        table.insert(names, full_name(name))
+    end
+    return names
+end
+
+-- @return { ref, names } for every item that has commands, sorted by the first name
+function module.list(): table
+    local items = {}
+    for ref in pairs(tracked) do
+        table.insert(items, { ref = ref, names = module.names_of(ref) })
+    end
+    table.sort(items, |a, b| -> a.names[1] < b.names[1])
+    return items
+end
+
 -- Renames every tracked item with the current settings
 function module.refresh(): void
     for ref, clean in pairs(tracked) do

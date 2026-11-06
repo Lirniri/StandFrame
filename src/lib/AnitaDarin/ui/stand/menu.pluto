@@ -47,11 +47,14 @@ local current = nil
 -- Divider shown while no menu is loaded and there's no built-in one; gone once a menu loads
 local notice = nil
 
--- Made before the settings section is (re)built, so it stays above it.
+-- Made before the settings section is (re)built, so it stays above it. key: its string,
+-- "not found" by default, "unloaded" after Unload while a built-in menu is there.
 -- i18n directly: label()/text() of this file are declared further down
-local function show_notice(): void
-    if not notice then
-        notice = module.root:divider(i18n.label("menu_loader.not_found"))
+local function show_notice(key: string = "menu_loader.not_found"): void
+    if notice then
+        pcall(menu.set_menu_name, notice, i18n.label(key))
+    else
+        notice = module.root:divider(i18n.label(key))
     end
 end
 
@@ -84,8 +87,9 @@ local function rebuild_settings(): void
 end
 
 -- Replaces the loaded menu: adds its translations (language_dir), runs feature_files,
--- then build(node) adds the items. kind ("builtin" or "pack") tells later whether the built-in menu is loaded
-local function load_menu(kind: string, language_dir: string, feature_files: table, build: function): void
+-- then build(node) adds the items. kind ("builtin" or "pack") tells later whether the built-in menu is loaded;
+-- pack: the pack's folder, so Load Menu can show which pack is loaded
+local function load_menu(kind: string, language_dir: string, feature_files: table, build: function, pack: ?string): void
     if notice then
         menu.delete(notice)
         notice = nil
@@ -111,7 +115,7 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
             table.insert(feature_ids, id)
         end
     end
-    current = { kind = kind, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
+    current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
     -- Stand applies the active profile only to items created during the script's main body,
     -- so a menu loaded later by hand starts without the profile's states
     rebuild_settings()
@@ -124,7 +128,20 @@ end
 
 local function load_pack(info: table): void
     load_menu("pack", $"{info.dir}language\\", info.feature_files,
-        |node| -> builder.build_menu(node, builder.layout_dir(info.dir)))
+        |node| -> builder.build_menu(node, builder.layout_dir(info.dir)), info.folder)
+end
+
+-- Load Menu > Unload: takes the loaded menu out. Like a start without a menu, the root then says so;
+-- Load Menu brings one back
+local function unload_menu(): void
+    if not current then
+        log:notify(i18n.text("script_menu.unload.nothing"))
+        return
+    end
+    unload_current()
+    show_notice(has_builtin() ? "script_menu.unload.notice" : "menu_loader.not_found")
+    rebuild_settings()
+    log:notify(i18n.text("script_menu.unload.done"))
 end
 
 local function copy_pack(info: table): void
@@ -190,7 +207,23 @@ local function copied_builtin_options(): table
     return { label("options.load"), label("options.remove_from_core") }
 end
 
--- Adds an entry per available menu: the built-in one (if any) and every pack in store
+-- "AnitaDarin: loaded, in core" - a menu's name with its state, or just the name
+local function with_state(name: string, loaded: bool, in_core: bool): string
+    local states = {}
+    if loaded then
+        table.insert(states, text("state.loaded"))
+    end
+    if in_core then
+        table.insert(states, text("state.in_core"))
+    end
+    if #states == 0 then
+        return name
+    end
+    return text("state.name"):format(name, table.concat(states, ", "))
+end
+
+-- Adds an entry per available menu: the built-in one (if any) and every pack in store, with their state.
+-- The section is rebuilt after every load and unload, so the states are always current
 local function fill_picker(node: table): void
     local builtin = has_builtin()
     local manifest = builtin and builder.read_core_manifest(paths.lib)
@@ -199,7 +232,8 @@ local function fill_picker(node: table): void
         node:divider(label("menus"))
     end
     if builtin then
-        local name = text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name)
+        local name = with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name),
+            current and current.kind == "builtin", false)
         if manifest then
             node:list_action(name, copied_builtin_options(), function(index)
                 if index == 1 then
@@ -218,7 +252,9 @@ local function fill_picker(node: table): void
         local version = info.version or text("pack.unknown_version")
         local author = info.author or text("pack.unknown_author")
         local help = text("pack.help"):format(version, author) .. "\n" .. text("pack.options_help")
-        node:list_action(info.name, pack_options(), function(index)
+        local loaded = current and current.kind == "pack" and current.pack == info.folder
+        local in_core = manifest and manifest.pack == info.name
+        node:list_action(with_state(info.name, loaded, in_core), pack_options(), function(index)
             if index == 1 then
                 load_pack(info)
             elseif index == 2 then
@@ -242,6 +278,7 @@ settings.add(function(node)
         refresh = rebuild_settings,
         packs = builder.find_loadable_packs(PACKS_DIR),
         fill_menus = fill_picker,
+        unload = unload_menu,
     })
 end)
 

@@ -5,17 +5,19 @@
 --   Display Name, Short Name
 --   Settings >      Language, Name In Logs, Notifications, Rename Script
 --   Profiles >      Create Profile, Open Folder, one list per profile
---   Load Menu >     Unload*, Copy Menu To Core, ── Menus ──, the menus
---   Command Box >   Command Prefix, Separator, Found Commands*
+--   Load Menu >     Unload, Copy Menu To Core, ── Menus ──, the menus with their state
+--   Command Box >   Command Prefix, Separator, Found Commands
 --   Open Folder >   Lib, Resources, Store
 --   Debug >         Debug Mode, then at the bottom in debug mode only:
---                   ── Debug ──, Modules, Delete Script* (asks first)
+--                   ── Debug ──, Modules, Delete Script (asks first)
 --
--- * not made yet: a stub that says so. Stand adds every item at the end of its list,
--- so the order of the calls below is the order in the menu. Strings: language/base "script_menu"
+-- Stand adds every item at the end of its list, so the order of the calls below is the order in the menu.
+-- Strings: language/base "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
+local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
+local commands = Atdar.loader.load("ui/stand/commands")
 local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
 local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
 
@@ -31,21 +33,73 @@ local function text(key: string): string
     return i18n.text($"script_menu.{key}")
 end
 
--- An item that isn't made yet: says so when used
+-- An item that isn't made yet: says so when used. Unused now, kept for the next new item
 local function stub(node: table, key: string): void
     node:action(label($"{key}.name"), || -> log:notify(text("stub")), {}, label("stub"))
 end
 
--- Delete Script asks first: deleting the script can't be undone. The deleting itself isn't made yet
+-- Delete Script asks first: deleting the script can't be undone. Then the script deletes its files
+-- (core/installer) and stops
 -- @return The item
 local function delete_script(node: table)
     local ref
     ref = node:action(label("delete_script.name"), function(click_type)
-        menu.show_warning(ref, click_type, text("delete_script.warning"):format(Atdar.name),
-            || -> log:notify(text("stub")))
+        menu.show_warning(ref, click_type, text("delete_script.warning"):format(Atdar.name), function()
+            local ok, result = installer.delete()
+            if not ok then
+                log:warn(text("delete_script.failed"):format(result))
+                return
+            end
+            log:notify(text("delete_script.done"):format(Atdar.name, result))
+            installer.stop()
+        end)
     end, {}, label("delete_script.help"))
     return ref
 end
+
+-- ─── Found Commands ──────────────────────────────────────────────────────────
+
+-- Rows of the latest build: readonly item -> the item whose commands it shows
+local found_rows = {}
+
+-- An item's name for its row; names may be Stand labels
+local function item_name(ref): string
+    local ok, name = pcall(menu.get_menu_name, ref)
+    if not ok then
+        return ""
+    end
+    if type(name) == "number" then
+        return lang.get_localised(name)
+    end
+    return tostring(name)
+end
+
+-- One row per item that has commands: its command names and its name. Filled at the end of the build,
+-- so the section's own items are in it too (the loaded menu's are made before the section)
+local function fill_found_commands(list: table): void
+    found_rows = {}
+    local items = commands.list()
+    for _, item in ipairs(items) do
+        local row = list:readonly(table.concat(item.names, ", "), item_name(item.ref))
+        found_rows[row] = item.ref
+    end
+    if #items == 0 then
+        list:readonly_name(label("found_commands.none"))
+    end
+end
+
+-- A new prefix or separator renames the commands (ui/stand/commands); the rows follow, in place
+Atdar.profile.on_change(function(key: string)
+    if key ~= "command_prefix" and key ~= "command_separator" then
+        return
+    end
+    for row, ref in pairs(found_rows) do
+        local names = commands.names_of(ref)
+        if names then
+            pcall(menu.set_menu_name, row, table.concat(names, ", "))
+        end
+    end
+end)
 
 -- Opens one of the script's folders in Explorer; one that doesn't exist yet (resources) is made first,
 -- since Explorer can't open a missing folder
@@ -56,11 +110,6 @@ local function open_folder(node: table, key: string, path: string): void
         end
         util.open_folder(path)
     end, {}, label($"open_folder.{key}.help"))
-end
-
--- A list that isn't made yet: its only line says so
-local function stub_list(node: table, key: string): void
-    node:list(label($"{key}.name"), {}, label("stub")):readonly_name(label("stub"))
 end
 
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)
@@ -82,13 +131,13 @@ function module.build(section: table, opts: table): void
 
     local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), {},
         i18n.label("menu_loader.load_menu.help"))
-    stub(load_menu, "unload")
+    load_menu:action(label("unload.name"), opts.unload, {}, label("unload.help"))
     profile_menu.auto_copy(load_menu)
     opts.fill_menus(load_menu)
 
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
     profile_menu.command_box(command_box)
-    stub_list(command_box, "found_commands")
+    local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
 
     local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
     local paths = Atdar.filesystem.paths
@@ -101,6 +150,9 @@ function module.build(section: table, opts: table): void
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_menu.build(debug)
     modules_menu.debug_only(delete_script(debug))
+
+    -- Last, once every item of the section has its commands
+    fill_found_commands(found)
 end
 
 return module

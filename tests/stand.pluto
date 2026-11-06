@@ -152,6 +152,9 @@ _G.util = {
     create_tick_handler = |fn| -> table.insert(tick_handlers, fn),
     on_stop = |fn| -> table.insert(stop_handlers, fn),
     is_session_started = || -> stand.online,
+    -- Runs the thread right away, to its end
+    create_thread = |fn| -> fn(),
+    stop_script = function() stand.stopped = true end,
     joaat = joaat,
     open_folder = |path| -> table.insert(stand.toasts, $"open_folder {path}"),
 }
@@ -282,6 +285,7 @@ _G.menu = {
         end
     end,
     get_value = |it| -> it.value,
+    get_menu_name = |it| -> it.name,
     set_value = set_value,
     set_menu_name = function(it, name) it.name = name end,
     set_help_text = function(it, help) it.help = help end,
