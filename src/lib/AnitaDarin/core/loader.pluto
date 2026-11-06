@@ -50,4 +50,3 @@ function module.auto(tbl: table, base: string): table
 end
 
 return module
--- \,

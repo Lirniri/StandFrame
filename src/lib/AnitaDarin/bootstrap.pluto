@@ -34,5 +34,3 @@ Atdar.modules.start()
 Atdar.features = Atdar.loader.load("features/registry")
 
 Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
-
--- \,
