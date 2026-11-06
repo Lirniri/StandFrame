@@ -26,17 +26,17 @@ end
 
 -- vehicle_or_model: vehicle handle (number) or model name (string, e.g. "adder")
 function module.get_class(vehicle_or_model: int|string): int
-    local value = vehicle_or_model
-    if type(value) == "string" then
-        return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(util.joaat(value))
+    local target = vehicle_or_model
+    if type(target) == "string" then
+        return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(util.joaat(target))
     end
-    if module.is_exist(value) then
-        return VEHICLE.GET_VEHICLE_CLASS(value)
+    if module.is_exist(target) then
+        return VEHICLE.GET_VEHICLE_CLASS(target)
     end
-    if module.is_model(value) then
-        return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(value)
+    if module.is_model(target) then
+        return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(target)
     end
-    error($"[natives/vehicle] get_class: {tostring(value)} is not a vehicle, vehicle model or model name")
+    error($"[natives/vehicle] get_class: {tostring(target)} is not a vehicle, vehicle model or model name")
 end
 
 function module.get_all(as_pointers: bool = false): table
