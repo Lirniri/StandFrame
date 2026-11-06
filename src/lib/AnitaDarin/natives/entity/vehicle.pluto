@@ -9,9 +9,10 @@ end
 -- Get
 
 function module.get_all(as_pointer: bool = false): table
-    local handle = entities.get_all_vehicles_as_handles()
-    local pointer = entities.get_all_vehicles_as_pointer()
-    return as_pointer and pointer or handle
+    if as_pointer then
+        return entities.get_all_vehicles_as_pointers()
+    end
+    return entities.get_all_vehicles_as_handles()
 end
 
 function module.get_net_id(vehicle): int

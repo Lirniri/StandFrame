@@ -16,7 +16,7 @@ local class InfiniteStamina extends Feature
 
     function is_restored(): bool
         local restored = self.restored
-        local text = restored and "is true!" or "!is false!"
+        local text = restored ? "is true!" : "!is false!"
         log:debug($"id: {self.id}: {text}")
         return restored
     end
@@ -24,7 +24,7 @@ local class InfiniteStamina extends Feature
     function set_stamina(toggle)
         local n_player = Atdar.natives.player
 
-        local debug_text = toggle and "is restored :)" or "is not restored :("
+        local debug_text = toggle ? "is restored :)" : "is not restored :("
         n_player.user.infinite_stamina(toggle)
         self.restored = toggle
         log:debug($"id: {self.id}: {debug_text}")

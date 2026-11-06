@@ -1,4 +1,4 @@
-local module = { begin = {}, end = {}, color = {} }
+local module = { color = {}, begin = {}, end = {} }
 
 function module.is_paused(): bool
     return HUD.THEFEED_IS_PAUSED()
@@ -72,10 +72,11 @@ function module.end.post_message(
     )
 end
 
-function module.end.post_ticker(blink: bool, p1: bool, is_mp: bool): int
-    return is_mp ? 
-    HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1) : 
-    HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
+function module.end.post_ticker(blink: bool = 0, p1: bool = 1, is_mp: bool = false): int
+    if is_mp then
+        return HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(blink, p1)
+    end
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(blink, p1)
 end
 
 

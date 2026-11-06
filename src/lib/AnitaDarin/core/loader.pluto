@@ -22,5 +22,32 @@ function module.load(path: string): table
     return result
 end
 
+-- lib/AnitaDarin/; the loader runs before utils/filesystem, so the path is built here
+local LIB_DIR = $"{filesystem.scripts_dir()}lib\\{Atdar.name}\\"
+
+-- Fields missing from tbl are loaded on first access from <base>/<field>.pluto and kept in tbl,
+-- so a facade doesn't list its submodules. A field with no such file stays nil, so typos aren't hidden.
+-- Example: return Atdar.loader.auto(module, "natives/entity") -> entity.ped loads natives/entity/ped.pluto
+function module.auto(tbl: table, base: string): table
+    -- Fields already known to have no file: not checked on disk again
+    local missing = {}
+    return setmetatable(tbl, {
+        __index = function(t, key)
+            if type(key) ~= "string" or missing[key] then
+                return nil
+            end
+            local path = $"{base}/{key}"
+            local file = path:gsub("/", "\\")
+            if not filesystem.exists($"{LIB_DIR}{file}.pluto") then
+                missing[key] = true
+                return nil
+            end
+            local sub = module.load(path)
+            rawset(t, key, sub)
+            return sub
+        end,
+    })
+end
+
 return module
 -- \,

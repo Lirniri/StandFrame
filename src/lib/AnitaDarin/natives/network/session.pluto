@@ -1,7 +1,4 @@
-local load = Atdar.loader.load
-
 local module = {}
-
 
 -- Session
 function module.is_started()
@@ -55,6 +52,4 @@ function module.get_status(): table
     
 end
 
-module.transition = load("natives/network/session/transition")
-
-return module
+return Atdar.loader.auto(module, "natives/network/session")

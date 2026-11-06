@@ -1,5 +1,3 @@
-local load = Atdar.loader.load
-
 local module = {}
 
 -- @desc Lowers coords.z to the ground (in place) if the point is above it by no more than max_height.
@@ -18,13 +16,4 @@ function module.snap_to_ground(coords: vector3, max_height: number|bool = false)
     return true
 end
 
-module.map = load("natives/world/map")
-module.time = load("natives/world/time")
-module.weather = load("natives/world/weather")
-module.location = load("natives/world/location")
-module.interior = load("natives/world/interior")
-module.path = load("natives/world/path")
-module.water = load("natives/world/water")
-module.fire = load("natives/world/fire")
-
-return module
+return Atdar.loader.auto(module, "natives/world")

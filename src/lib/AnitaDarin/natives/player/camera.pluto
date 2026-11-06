@@ -1,5 +1,3 @@
-local load = Atdar.loader.load
-
 local module = {}
 
 -- State
@@ -18,6 +16,4 @@ end
 
 -- Actions
 
-module.user = load("natives/player/camera/user")
-
-return module
+return Atdar.loader.auto(module, "natives/player/camera")

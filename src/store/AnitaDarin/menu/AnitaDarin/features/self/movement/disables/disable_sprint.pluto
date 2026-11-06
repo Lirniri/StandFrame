@@ -5,7 +5,7 @@ local Logger = load("core/logger")
 
 local log = new Logger("DisableSprint")
 
--- Control is held only while the ped is ragdolling
+
 local class DisableSprint extends Feature
     function __construct()
         parent:__construct({
@@ -17,12 +17,21 @@ local class DisableSprint extends Feature
     function set_sprint(toggle)
         local n_player = Atdar.natives.player
         local player = n_player.get_id()
+        local debug_text = toggle ? "sprint is disabled :)" : "sprint is enabled :("
 
         n_player.movement.set_sprint(player, toggle)
+        log:debug($"id: {self.id}: {debug_text}")
     end
 
     function on_tick()
-        self:set_sprint(false)
+        local n_ped = Atdar.natives.entity.ped
+        local ped = Atdar.natives.player.get_ped_id()
+
+        if n_ped.is_strafing(ped) then
+            self:set_sprint(false)
+        else
+            self:set_sprint(true)
+        end
     end
     
     function on_disable()

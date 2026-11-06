@@ -29,7 +29,7 @@ local class Logger
     function tag(): string
         local profile = Atdar.profile
         local name = profile and profile.log_name and profile.log_name() or Atdar.name
-        return self.source and $"[{name} | {self.source}]" or $"[{name}]"
+        return self.source ? $"[{name} | {self.source}]" : $"[{name}]"
     end
 
     function write(level: string, msg: string, toast: bool): void

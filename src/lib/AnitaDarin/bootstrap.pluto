@@ -19,26 +19,15 @@ end
 -- Script profile: display/short name, command prefix. Needs filesystem paths, used by the logger and menu
 Atdar.profile = Atdar.loader.load("core/profile")
 
--- Native wrappers: Atdar.natives.<section>. An error in one file doesn't crash the script, that file stays empty
-local NATIVES = {
-    -- Game systems
-    "streaming",
-    "input",
-    "visual",
-    "audio",
+-- Native wrappers: Atdar.natives.<section>, each loaded from natives/<section>.pluto on first use.
+-- An error in one file doesn't crash the script, that file stays empty
+Atdar.natives = Atdar.loader.auto({}, "natives")
 
-    -- Game objects and the world
-    "entity",
-    "player",
-    "network",
-    "world",
-    "weapon",
-}
-
-Atdar.natives = {}
-for _, name in NATIVES do
-    Atdar.natives[name] = Atdar.loader.load($"natives/{name}")
-end
+-- Modules: internal parts the script starts by itself, in dependency order (core/module).
+-- Before features and the menu, so those can use them
+Atdar.modules = Atdar.loader.load("core/module_manager")
+Atdar.modules.load_dir($"{Atdar.filesystem.paths.lib}modules\\")
+Atdar.modules.start()
 
 -- Features register themselves in Atdar.features; the menu looks them up by id.
 -- Which features get loaded depends on the menu: built-in ones or the chosen pack's

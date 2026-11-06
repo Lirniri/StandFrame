@@ -1,0 +1,19 @@
+-- TEST MODULE (delete the modules/test folder when done)
+-- Checks: table style, deps and self:get().
+-- This file loads before session_watch.pluto (alphabetical order), yet must start after it
+
+local Module = Atdar.loader.load("core/module")
+
+return Atdar.modules.add(new Module({
+    name = "test.greeter",
+    deps = { "test.session_watch" },
+
+    on_start = function(self)
+        local session = self:get("test.session_watch")
+        self.log:notify($"started after session_watch, online: {session:is_online()}")
+    end,
+
+    on_stop = function(self)
+        self.log:notify("stopped")
+    end,
+}))

@@ -1,9 +1,10 @@
 local module = {}
 
 function module.gel_all(as_pointer: bool = false)
-    local handle = entities.get_all_pickups_as_handles()
-    local pointer = entities.get_all_pickups_as_pointers()
-    return as_pointer and pointer or handle
+    if as_pointer then
+        return entities.get_all_pickups_as_pointers()
+    end
+    return entities.get_all_pickups_as_handles()
 end
 
 return module

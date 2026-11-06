@@ -16,7 +16,7 @@ local class RagdollControl extends Feature
 
     function is_given(): bool
         local given = self.given
-        local text = given and "is true!" or "!is false!"
+        local text = given ? "is true!" : "!is false!"
         log:debug($"id: {self.id}: {text}")
         return given
     end
@@ -24,7 +24,7 @@ local class RagdollControl extends Feature
     function set_control(toggle: bool): void
         local n_player = Atdar.natives.player
         n_player.give_ragdoll_control(n_player.get_id(), toggle)
-        local debug_text = toggle and "control is given :)" or "control is removed :("
+        local debug_text = toggle ? "control is given :)" : "control is removed :("
         self.given = toggle
         log:debug($"id: {self.id}: {debug_text}")
     end

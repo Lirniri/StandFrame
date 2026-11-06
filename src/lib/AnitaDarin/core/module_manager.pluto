@@ -1,47 +1,180 @@
+-- lib/AnitaDarin/core/module_manager.pluto
+--
+-- Keeps the script's modules (core/module): starts them in dependency order, ticks the ones that tick
+-- and stops them in reverse order when the script stops. Available as Atdar.modules.
+--
+-- A module file registers itself, like a feature file:
+--     return Atdar.modules.add(new Module({ name = "players", on_tick = function(self) ... end }))
 
-local paths = require($"{Atdar.name}/core/filesystem/paths")
+local Logger = Atdar.loader.load("core/logger")
 
-local class ModuleManager
+local log = new Logger("Modules")
 
-    function __construct()
-        -- body
-    end
+local module = {}
 
-    function get()
-        -- body
-    end
-    
-    function register()
-        -- body
-    end
-    function unregister()
-        -- body
-    end
+local by_name = {}
+-- Registration order: modules without deps between them start in this order
+local order = {}
+-- Start order; stop() goes through it backwards, so a module stops before the modules it needs
+local started = {}
+local tick_handler_created = false
 
-    function load()
-        -- body
+function module.add(mod: table): table
+    local name = mod.name
+    if type(name) ~= "string" then
+        error("[Modules] a module needs a name, create it with new Module({ name = ... })")
     end
-    function load_dir()
-        -- body
+    if by_name[name] then
+        error($"[Modules] module '{name}' is already registered")
     end
-
-    function unload()
-        -- body
-    end
-    function unload_dir()
-        -- body
-    end
-
-    function start()
-        -- body
-    end
-    function pre_stop()
-        -- body
-    end
-    function stop()
-        -- body
-    end
-
+    by_name[name] = mod
+    table.insert(order, mod)
+    return mod
 end
 
-return ModuleManager
+function module.get(name: string): table
+    local mod = by_name[name]
+    if not mod then
+        error($"[Modules] unknown module '{name}'")
+    end
+    return mod
+end
+
+function module.has(name: string): bool
+    return by_name[name] ~= nil
+end
+
+-- @return Module names in registration order
+function module.names(): table
+    local names = {}
+    for _, mod in ipairs(order) do
+        table.insert(names, mod.name)
+    end
+    return names
+end
+
+-- Starts the module's deps first.
+-- chain: names being started right now, in order; a name met twice is a dependency cycle
+local function start_one(mod: table, chain: table): bool
+    if mod.status == "running" then
+        return true
+    end
+    if mod.status == "failed" then
+        return false
+    end
+    for i, name in ipairs(chain) do
+        if name == mod.name then
+            local cycle = {}
+            for j = i, #chain do
+                table.insert(cycle, chain[j])
+            end
+            table.insert(cycle, mod.name)
+            log:error($"dependency cycle: {table.concat(cycle, ' -> ')}")
+            return false
+        end
+    end
+
+    table.insert(chain, mod.name)
+    for _, dep in ipairs(mod.deps) do
+        local dep_mod = by_name[dep]
+        if not dep_mod then
+            mod:fail($"needs module '{dep}', which isn't registered")
+        elseif not start_one(dep_mod, chain) then
+            mod:fail($"needs module '{dep}', which didn't start")
+        end
+        if mod.status == "failed" then
+            table.remove(chain)
+            return false
+        end
+    end
+    table.remove(chain)
+
+    if not mod:start() then
+        return false
+    end
+    table.insert(started, mod)
+    return true
+end
+
+-- One handler for all modules, created on the first start
+local function create_tick_handler(): void
+    if tick_handler_created then
+        return
+    end
+    tick_handler_created = true
+    util.create_tick_handler(function()
+        for _, mod in ipairs(started) do
+            if mod:is_running() and mod:has_tick() then
+                mod:tick()
+            end
+        end
+        return true
+    end)
+end
+
+-- Starts every registered module that isn't running yet; can be called again after more modules are added.
+-- A module whose dep is missing or failed is marked failed, the others still start
+-- @return Number of running modules
+function module.start(): int
+    for _, mod in ipairs(order) do
+        start_one(mod, {})
+    end
+    create_tick_handler()
+
+    local running = 0
+    for _, mod in ipairs(order) do
+        if mod:is_running() then
+            running += 1
+        end
+    end
+    log:debug($"{running} of {#order} module(s) running")
+    return running
+end
+
+-- Stops the running modules, the last started first
+function module.stop(): void
+    for i = #started, 1, -1 do
+        started[i]:stop()
+    end
+    started = {}
+end
+
+local function collect_pluto_files(dir: string, out: table): void
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        if filesystem.is_dir(path) then
+            collect_pluto_files($"{path}\\", out)
+        elseif path:match("%.pluto$") then
+            table.insert(out, path)
+        end
+    end
+end
+
+-- Runs every module file in dir and its subfolders; a broken file skips only itself
+-- @return Number of files that ran without errors
+function module.load_dir(dir: string): int
+    if not filesystem.is_dir(dir) then
+        return 0
+    end
+    local files = {}
+    collect_pluto_files(dir, files)
+    table.sort(files)
+
+    local loaded = 0
+    for _, path in ipairs(files) do
+        local chunk, err = loadfile(path)
+        local ok = chunk ~= nil
+        if ok then
+            ok, err = pcall(chunk)
+        end
+        if ok then
+            loaded += 1
+        else
+            log:error($"module file failed: {path}\n{err}")
+        end
+    end
+    return loaded
+end
+
+util.on_stop(module.stop)
+
+return module

@@ -1,5 +1,3 @@
-local load = Atdar.loader.load
-
 local module = {}
 
 -- State
@@ -141,11 +139,4 @@ function module.remove_helmet(player_id: int, p2: bool)
     PLAYER.REMOVE_PLAYER_HELMET(player, p2)
 end
 
-module.user = load("natives/player/user")
-module.camera = load("natives/player/camera")
-module.switch = load("natives/player/switch")
-module.mission = load("natives/player/mission")
-module.movement = load("natives/player/movement")
-module.wanted_level = load("natives/player/wanted_level")
-
-return module
+return Atdar.loader.auto(module, "natives/player")

@@ -1,5 +1,3 @@
-local load = Atdar.loader.load
-
 local module = {}
 
 -- State
@@ -28,12 +26,23 @@ function module.is_sprinting(ped: int): bool
     return TASK.IS_PED_SPRINTING(ped)
 end
 
+function module.is_strafing(ped: int): bool
+    return TASK.IS_PED_STRAFING(ped)
+end
+
+function module.is_still(ped: int): bool
+    return PED.IS_PED_STILL(ped)
+end
+
 function module.is_jumping(ped: int): bool
     return PED.IS_PED_JUMPING(ped)
 end
 
 function module.is_swimming(ped: int, under_water: bool = false): bool
-    return under_water and PED.IS_PED_SWIMMING_UNDER_WATER(ped) or PED.IS_PED_SWIMMING(ped)
+    if under_water then
+        return PED.IS_PED_SWIMMING_UNDER_WATER(ped)
+    end
+    return PED.IS_PED_SWIMMING(ped)
 end
 
 function module.is_scuba(ped: int): bool
@@ -48,9 +57,10 @@ end
 -- Get
 
 function module.get_all(as_pointer: bool = false)
-    local handle = entities.get_all_peds_as_handles()
-    local pointer = entities.get_all_peds_as_pointers()
-    return as_pointer and pointer or handle
+    if as_pointer then
+        return entities.get_all_peds_as_pointers()
+    end
+    return entities.get_all_peds_as_handles()
 end
 
 function module.get_health(ped): int
@@ -121,10 +131,4 @@ function module.add_armor(ped: int, value: int): int
     return PED.ADD_ARMOUR_TO_PED(ped, value)
 end
 
-module.task = load("natives/entity/ped/task")
-module.weapon = load("natives/entity/ped/weapon")
-module.parachute = load("natives/entity/ped/parachute")
-module.vehicle = load("natives/entity/ped/vehicle")
-module.flags = load("natives/entity/ped/flags")
-
-return module
+return Atdar.loader.auto(module, "natives/entity/ped")

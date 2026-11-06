@@ -48,7 +48,7 @@ local function write_table(dir: string, tbl: table, write_pretty: boolean)
     end
 
     -- "pretty" if write_pretty == true, otherwise nil (standard compact JSON)
-    local write_style = write_pretty and "pretty" or nil
+    local write_style = write_pretty ? "pretty" : nil
     
     file:write(json.encode(tbl, write_style))
     file:close()
@@ -121,7 +121,7 @@ function module.new(initial_table: table|nil)
             return data[path]
         end
 
-        local fallback = (default_val and default_val ~= "") and default_val or path
+        local fallback = (default_val and default_val ~= "") ? default_val : path
 
         -- Write the new key to the table and file
         data[path] = fallback

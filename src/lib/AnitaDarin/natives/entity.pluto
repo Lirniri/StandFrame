@@ -92,8 +92,4 @@ function module.delete(handle_or_ptr): void
     entities.delete(handle_or_ptr)
 end
 
-module.ped = load("natives/entity/ped")
-module.vehicle = load("natives/entity/vehicle")
-module.object = load("natives/entity/object")
-
-return module
+return Atdar.loader.auto(module, "natives/entity")

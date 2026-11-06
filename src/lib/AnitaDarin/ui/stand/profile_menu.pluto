@@ -35,17 +35,17 @@ local updating = false
 
 local function active_caption(): string
     local profile = Atdar.profile
-    local name = profile.active_name() .. (profile.is_dirty() and "*" or "")
+    local name = profile.active_name() .. (profile.is_dirty() ? "*" : "")
     return text("active.name"):format(name)
 end
 
 local function separator_caption(): string
-    local key = Atdar.profile.get("command_separator") == "_" and "separator.underscore" or "separator.none"
+    local key = Atdar.profile.get("command_separator") == "_" ? "separator.underscore" : "separator.none"
     return text("separator.name"):format(text(key))
 end
 
 local function log_name_caption(): string
-    local key = Atdar.profile.get("log_name") == "display" and "log_name.display" or "log_name.short"
+    local key = Atdar.profile.get("log_name") == "display" ? "log_name.display" : "log_name.short"
     return text("log_name.name"):format(text(key))
 end
 

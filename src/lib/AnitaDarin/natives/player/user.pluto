@@ -10,9 +10,10 @@ function module.get_char_slot(): int
 end
 
 function module.get_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false)
-    local handle = entities.get_user_vehicle_as_handle(include_last_vehicle)
-    local pointer = entities.get_user_vehicle_as_pointer(include_last_vehicle)
-    return as_pointer and pointer or handle
+    if as_pointer then
+        return entities.get_user_vehicle_as_pointer(include_last_vehicle)
+    end
+    return entities.get_user_vehicle_as_handle(include_last_vehicle)
 end
 
 function module.get_personal_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false): int
@@ -20,8 +21,10 @@ function module.get_personal_vehicle(include_last_vehicle: bool = true, as_point
         return nil
     end
     local handle = entities.get_user_personal_vehicle_as_handle(include_last_vehicle)
-    local pointer = entities.handle_to_pointer(handle)
-    return as_pointer and pointer or handle
+    if as_pointer then
+        return entities.handle_to_pointer(handle)
+    end
+    return handle
 end
 
 -- Set

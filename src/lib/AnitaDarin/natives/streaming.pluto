@@ -1,7 +1,3 @@
-local load = Atdar.loader.load
-
 local module = {}
 
-module.asset = load("natives/streaming/asset")
-
-return module
+return Atdar.loader.auto(module, "natives/streaming")

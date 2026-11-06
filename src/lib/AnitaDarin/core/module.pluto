@@ -1,39 +1,158 @@
 -- lib/AnitaDarin/core/module.pluto
+--
+-- Internal part of the script that the script itself starts, not the user: no menu item,
+-- may depend on other modules and starts after them (see core/module_manager).
+-- Something the user switches on and off is a Feature instead.
+--
+-- Made like a Feature: new Module({ name = ..., deps = {...}, on_start = fn, on_stop = fn, on_tick = fn })
+-- or `local class X extends Module` with parent:__construct({ name = ..., deps = {...} }) and on_* overrides
 
-local class Module
-    -- Module description (overridden in subclasses)
-    -- name : string   — unique name, required
-    -- deps : {string} — modules that must be ready first
-    deps = {}
-    
-    function __construct(manager)
-        self.manager = manager
-        self.status = "registered" -- registered | ready | failed
-        self.enabled = true
+local class_utils = Atdar.globals.pluto.class
+local Logger = Atdar.loader.load("core/logger")
+
+-- Declared first and assigned explicitly so methods can reference Module
+local Module
+
+-- Run by the manager; subclasses override on_* hooks instead
+local SEALED = {
+    "start",
+    "stop",
+    "tick",
+    "fail",
+    "is_running",
+    "has_tick",
+}
+
+local HOOKS = { on_start = true, on_stop = true, on_tick = true }
+
+local function validate_opts(opts: table): void
+    if type(opts.name) ~= "string" or opts.name == "" then
+        error($"[Module] name must be a non-empty string, got {type(opts.name)}")
+    end
+    local label = $"[Module '{opts.name}']"
+
+    for key, value in pairs(opts) do
+        if key ~= "name" and key ~= "deps" and not HOOKS[key] then
+            error($"{label} unknown option '{key}'")
+        end
+        if HOOKS[key] and type(value) ~= "function" then
+            error($"{label} '{key}' must be a function, got {type(value)}")
+        end
+    end
+
+    if opts.deps ~= nil then
+        if type(opts.deps) ~= "table" then
+            error($"{label} deps must be a table of module names, got {type(opts.deps)}")
+        end
+        for _, dep in ipairs(opts.deps) do
+            if type(dep) ~= "string" then
+                error($"{label} deps must hold module names, got {type(dep)}")
+            end
+        end
+    end
+end
+
+Module = class
+
+    function __construct(opts: table)
+        class_utils.fix_index(self)
+        class_utils.construct.check_sealed(self, Module, SEALED, $"Module '{opts.name}'")
+        validate_opts(opts)
+
+        self.name = opts.name
+        -- Own copy: a table shared between instances would change for all of them
+        self.deps = {}
+        for _, dep in ipairs(opts.deps or {}) do
+            table.insert(self.deps, dep)
+        end
+        -- registered -> running -> stopped, or failed (with the reason in self.error)
+        self.status = "registered"
         self.error = nil
+        self.log = new Logger(opts.name)
+
+        self.on_start = opts.on_start or self.on_start
+        self.on_stop = opts.on_stop or self.on_stop
+        self.on_tick = opts.on_tick or self.on_tick
     end
 
-    function on_tick()
+    -- Runs a hook and catches its errors
+    -- @return Whether the hook finished without an error
+    private function call_hook(name: string): bool
+        local ok, err = pcall(self[name], self)
+        if not ok then
+            self:fail($"{name} failed\n{err}")
+        end
+        return ok
+    end
+
+    function is_running(): bool
+        return self.status == "running"
+    end
+
+    -- The manager skips modules that don't tick, so they cost nothing per frame
+    function has_tick(): bool
+        return self.on_tick ~= Module.on_tick
+    end
+
+    -- @return Whether the module is running afterwards
+    function start(): bool
+        if self.status == "running" then
+            return true
+        end
+        if self.status == "failed" then
+            return false
+        end
+        self.error = nil
+        if not self:call_hook("on_start") then
+            return false
+        end
+        self.status = "running"
+        self.log:debug("started")
+        return true
+    end
+
+    function stop(): void
+        if self.status ~= "running" then
+            return
+        end
+        -- Status first: a failing on_stop marks the module failed, which must stay
+        self.status = "stopped"
+        self:call_hook("on_stop")
+        self.log:debug("stopped")
+    end
+
+    function tick(): void
+        if self.status ~= "running" then
+            return
+        end
+        if not self:call_hook("on_tick") then
+            -- Cleanup, so a module that broke mid-tick doesn't leave its effects behind
+            pcall(self.on_stop, self)
+        end
+    end
+
+    -- Marks the module failed; it isn't started or ticked again
+    function fail(reason: string): void
+        self.status = "failed"
+        self.error = reason
+        self.log:error(reason)
+    end
+
+    -- Another module, for modules that use their deps
+    function get(name: string): table
+        return Atdar.modules.get(name)
+    end
+
+    function on_start(): void
         -- body
     end
-    function on_enable()
+    function on_stop(): void
         -- body
     end
-    function on_disable()
+    function on_tick(): void
         -- body
-    end
-
-    -- Helpers
-    function get(name)
-        return self.manager:get(name)
-    end
-
-
-    function log(msg)
-        self.manager:log($"[{self.name}] {msg}")
     end
 
 end
 
 return Module
--- \,

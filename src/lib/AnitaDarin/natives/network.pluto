@@ -1,14 +1,7 @@
-local load = Atdar.loader.load
-
 local module = {}
 
 function module.is_net_id_exist(net_id)
     return NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
 end
 
-module.session = load("natives/network/session")
-module.control = load("natives/network/control")
-module.shopping = load("natives/network/shopping")
-module.social_club = load("natives/network/social_club")
-
-return module
+return Atdar.loader.auto(module, "natives/network")

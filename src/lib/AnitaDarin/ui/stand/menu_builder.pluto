@@ -125,7 +125,7 @@ local function check_item(item, where: string): ?string
         end
     end
     if #types ~= 1 then
-        local found = #types == 0 and "none" or table.concat(types, " and ")
+        local found = #types == 0 ? "none" : table.concat(types, " and ")
         log:warn($"{where}: item needs exactly one of {table.concat(TYPE_NAMES, ', ')}, found {found}")
         return nil
     end

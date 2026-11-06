@@ -1,0 +1,37 @@
+-- TEST MODULE (delete the modules/test folder when done)
+-- Checks: subclass style, on_start, on_tick, on_stop.
+-- Shows a notification on start and whenever you join or leave an online session
+
+local Module = Atdar.loader.load("core/module")
+
+local class SessionWatch extends Module
+    function __construct()
+        parent:__construct({ name = "test.session_watch" })
+        self.online = false
+    end
+
+    function on_start()
+        self.online = util.is_session_started()
+        self.log:notify($"started, online: {self.online}")
+    end
+
+    -- Notifies only on a change, not every tick
+    function on_tick()
+        local online = util.is_session_started()
+        if online ~= self.online then
+            self.online = online
+            self.log:notify(online ? "joined an online session" : "left the online session")
+        end
+    end
+
+    function on_stop()
+        self.log:notify("stopped")
+    end
+
+    -- For other modules: test.greeter reads it
+    function is_online(): bool
+        return self.online
+    end
+end
+
+return Atdar.modules.add(new SessionWatch())
