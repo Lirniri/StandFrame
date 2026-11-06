@@ -6,4 +6,25 @@ function module.spoiler(parent, menu_name, value = "", hidding_text)
     -- После нажатия показать: AnitaDarin: Hello!
 end
 
+-- A colour picker: the same submenu as Stand's own colours (HSV, RGB, hex code, copy),
+-- without the Opacity part unless transparency is on.
+--
+--     Atdar.menu.color(root, "Background Color", { "atdarbg" }, "", { r = 0, g = 0, b = 0 }, function(colour)
+--         -- colour.r, colour.g, colour.b, colour.a: 0.0 - 1.0
+--     end, true)
+--
+-- @param default { r, g, b, a }, each from 0.0 to 1.0; no a -> opaque
+-- @param on_change Called with the colour ({ r, g, b, a }; without transparency a is always 1.0) and the click type
+-- @param transparency Adds Opacity, as in Stand's own colours
+-- @return The command
+function module.color(parent, menu_name: string, command_names: table, help_text: string, default: table, on_change,
+        transparency: bool = false)
+    local alpha = 1.0
+    if transparency and default.a ~= nil then
+        alpha = default.a
+    end
+    local colour = { r = default.r, g = default.g, b = default.b, a = alpha }
+    return menu.colour(parent, menu_name, command_names, help_text, colour, transparency, on_change)
+end
+
 return module

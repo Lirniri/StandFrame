@@ -1,8 +1,10 @@
 -- lib/AnitaDarin/bootstrap.pluto
 
-util.require_natives("3407a")
-
+-- The loader comes first (it needs no natives), so the whole start is timed, the game's natives included
 Atdar.loader = require($"{Atdar.name}/core/loader")
+local started = Atdar.loader.now()
+
+Atdar.loader.measure("natives-3407a (util.require_natives)", util.require_natives, "3407a")
 
 Atdar.globals = Atdar.loader.load("globals")
 
@@ -11,6 +13,8 @@ local UTILS = {
     "util",
     "filesystem",
     "lang", -- after filesystem: reads language files from store
+    "color", -- Atdar.color: hex <-> Stand (0.0 - 1.0) <-> game (0 - 255) colours
+    "menu", -- Atdar.menu: menu items Stand doesn't have ready-made (color without opacity, spoiler)
 }
 for _, name in UTILS do
     Atdar[name] = Atdar.loader.load($"utils/{name}")
@@ -34,3 +38,12 @@ Atdar.modules.start()
 Atdar.features = Atdar.loader.load("features/registry")
 
 Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
+
+-- Load Timing on: how long the start took and which files were the slowest, in Stand's log
+if Atdar.load_timing then
+    Atdar.loader.report(Atdar.loader.now() - started)
+    local Logger = Atdar.loader.load("core/logger")
+    local i18n = Atdar.loader.load("core/i18n")
+    local log = new Logger("Loader")
+    log:notify(i18n.text("script_menu.load_times.done"))
+end

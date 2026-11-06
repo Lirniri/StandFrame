@@ -2,12 +2,14 @@
 --   header      - "Profile: main" divider, Display Name, Short Name
 --   language    - Language list (Auto follows Stand)
 --   log_name    - Name In Logs
---   notifications - where notifications show (Stand, the game's feed, log only), errors always in Stand
+--   appearance  - Appearance > Notifications: flash, where they show, errors always in Stand, a test;
+--                 under the Game divider how they look in the game's feed (post or message card,
+--                 day and night hours, colours for each)
 --   profiles    - Profiles list laid out like Stand's: Create Profile, Open Folder, then one list per profile
 --                 with Save, Load, Automatically Save and Delete
 --   auto_copy   - Copy Menu To Core
 --   command_box - Command Prefix and Separator
---   debug       - Debug Mode
+--   debug       - Debug Mode, Load Timing
 --   rename      - Rename Script
 -- Strings live in language/base under "profile".
 --
@@ -20,6 +22,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
+local color = Atdar.loader.load("utils/color")
 
 local log = new Logger("Profile")
 
@@ -37,12 +40,16 @@ end
 local SEPARATORS = { "", "_" }
 local LOG_NAMES = { "short", "display" }
 local NOTIFY_TARGETS = { "stand", "game", "none" }
+local FEED_STYLES = { "message", "ticker" }
+
+-- What a colour item shows while its profile value is "" (the game's own colour)
+local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
 
 -- Profile keys edited through text fields
 local INPUT_KEYS = { "display_name", "short_name", "command_prefix" }
 
 -- Items of the latest build, updated in place when profile values change. Reset by begin()
-local view = { inputs = {}, entries = {}, packs = {} }
+local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {} }
 -- Set while values are written from code, so their on_change doesn't count as an edit
 local updating = false
 -- Stand calls text fields again while the script stops; showing a warning then is an error
@@ -79,6 +86,31 @@ local function notify_caption(): string
         target = "stand"
     end
     return text("notify.target.name"):format(text($"notify.target.{target}"))
+end
+
+-- "Notification Type: Post" or "Notification Type: Message"
+local function feed_style_caption(): string
+    local key = Atdar.profile.get("notify_feed_style") == "message" ? "feed.style.message" : "feed.style.ticker"
+    return text("feed.style.name"):format(text(key))
+end
+
+-- A colour kept in the profile as hex -> the Stand colour a colour item shows
+local function profile_color(key: string): table
+    return color.from_hex(Atdar.profile.get(key) or "") or DEFAULT_COLOR
+end
+
+-- The same for the key's default (core/profile DEFAULTS)
+local function default_color(key: string): table
+    return color.from_hex(Atdar.profile.default(key) or "") or DEFAULT_COLOR
+end
+
+-- Stand resets an item to the default it was made with when it loads a Stand profile without that item
+-- (click type 4). So items are made with the real default, not the profile's value at that moment,
+-- and then set to the profile's value. Called with updating set, so it isn't saved as a change
+local function show_profile_value(ref, key: string, value): void
+    if Atdar.profile.get(key) ~= Atdar.profile.default(key) then
+        pcall(menu.set_value, ref, value)
+    end
 end
 
 -- "Language: Auto (Stand)", "Language: Русский", or the chosen language marked unavailable
@@ -126,6 +158,7 @@ local function update_captions(): void
     rename(view.separator, separator_caption())
     rename(view.log_name, log_name_caption())
     rename(view.notify_target, notify_caption())
+    rename(view.feed_style, feed_style_caption())
     rename(view.language, language_caption())
     rename(view.auto_copy, auto_copy_caption())
 end
@@ -144,9 +177,25 @@ local function update_fields(): bool
     if view.debug and not pcall(menu.set_value, view.debug, Atdar.profile.get("debug") == true) then
         ok = false
     end
+    if view.load_timing and not pcall(menu.set_value, view.load_timing, Atdar.profile.get("load_timing") == true) then
+        ok = false
+    end
     if view.notify_errors
         and not pcall(menu.set_value, view.notify_errors, Atdar.profile.get("notify_errors_in_stand") == true) then
         ok = false
+    end
+    if view.notify_flash and not pcall(menu.set_value, view.notify_flash, Atdar.profile.get("notify_flash") == true) then
+        ok = false
+    end
+    for key, ref in pairs(view.colors) do
+        if not pcall(menu.set_value, ref, profile_color(key)) then
+            ok = false
+        end
+    end
+    for key, ref in pairs(view.sliders) do
+        if not pcall(menu.set_value, ref, Atdar.profile.get(key)) then
+            ok = false
+        end
     end
     updating = false
     return ok
@@ -169,7 +218,7 @@ i18n.on_change(|| -> update_captions())
 -- Starts a new build of the section; items made before it are forgotten.
 -- packs: menu packs in store (menu_builder.find_loadable_packs), offered for copying to core
 function module.begin(packs: table = {}): void
-    view = { inputs = {}, entries = {}, packs = packs }
+    view = { inputs = {}, entries = {}, packs = packs, colors = {}, sliders = {} }
 end
 
 -- A text field for a profile value
@@ -218,12 +267,11 @@ function module.log_name(node: table): void
     end, { "profilelogname" }, label("log_name.help"))
 end
 
--- ─── Notifications ───────────────────────────────────────────────────────────
+-- ─── Appearance ──────────────────────────────────────────────────────────────
 
--- Where notifications show (utils/util.toast reads it): Stand, the game's feed, or only the log
-function module.notifications(node: table): void
+-- Flashing, where notifications show (Stand, the game's feed, log only), errors always in Stand, a test
+local function notifications(list: table): void
     local profile = Atdar.profile
-    local list = node:list(label("notify.name"), { "scriptnotify" }, label("notify.help"))
 
     view.notify_target = list:list_action(notify_caption(),
         { label("notify.target.stand"), label("notify.target.game"), label("notify.target.none") }, function(index)
@@ -237,6 +285,64 @@ function module.notifications(node: table): void
     end, { "profilenotifyerrors" }, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
 
     list:action(label("notify.test.name"), || -> log:notify(text("notify.test.text")), {}, label("notify.test.help"))
+end
+
+-- A colour item with opacity for a profile key kept as hex RRGGBBAA
+local function color_item(node: table, key: string, name: string, commands: table): void
+    view.colors[key] = node:color(label($"feed.{name}.name"), default_color(key), function(colour, click_type)
+        local hex = color.to_hex(colour, true)
+        -- Who changes the colour and when: the user or Stand by itself (debug mode)
+        log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)}, updating {tostring(updating)})")
+        if not updating then
+            Atdar.profile.set(key, hex)
+        end
+    end, commands, label($"feed.{name}.help"), true)
+    show_profile_value(view.colors[key], key, profile_color(key))
+end
+
+-- An hour (0 - 23) for a profile key
+local function hour_item(node: table, key: string, name: string, commands: table): void
+    view.sliders[key] = node:slider(label($"feed.{name}.name"), 0, 23, Atdar.profile.default(key), 1, function(value)
+        if not updating then
+            Atdar.profile.set(key, value)
+        end
+    end, commands, label($"feed.{name}.help"))
+    show_profile_value(view.sliders[key], key, Atdar.profile.get(key))
+end
+
+-- The Game divider and below it how notifications look in the game's feed
+local function feed(list: table): void
+    list:divider(label("feed.name"))
+
+    view.feed_style = list:list_action(feed_style_caption(),
+        { label("feed.style.message"), label("feed.style.ticker") }, function(index)
+        Atdar.profile.set("notify_feed_style", FEED_STYLES[index])
+    end, { "profilefeedstyle" }, label("feed.style.help"))
+
+    -- Flashing is the game feed's only (Stand's notifications don't flash), so it's here
+    view.notify_flash = list:toggle(label("notify.flash.name"), function(on)
+        if not updating then
+            Atdar.profile.set("notify_flash", on)
+        end
+    end, { "profilenotifyflash" }, label("notify.flash.help"), Atdar.profile.get("notify_flash") == true)
+
+    -- Made with updating set: the profile's values are put in after (show_profile_value), not saved as changes
+    updating = true
+    hour_item(list, "notify_day_start", "day_start", { "profilefeeddaystart" })
+    hour_item(list, "notify_night_start", "night_start", { "profilefeednightstart" })
+    color_item(list, "notify_background_day", "background_day", { "profilefeedbgday" })
+    color_item(list, "notify_flash_color_day", "flash_color_day", { "profilefeedflashday" })
+    color_item(list, "notify_background_night", "background_night", { "profilefeedbgnight" })
+    color_item(list, "notify_flash_color_night", "flash_color_night", { "profilefeedflashnight" })
+    updating = false
+end
+
+-- Appearance > Notifications, with the game's feed under the Game divider (utils/util.toast reads what they set)
+function module.appearance(node: table): void
+    local appearance = node:list(label("appearance.name"), { "scriptappearance" }, label("appearance.help"))
+    local list = appearance:list(label("notify.name"), { "scriptnotify" }, label("notify.help"))
+    notifications(list)
+    feed(list)
 end
 
 -- ─── Profiles ────────────────────────────────────────────────────────────────
@@ -356,6 +462,19 @@ function module.debug(node: table): void
             Atdar.profile.set("debug", on)
         end
     end, { "profiledebug" }, label("debug.help"), Atdar.profile.get("debug") == true)
+
+    -- Works without debug mode too: it only adds lines to the log
+    view.load_timing = node:toggle(label("load_timing.name"), function(on)
+        -- Stand also calls this at every start, restoring the state from its own profile:
+        -- the notice is only for a real switch on
+        if updating or Atdar.profile.get("load_timing") == on then
+            return
+        end
+        Atdar.profile.set("load_timing", on)
+        if on then
+            log:notify(text("load_timing.on"))
+        end
+    end, { "profileloadtiming" }, label("load_timing.help"), Atdar.profile.get("load_timing") == true)
 end
 
 -- ─── Rename Script ───────────────────────────────────────────────────────────

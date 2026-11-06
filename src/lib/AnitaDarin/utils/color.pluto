@@ -1,0 +1,61 @@
+-- Colours in the three forms the script meets them:
+--   Stand - { r, g, b, a }, each 0.0 - 1.0: menu.colour, directx
+--   game  - r, g, b, a, each 0 - 255: natives (SET_SCRIPT_VARIABLE_HUD_COLOUR, ...)
+--   hex   - "RRGGBB" or "RRGGBBAA": profiles, Stand's "Current Color (Hex)"
+--
+--     local colour = Atdar.color.from_hex("FF8000")   -- { r = 1.0, g = 0.5, b = 0.0, a = 1.0 }
+--     local r, g, b, a = Atdar.color.to_game(colour)  -- 255, 128, 0, 255
+--     Atdar.color.to_hex(colour)                      -- "FF8000"
+
+local module = {}
+
+-- 0.0 - 1.0 -> 0 - 255, out-of-range values clamped
+local function to_byte(value: number): int
+    local byte = math.floor(value * 255 + 0.5)
+    if byte < 0 then
+        return 0
+    end
+    if byte > 255 then
+        return 255
+    end
+    return byte
+end
+
+-- @return The Stand colour, or nil if the text isn't 6 or 8 hex digits ("" too). A leading # is allowed
+function module.from_hex(hex: string): ?table
+    local digits = hex:gsub("^#", "")
+    if not (#digits == 6 or #digits == 8) or digits:find("[^%x]") then
+        return nil
+    end
+    local alpha = 1.0
+    if #digits == 8 then
+        alpha = tonumber(digits:sub(7, 8), 16) / 255
+    end
+    return {
+        r = tonumber(digits:sub(1, 2), 16) / 255,
+        g = tonumber(digits:sub(3, 4), 16) / 255,
+        b = tonumber(digits:sub(5, 6), 16) / 255,
+        a = alpha,
+    }
+end
+
+-- @param with_alpha Adds AA at the end
+function module.to_hex(colour: table, with_alpha: bool = false): string
+    local hex = string.format("%02X%02X%02X", to_byte(colour.r), to_byte(colour.g), to_byte(colour.b))
+    if with_alpha then
+        hex ..= string.format("%02X", to_byte(colour.a or 1.0))
+    end
+    return hex
+end
+
+-- @return r, g, b, a as 0 - 255 (no a in the colour -> 255)
+function module.to_game(colour: table)
+    return to_byte(colour.r), to_byte(colour.g), to_byte(colour.b), to_byte(colour.a or 1.0)
+end
+
+-- 0 - 255 -> the Stand colour
+function module.from_game(r: int, g: int, b: int, a: int = 255): table
+    return { r = r / 255, g = g / 255, b = b / 255, a = a / 255 }
+end
+
+return module

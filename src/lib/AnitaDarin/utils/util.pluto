@@ -1,38 +1,100 @@
+local color = Atdar.loader.load("utils/color")
+
 local module = {}
+
+-- A profile value, or nil before the profile has loaded (early errors)
+local function setting(key: string)
+    local profile = Atdar.profile
+    if not (profile and profile.get) then
+        return nil
+    end
+    return profile.get(key)
+end
+
+-- Who a message card is from: the profile's Display Name; Atdar.name (the script's file name)
+-- only before the profile has loaded or while the name is empty
+local function sender_name(): string
+    local name = setting("display_name")
+    if type(name) ~= "string" or name == "" then
+        return Atdar.name
+    end
+    return name
+end
 
 -- How a game notification is posted: plain text, or a message card with a picture, sender and subject
 local POST = {
-    ticker = function(thefeed, message: string, opts: table)
-        return thefeed.post_ticker(message, opts.important == true)
+    ticker = function(thefeed, message: string, opts: table, flash: bool)
+        return thefeed.post_ticker(message, flash)
     end,
-    message = function(thefeed, message: string, opts: table)
+    message = function(thefeed, message: string, opts: table, flash: bool)
         return thefeed.post_message(message, {
-            sender = opts.sender or Atdar.name,
+            sender = opts.sender or sender_name(),
             subject = opts.subject,
             picture = opts.picture,
             icon = opts.icon,
-            important = opts.important,
+            important = flash,
         })
     end,
 }
 
+-- A colour saved as hex in the profile -> r, g, b, a 0 - 255, or nil when it's "" (the game's own)
+local function game_color(key: string)
+    local colour = color.from_hex(setting(key) or "")
+    if not colour then
+        return nil
+    end
+    return color.to_game(colour)
+end
+
+-- "day" or "night" by the game's clock and the profile's hours: the suffix of the colour keys
+local function time_of_day(): string
+    local day_start = setting("notify_day_start") or 7
+    local night_start = setting("notify_night_start") or 19
+    if Atdar.natives.world.time.is_between(day_start, night_start) then
+        return "day"
+    end
+    return "night"
+end
+
+-- Posts to the game's feed, looking the way the profile says unless opts says otherwise
+local function post_to_feed(message: string, opts: table): table
+    local style = opts.style or setting("notify_feed_style") or "ticker"
+    local post = POST[style]
+    if not post then
+        error($"[util.toast] unknown style '{style}', expected ticker or message")
+    end
+
+    local flash = setting("notify_flash") == true
+    if opts.important ~= nil then
+        flash = opts.important == true
+    end
+
+    local thefeed = Atdar.natives.visual.hud.thefeed
+    local period = time_of_day()
+    local r, g, b, a = game_color($"notify_background_{period}")
+    if r then
+        thefeed.set_next_background_color(r, g, b, a)
+    end
+    if flash then
+        local fr, fg, fb, fa = game_color($"notify_flash_color_{period}")
+        if fr then
+            thefeed.set_next_flash_color(fr, fg, fb, fa)
+        end
+    end
+    return post(thefeed, message, opts, flash)
+end
+
 -- Shows a message to the user in the configured way.
 -- opts.target: "stand" | "game" (the game's feed) | "none" (default: the profile's notify, then "stand")
--- opts.style for "game": "ticker" (default) | "message" with opts.sender, opts.subject, opts.picture, opts.icon
+-- For "game" the profile's look is used (notify_feed_style, notify_flash, day/night colours); opts can override:
+--   opts.style "ticker" | "message" with opts.sender, opts.subject, opts.picture, opts.icon; opts.important (flash)
 -- @return The FeedPost for "game" (post:remove() takes it away), otherwise nil
 function module.toast(message: string, opts: table = {}): ?table
-    local profile = Atdar.profile
-    local target = opts.target or (profile and profile.get and profile.get("notify")) or "stand"
-
+    local target = opts.target or setting("notify") or "stand"
     if target == "stand" then
         util.toast(message)
     elseif target == "game" then
-        local style = opts.style or "ticker"
-        local post = POST[style]
-        if not post then
-            error($"[util.toast] unknown style '{style}', expected ticker or message")
-        end
-        return post(Atdar.natives.visual.hud.thefeed, message, opts)
+        return post_to_feed(message, opts)
     end
     return nil
 end

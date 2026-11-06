@@ -58,13 +58,63 @@ local function entry(name) return stand.find_item(profiles(), name) end
 stand.equal(names_in(stand.root),
     "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug",
     "the section's layout")
-stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short Name | Notifications | Rename Script", "Settings")
-local notifications = stand.find_item(settings(), "Notifications")
-stand.equal(names_in(notifications), "Show In: Stand | Errors Always In Stand | Test Notification", "Notifications")
-stand.click(stand.find_item(notifications, "Show In"), 2)
-stand.equal(profile.get("notify"), "game", "Show In picks the game's feed")
-stand.equal(stand.name_of(stand.find_item(notifications, "Show In")), "Show In: Game Feed", "and the caption follows")
-stand.click(stand.find_item(notifications, "Show In"), 1)
+stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short Name | Appearance | Rename Script", "Settings")
+local appearance = stand.find_item(settings(), "Appearance")
+stand.equal(names_in(appearance), "Notifications", "Appearance")
+local notifications = stand.find_item(appearance, "Notifications")
+stand.equal(names_in(notifications), "Type: Stand | Errors Always In Stand | Test Notification"
+    .. " | Game | Notification Type: Post | Flash Notifications | Day Starts At | Night Starts At"
+    .. " | Day Background Color | Day Flash Color | Night Background Color | Night Flash Color",
+    "Notifications, the game's feed under the Game divider")
+stand.equal(stand.find_item(notifications, "Game").kind, "divider", "Game is a divider")
+stand.click(stand.find_item(notifications, "Type"), 2)
+stand.equal(profile.get("notify"), "game", "Type picks the game's feed")
+stand.equal(stand.name_of(stand.find_item(notifications, "Type")), "Type: Game", "and the caption follows")
+stand.click(stand.find_item(notifications, "Type"), 1)
+stand.click(stand.find_item(notifications, "Flash Notifications"))
+stand.equal(profile.get("notify_flash"), true, "Flash Notifications")
+stand.click(stand.find_item(notifications, "Flash Notifications"))
+
+local game = notifications
+stand.click(stand.find_item(game, "Notification Type"), 1)
+stand.equal(profile.get("notify_feed_style"), "message", "Notification Type picks a message card")
+stand.equal(stand.name_of(stand.find_item(game, "Notification Type")), "Notification Type: Message", "and the caption follows")
+stand.click(stand.find_item(game, "Notification Type"), 2)
+local background = stand.find_item(game, "Day Background Color")
+stand.equal(background.transparency, true, "the colours have Opacity, as in Stand")
+stand.equal(profile.get("notify_background_day"), "008B8BFF", "the day background is dark cyan by default")
+stand.equal(profile.get("notify_background_night"), "1A3D54FF", "the night one dark teal")
+stand.equal(profile.get("notify_flash_color_day"), "", "the flash colours are the game's own until picked")
+stand.equal(background.value.g, 139 / 255, "the item shows the default colour")
+background.on_change({ r = 1, g = 0.5, b = 0, a = 0.5 }, 0)
+stand.equal(profile.get("notify_background_day"), "FF800080", "a picked colour is kept as hex with its opacity")
+stand.find_item(game, "Day Flash Color").on_change({ r = 0, g = 0, b = 1, a = 1 }, 0)
+stand.equal(profile.get("notify_flash_color_day"), "0000FFFF", "Day Flash Color")
+stand.find_item(game, "Night Background Color").on_change({ r = 0, g = 0, b = 0, a = 1 }, 0)
+stand.equal(profile.get("notify_background_night"), "000000FF", "Night Background Color")
+stand.find_item(game, "Night Flash Color").on_change({ r = 1, g = 1, b = 1, a = 1 }, 0)
+stand.equal(profile.get("notify_flash_color_night"), "FFFFFFFF", "Night Flash Color")
+local day_start = stand.find_item(game, "Day Starts At")
+stand.check(day_start.kind == "slider" and day_start.value == 7 and day_start.min == 0 and day_start.max == 23,
+    "Day Starts At: an hour, 7 by default")
+stand.equal(stand.find_item(game, "Night Starts At").value, 19, "Night Starts At: 19 by default")
+menu.set_value(day_start, 6)
+stand.equal(profile.get("notify_day_start"), 6, "moving the slider changes the hour")
+
+-- Stand resets an item to the default it was made with (loading a Stand profile without it, click type 4).
+-- That default is the real one, whatever the profile had when the menu was built
+profile.set("notify_background_night", "11223344")
+profile.set("notify_night_start", 21)
+rebuild()
+local rebuilt = stand.find_item(stand.find_item(stand.find_item(settings(), "Appearance"), "Notifications"), "Night Background Color")
+stand.equal(rebuilt.default.b, 0x54 / 255, "the colour item's Stand default is the code default (1A3D54)")
+stand.equal(rebuilt.value.b, 0x33 / 255, "but it shows the profile's colour")
+stand.equal(profile.get("notify_background_night"), "11223344", "building didn't change the profile")
+rebuilt.on_change(rebuilt.default, 4)
+stand.equal(profile.get("notify_background_night"), "1A3D54FF", "Stand's reset goes to the code default, not the colour at build time")
+local night = stand.find_item(stand.find_item(stand.find_item(settings(), "Appearance"), "Notifications"), "Night Starts At")
+stand.check(night.default == 19 and night.value == 21, "the slider too: Stand default 19, shows the profile's 21")
+menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
@@ -81,7 +131,7 @@ stand.equal(opened("Open Store Folder"), $"open_folder {stand.store}AnitaDarin\\
 stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin doesn't exist yet")
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
-stand.equal(names_in(find("Debug")), "Debug Mode | Debug | Modules | Delete Script", "Debug")
+stand.equal(names_in(find("Debug")), "Debug Mode | Load Timing | Load Times | Debug | Modules | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Delete", "a profile's own list")
 
@@ -108,7 +158,7 @@ menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "atdar")
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[2], debug_list.children[3], debug_list.children[4] }
+local debug_only = { debug_list.children[4], debug_list.children[5], debug_list.children[6] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
@@ -116,8 +166,24 @@ local function all_visible(on)
     return true
 end
 stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
+stand.check(stand.find_item(debug_list, "Load Timing").visible and stand.find_item(debug_list, "Load Times").visible,
+    "Load Timing and Load Times show without debug mode")
+stand.clear_logs()
+stand.toasts = {}
+stand.click(stand.find_item(debug_list, "Load Timing"))
+stand.check(profile.get("load_timing") == true and Atdar.load_timing == true, "Load Timing switches the profile value and Atdar.load_timing")
+stand.check(#stand.toasts == 1 and stand.toasts[1]:find("Stand's log", 1, true), "and says the times are in the log")
+-- Stand restores its own profile's state at every start by calling the toggle with the same value
+stand.toasts = {}
+stand.find_item(debug_list, "Load Timing").on_change(true, 0)
+stand.equal(#stand.toasts, 0, "the same value again (Stand restoring its state) shows no notice")
+stand.click(stand.find_item(debug_list, "Load Timing"))
+stand.equal(Atdar.load_timing, false, "and off again")
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
+stand.clear_logs()
+stand.click(stand.find_item(debug_list, "Load Times"))
+stand.check(stand.find_log("load times: "), "Load Times writes the report to the log")
 
 -- Delete Script is a list with its own confirm button, so one click never deletes anything.
 -- The answer to the warning is never "yes" here: this test runs on the real src folder,

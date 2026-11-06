@@ -1,3 +1,27 @@
+-- The game's clock (in-game time of day)
+
 local module = {}
--- body
+
+-- Get
+
+function module.get_hours(): int
+    return CLOCK.GET_CLOCK_HOURS()
+end
+
+function module.get_minutes(): int
+    return CLOCK.GET_CLOCK_MINUTES()
+end
+
+-- State
+
+-- Whether the game's hour is from `from` up to, not including, `to` (7, 19 -> 7:00 - 18:59).
+-- from > to goes over midnight (22, 6 -> 22:00 - 5:59); from == to is never
+function module.is_between(from: int, to: int): bool
+    local hour = module.get_hours()
+    if from <= to then
+        return hour >= from and hour < to
+    end
+    return hour >= from or hour < to
+end
+
 return module

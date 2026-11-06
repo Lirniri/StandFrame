@@ -100,15 +100,23 @@
             "short": "Short Name",
             "display": "Display Name"
         },
+        "appearance": {
+            "name": "Appearance",
+            "help": "How the script's notifications look"
+        },
         "notify": {
             "name": "Notifications",
-            "help": "Where the script's notifications, warnings and errors show",
+            "help": "Where the script's notifications, warnings and errors show and how they look",
+            "flash": {
+                "name": "Flash Notifications",
+                "help": "Notifications in the game's feed flash when they show, in the flash color for the time of day. Stand's notifications don't flash"
+            },
             "target": {
-                "name": "Show In: %s",
-                "help": "Stand: Stand's notifications. Game Feed: the game's notification feed. Log Only: nothing on screen, only Stand's log",
+                "name": "Type: %s",
+                "help": "Stand: Stand's notifications. Game: the game's notification feed, styled as set under Game. No Notifications: nothing on screen, only Stand's log",
                 "stand": "Stand",
-                "game": "Game Feed",
-                "none": "Log Only"
+                "game": "Game",
+                "none": "No Notifications"
             },
             "errors": {
                 "name": "Errors Always In Stand",
@@ -116,13 +124,51 @@
             },
             "test": {
                 "name": "Test Notification",
-                "help": "Shows a notification where they show now",
+                "help": "Shows a notification where notifications show now",
                 "text": "This is how the script's notifications look"
+            }
+        },
+        "feed": {
+            "name": "Game",
+            "style": {
+                "name": "Notification Type: %s",
+                "help": "Message: a card with a picture, the script's name and the text. Post: the text only",
+                "message": "Message",
+                "ticker": "Post"
+            },
+            "day_start": {
+                "name": "Day Starts At",
+                "help": "The hour by the game's clock from which the day colors are used"
+            },
+            "night_start": {
+                "name": "Night Starts At",
+                "help": "The hour by the game's clock from which the night colors are used, until the day starts"
+            },
+            "background_day": {
+                "name": "Day Background Color",
+                "help": "Background of the script's notifications in the game's feed during the day. Dark cyan (0, 139, 139) by default"
+            },
+            "flash_color_day": {
+                "name": "Day Flash Color",
+                "help": "The color notifications flash in during the day when Flash Notifications is on. Until one is picked, the game's own is used"
+            },
+            "background_night": {
+                "name": "Night Background Color",
+                "help": "Background of the script's notifications in the game's feed at night. Dark teal (26, 61, 84) by default"
+            },
+            "flash_color_night": {
+                "name": "Night Flash Color",
+                "help": "The color notifications flash in at night when Flash Notifications is on. Until one is picked, the game's own is used"
             }
         },
         "debug": {
             "name": "Debug Mode",
             "help": "Show debug-level log lines in the Stand console and notifications"
+        },
+        "load_timing": {
+            "name": "Load Timing",
+            "help": "Writes each script file's load time to Stand's log as it loads, and a full report at every start. Works without Debug Mode",
+            "on": "Load times go to Stand's log: each file as it loads, and a full report at the next start"
         },
         "auto_copy": {
             "name": "Copy Menu To Core: %s",
@@ -220,6 +266,11 @@
         "debug": {
             "name": "Debug",
             "help": "Debug mode, the script's modules and the script itself"
+        },
+        "load_times": {
+            "name": "Load Times",
+            "help": "Writes to Stand's log how many files the script loaded, how long they took and which were the slowest, the game's natives included. Files loaded later (e.g. natives on first use) are in the report too",
+            "done": "Load times are in Stand's log"
         },
         "delete_script": {
             "name": "Delete Script",

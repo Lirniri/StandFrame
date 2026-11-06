@@ -11,14 +11,26 @@ local profile = Atdar.profile
 local Logger = Atdar.loader.load("core/logger")
 local log = new Logger("Test")
 
--- The game's feed: what was posted
+-- The game's feed: what was posted, and how the last post looked
 local feed = {}
 local text = nil
+local look = {}
+local script_color = nil
+local clock = 12
+_G.CLOCK = { GET_CLOCK_HOURS = || -> clock, GET_CLOCK_MINUTES = || -> 0 }
 _G.HUD = {
     BEGIN_TEXT_COMMAND_THEFEED_POST = function() text = nil end,
     ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME = function(value) text = value end,
-    END_TEXT_COMMAND_THEFEED_POST_TICKER = function() table.insert(feed, text) return #feed end,
-    END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT = function(txd, _, _, _, sender, subject)
+    SET_SCRIPT_VARIABLE_HUD_COLOUR = function(r, g, b, a) script_color = $"{r},{g},{b},{a}" end,
+    THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST = function(index) look.background = index end,
+    THEFEED_SET_RGBA_PARAMETER_FOR_NEXT_MESSAGE = function(r, g, b, a) look.flash_color = $"{r},{g},{b},{a}" end,
+    END_TEXT_COMMAND_THEFEED_POST_TICKER = function(blink)
+        look.flash = blink
+        table.insert(feed, text)
+        return #feed
+    end,
+    END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT = function(txd, _, flash, _, sender, subject)
+        look.flash = flash
         table.insert(feed, $"{txd}|{sender}|{subject}|{text}")
         return #feed
     end,
@@ -54,7 +66,67 @@ post:remove()
 stand.equal(feed[1], "removed", "post:remove() removes it from the feed")
 Atdar.util.toast("card", { target = "game", style = "message", subject = "Profiles" })
 stand.equal(feed[2], $"CHAR_SOCIAL_CLUB|{Atdar.name}|Profiles|card", "style message: picture, sender, subject, text")
+profile.set("display_name", "StandX")
+Atdar.util.toast("renamed", { target = "game", style = "message" })
+stand.equal(feed[3], "CHAR_SOCIAL_CLUB|StandX||renamed", "the sender is the profile's Display Name, not the file name")
+profile.set("display_name", "")
+Atdar.util.toast("no name", { target = "game", style = "message" })
+stand.equal(feed[4], $"CHAR_SOCIAL_CLUB|{Atdar.name}||no name", "an empty Display Name falls back to the file name")
+profile.set("display_name", Atdar.name)
 stand.equal(Atdar.util.toast("in stand", { target = "stand" }), nil, "util.toast to Stand returns nothing")
+
+-- The feed's look comes from the profile (Appearance > Game): style, flash, colours
+look = {}
+feed = {}
+log:notify("plain")
+stand.check(look.background == 128 and script_color == "0,139,139,255" and look.flash == false,
+    "by default: the day background dark cyan (noon by the fake clock), no flash")
+clock = 22
+log:notify("night")
+stand.equal(script_color, "26,61,84,255", "and the night one dark teal")
+clock = 12
+profile.set("notify_feed_style", "message")
+profile.set("notify_flash", true)
+profile.set("notify_background_day", "FF800080")
+profile.set("notify_flash_color_day", "0000FF")
+profile.set("notify_background_night", "10203040")
+profile.set("notify_flash_color_night", "FFFFFF")
+look = {}
+log:notify("styled")
+stand.check(feed[#feed]:find("CHAR_SOCIAL_CLUB|", 1, true), "notify_feed_style message: a message card")
+stand.equal(look.flash, true, "notify_flash: it flashes")
+stand.equal(look.background, 128, "the background is the script's HUD colour slot")
+stand.equal(script_color, "255,128,0,128", "filled with the picked colour and its opacity")
+stand.equal(look.flash_color, "0,0,255,255", "the flash colour (hex without alpha: opaque)")
+
+-- Day 7:00 - 18:59 by the game's clock, night the rest; the hours come from the profile
+clock = 19
+log:notify("evening")
+stand.equal(script_color, "16,32,48,64", "at 19:00 the night background")
+stand.equal(look.flash_color, "255,255,255,255", "and the night flash colour")
+clock = 6
+log:notify("dawn")
+stand.equal(script_color, "16,32,48,64", "at 6:00 still night")
+clock = 7
+log:notify("morning")
+stand.equal(script_color, "255,128,0,128", "at 7:00 the day background again")
+profile.set("notify_day_start", 22)
+profile.set("notify_night_start", 6)
+clock = 23
+log:notify("over midnight")
+stand.equal(script_color, "255,128,0,128", "the day can go over midnight (22 - 6)")
+clock = 12
+log:notify("noon")
+stand.equal(script_color, "16,32,48,64", "and then noon is night")
+profile.set("notify_day_start", 7)
+profile.set("notify_night_start", 19)
+look = {}
+Atdar.util.toast("calm", { target = "game", style = "ticker", important = false })
+stand.check(look.flash == false and look.flash_color == nil, "opts override the profile: no flash, no flash colour")
+profile.set("notify_flash", false)
+profile.set("notify_feed_style", "ticker")
+profile.set("notify_background_day", "")
+profile.set("notify_background_night", "")
 
 profile.set("notify", "none")
 stand.clear_logs()

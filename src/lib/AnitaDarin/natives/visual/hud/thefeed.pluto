@@ -39,6 +39,21 @@ function module.set_next_background(hud_color: int): void
     HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color)
 end
 
+-- HUD_COLOUR_SCRIPT_VARIABLE: a HUD colour slot left for scripts to fill with their own colour
+local SCRIPT_COLOR = 128
+
+-- The background of the next post in any colour (0 - 255). The background takes only a HUD colour
+-- index, so the script slot is filled with this colour and its index is used
+function module.set_next_background_color(r: int, g: int, b: int, a: int = 255): void
+    HUD.SET_SCRIPT_VARIABLE_HUD_COLOUR(r, g, b, a)
+    HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(SCRIPT_COLOR)
+end
+
+-- The colour the next post flashes in, when it flashes (0 - 255)
+function module.set_next_flash_color(r: int, g: int, b: int, a: int = 255): void
+    HUD.THEFEED_SET_RGBA_PARAMETER_FOR_NEXT_MESSAGE(r, g, b, a)
+end
+
 -- Actions
 
 function module.pause(): void

@@ -41,6 +41,51 @@ end
 stand.check(count > 30, $"found the natives files ({count})")
 stand.equal(stand.find_log("failed to load"), nil, "no natives file failed to load")
 
+-- Load times: every file load() reads is timed; nested loads are part of the parent's total, not its own
+local timing_of = function(path)
+    for _, entry in ipairs(loader.timings) do
+        if entry.path == path then return entry end
+    end
+    return nil
+end
+local ped = timing_of("natives/ped")
+local entity = timing_of("natives/entity")
+stand.check(ped and entity, "natives/ped and natives/entity were timed")
+stand.check(ped.total >= ped.own and ped.own >= 0, "total includes nested loads, own doesn't")
+stand.check(entity.depth > ped.depth, "natives/entity is loaded inside natives/ped: one level deeper")
+local before = #loader.timings
+loader.load("natives/ped")
+stand.equal(#loader.timings, before, "a file already loaded isn't timed again")
+
+-- measure(): times any work, passes its results and errors through
+stand.equal(select(2, loader.measure("C:/x/work.pluto", function() return true, 42 end)), 42, "measure returns what fn returns")
+local ok, err = pcall(loader.measure, "broken work", || -> error("boom", 0))
+stand.check(not ok and err == "boom", "measure lets an error through")
+stand.check(timing_of("broken work") ~= nil, "and still records the time")
+local outer = loader.measure("outer", function()
+    loader.measure("inner", function() local t = loader.now() while loader.now() - t < 5 do end end)
+    return true
+end)
+stand.check(outer and timing_of("outer").total >= timing_of("inner").total, "an outer measure's total includes the inner")
+stand.check(timing_of("outer").own < timing_of("inner").total, "but its own time doesn't")
+
+-- report(): a summary line and the slowest files
+stand.clear_logs()
+loader.report(123.4, 3)
+stand.check(stand.find_log("load times: "), "report: the summary")
+stand.check(stand.find_log("the whole start 123.4 ms"), "with the whole start when given")
+
+-- Load Timing logs each load as it happens; without it nothing per file
+package.preload["AnitaDarin/test_quiet"] = || -> {}
+stand.clear_logs()
+loader.load("test_quiet")
+stand.equal(stand.find_log("loaded 'test_quiet' in "), nil, "without Load Timing a load isn't logged")
+Atdar.load_timing = true
+package.preload["AnitaDarin/test_timed"] = || -> {}
+loader.load("test_timed")
+stand.check(stand.find_log("loaded 'test_timed' in "), "with Load Timing each load is logged")
+Atdar.load_timing = false
+
 -- A typo is nil, not an empty table, and the disk is checked only once per name
 local real_exists = filesystem.exists
 local checks = 0

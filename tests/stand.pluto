@@ -271,11 +271,14 @@ _G.menu = {
     list_action = |parent, name, commands, help, options, on_select| -> item("list_action", parent, name, help,
         { commands = commands, options = options, on_select = on_select }),
     slider = |parent, name, commands, help, min, max, default, step, on_change| -> item("slider", parent, name, help,
-        { commands = commands, min = min, max = max, value = default, step = step, on_change = on_change }),
+        { commands = commands, min = min, max = max, value = default, default = default, step = step, on_change = on_change }),
     textslider = |parent, name, commands, help, options, on_click| -> item("textslider", parent, name, help,
         { commands = commands, options = options, on_click = on_click }),
     text_input = |parent, name, commands, help, on_change, default| -> item("text_input", parent, name, help,
         { commands = commands, on_change = on_change, value = default }),
+    -- value: the colour { r, g, b, a }; the user picking one is it.on_change(colour, click_type)
+    colour = |parent, name, commands, help, default, transparency, on_change| -> item("colour", parent, name, help,
+        { commands = commands, value = default, default = default, transparency = transparency, on_change = on_change }),
     delete = function(it)
         it.deleted = true
         if it.parent then

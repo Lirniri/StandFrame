@@ -132,7 +132,7 @@ function module.build(section: table, opts: table): void
         i18n.label("profile.settings.help"))
     profile_menu.language(settings)
     profile_menu.log_name(settings)
-    profile_menu.notifications(settings)
+    profile_menu.appearance(settings)
     profile_menu.rename(settings)
 
     profile_menu.profiles(section, opts.refresh)
@@ -155,6 +155,10 @@ function module.build(section: table, opts: table): void
 
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)
+    debug:action(label("load_times.name"), function()
+        Atdar.loader.report()
+        log:notify(text("load_times.done"))
+    end, {}, label("load_times.help"))
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_menu.build(debug)
     modules_menu.debug_only(delete_script(debug))

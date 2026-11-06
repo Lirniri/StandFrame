@@ -1,0 +1,36 @@
+-- utils/menu and utils/color: menu items Stand doesn't have ready-made, colour conversions
+local stand = require("stand")
+stand.boot()
+local ui = Atdar.loader.load("utils/menu")
+local color = Atdar.loader.load("utils/color")
+
+-- color(): Stand's colour submenu without opacity
+local picked = nil
+local item = ui.color(stand.root, "Background Color", { "atdarbg" }, "help", { r = 0.5, g = 0.25, b = 0 },
+    function(colour) picked = colour end)
+stand.equal(item.kind, "colour", "color() makes a Stand colour command")
+stand.equal(item.transparency, false, "without transparency: no Opacity part")
+stand.equal(item.value.r, 0.5, "the default colour")
+stand.equal(item.value.a, 1.0, "fully opaque")
+stand.equal(item.commands[1], "atdarbg", "command names")
+item.on_change({ r = 1, g = 0, b = 0, a = 1 }, 0)
+stand.equal(picked and picked.r, 1, "on_change gets the picked colour")
+local see_through = ui.color(stand.root, "Glass", {}, "", { r = 0, g = 0, b = 0, a = 0.5 }, || -> nil, true)
+stand.equal(see_through.transparency, true, "transparency on: with Opacity, as in Stand")
+stand.equal(see_through.value.a, 0.5, "and the default's opacity is kept")
+
+-- utils/color: hex <-> Stand (0.0 - 1.0) <-> game (0 - 255)
+local orange = color.from_hex("FF8000")
+stand.check(orange.r == 1 and orange.b == 0 and orange.a == 1, "from_hex: RRGGBB")
+stand.equal(color.from_hex("#ff800080").a, 128 / 255, "from_hex: #, lower case and alpha")
+stand.equal(color.from_hex(""), nil, "from_hex: empty is nil")
+stand.equal(color.from_hex("FF80"), nil, "from_hex: too short is nil")
+stand.equal(color.from_hex("GG8000"), nil, "from_hex: not hex is nil")
+stand.equal(color.to_hex(orange), "FF8000", "to_hex")
+stand.equal(color.to_hex({ r = 0, g = 0, b = 0, a = 0.5 }, true), "00000080", "to_hex with alpha")
+stand.equal(color.to_hex({ r = 2, g = -1, b = 0 }), "FF0000", "to_hex clamps out-of-range values")
+local r, g, b, a = color.to_game(orange)
+stand.check(r == 255 and g == 128 and b == 0 and a == 255, "to_game")
+stand.equal(color.to_hex(color.from_game(255, 128, 0)), "FF8000", "from_game")
+
+stand.finish()

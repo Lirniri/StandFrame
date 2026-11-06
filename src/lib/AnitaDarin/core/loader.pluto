@@ -6,10 +6,106 @@ local log = new Logger("Loader")
 
 local module = {}
 
+-- ─── Load times ──────────────────────────────────────────────────────────────
+-- Every file load() reads from disk is timed, to see what makes the start slow. Kept always:
+-- the first files load before the profile says whether Load Timing is on. A file that loads others
+-- includes their time, so each entry has both: total (with nested) and own (without).
+-- With Atdar.load_timing (the profile's Load Timing) each load is also logged as it happens
+
+-- { path, total, own, depth } in load order, times in ms
+module.timings = {}
+-- Loads in progress, innermost last: how much of each went to nested loads
+local loading = {}
+
+-- @return Milliseconds from some fixed point, with fractions: Pluto's os.nanos;
+-- os.clock and util.current_time_millis count whole milliseconds on Windows, too coarse for one file
+function module.now(): number
+    if os.nanos then
+        return os.nanos() / 1000000
+    end
+    if os.clock then
+        return os.clock() * 1000
+    end
+    return util.current_time_millis()
+end
+
+local function ms(value: number): string
+    return string.format("%.1f", value)
+end
+
+-- Full paths are shown from Lua Scripts on: "store\AnitaDarin\menu\...\godmode.pluto"
+local SCRIPTS_DIR = filesystem.scripts_dir()
+
+local function shorten(what: string): string
+    if what:sub(1, #SCRIPTS_DIR) == SCRIPTS_DIR then
+        return what:sub(#SCRIPTS_DIR + 1)
+    end
+    return what
+end
+
+-- Runs fn(...) and records how long it took under `what` (a lib path or a file's full path).
+-- Loads inside it count as its nested time. Errors from fn pass through, after the time is recorded
+-- @return What fn returns
+function module.measure(what: string, fn, ...)
+    local frame = { nested = 0 }
+    table.insert(loading, frame)
+    local started = module.now()
+    local results = table.pack(pcall(fn, ...))
+    local total = module.now() - started
+    table.remove(loading)
+    local parent = loading[#loading]
+    if parent then
+        parent.nested += total
+    end
+    local own = total - frame.nested
+    local path = shorten(what)
+    table.insert(module.timings, { path = path, total = total, own = own, depth = #loading })
+    if Atdar.load_timing then
+        log:info($"loaded '{path}' in {ms(total)} ms (own {ms(own)} ms)")
+    end
+    if not results[1] then
+        error(results[2], 0)
+    end
+    return table.unpack(results, 2, results.n)
+end
+
+-- Requires the file, timed; a file already loaded isn't timed again
+local function timed_require(path: string, name: string)
+    if package.loaded[name] ~= nil then
+        return pcall(require, name)
+    end
+    return pcall(module.measure, path, require, name)
+end
+
+-- Logs the load times: how many files and how long, then the slowest by their own time.
+-- @param total_ms The whole start, if measured (bootstrap passes it)
+-- @param limit How many of the slowest files to list
+function module.report(total_ms: ?number, limit: int = 15): void
+    local sorted = {}
+    local own_sum = 0
+    for _, entry in ipairs(module.timings) do
+        table.insert(sorted, entry)
+        own_sum += entry.own
+    end
+    table.sort(sorted, |a, b| -> a.own > b.own)
+
+    local summary = $"load times: {#sorted} files, {ms(own_sum)} ms in them"
+    if total_ms ~= nil then
+        summary ..= $", the whole start {ms(total_ms)} ms"
+    end
+    log:info(summary)
+    for i = 1, math.min(limit, #sorted) do
+        local entry = sorted[i]
+        log:info(string.format("%8s ms own %8s ms with nested   %s", ms(entry.own), ms(entry.total), entry.path))
+    end
+end
+
+-- ─── Loading ─────────────────────────────────────────────────────────────────
+
 -- Requires lib/AnitaDarin/<path>. On error logs it and returns an empty table,
 -- so one broken file doesn't take down the whole section
 function module.load(path: string): table
-    local ok, result = pcall(require, $"{Atdar.name}/{path}")
+    local ok, result = timed_require(path, $"{Atdar.name}/{path}")
     if not ok then
         log:error($"failed to load '{path}'\n{result}")
         return {}

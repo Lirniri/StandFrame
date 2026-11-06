@@ -159,12 +159,14 @@ end
 
 -- @return The table a menu file returns, or nil if it's missing or failed
 local function load_menu_file(path: string): ?table
-    local chunk, err = loadfile(path)
-    if not chunk then
-        log:error($"menu file failed: {path}\n{err}")
-        return nil
-    end
-    local ok, result = pcall(chunk)
+    -- Timed (loader.report): compiling and running the file
+    local ok, result = Atdar.loader.measure(path, function()
+        local chunk, err = loadfile(path)
+        if not chunk then
+            return false, err
+        end
+        return pcall(chunk)
+    end)
     if not ok then
         log:error($"menu file failed: {path}\n{result}")
         return nil
@@ -248,11 +250,14 @@ end
 function module.load_feature_files(files: table): int
     local loaded = 0
     for _, path in ipairs(files) do
-        local chunk, err = loadfile(path)
-        local ok = chunk ~= nil
-        if ok then
-            ok, err = pcall(chunk)
-        end
+        -- Timed (loader.report): compiling and running the file, with the lib files it loads
+        local ok, err = Atdar.loader.measure(path, function()
+            local chunk, load_err = loadfile(path)
+            if not chunk then
+                return false, load_err
+            end
+            return pcall(chunk)
+        end)
         if ok then
             loaded += 1
         else

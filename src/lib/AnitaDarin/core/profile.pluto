@@ -14,10 +14,21 @@ local DEFAULTS = {
     command_separator = "",     -- "" -> atdargodmode, "_" -> atdar_godmode
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
+    load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
     auto_copy_menu = "",        -- folder of a menu pack in store, copied to core at every start; "" = off
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
     notify = "stand",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
     notify_errors_in_stand = true, -- errors show in Stand whatever notify says, so none goes unseen
+    notify_flash = false,       -- notifications in the game's feed flash
+    notify_feed_style = "ticker", -- how a notification looks in the game's feed: "ticker" (a post) | "message" (a card)
+    -- The feed's colours by the game's clock: day from notify_day_start up to notify_night_start (hours), night the rest.
+    -- Hex "RRGGBBAA"; "" = the game's own colour (the flash colours start with it)
+    notify_day_start = 7,
+    notify_night_start = 19,
+    notify_background_day = "008B8BFF", -- dark cyan (0, 139, 139)
+    notify_flash_color_day = "",
+    notify_background_night = "1A3D54FF", -- dark teal (26, 61, 84)
+    notify_flash_color_night = "",
 }
 
 local DEFAULT_PROFILE = "main"
@@ -130,6 +141,11 @@ function module.get(key: string)
     return values[key]
 end
 
+-- The value a key has in a new profile (the defaults in this file)
+function module.default(key: string)
+    return DEFAULTS[key]
+end
+
 function module.set(key: string, value): void
     if DEFAULTS[key] == nil then
         log:warn($"unknown profile key '{key}'")
@@ -233,11 +249,14 @@ if not config_file:exists() then
     write_config()
 end
 
--- Keep Atdar.debug in sync with the profile value at all times
+-- Keep Atdar.debug and Atdar.load_timing in sync with the profile values at all times
 Atdar.debug = values.debug == true
+Atdar.load_timing = values.load_timing == true
 table.insert(listeners, function(key: string, value)
     if key == "debug" then
         Atdar.debug = value == true
+    elseif key == "load_timing" then
+        Atdar.load_timing = value == true
     end
 end)
 

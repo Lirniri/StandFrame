@@ -2,6 +2,7 @@ local globals = Atdar.globals
 local Feature = Atdar.loader.load("features/feature")
 -- Capitalized: methods below take a `commands` parameter with the item's base command names
 local Commands = Atdar.loader.load("ui/stand/commands")
+local menu_utils = Atdar.loader.load("utils/menu")
 
 -- Stand item for each Feature kind; names and help may be Stand labels (int) from i18n
 local ITEM_FOR_KIND = {
@@ -171,6 +172,14 @@ MenuNode = class
     function slider(name: string|int, min: int, max: int, default: int, step: int, on_change: function, commands: table = {}, help: string|int = "")
         return self:track(menu.slider(self.handle, name, Commands.names(commands), help,
             min, max, default, step, on_change), commands)
+    end
+
+    -- Colour picker (utils/menu.color); default { r, g, b, a } 0.0 - 1.0; on_change(colour, click_type).
+    -- transparency adds Opacity
+    function color(name: string|int, default: table, on_change: function, commands: table = {}, help: string|int = "",
+            transparency: bool = false)
+        return self:track(menu_utils.color(self.handle, name, Commands.names(commands), help, default, on_change,
+            transparency), commands)
     end
 
     -- Options picked with left/right, without a submenu; on_click(index, option_name, click_type)
