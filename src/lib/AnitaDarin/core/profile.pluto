@@ -27,11 +27,18 @@ local module = {}
 local active = DEFAULT_PROFILE
 local values = {}
 local listeners = {}
--- Changes apply right away but reach the file only on save(), like Stand's own profiles
+-- Changes apply right away but reach the file only on save(), like Stand's own profiles,
+-- unless the profile has autosave on
 local dirty = false
+-- config.json: the active profile and which profiles save every change by themselves
+local config = { profile = DEFAULT_PROFILE, autosave = {} }
 
 local function profile_file(name: string): table
     return new JsonFile($"{PROFILES_DIR}{name}.json")
+end
+
+local function write_config(): void
+    config_file:write(config)
 end
 
 -- Profile names become file names: a-z, 0-9, _ and -
@@ -69,11 +76,40 @@ local function load_profile(name: string): void
     end
 end
 
--- Writes the current values into the active profile
-function module.save(): void
-    if profile_file(active):write(values) then
+-- Writes the current values into a profile, like Stand's Save on any profile: saving into another
+-- profile overwrites it with what's in use now, the active profile stays the same
+-- @return Whether it was written
+function module.save_to(name: string): bool
+    if not profile_file(name):write(values) then
+        return false
+    end
+    if name == active then
         dirty = false
     end
+    return true
+end
+
+-- Writes the current values into the active profile
+function module.save(): void
+    module.save_to(active)
+end
+
+function module.is_autosave(name: string): bool
+    return config.autosave[name] == true
+end
+
+-- With autosave on, every change of the profile is written right away
+function module.set_autosave(name: string, on: bool): void
+    config.autosave[name] = on or nil
+    write_config()
+    if on and name == active and dirty then
+        module.save()
+    end
+end
+
+-- Folder with the profile files, e.g. to open it
+function module.folder(): string
+    return PROFILES_DIR
 end
 
 -- Whether there are changes not saved to the active profile yet
@@ -100,6 +136,9 @@ function module.set(key: string, value): void
     end
     values[key] = value
     dirty = true
+    if config.autosave[active] then
+        module.save()
+    end
     for _, listener in ipairs(listeners) do
         listener(key, value)
     end
@@ -127,7 +166,8 @@ end
 -- Loads a saved profile; unsaved changes of the current one are dropped
 function module.switch(name: string): void
     load_profile(name)
-    config_file:write({ profile = name })
+    config.profile = name
+    write_config()
     notify_all()
 end
 
@@ -158,6 +198,10 @@ function module.delete(name: string): bool
         return false
     end
     profile_file(name):remove()
+    if config.autosave[name] then
+        config.autosave[name] = nil
+        write_config()
+    end
     if name == active then
         module.switch(DEFAULT_PROFILE)
     end
@@ -169,11 +213,20 @@ function module.log_name(): string
     return values.log_name == "display" ? values.display_name : values.short_name
 end
 
-local config = config_file:read() or {}
-local start_profile = type(config.profile) == "string" ? config.profile : DEFAULT_PROFILE
-load_profile(start_profile)
+local saved = config_file:read() or {}
+if type(saved.profile) == "string" then
+    config.profile = saved.profile
+end
+if type(saved.autosave) == "table" then
+    for name, on in pairs(saved.autosave) do
+        if on == true then
+            config.autosave[name] = true
+        end
+    end
+end
+load_profile(config.profile)
 if not config_file:exists() then
-    config_file:write({ profile = active })
+    write_config()
 end
 
 -- Keep Atdar.debug in sync with the profile value at all times

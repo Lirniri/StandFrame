@@ -1,0 +1,87 @@
+-- ui/stand/profile_menu + core/profile: Stand-like Profiles list and the Settings list
+local stand = require("stand")
+stand.boot()
+
+-- A store of its own (profiles get written), with the script's real language files
+stand.store = stand.tmpdir("profile_menu_store")
+local base = $"{stand.store}AnitaDarin/language/base/"
+io.makedirs(base)
+for _, file in { "en-us.json", "ru-ru.json" } do
+    stand.write_file($"{base}{file}", stand.read_file($"{stand.SRC}store/AnitaDarin/language/base/{file}"))
+end
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+Atdar.profile = Atdar.loader.load("core/profile")
+local profile = Atdar.profile
+local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
+local profiles_dir = $"{stand.store}AnitaDarin/profiles/"
+
+-- Rebuilding the section, as menu.pluto's rebuild_settings does
+local function rebuild()
+    stand.root.children = {}
+    profile_menu.build(new MenuNode(stand.root), rebuild)
+end
+rebuild()
+
+local function list() return stand.find_item(stand.root, "Profiles") end
+local function settings() return stand.find_item(stand.root, "Settings") end
+local function entry(name) return stand.find_item(list(), name) end
+local function names_in(node)
+    local names = {}
+    for _, child in node.children do
+        table.insert(names, stand.name_of(child))
+    end
+    return table.concat(names, " | ")
+end
+
+stand.equal(names_in(list()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
+stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Delete", "a profile's own list")
+stand.check(stand.find_item(settings(), "Profile: main"), "Settings says whose values they are")
+
+-- An edit marks the active profile unsaved; Save writes it
+local short_name = stand.find_item(settings(), "Short Name")
+menu.set_value(short_name, "Edited")
+stand.check(entry("main (active)*"), "an unsaved change shows *")
+stand.click(stand.find_item(entry("main (active)"), "Save"))
+stand.check(entry("main (active)") and not entry("main (active)*"), "Save clears *")
+stand.check(stand.read_file($"{profiles_dir}main.json"):find('"Edited"', 1, true), "Save wrote the profile")
+
+-- Automatically Save: every change goes to the file right away, nothing stays unsaved
+stand.click(stand.find_item(entry("main (active)"), "Automatically Save"))
+stand.check(profile.is_autosave("main"), "autosave is on for main")
+menu.set_value(short_name, "Auto")
+stand.check(stand.read_file($"{profiles_dir}main.json"):find('"Auto"', 1, true), "the change was saved by itself")
+stand.check(not profile.is_dirty(), "and nothing is left unsaved")
+stand.check(stand.read_file($"{stand.store}AnitaDarin/config.json"):find('"main": true', 1, true), "autosave is kept in config.json")
+stand.click(stand.find_item(entry("main (active)"), "Automatically Save"))
+
+-- Create Profile: saved from the current values and loaded; the list is rebuilt with it
+menu.set_value(stand.find_item(list(), "Create Profile"), "Second")
+stand.equal(profile.active_name(), "second", "the new profile is active")
+stand.check(entry("second (active)") and entry("main"), "both profiles are listed")
+stand.check(stand.find_item(settings(), "Profile: second"), "Settings follow the active profile")
+
+-- Load main: its values come back into the fields
+menu.set_value(stand.find_item(settings(), "Short Name"), "Second's")
+stand.click(stand.find_item(entry("main"), "Load"))
+stand.equal(profile.active_name(), "main", "Load makes main active")
+stand.equal(stand.find_item(settings(), "Short Name").value, "Auto", "main's values are back in the fields")
+stand.check(entry("main (active)") and entry("second"), "captions moved to the new active profile")
+
+-- Save into another profile overwrites it with the current values
+stand.click(stand.find_item(entry("second"), "Save"))
+stand.check(stand.read_file($"{profiles_dir}second.json"):find('"Auto"', 1, true), "Save on second wrote main's values into it")
+stand.equal(profile.active_name(), "main", "and main stays active")
+
+-- Delete: main can't go; another profile is removed with its file
+stand.clear_logs()
+stand.click(stand.find_item(entry("main (active)"), "Delete"))
+stand.check(stand.find_log("can't be deleted") and io.exists($"{profiles_dir}main.json"), "main can't be deleted")
+stand.click(stand.find_item(entry("second"), "Delete"))
+stand.equal(names_in(list()), "Create Profile | Open Folder | Profiles | main (active)", "second is gone from the list")
+stand.check(not io.exists($"{profiles_dir}second.json"), "and from the disk")
+
+stand.click(stand.find_item(list(), "Open Folder"))
+stand.check(stand.toasts[#stand.toasts]:find("profiles", 1, true), "Open Folder opens the profiles folder")
+
+stand.finish()

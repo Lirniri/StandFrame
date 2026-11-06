@@ -1,9 +1,13 @@
--- Profile submenu in the script's settings section: pick, save, create and delete profiles,
--- edit the names and the command prefix. Strings live in language/base under "profile".
+-- Two lists in the script's settings section. Strings live in language/base under "profile".
+--   Profiles: laid out like Stand's own profiles - Create Profile, Open Folder, then one list per profile
+--             with Save, Load, Automatically Save and Delete
+--   Settings: the active profile's values (names, command prefix, separator, debug) and Rename Script
 --
--- Changes apply right away but reach the profile file only on Save, like Stand's own profiles.
+-- Changes apply right away but reach the profile file only on Save, like Stand's own profiles,
+-- unless the profile saves automatically.
 -- Items are updated in place (captions, field values) rather than by rebuilding the section:
--- rebuilding deletes the list the user is in, which Stand doesn't do cleanly
+-- rebuilding deletes the list the user is in, which Stand doesn't do cleanly. Only creating and
+-- deleting a profile rebuild it, since the list of profiles changes
 
 local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
@@ -30,13 +34,20 @@ local INPUT_KEYS = { "display_name", "short_name", "command_prefix" }
 
 -- Items of the latest build, updated in place when profile values change
 local view = {}
--- Set while field values are written from code, so their on_change doesn't count as an edit
+-- Set while values are written from code, so their on_change doesn't count as an edit
 local updating = false
 
-local function active_caption(): string
+-- "main", "main (active)" or "main (active)*" with unsaved changes
+local function entry_caption(name: string): string
     local profile = Atdar.profile
-    local name = profile.active_name() .. (profile.is_dirty() ? "*" : "")
-    return text("active.name"):format(name)
+    if name ~= profile.active_name() then
+        return name
+    end
+    return text("entry.active"):format(name) .. (profile.is_dirty() ? "*" : "")
+end
+
+local function settings_caption(): string
+    return text("settings.of"):format(Atdar.profile.active_name())
 end
 
 local function separator_caption(): string
@@ -57,11 +68,15 @@ local function rename(ref, caption: string): void
 end
 
 local function update_captions(): void
-    rename(view.active, active_caption())
+    for name, ref in pairs(view.entries or {}) do
+        rename(ref, entry_caption(name))
+    end
+    rename(view.settings_of, settings_caption())
     rename(view.separator, separator_caption())
     rename(view.log_name, log_name_caption())
 end
 
+-- After another profile is loaded its values go into the fields
 -- @return Whether every field took its new value; if not, the caller rebuilds the section instead
 local function update_fields(): bool
     local ok = true
@@ -72,43 +87,104 @@ local function update_fields(): bool
             ok = false
         end
     end
+    if view.debug and not pcall(menu.set_value, view.debug, Atdar.profile.get("debug") == true) then
+        ok = false
+    end
     updating = false
     return ok
 end
 
--- Any change (an edit, a switch, a save) can change the captions, e.g. the unsaved mark
+-- Any change (an edit, a load, a save) can change the captions, e.g. the unsaved mark
 Atdar.profile.on_change(|| -> update_captions())
 
--- refresh() rebuilds the settings section: needed after a profile is created or deleted
--- so the profile lists show it
-function module.build(parent: table, refresh: function): void
-    local profile = Atdar.profile
-    local node = parent:list(label("title"), { "profile" }, label("help"))
-    view = { inputs = {} }
+-- ─── Profiles ────────────────────────────────────────────────────────────────
 
-    local names = profile.list()
-    view.active = node:list_action(active_caption(), names, function(index, _, click_type)
-        local function switch_profile(): void
-            profile.switch(names[index])
+local function build_entry(parent: table, name: string, refresh: function): void
+    local profile = Atdar.profile
+    local entry = parent:list(entry_caption(name), {}, label("entry.help"))
+    view.entries[name] = entry.handle
+
+    local save_ref
+    save_ref = entry:action(label("save.name"), function(click_type)
+        local function save(): void
+            if profile.save_to(name) then
+                update_captions()
+                log:notify(text("save.done"):format(name))
+            end
+        end
+        -- Saving into another profile overwrites what it had
+        if name ~= profile.active_name() then
+            menu.show_warning(save_ref, click_type, text("save.overwrite"):format(name, profile.active_name()), save)
+        else
+            save()
+        end
+    end, {}, label("save.help"))
+
+    local load_ref
+    load_ref = entry:action(label("load.name"), function(click_type)
+        local function load_profile(): void
+            profile.switch(name)
             update_captions()
             if not update_fields() then
                 refresh()
             end
+            log:notify(text("load.done"):format(name))
         end
         if profile.is_dirty() then
-            menu.show_warning(view.active, click_type, text("active.unsaved"):format(profile.active_name()), switch_profile)
+            menu.show_warning(load_ref, click_type, text("load.unsaved"):format(profile.active_name()), load_profile)
         else
-            switch_profile()
+            load_profile()
         end
-    end, { "profileswitch" }, label("active.help"))
+    end, {}, label("load.help"))
 
-    node:action(label("save.name"), function()
-        profile.save()
+    entry:toggle(label("autosave.name"), function(on)
+        profile.set_autosave(name, on)
         update_captions()
-        log:notify(text("save.done"):format(profile.active_name()))
-    end, { "profilesave" }, label("save.help"))
+    end, {}, label("autosave.help"), profile.is_autosave(name))
 
-    node:divider(label("values"))
+    local delete_ref
+    delete_ref = entry:action(label("delete.name"), function(click_type)
+        if name == "main" then
+            log:warn(text("delete.main"))
+            return
+        end
+        menu.show_warning(delete_ref, click_type, text("delete.warning"):format(name), function()
+            if profile.delete(name) then
+                refresh()
+            end
+        end)
+    end, {}, label("delete.help"))
+end
+
+-- refresh() rebuilds the settings section: needed after a profile is created or deleted
+local function build_profiles(parent: table, refresh: function): void
+    local profile = Atdar.profile
+    local node = parent:list(label("title"), { "profiles" }, label("help"))
+
+    node:text_input(label("create.name"), { "profilenew" }, function(value)
+        if value ~= "" and profile.create(value) then
+            refresh()
+        end
+    end, label("create.help"))
+
+    node:action(label("open_folder.name"), function()
+        util.open_folder(profile.folder())
+    end, {}, label("open_folder.help"))
+
+    node:divider(label("list"))
+    for _, name in ipairs(profile.list()) do
+        build_entry(node, name, refresh)
+    end
+end
+
+-- ─── Settings ────────────────────────────────────────────────────────────────
+
+local function build_settings(parent: table): void
+    local profile = Atdar.profile
+    local node = parent:list(label("settings.name"), { "scriptsettings" }, label("settings.help"))
+
+    -- Which profile these values belong to
+    view.settings_of = node:divider(settings_caption())
 
     local function input(key: string, allow_empty: bool): void
         local command = "profile" .. key:gsub("_", "")
@@ -133,31 +209,11 @@ function module.build(parent: table, refresh: function): void
         profile.set("log_name", LOG_NAMES[index])
     end, { "profilelogname" }, label("log_name.help"))
 
-    node:toggle(label("debug.name"), function(on)
-        profile.set("debug", on)
+    view.debug = node:toggle(label("debug.name"), function(on)
+        if not updating then
+            profile.set("debug", on)
+        end
     end, { "profiledebug" }, label("debug.help"), profile.get("debug") == true)
-
-    node:divider(label("manage"))
-
-    node:text_input(label("create.name"), { "profilenew" }, function(value)
-        if value ~= "" and profile.create(value) then
-            refresh()
-        end
-    end, label("create.help"))
-
-    local deletable = {}
-    for _, name in ipairs(names) do
-        if name ~= "main" then
-            table.insert(deletable, name)
-        end
-    end
-    if #deletable > 0 then
-        node:list_action(label("delete.name"), deletable, function(index)
-            if profile.delete(deletable[index]) then
-                refresh()
-            end
-        end, { "profiledelete" }, label("delete.help"))
-    end
 
     node:divider(label("script"))
 
@@ -184,6 +240,14 @@ function module.build(parent: table, refresh: function): void
             installer.restart_as(value)
         end)
     end, label("rename.help"), Atdar.name)
+end
+
+-- Builds both lists into parent; refresh() rebuilds the settings section.
+-- Stand adds every item at the end of its list, so the order of these calls is the order in the menu
+function module.build(parent: table, refresh: function): void
+    view = { inputs = {}, entries = {} }
+    build_settings(parent)
+    build_profiles(parent, refresh)
 end
 
 return module

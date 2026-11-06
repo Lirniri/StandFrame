@@ -27,14 +27,48 @@
         }
     },
     "profile": {
-        "title": "Profile",
-        "help": "Script profile: names and command prefix. Stand's own profiles still keep item states.",
-        "active": {
-            "name": "Profile: %s",
-            "help": "Switch to another saved profile. * means the current one has unsaved changes",
-            "unsaved": "Profile '%s' has unsaved changes. Switch anyway and lose them?"
+        "title": "Profiles",
+        "help": "Script profiles: the script's own settings (names, command prefix). Stand's own profiles still keep item states.",
+        "create": {
+            "name": "Create Profile",
+            "help": "Saves the current values as a new profile and loads it. Name: a-z, 0-9, _ and -"
         },
-        "values": "Values",
+        "open_folder": {
+            "name": "Open Folder",
+            "help": "Opens the folder with the profile files"
+        },
+        "list": "Profiles",
+        "entry": {
+            "active": "%s (active)",
+            "help": "* means the active profile has unsaved changes"
+        },
+        "save": {
+            "name": "Save",
+            "help": "Writes the current values into this profile",
+            "overwrite": "Overwrite profile '%s' with the values of '%s'?",
+            "done": "Profile '%s' saved"
+        },
+        "load": {
+            "name": "Load",
+            "help": "Makes this profile active and applies its values",
+            "unsaved": "Profile '%s' has unsaved changes. Load anyway and lose them?",
+            "done": "Profile '%s' loaded"
+        },
+        "autosave": {
+            "name": "Automatically Save",
+            "help": "Every change of this profile's values is saved right away"
+        },
+        "delete": {
+            "name": "Delete",
+            "help": "Deletes this profile; deleting the active one loads main",
+            "warning": "Delete profile '%s'?",
+            "main": "The main profile can't be deleted"
+        },
+        "settings": {
+            "name": "Settings",
+            "help": "Values of the active profile and the script itself",
+            "of": "Profile: %s"
+        },
         "display_name": {
             "name": "Display Name",
             "help": "Name shown in the menu, e.g. the settings section"
@@ -59,14 +93,9 @@
             "short": "Short Name",
             "display": "Display Name"
         },
-        "manage": "Profiles",
-        "create": {
-            "name": "New Profile",
-            "help": "Saves the current values as a new profile and switches to it. Name: a-z, 0-9, _ and -"
-        },
-        "delete": {
-            "name": "Delete Profile",
-            "help": "The main profile can't be deleted; deleting the active one switches to main"
+        "debug": {
+            "name": "Debug Mode",
+            "help": "Show debug-level log lines in the Stand console and notifications"
         },
         "script": "Script",
         "rename": {
@@ -76,15 +105,6 @@
             "invalid": "'%s' isn't a valid name: use letters, digits and _",
             "failed": "Not renamed: %s",
             "done": "Renamed to %s. If it doesn't start by itself, start %s in Stand > Lua Scripts"
-        },
-        "save": {
-            "name": "Save Profile",
-            "help": "Writes the current values into the active profile",
-            "done": "Profile '%s' saved"
-        },
-        "debug": {
-            "name": "Debug Mode",
-            "help": "Show debug-level log lines in the Stand console and notifications"
         }
     },
     "modules": {
