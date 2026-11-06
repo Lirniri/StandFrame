@@ -22,16 +22,14 @@ local class RagdollControl extends Feature
     end
 
     function set_control(toggle: bool): void
-        local n_player = Atdar.natives.player
-        n_player.give_ragdoll_control(n_player.get_id(), toggle)
+        Atdar.natives.player.user():give_ragdoll_control(toggle)
         local debug_text = toggle ? "control is given :)" : "control is removed :("
         self.given = toggle
         log:debug($"id: {self.id}: {debug_text}")
     end
 
     function on_tick()
-        local n_player = Atdar.natives.player
-        local is_ragdoll = n_player.is_ragdoll(n_player.get_ped_id())
+        local is_ragdoll = Atdar.natives.ped.user():is_ragdoll()
         if is_ragdoll ~= self.given then
             self:set_control(is_ragdoll)
         end

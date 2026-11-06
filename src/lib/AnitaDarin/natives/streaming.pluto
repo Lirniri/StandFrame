@@ -2,8 +2,13 @@ local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("natives/streaming")
 
--- Loading game assets into memory. One folder per type with asset.pluto inside, each with the same shape:
--- is_loaded(...) checks, request(...) requests and waits, remove(...) frees (where the game allows it)
+-- Loading game assets into memory. One folder per type with asset.pluto inside: a class over
+-- StreamingAsset (streaming/asset.pluto), made per asset and with the same shape for every type:
+--
+--     local fx = new Atdar.natives.streaming.ptfx.asset("scr_rcbarry2")
+--     fx:is_loaded()     -- checks
+--     fx:request()       -- asks and waits
+--     fx:remove()        -- frees (where the game allows it: ptfx)
 local module = {}
 
 -- Actions
@@ -23,12 +28,12 @@ function module.wait_loaded(what: string, is_loaded: function, timeout: int): bo
     return false
 end
 
--- Asset type -> its request function, picked by request()
-local REQUEST = {
-    action_mode = |opts| -> module.action_mode.asset.request(opts.name, opts.timeout),
-    stealth_mode = |opts| -> module.stealth_mode.asset.request(opts.name, opts.timeout),
-    ptfx = |opts| -> module.ptfx.asset.request(opts.name, opts.timeout),
-    vehicle = |opts| -> module.vehicle.asset.request(opts.model, opts.asset, opts.timeout),
+-- Asset type -> makes its asset from request()'s opts
+local MAKE = {
+    action_mode = |opts| -> new module.action_mode.asset(opts.name),
+    stealth_mode = |opts| -> new module.stealth_mode.asset(opts.name),
+    ptfx = |opts| -> new module.ptfx.asset(opts.name),
+    vehicle = |opts| -> new module.vehicle.asset(opts.model, opts.asset),
 }
 
 -- One entry point for all asset types; opts.what picks the type, the rest are its arguments:
@@ -36,12 +41,13 @@ local REQUEST = {
 --   { what = "vehicle", model = "adder", asset = 0, timeout = 2000 }
 -- @return Whether the asset loaded
 function module.request(opts: table): bool
-    local request = REQUEST[opts.what]
-    if not request then
+    local make = MAKE[opts.what]
+    if not make then
         log:error($"unknown asset type '{tostring(opts.what)}', expected action_mode, stealth_mode, ptfx or vehicle")
         return false
     end
-    return request(opts)
+    local asset = make(opts)
+    return asset:request(opts.timeout)
 end
 
 return Atdar.loader.auto(module, "natives/streaming")

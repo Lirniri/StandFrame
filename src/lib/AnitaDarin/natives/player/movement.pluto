@@ -1,38 +1,34 @@
-local module = {}
+-- player.movement: a player's sprint and stamina. Part of every Player
 
--- State
+local class PlayerMovement
 
--- Get
+    function __construct(player: table)
+        self.player = player
+    end
 
-function module.get_sprint_stamina(player_id: int): float
-    local player = player_id
-    return PLAYER.GET_PLAYER_SPRINT_STAMINA_REMAINING(player)
+    -- Get
+
+    function get_sprint_stamina(): float
+        return PLAYER.GET_PLAYER_SPRINT_STAMINA_REMAINING(self.player:get_id())
+    end
+
+    -- Set
+
+    -- false stops the player from sprinting until set back to true
+    function set_sprint(toggle: bool): void
+        PLAYER.SET_PLAYER_SPRINT(self.player:get_id(), toggle)
+    end
+
+    -- Actions
+
+    function restore_sprint_stamina(value: float = 1.0): void
+        PLAYER.RESTORE_PLAYER_STAMINA(self.player:get_id(), value)
+    end
+
+    function reset_sprint_stamina(): void
+        PLAYER.RESET_PLAYER_STAMINA(self.player:get_id())
+    end
+
 end
 
--- function module.get_infinite_sprint_stamina(ped: int): bool -- TODO: maybe don't work
---     return PED.GET_PED_CONFIG_FLAG(ped, 63)
--- end
-
--- Set
-
-function module.set_sprint(player_id: int, toggle: bool): void
-    PLAYER.SET_PLAYER_SPRINT(player_id, toggle)
-end
-
--- function module.set_infinite_sprint_stamina(ped: int, toggle: bool): void -- TODO: maybe don't work
---     PED.SET_PED_CONFIG_FLAG(ped, 63, toggle)
--- end
-
--- Actions
-
-function module.restore_sprint_stamina(player_id: int, value: float): void
-    local player = player_id
-    return PLAYER.RESTORE_PLAYER_STAMINA(player, value)
-end
-
-function module.reset_sprint_stamina(player_id: int): void
-    local player = player_id
-    return PLAYER.RESET_PLAYER_STAMINA(player)
-end
-
-return module
+return PlayerMovement

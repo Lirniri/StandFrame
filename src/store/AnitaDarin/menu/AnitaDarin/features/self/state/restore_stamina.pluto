@@ -9,13 +9,12 @@ local class RestoreStamina extends Feature
     function __construct()
         parent:__construct({
             id = "self.state.restore_stamina",
-            kind = "action" 
+            kind = "action"
         })
     end
 
     function on_trigger()
-        local user = Atdar.natives.player.user
-        user.restore_stamina()
+        Atdar.natives.player.user():restore_stamina()
     end
 end
 

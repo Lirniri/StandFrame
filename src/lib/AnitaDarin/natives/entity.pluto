@@ -1,103 +1,144 @@
-local load = Atdar.loader.load
-local Logger = load("core/logger")
+-- class Entity: anything in the game world with a handle - the base of Ped, Vehicle and Object.
+--
+--     local Entity = Atdar.natives.entity
+--     local thing = new Entity(handle)         -- a fixed handle
+--     local mine = new Entity(|| -> handle())  -- or a function, read on every call
+--     thing:is_exist()
+--     thing:set_health()                       -- full health
+--
+-- A function target is for handles that change, e.g. the player's own ped after a respawn:
+-- Ped.user() is built that way, so it never holds a stale handle.
 
-local world = require($"{Atdar.name}/natives/world")
+local class_utils = Atdar.globals.pluto.class
+local Logger = Atdar.loader.load("core/logger")
+local world = Atdar.loader.load("natives/world")
 
 local log = new Logger("natives/entity")
 
-local module = {}
+local class Entity
 
--- State
-
-function module.is_exist(entity: int): bool
-    return ENTITY.DOES_ENTITY_EXIST(entity)
-end
-
-function module.is_dead(entity: int, p1: bool = false): bool
-    return ENTITY.IS_ENTITY_DEAD(entity, p1)
-end
-
--- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
-function module.is_on_ground(entity: int, max_height: number|bool = false): bool
-    if ENTITY.IS_ENTITY_IN_AIR(entity) then
-        return false
+    -- target: a handle (int) or a function returning one
+    function __construct(target)
+        -- Pluto bug: a subclass declared after an Entity was made would look up methods in Entity
+        class_utils.fix_index(self)
+        if type(target) == "function" then
+            self.resolve = target
+        else
+            self.fixed = target
+        end
     end
 
-    local coords = ENTITY.GET_ENTITY_COORDS(entity)
-    local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
-    if not found or coords.z < ground_z then
-        return false
-    end
-    return max_height == false or (coords.z - ground_z) <= max_height
-end
-
--- Get
-
-function module.get_net_id(entity): int
-    return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(entity)
-end
-
-function module.from_net_id(net_id): ?int
-    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
-    return NETWORK.NET_TO_ENT(net_id)
-end
-
-function module.get_health(entity: int): int
-    return ENTITY.GET_ENTITY_HEALTH(entity)
-end
-
-function module.get_max_health(entity: int): int
-    return ENTITY.GET_ENTITY_MAX_HEALTH(entity)
-end
-
--- @desc Returns the coordinates of an entity, optionally snapped to the ground.
--- @param max_height Maximum height above ground to snap (false — snap at any height)
-function module.get_coords(entity: int, max_height: number|bool = 1.3): vector3
-    local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))
-    world.snap_to_ground(coords, max_height)
-    return coords
-end
-
--- Set
-
--- @param "value" Health to set; nil or true restores the maximum
-function module.set_health(entity: int, value: ?int, instigator: int = 0, weaponType: int = 0): void
-    if value == nil or value == true then
-        value = module.get_max_health(entity)
-        log:debug($"set_health: value is {value}!")
-    end
-    ENTITY.SET_ENTITY_HEALTH(entity, value, instigator, weaponType)
-end
-
--- @param "value" Health to set; nil or true restores the maximum
-function module.set_max_health(entity: int, value: ?int, instigator: int = 0, weaponType: int = 0): void
-    if value == nil or value == true then
-        value = module.get_max_health(entity)
-        log:debug($"set_max_health: value is {value}!")
-    end
-    ENTITY.SET_ENTITY_MAX_HEALTH(entity, value)
-end
-
--- @desc Sets the coordinates of an entity, optionally snapped to the ground.
--- @param max_height Maximum height above ground to snap (false — don't snap)
--- @return false if coords is nil, true otherwise
-function module.set_coords(entity: int, coords: ?vector3, max_height: number|bool = 1.3, clear_area: bool = false, x_axis: bool = false, y_axis: bool = false, z_axis: bool = false): bool
-    if coords == nil then
-        return false
+    -- @return The handle now
+    function handle(): int
+        if self.resolve then
+            return self.resolve()
+        end
+        return self.fixed
     end
 
-    local pos = v3.new(coords)
-    world.snap_to_ground(pos, max_height)
+    -- State
 
-    ENTITY.SET_ENTITY_COORDS(entity, pos.x, pos.y, pos.z, x_axis, y_axis, z_axis, clear_area)
-    return true
+    function is_exist(): bool
+        return ENTITY.DOES_ENTITY_EXIST(self:handle())
+    end
+
+    function is_dead(p1: bool = false): bool
+        return ENTITY.IS_ENTITY_DEAD(self:handle(), p1)
+    end
+
+    -- @param max_height Maximum height above ground still counted as "on ground" (false - any height)
+    function is_on_ground(max_height: number|bool = false): bool
+        local handle = self:handle()
+        if ENTITY.IS_ENTITY_IN_AIR(handle) then
+            return false
+        end
+        local coords = ENTITY.GET_ENTITY_COORDS(handle)
+        local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
+        if not found or coords.z < ground_z then
+            return false
+        end
+        return max_height == false or (coords.z - ground_z) <= max_height
+    end
+
+    function is_max_health(): bool
+        return self:get_health() >= self:get_max_health()
+    end
+
+    -- Get
+
+    function get_health(): int
+        return ENTITY.GET_ENTITY_HEALTH(self:handle())
+    end
+
+    function get_max_health(): int
+        return ENTITY.GET_ENTITY_MAX_HEALTH(self:handle())
+    end
+
+    -- @desc The coordinates, optionally snapped to the ground
+    -- @param max_height Maximum height above ground to snap (false - snap at any height)
+    function get_coords(max_height: number|bool = 1.3): vector3
+        local coords = v3.new(ENTITY.GET_ENTITY_COORDS(self:handle()))
+        world.snap_to_ground(coords, max_height)
+        return coords
+    end
+
+    -- Ped, Vehicle and Object use their own native for this
+    function get_net_id(): int
+        return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(self:handle())
+    end
+
+    -- Set
+
+    -- @param value Health to set; nil restores the maximum.
+    -- No "= nil" default here: in Pluto it shifts the defaults after it (value got instigator's 0)
+    function set_health(value: ?int, instigator: int = 0, weapon_type: int = 0): void
+        if value == nil then
+            value = self:get_max_health()
+            log:debug($"set_health: value is {value}")
+        end
+        ENTITY.SET_ENTITY_HEALTH(self:handle(), value, instigator, weapon_type)
+    end
+
+    function set_max_health(value: int): void
+        ENTITY.SET_ENTITY_MAX_HEALTH(self:handle(), value)
+    end
+
+    -- @desc Moves the entity, optionally snapped to the ground
+    -- @param max_height Maximum height above ground to snap (false - snap at any height)
+    -- @return false if coords is nil, true otherwise
+    function set_coords(coords: ?vector3, max_height: number|bool = 1.3, clear_area: bool = false,
+            x_axis: bool = false, y_axis: bool = false, z_axis: bool = false): bool
+        if coords == nil then
+            return false
+        end
+        local pos = v3.new(coords)
+        world.snap_to_ground(pos, max_height)
+        ENTITY.SET_ENTITY_COORDS(self:handle(), pos.x, pos.y, pos.z, x_axis, y_axis, z_axis, clear_area)
+        return true
+    end
+
+    -- Actions
+
+    function delete(): void
+        entities.delete(self:handle())
+    end
+
 end
 
--- Actions
-
-function module.delete(handle_or_ptr): void
-    entities.delete(handle_or_ptr)
+-- @return A handle from an Entity (or Ped, Vehicle...) or a handle itself, for functions that take either
+function Entity.handle_of(entity_or_handle: table|int): int
+    if type(entity_or_handle) == "table" then
+        return entity_or_handle:handle()
+    end
+    return entity_or_handle
 end
 
-return Atdar.loader.auto(module, "natives/entity")
+-- @return The entity behind a network id, or nil if there is none
+function Entity.from_net_id(net_id: int): ?table
+    if not NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id) then
+        return nil
+    end
+    return new Entity(NETWORK.NET_TO_ENT(net_id))
+end
+
+return Entity

@@ -22,21 +22,15 @@ local class InfiniteStamina extends Feature
     end
 
     function set_stamina(toggle)
-        local n_player = Atdar.natives.player
-
         local debug_text = toggle ? "is restored :)" : "is not restored :("
-        n_player.user.infinite_stamina(toggle)
+        -- TODO: there is no infinite stamina native wrapper yet (flag 63 was commented out in the old natives)
+        Atdar.natives.player.user():infinite_stamina(toggle)
         self.restored = toggle
         log:debug($"id: {self.id}: {debug_text}")
     end
 
     function on_tick()
-        local n_player = Atdar.natives.player
-        local n_ped = Atdar.natives.entity.ped
-        local is_sprinting = n_ped.is_sprinting(n_player.get_ped_id())
-
-        self:set_stamina(is_sprinting)
-        util.toast(tostring(n_player.movement.get_infinite_sprint_stamina(n_player.get_ped_id())))
+        self:set_stamina(Atdar.natives.ped.user():is_sprinting())
     end
 
     function on_disable()

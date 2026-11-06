@@ -1,0 +1,7 @@
+local module = {}
+
+function module.add_string(text: string): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(text)
+end
+
+return module

@@ -1,0 +1,106 @@
+-- class Blip: a marker on the map and minimap.
+--
+--     local Blip = Atdar.natives.blip
+--     local waypoint = Blip.waypoint()          -- the waypoint's blip, whatever its handle is now
+--     if waypoint:is_exist() then waypoint:get_coords() end
+--     local marker = Blip.from_entity(vehicle)  -- a Vehicle/Ped or a handle; nil if it has no blip
+--     for _, blip in Blip.get_all(sprite) do blip:get_color() end
+--
+-- Like Entity, it takes a handle or a function returning one: the waypoint's blip is a new one
+-- every time the waypoint is placed, so Blip.waypoint() reads it on every call.
+
+local class_utils = Atdar.globals.pluto.class
+local Entity = Atdar.loader.load("natives/entity")
+
+local class Blip
+
+    -- target: a blip handle (int) or a function returning one
+    function __construct(target)
+        class_utils.fix_index(self)
+        if type(target) == "function" then
+            self.resolve = target
+        else
+            self.fixed = target
+        end
+    end
+
+    -- @return The blip handle now
+    function handle(): int
+        if self.resolve then
+            return self.resolve()
+        end
+        return self.fixed
+    end
+
+    -- State
+
+    function is_exist(): bool
+        return HUD.DOES_BLIP_EXIST(self:handle())
+    end
+
+    -- Get
+
+    function get_type(): int
+        return HUD.GET_BLIP_INFO_ID_TYPE(self:handle())
+    end
+
+    function get_sprite(): int
+        return HUD.GET_BLIP_SPRITE(self:handle())
+    end
+
+    function get_alpha(): int
+        return HUD.GET_BLIP_ALPHA(self:handle())
+    end
+
+    function get_rotation(): int
+        return HUD.GET_BLIP_ROTATION(self:handle())
+    end
+
+    -- @param hud_color true - the HUD colour index, false - the blip colour index
+    function get_color(hud_color: bool = false): int
+        if hud_color then
+            return HUD.GET_BLIP_HUD_COLOUR(self:handle())
+        end
+        return HUD.GET_BLIP_COLOUR(self:handle())
+    end
+
+    -- @return Where the blip is, or nil if it doesn't exist
+    function get_coords(): ?vector3
+        if not self:is_exist() then
+            return nil
+        end
+        return v3.new(HUD.GET_BLIP_INFO_ID_COORD(self:handle()))
+    end
+
+end
+
+-- One object for the waypoint, made on first use; its handle is read on every call
+local waypoint = nil
+
+-- @return The waypoint's blip; check is_exist(), there may be no waypoint
+function Blip.waypoint(): table
+    waypoint ??= new Blip(|| -> HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID()))
+    return waypoint
+end
+
+-- @return The blip attached to an entity (an Entity or a handle), or nil if it has none
+function Blip.from_entity(entity: table|int): ?table
+    local handle = HUD.GET_BLIP_FROM_ENTITY(Entity.handle_of(entity))
+    if not HUD.DOES_BLIP_EXIST(handle) then
+        return nil
+    end
+    return new Blip(handle)
+end
+
+-- @return Every blip with this sprite, as Blip objects
+function Blip.get_all(sprite: int = 0): table
+    local list = {}
+    local handle = HUD.GET_FIRST_BLIP_INFO_ID(sprite)
+    while HUD.DOES_BLIP_EXIST(handle) do
+        table.insert(list, new Blip(handle))
+        handle = HUD.GET_NEXT_BLIP_INFO_ID(sprite)
+    end
+    return list
+end
+
+return Blip

@@ -1,0 +1,47 @@
+local module = {}
+
+-- State
+
+-- Get
+
+function module.get_current(player_id: int): int
+    return PLAYER.GET_PLAYER_WANTED_LEVEL(player_id)
+end
+
+function module.get_max(player_id: int): int
+    return PLAYER.GET_MAX_WANTED_LEVEL(player_id)
+end
+
+function module.get_radius(player_id: int): float
+    return PLAYER.GET_WANTED_LEVEL_RADIUS(player_id)
+end
+
+-- Set
+
+function module.set(player_id: int, level: int, disableOnMission: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL(player_id, level, disableOnMission)
+end
+
+function module.set_no_drop(player_id: int, level: int, p2: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player_id, level, p2)
+end
+
+function module.set_now(player_id: int, p1: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(player_id, p1)
+end
+
+-- Actions
+
+function module.change(player_id: int, level: int): void
+    local player = player_id
+
+    if player == players.user() then
+        PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player, level, false)
+        PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(player, false)
+        PLAYER.SET_PLAYER_WANTED_LEVEL(player, level, false)
+    else
+        players.set_wanted_level(player, level)
+    end
+end
+
+return module

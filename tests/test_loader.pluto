@@ -11,8 +11,11 @@ stand.check(stand.find_log("failed to load 'test_throws'"), "throwing file is lo
 stand.equal(next(loader.load("test_no_table")), nil, "file without a table loads as an empty table")
 stand.check(stand.find_log("'test_no_table' did not return a table"), "file without a table is logged")
 
--- auto(): every .pluto under natives/ is reachable by its path, e.g. natives.entity.ped.task
+-- Every .pluto under natives/ loads as a table without errors. Modules are also reachable by their path
+-- through auto() (natives.visual.hud.minimap); the classes' components (natives/ped/vehicle.pluto) are parts
+-- of each object (ped.vehicle), not of the class, so for them only the load is checked
 Atdar.natives = loader.auto({}, "natives")
+local CLASSES = { entity = true, ped = true, vehicle = true, object = true, player = true }
 local natives_dir = $"{stand.SRC}lib/AnitaDarin/natives"
 local count = 0
 stand.clear_logs()
@@ -20,11 +23,19 @@ for _, path in io.listdir(natives_dir, true) do
     local relative = path:sub(#natives_dir + 2):match("^(.+)%.pluto$")
     if relative then
         count += 1
-        local value = Atdar.natives
+        local parts = {}
         for part in relative:gmatch("[^/\\]+") do
-            value = type(value) == "table" ? value[part] : nil
+            table.insert(parts, part)
         end
-        stand.equal(type(value), "table", $"natives.{relative:gsub('[/\\]', '.')} is reachable")
+        local dotted = table.concat(parts, ".")
+        stand.equal(type(loader.load($"natives/{table.concat(parts, '/')}")), "table", $"natives/{dotted} loads")
+        if not (CLASSES[parts[1]] and #parts > 1) then
+            local value = Atdar.natives
+            for _, part in parts do
+                value = type(value) == "table" ? value[part] : nil
+            end
+            stand.equal(type(value), "table", $"natives.{dotted} is reachable")
+        end
     end
 end
 stand.check(count > 30, $"found the natives files ({count})")
@@ -34,15 +45,15 @@ stand.equal(stand.find_log("failed to load"), nil, "no natives file failed to lo
 local real_exists = filesystem.exists
 local checks = 0
 filesystem.exists = function(path) checks += 1 return real_exists(path) end
-stand.equal(Atdar.natives.entity.pedd, nil, "a typo is nil")
+stand.equal(Atdar.natives.visual.hudd, nil, "a typo is nil")
 local after_first = checks
-stand.equal(Atdar.natives.entity.pedd, nil, "the typo is still nil")
+stand.equal(Atdar.natives.visual.hudd, nil, "the typo is still nil")
 stand.equal(checks, after_first, "the typo isn't checked on disk again")
 filesystem.exists = real_exists
 
 -- Loaded once and kept: the same table every time; the facade's own functions win over files
-stand.check(rawequal(Atdar.natives.entity.ped, Atdar.natives.entity.ped), "a submodule is loaded once")
-stand.equal(type(rawget(Atdar.natives.entity, "ped")), "table", "a loaded submodule is stored in the facade")
-stand.equal(type(Atdar.natives.entity.get_health), "function", "the facade's own functions are there")
+stand.check(rawequal(Atdar.natives.visual.hud, Atdar.natives.visual.hud), "a submodule is loaded once")
+stand.equal(type(rawget(Atdar.natives.visual, "hud")), "table", "a loaded submodule is stored in the facade")
+stand.equal(type(Atdar.natives.world.snap_to_ground), "function", "the facade's own functions are there")
 
 stand.finish()

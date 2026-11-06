@@ -9,17 +9,14 @@ local class RestoreHealth extends Feature
     function __construct()
         parent:__construct({
             id = "self.state.restore_health",
-            kind = "action" 
+            kind = "action"
         })
     end
 
     function on_trigger()
-        local n_player = Atdar.natives.player
-        local n_ped = Atdar.natives.entity.ped
-        local ped = n_player.get_ped_id()
-        local is_max_health = n_ped.is_max_health(ped)
-        if not is_max_health then
-            n_player.user.restore_health()
+        local me = Atdar.natives.player.user()
+        if not me:get_ped():is_max_health() then
+            me:restore_health()
         end
     end
 end

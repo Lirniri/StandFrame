@@ -1,15 +1,17 @@
-local module = {}
+-- player.mission: missions. Part of every Player
 
--- State
+local class PlayerMission
 
-function module.can_start(player_id: int): bool
-    return PLAYER.CAN_PLAYER_START_MISSION(player_id)
+    function __construct(player: table)
+        self.player = player
+    end
+
+    -- State
+
+    function can_start(): bool
+        return PLAYER.CAN_PLAYER_START_MISSION(self.player:get_id())
+    end
+
 end
 
--- Get
-
--- Set
-
--- Actions
-
-return module
+return PlayerMission

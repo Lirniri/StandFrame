@@ -1,19 +1,26 @@
-local module = {}
+-- player.camera: where a player's camera is. Part of every Player
 
--- State
+local class PlayerCamera
 
--- Get
+    function __construct(player: table)
+        self.player = player
+    end
 
-function module.get_position(player_id: int): vector3
-    return players.get_cam_pos(player_id)
+    -- Get
+
+    function get_position(): vector3
+        return players.get_cam_pos(self.player:get_id())
+    end
+
+    function get_rotation(): vector3
+        return players.get_cam_rot(self.player:get_id())
+    end
+
+    -- @return The active view mode (first person, third person...); the game knows it only for the local player
+    function get_view_mode(): int
+        return CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(CAM.GET_CAM_ACTIVE_VIEW_MODE_CONTEXT())
+    end
+
 end
 
-function module.get_rotation(player_id: int): vector3
-    return players.get_cam_rot(player_id)
-end
-
--- Set
-
--- Actions
-
-return Atdar.loader.auto(module, "natives/player/camera")
+return PlayerCamera

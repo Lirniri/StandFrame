@@ -1,0 +1,7 @@
+local module = {}
+
+function module.display_cash(toggle: bool): void
+    HUD.DISPLAY_CASH(toggle)
+end
+
+return module

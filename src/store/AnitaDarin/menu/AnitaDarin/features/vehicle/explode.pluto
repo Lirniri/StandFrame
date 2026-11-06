@@ -10,30 +10,24 @@ return Atdar.features.add(new Feature({
     kind = "action",
 
     on_trigger = function(self)
-        local n_vehicle = Atdar.natives.entity.vehicle
-        local handle = Atdar.natives.player.user.get_vehicle()
-        if handle == -1 then
-            log:notify($"{self.id}: handle of vehicle is -1 :(")
+        local vehicle = Atdar.natives.vehicle.user()
+        if not vehicle:is_exist() then
+            log:notify($"{self.id}: no vehicle :(")
             return
         end
 
         local is_online = util.is_session_started()
         if is_online then
-            local netID = n_vehicle.get_net_id(handle)
+            local netID = vehicle:get_net_id()
             if netID == 0 then
                 log:notify($"{self.id}: net_id is 0 :(")
                 return
             end
-            n_vehicle.explode({
-                vehicle = handle,
-                net_id = netID
-            })
-            log:debug($"{self.id}: vehicle: {handle} exploded with net_id: {netID} :)")
+            vehicle:explode({ net_id = netID })
+            log:debug($"{self.id}: vehicle: {vehicle:handle()} exploded with net_id: {netID} :)")
         else
-            n_vehicle.explode({
-                vehicle = handle
-            })
-            log:debug($"{self.id}: vehicle: {handle} exploded :)")
+            vehicle:explode()
+            log:debug($"{self.id}: vehicle: {vehicle:handle()} exploded :)")
         end
     end
 }))

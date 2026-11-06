@@ -18,6 +18,11 @@ _G.HUD = {
     BEGIN_TEXT_COMMAND_THEFEED_POST = function() text = nil end,
     ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME = function(value) text = value end,
     END_TEXT_COMMAND_THEFEED_POST_TICKER = function() table.insert(feed, text) return #feed end,
+    END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT = function(txd, _, _, _, sender, subject)
+        table.insert(feed, $"{txd}|{sender}|{subject}|{text}")
+        return #feed
+    end,
+    THEFEED_REMOVE_ITEM = function(id) feed[id] = "removed" end,
 }
 
 local function shown(fn)
@@ -40,6 +45,16 @@ toasts, posts = shown(|| -> log:warn("careful"))
 stand.check(toasts == 0 and posts == 1, "warnings follow the choice too")
 toasts, posts = shown(|| -> log:error("broke"))
 stand.check(toasts == 1 and posts == 0, "errors still go to Stand")
+
+-- util.toast to the feed gives a FeedPost that can take the post away; the message card gets the script's name
+feed = {}
+local post = Atdar.util.toast("removable", { target = "game" })
+stand.equal(post:get_id(), 1, "util.toast to the feed returns a FeedPost")
+post:remove()
+stand.equal(feed[1], "removed", "post:remove() removes it from the feed")
+Atdar.util.toast("card", { target = "game", style = "message", subject = "Profiles" })
+stand.equal(feed[2], $"CHAR_SOCIAL_CLUB|{Atdar.name}|Profiles|card", "style message: picture, sender, subject, text")
+stand.equal(Atdar.util.toast("in stand", { target = "stand" }), nil, "util.toast to Stand returns nothing")
 
 profile.set("notify", "none")
 stand.clear_logs()

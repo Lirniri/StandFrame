@@ -1,0 +1,24 @@
+local module = {}
+
+function module.is_rendering(): bool
+    return HUD.IS_MINIMAP_RENDERING()
+end
+
+function module.is_hidden(): bool
+    return HUD.IS_RADAR_HIDDEN()
+end
+
+-- flash
+function module.flash(hud_color_index: ?int): void
+    if hud_color_index ~= nil then
+        HUD.FLASH_MINIMAP_DISPLAY_WITH_COLOR(hud_color_index)
+    else
+        HUD.FLASH_MINIMAP_DISPLAY()
+    end
+end
+
+function module.flash_ability_bar(millisecondsToFlash: int): void
+    HUD.FLASH_ABILITY_BAR(millisecondsToFlash)
+end
+
+return module

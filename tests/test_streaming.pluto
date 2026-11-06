@@ -1,4 +1,4 @@
--- natives/streaming: request and wait for each asset type, the request() entry point, timeouts
+-- natives/streaming: asset classes (StreamingAsset and a subclass per type), the request() entry point, timeouts
 local stand = require("stand")
 stand.boot()
 Atdar.natives = Atdar.loader.auto({}, "natives")
@@ -23,12 +23,24 @@ _G.STREAMING = {
 }
 _G.VEHICLE = { REQUEST_VEHICLE_ASSET = || -> nil, HAS_VEHICLE_ASSET_LOADED = || -> false }
 
-stand.check(streaming.ptfx.asset.request("scr_rcbarry2"), "ptfx loads and request() waits for it")
-stand.check(streaming.ptfx.asset.is_loaded("scr_rcbarry2"), "and it's loaded afterwards")
-stand.check(not streaming.ptfx.asset.request("fx_new", false), "timeout false only requests, doesn't wait")
-stand.check(streaming.ptfx.asset.request(), "the script's default ptfx asset (no name)")
-stand.check(streaming.action_mode.asset.request("A"), "action mode asset")
-stand.check(streaming.stealth_mode.asset.request("S"), "stealth mode asset")
+local fx = new streaming.ptfx.asset("scr_rcbarry2")
+stand.check(fx:request(), "ptfx loads and request() waits for it")
+stand.check(fx:is_loaded(), "and it's loaded afterwards")
+stand.check(not (new streaming.ptfx.asset("fx_new")):request(false), "timeout false only requests, doesn't wait")
+stand.check((new streaming.ptfx.asset()):request(), "the script's default ptfx asset (no name)")
+stand.check((new streaming.action_mode.asset("A")):request(), "action mode asset")
+stand.check((new streaming.stealth_mode.asset("S")):request(), "stealth mode asset")
+stand.check((new streaming.stealth_mode.asset("S2")):request(false) == false, "timeout false works for every type")
+stand.check(rawequal(getmetatable(fx).__index, getmetatable(fx)), "a subclass finds its own methods (extends bug)")
+
+-- A subclass that forgot a method says so instead of failing silently
+local StreamingAsset = streaming.asset
+local class Broken extends StreamingAsset
+    function __construct() parent:__construct("broken asset") end
+end
+local ok, err = pcall(|| -> (new Broken()):request())
+stand.check(not ok and tostring(err):find("broken asset: send_request() isn't defined", 1, true), "a missing send_request() is an error")
+
 stand.check(streaming.request({ what = "ptfx", name = "other" }), "request({ what = 'ptfx' })")
 
 local start = stand.clock

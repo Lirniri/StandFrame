@@ -27,7 +27,7 @@ local LIB_DIR = $"{filesystem.scripts_dir()}lib\\{Atdar.name}\\"
 
 -- Fields missing from tbl are loaded on first access from <base>/<field>.pluto and kept in tbl,
 -- so a facade doesn't list its submodules. A field with no such file stays nil, so typos aren't hidden.
--- Example: return Atdar.loader.auto(module, "natives/entity") -> entity.ped loads natives/entity/ped.pluto
+-- Example: return Atdar.loader.auto(module, "natives/visual/hud") -> hud.minimap loads natives/visual/hud/minimap.pluto
 function module.auto(tbl: table, base: string): table
     -- Fields already known to have no file: not checked on disk again
     local missing = {}

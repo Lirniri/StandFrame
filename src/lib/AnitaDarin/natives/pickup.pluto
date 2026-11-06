@@ -1,0 +1,14 @@
+-- Pickups. A module, not a class: a pickup's handle isn't an entity handle (ENTITY natives don't take it);
+-- the thing you see is an object, OBJECT.GET_PICKUP_OBJECT gives it
+
+local module = {}
+
+-- @return Handles (or pointers) of every pickup in the world
+function module.get_all(as_pointers: bool = false): table
+    if as_pointers then
+        return entities.get_all_pickups_as_pointers()
+    end
+    return entities.get_all_pickups_as_handles()
+end
+
+return module

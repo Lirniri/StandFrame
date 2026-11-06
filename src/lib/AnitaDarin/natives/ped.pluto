@@ -1,0 +1,176 @@
+-- class Ped extends Entity: a person in the game, the player's own or anyone else.
+--
+--     local Ped = Atdar.natives.ped
+--     local me = Ped.user()                 -- the player's ped, whatever its handle is now
+--     me:is_running()
+--     me.vehicle:is_in_any()                -- components: vehicle, weapon, task, parachute, flags
+--     me.weapon:give("WEAPON_PISTOL")
+--     me.flags:set_config(Ped.CONFIG.IS_SCUBA, true)
+--     local other = new Ped(handle)
+
+local Entity = Atdar.loader.load("natives/entity")
+local PedVehicle = Atdar.loader.load("natives/ped/vehicle")
+local PedWeapon = Atdar.loader.load("natives/ped/weapon")
+local PedTask = Atdar.loader.load("natives/ped/task")
+local PedParachute = Atdar.loader.load("natives/ped/parachute")
+local PedFlags = Atdar.loader.load("natives/ped/flags")
+
+local class Ped extends Entity
+
+    -- target: a handle (int) or a function returning one (see Entity)
+    function __construct(target)
+        parent:__construct(target)
+        self.vehicle = new PedVehicle(self)
+        self.weapon = new PedWeapon(self)
+        self.task = new PedTask(self)
+        self.parachute = new PedParachute(self)
+        self.flags = new PedFlags(self)
+    end
+
+    -- State
+
+    function is_ped(): bool
+        return ENTITY.IS_ENTITY_A_PED(self:handle())
+    end
+
+    function is_player(): bool
+        return PED.IS_PED_A_PLAYER(self:handle())
+    end
+
+    function is_human(): bool
+        return PED.IS_PED_HUMAN(self:handle())
+    end
+
+    function is_male(): bool
+        return PED.IS_PED_MALE(self:handle())
+    end
+
+    function is_ragdoll(): bool
+        return PED.IS_PED_RAGDOLL(self:handle())
+    end
+
+    function can_ragdoll(): bool
+        return PED.CAN_PED_RAGDOLL(self:handle())
+    end
+
+    function is_scuba(): bool
+        return self.flags:get_config(PedFlags.CONFIG.IS_SCUBA)
+    end
+
+    -- State > Movement
+
+    function is_stopped(): bool
+        return PED.IS_PED_STOPPED(self:handle())
+    end
+
+    function is_still(): bool
+        return TASK.IS_PED_STILL(self:handle())
+    end
+
+    function is_walking(): bool
+        return TASK.IS_PED_WALKING(self:handle())
+    end
+
+    function is_running(): bool
+        return TASK.IS_PED_RUNNING(self:handle())
+    end
+
+    function is_sprinting(): bool
+        return TASK.IS_PED_SPRINTING(self:handle())
+    end
+
+    function is_strafing(): bool
+        return TASK.IS_PED_STRAFING(self:handle())
+    end
+
+    function is_getting_up(): bool
+        return TASK.IS_PED_GETTING_UP(self:handle())
+    end
+
+    function is_jumping(beast_jump: bool = false): bool
+        if beast_jump then
+            return PED.IS_PED_DOING_A_BEAST_JUMP(self:handle())
+        end
+        return PED.IS_PED_JUMPING(self:handle())
+    end
+
+    function is_swimming(under_water: bool = false): bool
+        if under_water then
+            return PED.IS_PED_SWIMMING_UNDER_WATER(self:handle())
+        end
+        return PED.IS_PED_SWIMMING(self:handle())
+    end
+
+    -- State > Cover
+
+    function is_going_into_cover(): bool
+        return PED.IS_PED_GOING_INTO_COVER(self:handle())
+    end
+
+    function is_in_high_cover(): bool
+        return PED.IS_PED_IN_HIGH_COVER(self:handle())
+    end
+
+    function is_in_cover(except_use_weapon: bool = false): bool
+        return PED.IS_PED_IN_COVER(self:handle(), except_use_weapon)
+    end
+
+    -- Get
+
+    function get_armor(): int
+        return PED.GET_PED_ARMOUR(self:handle())
+    end
+
+    function get_net_id(): int
+        return NETWORK.PED_TO_NET(self:handle())
+    end
+
+    -- Set
+
+    function set_armor(value: int): void
+        PED.SET_PED_ARMOUR(self:handle(), value)
+    end
+
+    function set_scuba(toggle: bool): void
+        self.flags:set_config(PedFlags.CONFIG.IS_SCUBA, toggle)
+    end
+
+    -- Actions
+
+    function add_armor(value: int): void
+        PED.ADD_ARMOUR_TO_PED(self:handle(), value)
+    end
+
+end
+
+-- Flag ids for ped.flags
+Ped.CONFIG = PedFlags.CONFIG
+Ped.RESET = PedFlags.RESET
+
+-- One object for the player's own ped, made on first use; its handle is read on every call,
+-- so it stays right after a respawn
+local user = nil
+
+-- @return The player's own ped
+function Ped.user(): table
+    user ??= new Ped(|| -> PLAYER.PLAYER_PED_ID())
+    return user
+end
+
+-- @return Handles (or pointers) of every ped in the world
+function Ped.get_all(as_pointers: bool = false): table
+    if as_pointers then
+        return entities.get_all_peds_as_pointers()
+    end
+    return entities.get_all_peds_as_handles()
+end
+
+-- @return The ped behind a network id, or nil if there is none
+function Ped.from_net_id(net_id: int): ?table
+    if not NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id) then
+        return nil
+    end
+    return new Ped(NETWORK.NET_TO_PED(net_id))
+end
+
+return Ped

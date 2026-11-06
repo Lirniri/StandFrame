@@ -1,0 +1,18 @@
+local module = {}
+
+function module.is_hidden(): bool
+    return HUD.IS_HUD_HIDDEN()
+end
+
+function module.get_color(hud_color_index: int): table
+    local r, g, b, a = memory.alloc_int(), memory.alloc_int(), memory.alloc_int(), memory.alloc_int()
+    HUD.GET_HUD_COLOUR(hud_color_index, r, g, b, a)
+    return {
+        r = memory.read_int(r),
+        g = memory.read_int(g),
+        b = memory.read_int(b),
+        a = memory.read_int(a),
+    }
+end
+
+return Atdar.loader.auto(module, "natives/visual/hud")

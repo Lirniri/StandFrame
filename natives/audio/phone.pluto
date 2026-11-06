@@ -1,0 +1,13 @@
+local module = { radio = {} }
+
+function module.radio.is_active(): bool
+    return AUDIO.IS_MOBILE_PHONE_RADIO_ACTIVE()
+end
+function module.radio.set_state(station_id: int): void
+    AUDIO.SET_MOBILE_PHONE_RADIO_STATE(station_id)
+end
+function module.radio.enable(toggle: bool): void
+    AUDIO.SET_MOBILE_RADIO_ENABLED_DURING_GAMEPLAY(toggle)
+end
+
+return module

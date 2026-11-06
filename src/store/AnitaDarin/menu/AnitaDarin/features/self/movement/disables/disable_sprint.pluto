@@ -17,10 +17,7 @@ local class DisableSprint extends Feature
     end
 
     function set_sprint(toggle)
-        local n_player = Atdar.natives.player
-        local player = n_player.get_id()
-
-        n_player.movement.set_sprint(player, toggle)
+        Atdar.natives.player.user().movement:set_sprint(toggle)
         if toggle ~= self.sprint then
             self.sprint = toggle
             local debug_text = toggle ? "sprint is enabled" : "sprint is disabled"
@@ -29,17 +26,16 @@ local class DisableSprint extends Feature
     end
 
     function on_tick()
-        local n_ped = Atdar.natives.entity.ped
-        local ped = Atdar.natives.player.get_ped_id()
+        local ped = Atdar.natives.ped.user()
 
-        local actions = n_ped.is_running(ped) or n_ped.is_sprinting(ped)
+        local actions = ped:is_running() or ped:is_sprinting()
         if actions then
             self:set_sprint(false)
         else
             self:set_sprint(true)
         end
     end
-    
+
     function on_disable()
         self:set_sprint(true)
     end

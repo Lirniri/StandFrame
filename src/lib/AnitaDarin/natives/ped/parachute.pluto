@@ -1,0 +1,46 @@
+-- ped.parachute: a ped's parachute. Part of every Ped
+
+local class PedParachute
+
+    function __construct(ped: table)
+        self.ped = ped
+    end
+
+    -- Get
+
+    -- @return -1 normal, 0 wearing it on the back, 1 opening, 2 open, 3 falling to doom (e.g. after leaving it)
+    function get_state(): int
+        return PED.GET_PED_PARACHUTE_STATE(self.ped:handle())
+    end
+
+    -- @return -1 no landing, 0 on both feet, 1 stumbling, 2 rolling, 3 ragdoll
+    function get_landing_type(): int
+        return PED.GET_PED_PARACHUTE_LANDING_TYPE(self.ped:handle())
+    end
+
+    -- The native writes the tint into a pointer instead of returning it
+    function get_tint(): int
+        local tint_ptr = memory.alloc_int()
+        PED.GET_PED_PARACHUTE_TINT_INDEX(self.ped:handle(), tint_ptr)
+        return memory.read_int(tint_ptr)
+    end
+
+    -- Set
+
+    function set_tint(tint: int): void
+        PED.SET_PED_PARACHUTE_TINT_INDEX(self.ped:handle(), tint)
+    end
+
+    -- Actions
+
+    function give(): void
+        WEAPON.GIVE_WEAPON_TO_PED(self.ped:handle(), util.joaat("GADGET_PARACHUTE"), 1, false, false)
+    end
+
+    function force_open(): void
+        PED.FORCE_PED_TO_OPEN_PARACHUTE(self.ped:handle())
+    end
+
+end
+
+return PedParachute

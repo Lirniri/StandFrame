@@ -1,0 +1,103 @@
+local load = Atdar.loader.load
+local Logger = load("core/logger")
+
+local world = require($"{Atdar.name}/natives/world")
+
+local log = new Logger("natives/entity")
+
+local module = {}
+
+-- State
+
+function module.is_exist(entity: int): bool
+    return ENTITY.DOES_ENTITY_EXIST(entity)
+end
+
+function module.is_dead(entity: int, p1: bool = false): bool
+    return ENTITY.IS_ENTITY_DEAD(entity, p1)
+end
+
+-- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
+function module.is_on_ground(entity: int, max_height: number|bool = false): bool
+    if ENTITY.IS_ENTITY_IN_AIR(entity) then
+        return false
+    end
+
+    local coords = ENTITY.GET_ENTITY_COORDS(entity)
+    local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
+    if not found or coords.z < ground_z then
+        return false
+    end
+    return max_height == false or (coords.z - ground_z) <= max_height
+end
+
+-- Get
+
+function module.get_net_id(entity): int
+    return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(entity)
+end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_ENT(net_id)
+end
+
+function module.get_health(entity: int): int
+    return ENTITY.GET_ENTITY_HEALTH(entity)
+end
+
+function module.get_max_health(entity: int): int
+    return ENTITY.GET_ENTITY_MAX_HEALTH(entity)
+end
+
+-- @desc Returns the coordinates of an entity, optionally snapped to the ground.
+-- @param max_height Maximum height above ground to snap (false — snap at any height)
+function module.get_coords(entity: int, max_height: number|bool = 1.3): vector3
+    local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))
+    world.snap_to_ground(coords, max_height)
+    return coords
+end
+
+-- Set
+
+-- @param "value" Health to set; nil or true restores the maximum
+function module.set_health(entity: int, value: ?int, instigator: int = 0, weaponType: int = 0): void
+    if value == nil or value == true then
+        value = module.get_max_health(entity)
+        log:debug($"set_health: value is {value}!")
+    end
+    ENTITY.SET_ENTITY_HEALTH(entity, value, instigator, weaponType)
+end
+
+-- @param "value" Health to set; nil or true restores the maximum
+function module.set_max_health(entity: int, value: ?int, instigator: int = 0, weaponType: int = 0): void
+    if value == nil or value == true then
+        value = module.get_max_health(entity)
+        log:debug($"set_max_health: value is {value}!")
+    end
+    ENTITY.SET_ENTITY_MAX_HEALTH(entity, value)
+end
+
+-- @desc Sets the coordinates of an entity, optionally snapped to the ground.
+-- @param max_height Maximum height above ground to snap (false — don't snap)
+-- @return false if coords is nil, true otherwise
+function module.set_coords(entity: int, coords: ?vector3, max_height: number|bool = 1.3, clear_area: bool = false, x_axis: bool = false, y_axis: bool = false, z_axis: bool = false): bool
+    if coords == nil then
+        return false
+    end
+
+    local pos = v3.new(coords)
+    world.snap_to_ground(pos, max_height)
+
+    ENTITY.SET_ENTITY_COORDS(entity, pos.x, pos.y, pos.z, x_axis, y_axis, z_axis, clear_area)
+    return true
+end
+
+-- Actions
+
+function module.delete(handle_or_ptr): void
+    entities.delete(handle_or_ptr)
+end
+
+return Atdar.loader.auto(module, "natives/entity")

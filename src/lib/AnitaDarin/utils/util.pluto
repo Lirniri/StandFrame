@@ -1,22 +1,26 @@
 local module = {}
 
--- How a game notification is finished: plain text, or a message card with a picture, sender and subject
-local END_POST = {
-    ticker = function(hud, opts: table)
-        return hud.thefeed["end"].post_ticker(opts.important == true, true, false)
+-- How a game notification is posted: plain text, or a message card with a picture, sender and subject
+local POST = {
+    ticker = function(thefeed, message: string, opts: table)
+        return thefeed.post_ticker(message, opts.important == true)
     end,
-    message = function(hud, opts: table)
-        local picture = opts.picture or "CHAR_SOCIAL_CLUB"
-        return hud.thefeed["end"].post_message(opts.sender or Atdar.name, opts.subject or "",
-            opts.important == true, opts.icon or 1, picture, picture)
+    message = function(thefeed, message: string, opts: table)
+        return thefeed.post_message(message, {
+            sender = opts.sender or Atdar.name,
+            subject = opts.subject,
+            picture = opts.picture,
+            icon = opts.icon,
+            important = opts.important,
+        })
     end,
 }
 
 -- Shows a message to the user in the configured way.
 -- opts.target: "stand" | "game" (the game's feed) | "none" (default: the profile's notify, then "stand")
 -- opts.style for "game": "ticker" (default) | "message" with opts.sender, opts.subject, opts.picture, opts.icon
--- @return Feed item id for "game", pass it to thefeed.remove()
-function module.toast(message: string, opts: table = {}): ?int
+-- @return The FeedPost for "game" (post:remove() takes it away), otherwise nil
+function module.toast(message: string, opts: table = {}): ?table
     local profile = Atdar.profile
     local target = opts.target or (profile and profile.get and profile.get("notify")) or "stand"
 
@@ -24,14 +28,11 @@ function module.toast(message: string, opts: table = {}): ?int
         util.toast(message)
     elseif target == "game" then
         local style = opts.style or "ticker"
-        local end_post = END_POST[style]
-        if not end_post then
+        local post = POST[style]
+        if not post then
             error($"[util.toast] unknown style '{style}', expected ticker or message")
         end
-        local hud = Atdar.natives.visual.hud
-        hud.thefeed.begin.post()
-        hud.text.add_string(message)
-        return end_post(hud, opts)
+        return post(Atdar.natives.visual.hud.thefeed, message, opts)
     end
     return nil
 end

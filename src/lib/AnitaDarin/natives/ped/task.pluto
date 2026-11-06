@@ -1,0 +1,38 @@
+-- ped.task: what a ped is doing (tasks). Part of every Ped
+
+local class PedTask
+
+    function __construct(ped: table)
+        self.ped = ped
+    end
+
+    -- Get
+
+    function get_active(task_type: int): bool
+        return TASK.GET_IS_TASK_ACTIVE(self.ped:handle(), task_type)
+    end
+
+    -- Actions
+
+    -- @param mode 0 - all tasks, 1 - all tasks immediately, 2 - the secondary task
+    function clear(mode: int = 0): void
+        local handle = self.ped:handle()
+        switch mode do
+            case 1:
+                TASK.CLEAR_PED_TASKS_IMMEDIATELY(handle)
+                break
+            case 2:
+                TASK.CLEAR_PED_SECONDARY_TASK(handle)
+                break
+            default:
+                TASK.CLEAR_PED_TASKS(handle)
+        end
+    end
+
+    function sky_dive(instant: bool = false): void
+        TASK.TASK_SKY_DIVE(self.ped:handle(), instant)
+    end
+
+end
+
+return PedTask

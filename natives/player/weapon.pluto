@@ -1,0 +1,11 @@
+local module = {}
+
+-- @param entity If given, checks aiming at this entity; otherwise aiming at all
+function module.is_free_aiming(player_id: int, entity: ?int): bool
+    if entity ~= nil then
+        return PLAYER.IS_PLAYER_FREE_AIMING_AT_ENTITY(player_id, entity)
+    end
+    return PLAYER.IS_PLAYER_FREE_AIMING(player_id)
+end
+
+return module

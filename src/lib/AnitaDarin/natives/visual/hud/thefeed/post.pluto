@@ -1,0 +1,27 @@
+-- class FeedPost: one notification in the game's feed (above the minimap), made by thefeed.post_*.
+--
+--     local post = Atdar.natives.visual.hud.thefeed.post_ticker("Hello")
+--     post:remove()
+
+local class FeedPost
+
+    -- id: what the game returned for the post
+    function __construct(id: int)
+        self.id = id
+    end
+
+    -- Get
+
+    function get_id(): int
+        return self.id
+    end
+
+    -- Actions
+
+    function remove(): void
+        HUD.THEFEED_REMOVE_ITEM(self.id)
+    end
+
+end
+
+return FeedPost
