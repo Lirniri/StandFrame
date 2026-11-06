@@ -3,7 +3,7 @@
 --
 --   ── Profile: main ──
 --   Display Name, Short Name
---   Settings >      Language, Name In Logs, Rename Script
+--   Settings >      Language, Name In Logs, Notifications, Rename Script
 --   Profiles >      Create Profile, Open Folder, one list per profile
 --   Load Menu >     Unload*, Copy Menu To Core, ── Menus ──, the menus
 --   Command Box >   Command Prefix, Separator, Found Commands*
@@ -75,6 +75,7 @@ function module.build(section: table, opts: table): void
         i18n.label("profile.settings.help"))
     profile_menu.language(settings)
     profile_menu.log_name(settings)
+    profile_menu.notifications(settings)
     profile_menu.rename(settings)
 
     profile_menu.profiles(section, opts.refresh)

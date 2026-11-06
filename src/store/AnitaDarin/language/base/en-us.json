@@ -11,7 +11,8 @@
         "builtin": {
             "name": "%s (built-in)",
             "help": "The menu that ships with the script",
-            "copied_help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded."
+            "copied_help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded.",
+            "auto_copy_again": "Copy Menu To Core is on in the profile: the menu will be copied again at the next start. To stop it: Load Menu > Copy Menu To Core > Off"
         },
         "pack": {
             "help": "v%s by %s\nRuns the pack's own code with full script access. Only load packs you trust.",
@@ -93,6 +94,26 @@
             "help": "Which name log and notification lines start with",
             "short": "Short Name",
             "display": "Display Name"
+        },
+        "notify": {
+            "name": "Notifications",
+            "help": "Where the script's notifications, warnings and errors show",
+            "target": {
+                "name": "Show In: %s",
+                "help": "Stand: Stand's notifications. Game Feed: the game's notification feed. Log Only: nothing on screen, only Stand's log",
+                "stand": "Stand",
+                "game": "Game Feed",
+                "none": "Log Only"
+            },
+            "errors": {
+                "name": "Errors Always In Stand",
+                "help": "Errors show in Stand's notifications whatever is chosen above, so none goes unseen"
+            },
+            "test": {
+                "name": "Test Notification",
+                "help": "Shows a notification where they show now",
+                "text": "This is how the script's notifications look"
+            }
         },
         "debug": {
             "name": "Debug Mode",

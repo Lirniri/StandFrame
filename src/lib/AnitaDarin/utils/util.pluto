@@ -13,12 +13,12 @@ local END_POST = {
 }
 
 -- Shows a message to the user in the configured way.
--- opts.target: "stand" | "game" | "none" (default: Atdar.settings.notify, then "stand")
+-- opts.target: "stand" | "game" (the game's feed) | "none" (default: the profile's notify, then "stand")
 -- opts.style for "game": "ticker" (default) | "message" with opts.sender, opts.subject, opts.picture, opts.icon
 -- @return Feed item id for "game", pass it to thefeed.remove()
 function module.toast(message: string, opts: table = {}): ?int
-    local settings = Atdar.settings
-    local target = opts.target or (settings and settings.notify) or "stand"
+    local profile = Atdar.profile
+    local target = opts.target or (profile and profile.get and profile.get("notify")) or "stand"
 
     if target == "stand" then
         util.toast(message)

@@ -1,0 +1,62 @@
+-- Notifications: the profile's notify picks Stand, the game's feed or log only (utils/util.toast via the logger);
+-- errors go to Stand unless notify_errors_in_stand is off; a failing feed falls back to Stand
+local stand = require("stand")
+stand.boot()
+stand.store = stand.tmpdir("notify_store")
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+Atdar.util = Atdar.loader.load("utils/util")
+Atdar.profile = Atdar.loader.load("core/profile")
+Atdar.natives = Atdar.loader.auto({}, "natives")
+local profile = Atdar.profile
+local Logger = Atdar.loader.load("core/logger")
+local log = new Logger("Test")
+
+-- The game's feed: what was posted
+local feed = {}
+local text = nil
+_G.HUD = {
+    BEGIN_TEXT_COMMAND_THEFEED_POST = function() text = nil end,
+    ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME = function(value) text = value end,
+    END_TEXT_COMMAND_THEFEED_POST_TICKER = function() table.insert(feed, text) return #feed end,
+}
+
+local function shown(fn)
+    stand.toasts = {}
+    feed = {}
+    fn()
+    return #stand.toasts, #feed
+end
+
+stand.equal(profile.get("notify"), "stand", "notifications show in Stand by default")
+stand.equal(profile.get("notify_errors_in_stand"), true, "errors always in Stand by default")
+
+local toasts, posts = shown(|| -> log:notify("hello"))
+stand.check(toasts == 1 and posts == 0 and stand.toasts[1]:find("hello", 1, true), "Stand: a Stand notification")
+
+profile.set("notify", "game")
+toasts, posts = shown(|| -> log:notify("to the feed"))
+stand.check(toasts == 0 and posts == 1 and feed[1]:find("to the feed", 1, true), "Game Feed: posted to the game's feed")
+toasts, posts = shown(|| -> log:warn("careful"))
+stand.check(toasts == 0 and posts == 1, "warnings follow the choice too")
+toasts, posts = shown(|| -> log:error("broke"))
+stand.check(toasts == 1 and posts == 0, "errors still go to Stand")
+
+profile.set("notify", "none")
+stand.clear_logs()
+toasts, posts = shown(|| -> log:notify("quiet"))
+stand.check(toasts == 0 and posts == 0, "Log Only: nothing on screen")
+stand.check(stand.find_log("quiet"), "but it's in the log")
+toasts, posts = shown(|| -> log:error("still seen"))
+stand.equal(toasts, 1, "Log Only: errors still show in Stand")
+
+profile.set("notify_errors_in_stand", false)
+toasts, posts = shown(|| -> log:error("silent"))
+stand.check(toasts == 0 and posts == 0, "with errors-in-Stand off, errors follow the choice too")
+
+-- The feed failing (its natives missing) doesn't swallow the notification: it shows in Stand
+profile.set("notify", "game")
+_G.HUD = {}
+toasts, posts = shown(|| -> log:notify("feed is down"))
+stand.check(toasts == 1 and stand.toasts[1]:find("feed is down", 1, true), "a failing feed falls back to Stand")
+
+stand.finish()

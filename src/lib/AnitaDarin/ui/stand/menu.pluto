@@ -44,8 +44,16 @@ end
 
 -- Everything the loaded menu added (items, features, settings), so it can be taken out again
 local current = nil
--- Divider shown at start when there is no built-in menu; gone once a menu loads
+-- Divider shown while no menu is loaded and there's no built-in one; gone once a menu loads
 local notice = nil
+
+-- Made before the settings section is (re)built, so it stays above it.
+-- i18n directly: label()/text() of this file are declared further down
+local function show_notice(): void
+    if not notice then
+        notice = module.root:divider(i18n.label("menu_loader.not_found"))
+    end
+end
 
 local function unload_current(): void
     if not current then
@@ -147,8 +155,17 @@ local function remove_builtin(): void
     local ok, result = builder.remove_copied_core(paths.lib)
     if ok then
         log:notify($"removed {result} copied file(s) from core")
+        -- Otherwise the copy silently comes back at the next start
+        if (Atdar.profile.get("auto_copy_menu") or "") ~= "" then
+            -- i18n directly: label()/text() of this file are declared further down
+            log:notify(i18n.text("menu_loader.builtin.auto_copy_again"))
+        end
     else
         log:warn($"nothing removed: {result}")
+    end
+    -- No menu left: the same notice as a start without a built-in menu
+    if not current and not has_builtin() then
+        show_notice()
     end
     -- Refreshes Load Menu so the built-in entry disappears
     rebuild_settings()
@@ -271,7 +288,7 @@ if has_builtin() then
     load_builtin()
 else
     log:warn("built-in menu not found, a menu can be loaded from store")
-    notice = module.root:divider(label("not_found"))
+    show_notice()
     module.settings = settings.build(module.root)
 end
 

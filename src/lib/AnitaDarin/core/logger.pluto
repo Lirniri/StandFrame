@@ -36,11 +36,16 @@ local class Logger
         local line = $"{self:tag()} {level}: {msg}"
         util.log(line)
         if toast then
-            -- utils/util loads after the logger, so errors during early loading use Stand's toast
+            -- Where it shows is the profile's notify; errors go to Stand unless the profile says otherwise
+            local profile = Atdar.profile
+            local target = nil
+            if level == "ERROR" and profile and profile.get and profile.get("notify_errors_in_stand") ~= false then
+                target = "stand"
+            end
+            -- utils/util loads after the logger, so errors during early loading use Stand's toast.
+            -- A notification that fails itself (e.g. the game's feed) still shows, in Stand
             local utils = Atdar.util
-            if utils and utils.toast then
-                utils.toast(line)
-            else
+            if not (utils and utils.toast and pcall(utils.toast, line, { target = target })) then
                 util.toast(line)
             end
         end

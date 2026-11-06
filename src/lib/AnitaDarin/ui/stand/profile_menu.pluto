@@ -2,6 +2,7 @@
 --   header      - "Profile: main" divider, Display Name, Short Name
 --   language    - Language list (Auto follows Stand)
 --   log_name    - Name In Logs
+--   notifications - where notifications show (Stand, the game's feed, log only), errors always in Stand
 --   profiles    - Profiles list laid out like Stand's: Create Profile, Open Folder, then one list per profile
 --                 with Save, Load, Automatically Save and Delete
 --   auto_copy   - Copy Menu To Core
@@ -35,6 +36,7 @@ end
 -- Option index -> profile value for the two fixed-choice settings
 local SEPARATORS = { "", "_" }
 local LOG_NAMES = { "short", "display" }
+local NOTIFY_TARGETS = { "stand", "game", "none" }
 
 -- Profile keys edited through text fields
 local INPUT_KEYS = { "display_name", "short_name", "command_prefix" }
@@ -68,6 +70,15 @@ end
 local function log_name_caption(): string
     local key = Atdar.profile.get("log_name") == "display" ? "log_name.display" : "log_name.short"
     return text("log_name.name"):format(text(key))
+end
+
+-- "Show In: Stand", "Show In: Game Feed" or "Show In: Log Only"
+local function notify_caption(): string
+    local target = Atdar.profile.get("notify")
+    if target ~= "game" and target ~= "none" then
+        target = "stand"
+    end
+    return text("notify.target.name"):format(text($"notify.target.{target}"))
 end
 
 -- "Language: Auto (Stand)", "Language: Русский", or the chosen language marked unavailable
@@ -114,6 +125,7 @@ local function update_captions(): void
     rename(view.settings_of, settings_caption())
     rename(view.separator, separator_caption())
     rename(view.log_name, log_name_caption())
+    rename(view.notify_target, notify_caption())
     rename(view.language, language_caption())
     rename(view.auto_copy, auto_copy_caption())
 end
@@ -130,6 +142,10 @@ local function update_fields(): bool
         end
     end
     if view.debug and not pcall(menu.set_value, view.debug, Atdar.profile.get("debug") == true) then
+        ok = false
+    end
+    if view.notify_errors
+        and not pcall(menu.set_value, view.notify_errors, Atdar.profile.get("notify_errors_in_stand") == true) then
         ok = false
     end
     updating = false
@@ -200,6 +216,27 @@ function module.log_name(node: table): void
         { label("log_name.short"), label("log_name.display") }, function(index)
         Atdar.profile.set("log_name", LOG_NAMES[index])
     end, { "profilelogname" }, label("log_name.help"))
+end
+
+-- ─── Notifications ───────────────────────────────────────────────────────────
+
+-- Where notifications show (utils/util.toast reads it): Stand, the game's feed, or only the log
+function module.notifications(node: table): void
+    local profile = Atdar.profile
+    local list = node:list(label("notify.name"), { "scriptnotify" }, label("notify.help"))
+
+    view.notify_target = list:list_action(notify_caption(),
+        { label("notify.target.stand"), label("notify.target.game"), label("notify.target.none") }, function(index)
+        profile.set("notify", NOTIFY_TARGETS[index])
+    end, { "profilenotify" }, label("notify.target.help"))
+
+    view.notify_errors = list:toggle(label("notify.errors.name"), function(on)
+        if not updating then
+            profile.set("notify_errors_in_stand", on)
+        end
+    end, { "profilenotifyerrors" }, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
+
+    list:action(label("notify.test.name"), || -> log:notify(text("notify.test.text")), {}, label("notify.test.help"))
 end
 
 -- ─── Profiles ────────────────────────────────────────────────────────────────

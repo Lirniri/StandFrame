@@ -16,6 +16,8 @@ local DEFAULTS = {
     debug = false,              -- show debug-level log lines
     auto_copy_menu = "",        -- folder of a menu pack in store, copied to core at every start; "" = off
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
+    notify = "stand",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
+    notify_errors_in_stand = true, -- errors show in Stand whatever notify says, so none goes unseen
 }
 
 local DEFAULT_PROFILE = "main"

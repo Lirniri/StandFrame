@@ -57,7 +57,15 @@ local function entry(name) return stand.find_item(profiles(), name) end
 stand.equal(names_in(stand.root),
     "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug",
     "the section's layout")
-stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short Name | Rename Script", "Settings")
+stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short Name | Notifications | Rename Script", "Settings")
+local notifications = stand.find_item(settings(), "Notifications")
+stand.equal(names_in(notifications), "Show In: Stand | Errors Always In Stand | Test Notification", "Notifications")
+stand.click(stand.find_item(notifications, "Show In"), 2)
+stand.equal(profile.get("notify"), "game", "Show In picks the game's feed")
+stand.equal(stand.name_of(stand.find_item(notifications, "Show In")), "Show In: Game Feed", "and the caption follows")
+stand.click(stand.find_item(notifications, "Show In"), 1)
+-- Saved with the menu's Save, so the checks below start without unsaved changes
+stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
 stand.equal(names_in(find("Command Box")), "Command Prefix | Separator: None | Found Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder", "Open Folder")

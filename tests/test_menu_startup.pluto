@@ -80,4 +80,19 @@ stand.click(item, 1)
 stand.equal(Atdar.profile.get("auto_copy_menu"), "", "picking Off clears it")
 stand.equal(stand.name_of(item), "Copy Menu To Core: Off", "and the caption follows")
 
+-- The user's steps: the copied built-in menu is loaded, then removed from core.
+-- No menu is left, so the root shows the same notice as a start without a built-in menu
+Atdar.profile.set("auto_copy_menu", "AnitaDarin")
+local load_menu = stand.find_item(stand.root, "Load Menu")
+local builtin = stand.find_item(load_menu, "(built-in)")
+stand.check(builtin, "Load Menu lists the copied built-in menu")
+stand.click(builtin, 1)
+stand.clear_logs()
+stand.click(stand.find_item(stand.find_item(stand.root, "Load Menu"), "(built-in)"), 2)
+stand.check(not io.exists($"{lib}ui\\stand\\menu\\main.pluto"), "Remove from core deletes the copy")
+stand.equal(stand.name_of(stand.root.children[1]), "Built-in menu not found", "the notice is back at the top")
+stand.equal(stand.root.children[1].kind, "divider", "as a divider")
+stand.check(not stand.find_item(stand.root, "Self"), "the menu's items are gone")
+stand.check(stand.find_log("will be copied again at the next start"), "it says auto-copy will bring the copy back")
+
 stand.finish()
