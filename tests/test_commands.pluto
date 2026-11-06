@@ -1,0 +1,41 @@
+-- ui/stand/commands: command names with the profile's prefix, renamed in place when it changes
+local stand = require("stand")
+stand.boot()
+local values = { command_prefix = "atdar", command_separator = "" }
+local listeners = {}
+Atdar.profile = {
+    get = |key| -> values[key],
+    on_change = |fn| -> table.insert(listeners, fn),
+}
+local function profile_set(key, value)
+    values[key] = value
+    for _, fn in listeners do fn(key, value) end
+end
+local commands = Atdar.loader.load("ui/stand/commands")
+
+stand.equal(table.concat(commands.names({ "godmode", "God Mode!", "godmode" }), ","), "atdargodmode",
+    "names are cleaned, prefixed and deduplicated")
+stand.clear_logs()
+stand.equal(#commands.names({ "!!!" }), 0, "a name with no allowed characters is skipped")
+stand.check(stand.find_log("has no allowed characters"), "and that's logged")
+
+-- Items are renamed in place when the profile's prefix or separator changes
+local item = menu.action(stand.root, "God", commands.names({ "godmode" }), "", || -> nil)
+commands.track(item, { "godmode" })
+profile_set("command_separator", "_")
+stand.equal(table.concat(item.commands, ","), "atdar_godmode", "the separator applies to tracked items")
+profile_set("command_prefix", "Ani Dar")
+stand.equal(table.concat(item.commands, ","), "anidar_godmode", "a new prefix is cleaned and applied")
+profile_set("command_prefix", "")
+stand.equal(table.concat(item.commands, ","), "godmode", "an empty prefix means none")
+
+-- Untracked (deleted) items aren't touched any more
+commands.untrack(item)
+profile_set("command_prefix", "x")
+stand.equal(table.concat(item.commands, ","), "godmode", "untracked items keep their names")
+
+stand.clear_logs()
+commands.set_separator("-")
+stand.check(stand.find_log("separator must be"), "only '' and '_' are allowed as separators")
+
+stand.finish()

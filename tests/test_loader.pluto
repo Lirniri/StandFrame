@@ -1,0 +1,48 @@
+-- core/loader: load() survives broken files, auto() reaches every natives file
+local stand = require("stand")
+stand.boot()
+local loader = Atdar.loader
+
+-- load(): a file that throws or returns no table gives an empty table and a log line, not a crash
+package.preload["AnitaDarin/test_throws"] = function() error("boom") end
+package.preload["AnitaDarin/test_no_table"] = || -> true
+stand.equal(next(loader.load("test_throws")), nil, "throwing file loads as an empty table")
+stand.check(stand.find_log("failed to load 'test_throws'"), "throwing file is logged")
+stand.equal(next(loader.load("test_no_table")), nil, "file without a table loads as an empty table")
+stand.check(stand.find_log("'test_no_table' did not return a table"), "file without a table is logged")
+
+-- auto(): every .pluto under natives/ is reachable by its path, e.g. natives.entity.ped.task
+Atdar.natives = loader.auto({}, "natives")
+local natives_dir = $"{stand.SRC}lib/AnitaDarin/natives"
+local count = 0
+stand.clear_logs()
+for _, path in io.listdir(natives_dir, true) do
+    local relative = path:sub(#natives_dir + 2):match("^(.+)%.pluto$")
+    if relative then
+        count += 1
+        local value = Atdar.natives
+        for part in relative:gmatch("[^/\\]+") do
+            value = type(value) == "table" ? value[part] : nil
+        end
+        stand.equal(type(value), "table", $"natives.{relative:gsub('[/\\]', '.')} is reachable")
+    end
+end
+stand.check(count > 30, $"found the natives files ({count})")
+stand.equal(stand.find_log("failed to load"), nil, "no natives file failed to load")
+
+-- A typo is nil, not an empty table, and the disk is checked only once per name
+local real_exists = filesystem.exists
+local checks = 0
+filesystem.exists = function(path) checks += 1 return real_exists(path) end
+stand.equal(Atdar.natives.entity.pedd, nil, "a typo is nil")
+local after_first = checks
+stand.equal(Atdar.natives.entity.pedd, nil, "the typo is still nil")
+stand.equal(checks, after_first, "the typo isn't checked on disk again")
+filesystem.exists = real_exists
+
+-- Loaded once and kept: the same table every time; the facade's own functions win over files
+stand.check(rawequal(Atdar.natives.entity.ped, Atdar.natives.entity.ped), "a submodule is loaded once")
+stand.equal(type(rawget(Atdar.natives.entity, "ped")), "table", "a loaded submodule is stored in the facade")
+stand.equal(type(Atdar.natives.entity.get_health), "function", "the facade's own functions are there")
+
+stand.finish()

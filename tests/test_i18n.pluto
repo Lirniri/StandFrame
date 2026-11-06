@@ -1,0 +1,45 @@
+-- core/i18n: strings from language files through Stand's labels; sources layered on top of each other
+local stand = require("stand")
+stand.boot()
+stand.store = stand.tmpdir("i18n_store")
+local base = $"{stand.store}AnitaDarin/language/base/"
+io.makedirs(base)
+stand.write_file($"{base}en-us.json", '{"menu": {"self": {"name": "Self"}, "only_en": "English only"}, "list": [1, 2]}')
+stand.write_file($"{base}ru-ru.json", '{"menu": {"self": {"name": "Себя"}}}')
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+local i18n = Atdar.loader.load("core/i18n")
+
+-- A label's identity is its English text; Stand shows the translation of the current language
+local label = i18n.label("menu.self.name")
+stand.equal(i18n.label("menu.self.name"), label, "the same key gives the same label")
+stand.equal(i18n.text("menu.self.name"), "Self", "English text")
+stand.language = "ru"
+stand.equal(i18n.text("menu.self.name"), "Себя", "Russian translation")
+stand.equal(i18n.text("menu.only_en"), "English only", "no translation falls back to English")
+stand.language = "en"
+
+-- Missing keys: the fallback, else the key itself
+stand.equal(i18n.text("menu.nope", "Fallback"), "Fallback", "a missing key uses the fallback")
+stand.equal(i18n.text("menu.nope2"), "menu.nope2", "without a fallback, the key itself")
+stand.equal(type(i18n.get("list")), "table", "get() returns raw values, e.g. a table")
+
+-- A menu's own source wins over the base strings and goes away on remove_source
+local pack = stand.tmpdir("i18n_pack")
+stand.write_file($"{pack}en-us.json", '{"menu": {"self": {"name": "Me"}}}')
+local source = i18n.add_source(pack)
+stand.equal(i18n.text("menu.self.name"), "Me", "a newer source wins")
+stand.equal(i18n.text("menu.only_en"), "English only", "keys it doesn't have come from the base")
+i18n.remove_source(source)
+stand.equal(i18n.text("menu.self.name"), "Self", "removing the source brings the base back")
+
+-- A damaged language file is reported and gives no strings, instead of being half-read
+local broken = stand.tmpdir("i18n_broken")
+stand.write_file($"{broken}en-us.json", '{"menu": {"self": {"name": "Half"')
+stand.clear_logs()
+local broken_source = i18n.add_source(broken)
+stand.check(stand.find_log("is damaged"), "a damaged language file is reported")
+stand.equal(i18n.text("menu.self.name"), "Self", "its strings aren't used")
+stand.equal(stand.read_file($"{broken}en-us.json"), '{"menu": {"self": {"name": "Half"', "the file itself is left alone")
+i18n.remove_source(broken_source)
+
+stand.finish()

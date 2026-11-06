@@ -1,0 +1,57 @@
+-- ui/stand/modules_menu: shown only in debug mode, statuses, actions, translations
+local stand = require("stand")
+stand.boot()
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+local listeners = {}
+Atdar.profile = { get = || -> nil, on_change = |fn| -> table.insert(listeners, fn) }
+Atdar.modules = Atdar.loader.load("core/module_manager")
+local Module = Atdar.loader.load("core/module")
+local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+
+local stops = 0
+Atdar.modules.add(new Module({ name = "a" }))
+Atdar.modules.add(new Module({ name = "b", deps = { "a" }, on_stop = function() stops += 1 end }))
+Atdar.modules.start()
+
+local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
+modules_menu.build(new MenuNode(stand.root))
+
+local divider = stand.find_item(stand.root, "Debug")
+local list = stand.find_item(stand.root, "Modules")
+stand.check(divider and list, "the Debug divider and the Modules list are built")
+stand.check(not divider.visible and not list.visible, "hidden without debug mode")
+for _, fn in listeners do fn("debug", true) end
+stand.check(divider.visible and list.visible, "shown when debug mode turns on")
+for _, fn in listeners do fn("debug", false) end
+stand.check(not divider.visible and not list.visible, "hidden again when it turns off")
+
+local entry_b = stand.find_item(list, "b: ")
+stand.equal(stand.name_of(entry_b), "b: running", "an entry shows the module's status")
+stand.check(entry_b.help:find("Needs: a", 1, true), "its help shows the deps")
+
+-- Options in the menu's order; picking one runs it and refreshes the entries
+local options = {}
+for i, label in entry_b.options do
+    options[lang.get_localised(label)] = i
+end
+stand.equal(table.concat({ options.Start, options.Restart, options.Stop, options.Reload }, ","), "1,2,3,4",
+    "options: Start, Restart, Stop, Reload")
+
+local entry_a = stand.find_item(list, "a: ")
+stand.click(entry_a, options.Stop)
+stand.equal(stand.name_of(entry_a), "a: stopped", "Stop stops the module")
+stand.equal(stand.name_of(entry_b), "b: stopped", "and what needs it; the entries are refreshed")
+stand.equal(stops, 1, "b's on_stop ran")
+stand.click(entry_b, options.Start)
+stand.equal(stand.name_of(entry_a), "a: running", "Start on b starts its dep a too")
+
+-- Open Folder opens the copy Stand runs
+stand.click(stand.find_item(list, "Open Folder"))
+stand.check(stand.toasts[#stand.toasts]:find("lib\\AnitaDarin\\modules", 1, true), "Open Folder opens lib/AnitaDarin/modules")
+
+-- Russian, through Stand's labels
+stand.language = "ru"
+stand.click(stand.find_item(list, "Обновить"))
+stand.equal(stand.name_of(entry_a), "a: работает", "statuses follow Stand's language")
+
+stand.finish()

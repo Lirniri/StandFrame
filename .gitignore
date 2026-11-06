@@ -9,3 +9,6 @@ experiments/natives-3407a/
 # Python
 __pycache__/
 *.pyc
+
+# Files the tests write (tests/run.py, tests/stand.pluto tmpdir)
+tests/.tmp/

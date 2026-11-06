@@ -1,0 +1,83 @@
+-- core/filesystem/json/file (JsonFile) and core/profile on top of it: safe writes, damaged files, backups
+local stand = require("stand")
+stand.boot()
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local dir = stand.tmpdir("json_file")
+local path = $"{dir}t.json"
+local file = new JsonFile(path)
+local read = stand.read_file
+
+stand.equal(file:read(), nil, "a missing file reads as nil")
+stand.check(file:write({ a = 1 }) and file:read().a == 1, "write and read back")
+stand.check(not io.exists($"{path}.bak") and not io.exists($"{path}.tmp"), "first write: no .bak, no .tmp left")
+stand.check(file:write({ a = 2 }) and file:read().a == 2, "second write")
+stand.check(read($"{path}.bak"):find('"a": 1', 1, true), ".bak holds the previous version")
+
+-- Data that can't be JSON: refused, the file stays as it was
+stand.clear_logs()
+stand.check(not file:write({ a = 0/0 }), "NaN is refused")
+stand.equal(file:read().a, 2, "the file is unchanged after a refused write")
+stand.check(stand.find_log("can't be stored as JSON"), "the refused write is logged")
+stand.check(not file:write({ f = print }), "a function is refused")
+
+-- Damaged files: pluto:json would return the part it parsed; JsonFile loads the backup instead
+stand.write_file(path, '{"a": 3, "b":')
+stand.clear_logs()
+stand.equal(file:read().a, 1, "a cut-off file loads the backup")
+stand.check(stand.find_log("is damaged, loaded its backup"), "the damage is logged")
+stand.equal(read(path), '{"a": 3, "b":', "reading doesn't change the damaged file")
+stand.check(file:write({ a = 4 }) and file:read().a == 4, "writing over a damaged file works")
+stand.check(read($"{path}.broken"):find('"b":', 1, true), "the damaged file is kept as .broken")
+stand.check(read($"{path}.bak"):find('"a": 1', 1, true), "the good .bak isn't pushed out by it")
+stand.write_file(path, "{bad}")
+stand.equal(file:read().a, 1, "'{bad}' counts as damaged")
+stand.write_file(path, '{"a":5}junk')
+stand.equal(file:read().a, 1, "junk after the JSON counts as damaged")
+
+-- No file (the script stopped between the two renames): the backup is read
+io.remove(path)
+stand.equal(file:read().a, 1, "a missing file with a backup reads the backup")
+
+-- os.rename that won't replace an existing file, like plain Lua on Windows
+local real_rename = os.rename
+os.rename = function(from, to)
+    if io.exists(to) then
+        return nil, "File exists"
+    end
+    return real_rename(from, to)
+end
+stand.check(file:write({ a = 6 }) and file:read().a == 6, "writes when rename can't replace a file")
+stand.check(file:write({ a = 7 }) and read($"{path}.bak"):find('"a": 6', 1, true), "and keeps rotating .bak")
+os.rename = real_rename
+
+file:remove()
+stand.check(not io.exists(path) and not io.exists($"{path}.bak") and not io.exists($"{path}.broken"),
+    "remove() deletes the file and its leftovers")
+
+-- ─── Profile: a damaged profile loads its backup instead of resetting to defaults ──
+
+stand.store = stand.tmpdir("json_file_store")
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+local profiles = $"{stand.store}AnitaDarin/profiles/"
+io.makedirs(profiles)
+stand.write_file($"{profiles}main.json.bak", '{"short_name": "Kept", "debug": true}')
+stand.write_file($"{profiles}main.json", '{"short_name": "Ke')
+local profile = Atdar.loader.load("core/profile")
+stand.equal(profile.get("short_name"), "Kept", "profile values survive a damaged file")
+stand.equal(Atdar.debug, true, "and debug mode with them")
+stand.equal(profile.get("command_prefix"), "atdar", "missing keys come from the defaults")
+
+profile.set("short_name", "New")
+stand.check(profile.is_dirty(), "a change is unsaved until save()")
+profile.save()
+stand.check(not profile.is_dirty() and read($"{profiles}main.json"):find('"New"', 1, true), "save() writes it")
+stand.check(read($"{stand.store}AnitaDarin/config.json"):find('"main"', 1, true), "config.json names the active profile")
+
+stand.equal(profile.create("Second Profile!"), "secondprofile", "create() cleans the name")
+stand.equal(profile.active_name(), "secondprofile", "and switches to it")
+stand.equal(table.concat(profile.list(), ","), "main,secondprofile", "list() shows only profiles, not .bak files")
+profile.delete("secondprofile")
+stand.equal(profile.active_name(), "main", "deleting the active profile switches to main")
+stand.check(not io.exists($"{profiles}secondprofile.json"), "the deleted profile's file is gone")
+
+stand.finish()

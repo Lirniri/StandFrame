@@ -1,0 +1,130 @@
+-- features/feature + ui/stand/menu_node: options check, lifecycle order, failures switch the feature off
+local stand = require("stand")
+stand.boot()
+local Feature = Atdar.loader.load("features/feature")
+local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+local node = new MenuNode(stand.root)
+
+-- ─── Options are checked when the feature is created ─────────────────────────
+
+local function fails(opts: table, text: string, name: string): void
+    local ok, err = pcall(|| -> new Feature(opts))
+    stand.check(not ok and tostring(err):find(text, 1, true), name)
+end
+fails({ kind = "loop", on_tick = || -> nil }, "id must be a non-empty string", "id is required")
+fails({ id = "t.kind", kind = "nope" }, "unknown kind 'nope'", "unknown kind")
+fails({ id = "t.loop", kind = "loop" }, "requires on_tick", "loop needs on_tick")
+fails({ id = "t.action", kind = "action" }, "requires on_trigger", "action needs on_trigger")
+fails({ id = "t.opt", kind = "toggle", on_tik = || -> nil }, "unknown option 'on_tik'", "a typo in an option")
+fails({ id = "t.hook", kind = "toggle", on_enable = 5 }, "must be a function", "a hook must be a function")
+
+local class Sneaky extends Feature
+    function __construct()
+        parent:__construct({ id = "t.sneaky", kind = "toggle" })
+    end
+    function enable() end
+end
+local ok, err = pcall(|| -> new Sneaky())
+stand.check(not ok and tostring(err):find("must not override enable()", 1, true), "lifecycle methods can't be overridden")
+
+-- ─── Lifecycle: state is saved before enabling and restored after disabling ──
+
+local events = {}
+local function record(name) return function() table.insert(events, name) end end
+local toggle = new Feature({ id = "t.toggle", kind = "toggle",
+    on_save_state = record("save"), on_enable = record("enable"),
+    on_disable = record("disable"), on_load_state = record("load") })
+local toggle_ref = node:add_feature(toggle, "Toggle")
+stand.click(toggle_ref)
+stand.click(toggle_ref)
+stand.equal(table.concat(events, ","), "save,enable,disable,load", "save, enable ... disable, load")
+
+-- ─── A failing on_tick switches the loop and its toggle off, with one error ─
+
+local ticks, disables = 0, 0
+local loop = new Feature({ id = "t.loop", kind = "loop",
+    on_tick = function() ticks += 1 if ticks == 3 then error("boom") end end,
+    on_disable = function() disables += 1 end })
+local loop_ref = node:add_feature(loop, "Loop")
+stand.clear_logs()
+stand.click(loop_ref)
+stand.frame(10)
+stand.equal(ticks, 3, "no ticks after the error")
+stand.equal(#stand.logs, 1, "the error is logged once")
+stand.check(stand.find_log("t.loop: on_tick failed, switched off"), "the error says it switched off")
+stand.equal(disables, 1, "on_disable cleaned up once")
+stand.check(not loop_ref.value and not loop:is_enabled(), "feature and toggle are off")
+
+-- Switching on again tries anew
+stand.clear_logs()
+stand.click(loop_ref)
+stand.frame(5)
+stand.equal(ticks, 8, "ticks again after switching on")
+stand.equal(loop:get_error(), nil, "the old error is cleared")
+stand.click(loop_ref)
+
+-- ─── Without a menu item the feature switches itself off, and stops ticking ─
+
+local bare_ticks, bare_disables = 0, 0
+local bare = new Feature({ id = "t.bare", kind = "loop",
+    on_tick = function() bare_ticks += 1 error("boom") end,
+    on_disable = function() bare_disables += 1 end })
+bare:tick()
+bare:tick()
+stand.check(not bare:is_enabled(), "a failed feature without a menu item is off")
+stand.equal(bare_disables, 1, "its on_disable cleaned up")
+stand.equal(bare_ticks, 1, "it doesn't tick again until switched off and on")
+stand.check(bare:get_error():find("on_tick", 1, true), "get_error() says what failed")
+
+-- ─── A failing on_enable switches a toggle off ───────────────────────────────
+
+disables = 0
+local bad_enable = new Feature({ id = "t.bad_enable", kind = "toggle",
+    on_enable = function() error("bad enable") end, on_disable = function() disables += 1 end })
+local bad_enable_ref = node:add_feature(bad_enable, "BadEnable")
+stand.clear_logs()
+stand.click(bad_enable_ref)
+stand.check(not bad_enable_ref.value and not bad_enable:is_enabled(), "toggle switched off")
+stand.equal(#stand.logs, 1, "one error for a failed on_enable")
+stand.equal(disables, 1, "on_disable cleaned up")
+
+-- ─── A failing action: one error per click, never stuck ──────────────────────
+
+local action = new Feature({ id = "t.action", kind = "action", on_trigger = function() error("bad click") end })
+local action_ref = node:add_feature(action, "Action")
+stand.clear_logs()
+stand.click(action_ref)
+stand.click(action_ref)
+stand.equal(#stand.logs, 2, "one error per click")
+stand.check(not action:is_triggering(), "the action isn't stuck as running")
+
+-- ─── A failing on_disable is only logged: no loop of disabling ───────────────
+
+local bad_off = new Feature({ id = "t.bad_off", kind = "loop", on_tick = || -> nil,
+    on_disable = function() error("bad cleanup") end })
+local bad_off_ref = node:add_feature(bad_off, "BadOff")
+stand.clear_logs()
+stand.click(bad_off_ref)
+stand.frame(2)
+stand.click(bad_off_ref)
+stand.equal(#stand.logs, 1, "a failing cleanup is logged once")
+stand.check(not bad_off:is_enabled(), "the feature is off anyway")
+
+-- ─── Clicks during a running action are ignored ──────────────────────────────
+
+local runs = 0
+local slow
+slow = new Feature({ id = "t.slow", kind = "action", on_trigger = function()
+    runs += 1
+    util.yield(100)
+end })
+stand.on_yield = function()
+    stand.on_yield = nil
+    slow:trigger() -- a second click while the first one waits
+end
+slow:trigger()
+stand.equal(runs, 1, "a click during a running action is ignored")
+slow:trigger()
+stand.equal(runs, 2, "the next click after it finished works")
+
+stand.finish()

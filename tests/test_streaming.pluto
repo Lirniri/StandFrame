@@ -1,0 +1,46 @@
+-- natives/streaming: request and wait for each asset type, the request() entry point, timeouts
+local stand = require("stand")
+stand.boot()
+Atdar.natives = Atdar.loader.auto({}, "natives")
+local streaming = Atdar.natives.streaming
+
+-- Fake game: an asset is loaded 300 ms after it was requested; vehicle assets never load
+local requested = {}
+local function request(key) requested[key] ??= stand.clock end
+local function loaded(key) return requested[key] ~= nil and stand.clock - requested[key] >= 300 end
+_G.PED = {
+    REQUEST_ACTION_MODE_ASSET = |name| -> request($"am:{name}"),
+    HAS_ACTION_MODE_ASSET_LOADED = |name| -> loaded($"am:{name}"),
+    REQUEST_STEALTH_MODE_ASSET = |name| -> request($"sm:{name}"),
+    HAS_STEALTH_MODE_ASSET_LOADED = |name| -> loaded($"sm:{name}"),
+}
+_G.STREAMING = {
+    REQUEST_NAMED_PTFX_ASSET = |name| -> request($"fx:{name}"),
+    HAS_NAMED_PTFX_ASSET_LOADED = |name| -> loaded($"fx:{name}"),
+    REQUEST_PTFX_ASSET = || -> request("fx:default"),
+    HAS_PTFX_ASSET_LOADED = || -> loaded("fx:default"),
+    IS_MODEL_A_VEHICLE = |hash| -> hash == util.joaat("adder"),
+}
+_G.VEHICLE = { REQUEST_VEHICLE_ASSET = || -> nil, HAS_VEHICLE_ASSET_LOADED = || -> false }
+
+stand.check(streaming.ptfx.asset.request("scr_rcbarry2"), "ptfx loads and request() waits for it")
+stand.check(streaming.ptfx.asset.is_loaded("scr_rcbarry2"), "and it's loaded afterwards")
+stand.check(not streaming.ptfx.asset.request("fx_new", false), "timeout false only requests, doesn't wait")
+stand.check(streaming.ptfx.asset.request(), "the script's default ptfx asset (no name)")
+stand.check(streaming.action_mode.asset.request("A"), "action mode asset")
+stand.check(streaming.stealth_mode.asset.request("S"), "stealth mode asset")
+stand.check(streaming.request({ what = "ptfx", name = "other" }), "request({ what = 'ptfx' })")
+
+local start = stand.clock
+stand.clear_logs()
+stand.check(not streaming.request({ what = "vehicle", model = "adder", asset = 0, timeout = 500 }), "a vehicle asset that never loads")
+stand.check(stand.clock - start >= 500, "waited the whole timeout")
+stand.check(stand.find_log("didn't load in 500 ms"), "the timeout is logged")
+
+stand.clear_logs()
+stand.check(not streaming.request({ what = "nope" }), "an unknown asset type")
+stand.check(stand.find_log("unknown asset type 'nope'"), "is logged")
+
+stand.check(streaming.vehicle.is_model(util.joaat("adder")), "vehicle.is_model")
+
+stand.finish()

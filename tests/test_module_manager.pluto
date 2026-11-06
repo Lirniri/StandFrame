@@ -1,0 +1,90 @@
+-- core/module_manager + core/module: deps, start/stop order, retry, ticking, reload from disk
+local stand = require("stand")
+stand.boot()
+Atdar.modules = Atdar.loader.load("core/module_manager")
+local Module = Atdar.loader.load("core/module")
+local modules = Atdar.modules
+
+-- Module files on disk, so reload_module can read them again. Each records its events in EVENTS
+local dir = stand.tmpdir("module_manager")
+local function module_file(name: string, deps: string, version: int, extra: string = ""): string
+    return "local Module = Atdar.loader.load('core/module')\n"
+        .. $"return Atdar.modules.add(new Module(\{ name = '{name}', deps = \{ {deps} },\n"
+        .. $"    on_start = function() {extra} table.insert(EVENTS, 'start {name} v{version}') end,\n"
+        .. $"    on_stop = function() table.insert(EVENTS, 'stop {name} v{version}') end,\n"
+        .. $"    on_tick = function() TICKS['{name}'] = (TICKS['{name}'] or 0) + 1 end }))\n"
+end
+_G.EVENTS = {}
+_G.TICKS = {}
+-- c needs b needs a; d stands alone; e needs a module that doesn't exist
+stand.write_file($"{dir}a.pluto", module_file("a", "", 1))
+stand.write_file($"{dir}b.pluto", module_file("b", "'a'", 1))
+stand.write_file($"{dir}c.pluto", module_file("c", "'b'", 1, "if FAIL_C then error('c broke') end"))
+stand.write_file($"{dir}d.pluto", module_file("d", "", 1))
+stand.write_file($"{dir}e.pluto", module_file("e", "'missing'", 1))
+_G.FAIL_C = true
+
+stand.equal(modules.load_dir(dir), 5, "all five files ran")
+modules.start()
+
+local function status(name) return modules.get(name).status end
+local function events() local text = table.concat(EVENTS, ", ") EVENTS = {} return text end
+
+stand.equal(events(), "start a v1, start b v1, start d v1", "deps start first; failing modules don't start")
+stand.equal(status("c"), "failed", "c failed in on_start")
+stand.equal(status("e"), "failed", "e needs a module that isn't registered")
+stand.check(modules.get("e").error:find("isn't registered", 1, true), "e's error says why")
+
+-- One shared tick: each running module ticks once per frame
+stand.frame()
+stand.equal(TICKS.a, 1, "a ticks once per frame")
+stand.equal(TICKS.c, nil, "a failed module doesn't tick")
+
+-- Stopping a stops what needs it first
+modules.stop_module("a")
+stand.equal(events(), "stop b v1, stop a v1", "b stops before a")
+stand.equal(status("d"), "running", "unrelated d keeps running")
+
+-- Starting c retries it and starts its deps in order
+_G.FAIL_C = false
+stand.check(modules.start_module("c"), "c starts on retry")
+stand.equal(events(), "start a v1, start b v1, start c v1", "deps come back first")
+
+-- After a stop and start, a module still ticks once per frame, not twice
+modules.stop_module("b")
+stand.equal(status("c"), "stopped", "stopping b also stopped c, which needs it")
+modules.start_module("b")
+TICKS = {}
+stand.frame()
+stand.equal(TICKS.b, 1, "b ticks once after a restart")
+modules.start_module("c")
+events()
+
+-- Reload: the file is read again; modules that need it restart; the order stays
+stand.write_file($"{dir}a.pluto", module_file("a", "", 2))
+stand.check(modules.reload_module("a"), "reload returns true")
+stand.equal(events(), "stop c v1, stop b v1, stop a v1, start a v2, start b v1, start c v1", "reload restarts the dependents")
+stand.equal(table.concat(modules.names(), ","), "a,b,c,d,e", "the order is kept")
+
+-- Reload of a broken file: the old version comes back and runs
+stand.write_file($"{dir}a.pluto", "this is not lua (")
+stand.clear_logs()
+stand.check(not modules.reload_module("a"), "a broken file returns false")
+stand.equal(events(), "stop c v1, stop b v1, stop a v2, start a v2, start b v1, start c v1", "the old version is back")
+stand.check(stand.find_log("'a' not reloaded, the old version is back"), "the failed reload is logged")
+stand.equal(table.concat(modules.names(), ","), "a,b,c,d,e", "the order is kept after a failed reload")
+
+-- Module options are checked
+local ok, err = pcall(|| -> new Module({ name = "x", deps = "a" }))
+stand.check(not ok and tostring(err):find("deps must be a table", 1, true), "deps must be a table")
+ok, err = pcall(|| -> modules.add(new Module({ name = "a" })))
+stand.check(not ok and tostring(err):find("already registered", 1, true), "names are unique")
+
+-- A dependency cycle is reported, not followed forever
+modules.add(new Module({ name = "x", deps = { "y" } }))
+modules.add(new Module({ name = "y", deps = { "x" } }))
+stand.clear_logs()
+modules.start()
+stand.check(stand.find_log("dependency cycle: x -> y -> x"), "a cycle is logged")
+
+stand.finish()
