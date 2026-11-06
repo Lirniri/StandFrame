@@ -12,15 +12,20 @@ local class DisableSprint extends Feature
             id = "self.movement.disables.disable_sprint",
             kind = "loop"
         })
+        -- Last value set, so the log only shows changes, not one line every frame
+        self.sprint = nil
     end
 
     function set_sprint(toggle)
         local n_player = Atdar.natives.player
         local player = n_player.get_id()
-        local debug_text = toggle ? "sprint is enabled" : "sprint is disabled"
 
         n_player.movement.set_sprint(player, toggle)
-        log:debug($"id: {self.id}: {debug_text}")
+        if toggle ~= self.sprint then
+            self.sprint = toggle
+            local debug_text = toggle ? "sprint is enabled" : "sprint is disabled"
+            log:debug($"id: {self.id}: {debug_text}")
+        end
     end
 
     function on_tick()
