@@ -1,17 +1,17 @@
 {
     "menu": {
         "self": {
-            "menu_name": "Себя",
+            "menu_name": "Игрок",
             "movement": {
-                "menu_name": "Движение",
+                "menu_name": "Передвижение",
                 "ragdoll_control": {
-                    "menu_name": "Контролировать Ragdoll"
+                    "menu_name": "Управление в рэгдолле"
                 },
                 "scuba_mode": {
                     "menu_name": "Режим акваланга"
                 },
                 "disables": {
-                    "menu_name": "Отключить",
+                    "menu_name": "Отключения",
                     "disable_sprint": {
                         "menu_name": "Отключить быстрый бег"
                     }
@@ -38,7 +38,7 @@
                         }
                     },
                     "amount": {
-                        "menu_name": "Количество за шаг"
+                        "menu_name": "Здоровья за шаг"
                     },
                     "interval": {
                         "menu_name": "Интервал (мс)"
