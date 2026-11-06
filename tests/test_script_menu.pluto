@@ -119,7 +119,7 @@ menu.set_value(night, 19)
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
 stand.equal(names_in(find("Command Box")), "Command Prefix | Separator: None | Found Commands", "Command Box")
-stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder", "Open Folder")
+stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
 
 -- Open Folder opens the script's own folders; a missing one is made first
 local function opened(item_name)
@@ -131,7 +131,8 @@ stand.equal(opened("Open Store Folder"), $"open_folder {stand.store}AnitaDarin\\
 stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin doesn't exist yet")
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
-stand.equal(names_in(find("Debug")), "Debug Mode | Load Timing | Load Times | Debug | Modules | Delete Script", "Debug")
+stand.equal(names_in(find("Debug")),
+    "Debug Mode | Load Timing | Logs | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Delete", "a profile's own list")
 
@@ -158,7 +159,7 @@ menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "atdar")
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[4], debug_list.children[5], debug_list.children[6] }
+local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
@@ -166,8 +167,22 @@ local function all_visible(on)
     return true
 end
 stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
-stand.check(stand.find_item(debug_list, "Load Timing").visible and stand.find_item(debug_list, "Load Times").visible,
-    "Load Timing and Load Times show without debug mode")
+stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
+
+-- Logs: Open Log Folder opens Logger.folder(); Keep Logs is the profile's days; Clear removes every file after a warning
+stand.equal(opened("Open Log Folder"), $"open_folder {Atdar.log_dir}", "Open Log Folder")
+local keep = stand.find_item(debug_list, "Keep Logs")
+stand.check(keep.kind == "slider" and keep.value == 7 and keep.default == 7, "Keep Logs (Days): 7 by default")
+menu.set_value(keep, 3)
+stand.equal(profile.get("log_keep_days"), 3, "the slider sets the profile's days")
+menu.set_value(keep, 7)
+stand.write_file($"{Atdar.log_dir}2020-01-01.log", "old")
+stand.write_file($"{Atdar.log_dir}2020-01-02.log", "old")
+stand.toasts = {}
+stand.click(stand.find_item(debug_list, "Clear All Log Files"))
+stand.check(not io.exists($"{Atdar.log_dir}2020-01-01.log") and not io.exists($"{Atdar.log_dir}2020-01-02.log"),
+    "Clear All Log Files removes them (the test stub confirms the warning)")
+stand.check(stand.toasts[#stand.toasts]:find("Removed", 1, true) ~= nil, "and says how many")
 stand.clear_logs()
 stand.toasts = {}
 stand.click(stand.find_item(debug_list, "Load Timing"))
@@ -181,9 +196,6 @@ stand.click(stand.find_item(debug_list, "Load Timing"))
 stand.equal(Atdar.load_timing, false, "and off again")
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
-stand.clear_logs()
-stand.click(stand.find_item(debug_list, "Load Times"))
-stand.check(stand.find_log("load times: "), "Load Times writes the report to the log")
 
 -- Delete Script is a list with its own confirm button, so one click never deletes anything.
 -- The answer to the warning is never "yes" here: this test runs on the real src folder,

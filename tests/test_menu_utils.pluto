@@ -19,6 +19,16 @@ local see_through = ui.color(stand.root, "Glass", {}, "", { r = 0, g = 0, b = 0,
 stand.equal(see_through.transparency, true, "transparency on: with Opacity, as in Stand")
 stand.equal(see_through.value.a, 0.5, "and the default's opacity is kept")
 
+-- spoiler(): the value hidden until a click, hidden again by the next one
+local spoiler = ui.spoiler(stand.root, "AnitaDarin", "Hello!")
+stand.equal(stand.name_of(spoiler), "AnitaDarin: Hidden", "spoiler: hidden at first")
+stand.click(spoiler)
+stand.equal(stand.name_of(spoiler), "AnitaDarin: Hello!", "a click shows the value")
+stand.click(spoiler)
+stand.equal(stand.name_of(spoiler), "AnitaDarin: Hidden", "another click hides it again")
+local custom = ui.spoiler(stand.root, "Key", "123", "***")
+stand.equal(stand.name_of(custom), "Key: ***", "spoiler: own text in place of the value")
+
 -- utils/color: hex <-> Stand (0.0 - 1.0) <-> game (0 - 255)
 local orange = color.from_hex("FF8000")
 stand.check(orange.r == 1 and orange.b == 0 and orange.a == 1, "from_hex: RRGGBB")

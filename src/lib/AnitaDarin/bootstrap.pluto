@@ -45,5 +45,5 @@ if Atdar.load_timing then
     local Logger = Atdar.loader.load("core/logger")
     local i18n = Atdar.loader.load("core/i18n")
     local log = new Logger("Loader")
-    log:notify(i18n.text("script_menu.load_times.done"))
+    log:notify(i18n.text("profile.load_timing.done"))
 end

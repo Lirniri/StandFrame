@@ -365,7 +365,8 @@ end
 
 -- Creates Atdar with its loader and globals, like the launcher and the top of bootstrap.pluto
 function stand.boot(): table
-    _G.Atdar = { ui = {}, name = "AnitaDarin", debug = false }
+    -- log_dir: the logger's files go to tests/.tmp, not into the project's src/store
+    _G.Atdar = { ui = {}, name = "AnitaDarin", debug = false, log_dir = stand.tmpdir("logs") }
     Atdar.loader = require("AnitaDarin/core/loader")
     Atdar.globals = Atdar.loader.load("globals")
     return Atdar

@@ -15,6 +15,7 @@ local DEFAULTS = {
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
+    log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
     auto_copy_menu = "",        -- folder of a menu pack in store, copied to core at every start; "" = off
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
     notify = "stand",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)

@@ -10,6 +10,7 @@
 --   auto_copy   - Copy Menu To Core
 --   command_box - Command Prefix and Separator
 --   debug       - Debug Mode, Load Timing
+--   log_keep_days - Keep Logs (Days)
 --   rename      - Rename Script
 -- Strings live in language/base under "profile".
 --
@@ -475,6 +476,25 @@ function module.debug(node: table): void
             log:notify(text("load_timing.on"))
         end
     end, { "profileloadtiming" }, label("load_timing.help"), Atdar.profile.get("load_timing") == true)
+end
+
+-- ─── Keep Logs ───────────────────────────────────────────────────────────────
+
+-- Days of log files kept (core/logger), under the Logs divider of Debug
+function module.log_keep_days(node: table): void
+    -- Made with the default, then set to the profile's value (see show_profile_value)
+    updating = true
+    view.sliders.log_keep_days = node:slider(label("log_keep_days.name"), 0, 365, Atdar.profile.default("log_keep_days"), 1,
+        function(value)
+            if updating then
+                return
+            end
+            Atdar.profile.set("log_keep_days", value)
+            -- Fewer days apply right away, not only at the next start or day
+            Logger.remove_old()
+        end, { "profilelogkeepdays" }, label("log_keep_days.help"))
+    show_profile_value(view.sliders.log_keep_days, "log_keep_days", Atdar.profile.get("log_keep_days"))
+    updating = false
 end
 
 -- ─── Rename Script ───────────────────────────────────────────────────────────

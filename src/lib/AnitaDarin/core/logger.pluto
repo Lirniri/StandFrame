@@ -5,17 +5,123 @@
     local Logger = Atdar.loader.load("core/logger")
     local log = new Logger("HalfGodmode")   -- name shown in the brackets
 
-    log:debug("...")   -- only when Atdar.debug = true; to Stand's log and console
-    log:info("...")    -- to the log and console
-    log:notify("...")  -- log, console and an on-screen toast (messages for the user)
-    log:warn("...")    -- log, console and a toast
-    log:error("...")   -- log, console and a toast
+    log:debug("...")   -- only when Atdar.debug = true
+    log:info("...")    -- to the logs and console
+    log:notify("...")  -- logs, console and an on-screen toast (messages for the user)
+    log:warn("...")    -- logs, console and a toast
+    log:error("...")   -- logs, console and a toast
 ]]
 
 
 
--- Uses Stand's own output for now: util.log goes to Stand's log file and its console,
--- util.toast shows on screen
+-- Every line goes to Stand's log (its file and console, util.log) and to the script's own log file,
+-- one per day: store/<script>/logs/AnitaDarin_2026-11-06.log. Toasts show on screen where the profile says
+
+-- ─── Log file ────────────────────────────────────────────────────────────────
+
+-- The open file of today; a new day (or another folder) opens a new one
+local log_file = { path = nil, handle = nil }
+-- Set when the file can't be opened or written: lines then go to Stand's log only,
+-- so a full disk or a locked file doesn't fail every line
+local file_broken = false
+
+-- store/<script>/logs/; Atdar.log_dir points elsewhere (the tests do)
+local function log_dir(): string
+    if Atdar.log_dir then
+        return Atdar.log_dir
+    end
+    return $"{filesystem.store_dir()}{Atdar.name}\\logs\\"
+end
+
+local function close_file(): void
+    if log_file.handle then
+        log_file.handle:close()
+    end
+    log_file.handle = nil
+    log_file.path = nil
+end
+
+-- The day files in the folder: { name = "2026-11-06", path = ... }; other files aren't touched.
+-- Any name ending in the date counts, so files named before the script's name was added are cleaned too
+local function day_files(dir: string): table
+    local list = {}
+    if not filesystem.exists(dir) then
+        return list
+    end
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        local day = path:match("(%d%d%d%d%-%d%d%-%d%d)%.log$")
+        if day then
+            table.insert(list, { name = day, path = path })
+        end
+    end
+    return list
+end
+
+-- How many days of files are kept: the profile's log_keep_days, 0 = all
+local function keep_days(): int
+    local profile = Atdar.profile
+    local days = profile and profile.get and profile.get("log_keep_days")
+    if type(days) ~= "number" then
+        return 0
+    end
+    return days
+end
+
+-- Removes the day files older than the kept days (today counts as one)
+local function remove_old_files(dir: string, today: string): void
+    local days = keep_days()
+    if days <= 0 then
+        return
+    end
+    local year, month, day = today:match("^(%d+)%-(%d+)%-(%d+)$")
+    if not year then
+        return
+    end
+    -- Noon, so a daylight saving switch doesn't move the day
+    local noon = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day), hour = 12 })
+    local oldest = os.date("%Y-%m-%d", noon - (days - 1) * 86400)
+    for _, file in ipairs(day_files(dir)) do
+        if file.name < oldest then
+            os.remove(file.path)
+        end
+    end
+end
+
+-- Opens today's file if it isn't the open one yet; on opening, old files are removed.
+-- Errors when it can't be opened
+local function today_file()
+    local dir = log_dir()
+    local today = os.date("%Y-%m-%d")
+    -- The script's file name first: the files still sort by date, and a copied file says whose it is.
+    -- Not the Display Name: changing it would split a day into two files
+    local path = $"{dir}{Atdar.name}_{today}.log"
+    if path == log_file.path then
+        return log_file.handle
+    end
+    close_file()
+    if not filesystem.exists(dir) then
+        filesystem.mkdirs(dir)
+    end
+    pcall(remove_old_files, dir, today)
+    local handle, err = io.open(path, "a")
+    if not handle then
+        error(err)
+    end
+    log_file.handle = handle
+    log_file.path = path
+    return handle
+end
+
+local function write_to_file(line: string): void
+    local handle = today_file()
+    handle:write(os.date("[%H:%M:%S] "), line, "\n")
+    -- Flushed per line: what's written survives a crash of the game
+    handle:flush()
+end
+
+util.on_stop(close_file)
+
+-- ─── Logger ──────────────────────────────────────────────────────────────────
 
 local class Logger
 
@@ -35,6 +141,14 @@ local class Logger
     function write(level: string, msg: string, toast: bool): void
         local line = $"{self:tag()} {level}: {msg}"
         util.log(line)
+        if not file_broken then
+            local ok, err = pcall(write_to_file, line)
+            if not ok then
+                file_broken = true
+                pcall(close_file)
+                util.log($"{self:tag()} WARN: the log file can't be written ({err}), lines go to Stand's log only")
+            end
+        end
         if toast then
             -- Where it shows is the profile's notify; errors go to Stand unless the profile says otherwise
             local profile = Atdar.profile
@@ -76,6 +190,29 @@ local class Logger
         self:write("ERROR", msg, true)
     end
 
+end
+
+-- The folder of the log files, e.g. to open it
+function Logger.folder(): string
+    return log_dir()
+end
+
+-- Removes every day file; the next line starts today's file again
+-- @return How many files were removed
+function Logger.clear(): int
+    close_file()
+    local removed = 0
+    for _, file in ipairs(day_files(log_dir())) do
+        if os.remove(file.path) then
+            removed += 1
+        end
+    end
+    return removed
+end
+
+-- Removes the files older than the profile's log_keep_days now (also done when a day's file opens)
+function Logger.remove_old(): void
+    pcall(remove_old_files, log_dir(), os.date("%Y-%m-%d"))
 end
 
 return Logger

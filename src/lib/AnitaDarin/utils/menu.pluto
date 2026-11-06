@@ -1,9 +1,24 @@
 local module = {}
 
-function module.spoiler(parent, menu_name, value = "", hidding_text)
-    -- TODO: сделать спойлер
-    -- Сначала показать: AnitaDarin: Hidden
-    -- После нажатия показать: AnitaDarin: Hello!
+-- A spoiler: a line that hides its value until clicked; another click hides it again.
+--
+--     Atdar.menu.spoiler(root, "AnitaDarin", "Hello!")   -- "AnitaDarin: Hidden", after a click "AnitaDarin: Hello!"
+--
+-- @param value What is hidden
+-- @param hidden_text Shown in place of the value while it's hidden
+-- @return The command
+function module.spoiler(parent, menu_name: string, value: string = "", hidden_text: string = "Hidden", help_text: string = "")
+    local shown = false
+    local ref
+    ref = menu.action(parent, $"{menu_name}: {hidden_text}", {}, help_text, function()
+        shown = not shown
+        if shown then
+            menu.set_menu_name(ref, $"{menu_name}: {value}")
+            return
+        end
+        menu.set_menu_name(ref, $"{menu_name}: {hidden_text}")
+    end)
+    return ref
 end
 
 -- A colour picker: the same submenu as Stand's own colours (HSV, RGB, hex code, copy),

@@ -168,7 +168,12 @@
         "load_timing": {
             "name": "Load Timing",
             "help": "Writes each script file's load time to Stand's log as it loads, and a full report at every start. Works without Debug Mode",
-            "on": "Load times go to Stand's log: each file as it loads, and a full report at the next start"
+            "on": "Load times go to Stand's log: each file as it loads, and a full report at the next start",
+            "done": "Load times are in Stand's log"
+        },
+        "log_keep_days": {
+            "name": "Keep Logs (Days)",
+            "help": "How many days of the script's log files (store/<script>/logs, a file per day) are kept, today included. Older files are removed at the start and when a new day begins. 0 keeps them all"
         },
         "auto_copy": {
             "name": "Copy Menu To Core: %s",
@@ -261,16 +266,22 @@
             "store": {
                 "name": "Open Store Folder",
                 "help": "The script's data: profiles, settings, menus and translations, store/AnitaDarin"
+            },
+            "logs": {
+                "name": "Open Log Folder",
+                "help": "The script's log files, one per day: store/AnitaDarin/logs. Made if it doesn't exist yet"
             }
         },
         "debug": {
             "name": "Debug",
             "help": "Debug mode, the script's modules and the script itself"
         },
-        "load_times": {
-            "name": "Load Times",
-            "help": "Writes to Stand's log how many files the script loaded, how long they took and which were the slowest, the game's natives included. Files loaded later (e.g. natives on first use) are in the report too",
-            "done": "Load times are in Stand's log"
+        "logs": "Logs",
+        "clear_logs": {
+            "name": "Clear All Log Files",
+            "help": "Removes every log file of the script. Opens a confirmation first",
+            "warning": "Remove every log file of the script in %s?\nThis can't be undone.",
+            "done": "Removed %d log file(s)"
         },
         "delete_script": {
             "name": "Delete Script",

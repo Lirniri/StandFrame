@@ -120,6 +120,16 @@ local function open_folder(node: table, key: string, path: string): void
     end, {}, label($"open_folder.{key}.help"))
 end
 
+-- Removes every log file, after a warning
+local function clear_logs(node: table): void
+    local ref
+    ref = node:action(label("clear_logs.name"), function(click_type)
+        menu.show_warning(ref, click_type, text("clear_logs.warning"):format(Logger.folder()), function()
+            log:notify(text("clear_logs.done"):format(Logger.clear()))
+        end)
+    end, {}, label("clear_logs.help"))
+end
+
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)
 -- opts.packs:      menu packs in store, offered for copying to core
 -- opts.fill_menus: fill_menus(node) adds the Menus divider and an entry per menu (menu.pluto)
@@ -152,13 +162,13 @@ function module.build(section: table, opts: table): void
     open_folder(folders, "lib", paths.lib)
     open_folder(folders, "resources", paths.resources)
     open_folder(folders, "store", paths.store)
+    open_folder(folders, "logs", Logger.folder())
 
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)
-    debug:action(label("load_times.name"), function()
-        Atdar.loader.report()
-        log:notify(text("load_times.done"))
-    end, {}, label("load_times.help"))
+    debug:divider(label("logs"))
+    profile_menu.log_keep_days(debug)
+    clear_logs(debug)
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_menu.build(debug)
     modules_menu.debug_only(delete_script(debug))

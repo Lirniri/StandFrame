@@ -78,6 +78,7 @@ local function timed_require(path: string, name: string)
 end
 
 -- Logs the load times: how many files and how long, then the slowest by their own time.
+-- bootstrap calls it at the end of the start with Load Timing on; any code can call it later too.
 -- @param total_ms The whole start, if measured (bootstrap passes it)
 -- @param limit How many of the slowest files to list
 function module.report(total_ms: ?number, limit: int = 15): void

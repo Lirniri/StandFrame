@@ -62,7 +62,11 @@ check("1 copied" in out, "only the changed file is copied")
 # ─── Clean keeps user data; clean --all removes it ───────────────────────────
 
 (target / "lib" / "AnitaDarin" / "gone.pluto").write_text("x", encoding="utf-8")
+log_file = target / "store" / "AnitaDarin" / "logs" / "2026-11-06.log"
+log_file.parent.mkdir(parents=True, exist_ok=True)
+log_file.write_text("[12:00:00] a line", encoding="utf-8")
 run("clean", "--target", str(target))
+check(log_file.exists(), "clean keeps the script's log files")
 check(not (target / "AnitaDarin.pluto").exists() and not (target / "lib" / "AnitaDarin").exists(), "clean removes the script")
 check(not (target / "store" / "AnitaDarin" / "menu").exists(), "clean removes the store files that come from the project")
 check("Mine" in profile.read_text(encoding="utf-8") and config.exists(), "clean keeps profiles and settings")

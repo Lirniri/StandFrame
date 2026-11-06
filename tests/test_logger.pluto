@@ -1,0 +1,99 @@
+-- core/logger: lines go to Stand's log and to a file of their day in store/<script>/logs (Atdar.log_dir here)
+local stand = require("stand")
+stand.boot()
+local Logger = Atdar.loader.load("core/logger")
+local log = new Logger("Test")
+local dir = Atdar.log_dir
+-- store/<script>/logs/AnitaDarin_2026-11-06.log
+local function file_of(day) return $"{dir}{Atdar.name}_{day}.log" end
+
+-- A fake calendar: os.date answers "now" for the day set here; with a time given it's the real one
+local real_date = os.date
+local today = "2026-11-06"
+os.date = function(format, time)
+    if format == "%Y-%m-%d" and time == nil then
+        return today
+    end
+    return real_date(format, time)
+end
+
+local function lines_of(day)
+    local text = stand.read_file(file_of(day))
+    if text == nil then
+        return {}
+    end
+    local lines = {}
+    for line in text:gmatch("[^\n]+") do
+        table.insert(lines, line)
+    end
+    return lines
+end
+
+log:info("first line")
+log:warn("careful")
+local lines = lines_of(today)
+stand.equal(#lines, 2, "lines go to today's file")
+stand.check(io.exists($"{dir}AnitaDarin_2026-11-06.log"), "named <script>_<date>.log")
+stand.check(lines[1]:match("^%[%d%d:%d%d:%d%d%] %[AnitaDarin | Test%] INFO: first line$") ~= nil,
+    "with the time and the same text as Stand's log")
+stand.check(stand.find_log("first line"), "and to Stand's log too")
+stand.equal(Logger.folder(), dir, "Logger.folder() is where the files are")
+
+-- A new day: a new file, the old one is left as it was
+today = "2026-11-07"
+log:info("next day")
+stand.equal(#lines_of("2026-11-06"), 2, "yesterday's file keeps its lines")
+stand.equal(lines_of("2026-11-07")[1]:match("INFO: next day$") ~= nil, true, "a new day writes a new file")
+
+-- Another logger appends to the same file
+new Logger("Other"):info("from another source")
+stand.equal(#lines_of("2026-11-07"), 2, "every logger writes the same day file")
+
+-- debug lines only in debug mode, as in Stand's log
+log:debug("hidden")
+stand.equal(#lines_of("2026-11-07"), 2, "debug lines are left out without debug mode")
+
+-- Old files: only the kept days stay (today included); checked when a day's file opens
+Atdar.profile = { get = |key| -> key == "log_keep_days" and 3 or nil }
+for _, day in { "2026-11-01", "2026-11-04", "2026-11-05", "2026-11-06" } do
+    stand.write_file(file_of(day), "old")
+end
+stand.write_file($"{dir}notes.txt", "not a log")
+today = "2026-11-07"
+Logger.remove_old()
+stand.check(not io.exists(file_of("2026-11-01")) and not io.exists(file_of("2026-11-04")),
+    "files older than the kept days are removed")
+stand.check(io.exists(file_of("2026-11-05")) and io.exists(file_of("2026-11-06")) and io.exists(file_of("2026-11-07")),
+    "the last 3 days stay (today counts)")
+stand.check(io.exists($"{dir}notes.txt"), "other files in the folder aren't touched")
+stand.write_file($"{dir}2026-11-01.log", "named before the script's name was added")
+Logger.remove_old()
+stand.check(not io.exists($"{dir}2026-11-01.log"), "files of the old naming (date only) are cleaned too")
+stand.write_file(file_of("2026-11-02"), "old")
+today = "2026-11-08"
+log:info("a new day")
+stand.check(not io.exists(file_of("2026-11-02")) and not io.exists(file_of("2026-11-05")), "a new day's file removes old ones too")
+Atdar.profile = { get = |key| -> key == "log_keep_days" and 0 or nil }
+stand.write_file(file_of("2000-01-01"), "very old")
+Logger.remove_old()
+stand.check(io.exists(file_of("2000-01-01")), "0 days keeps every file")
+
+-- Clear: every day file goes, the next line starts today's file again
+stand.equal(Logger.clear(), 4, "clear() removes every day file and says how many")
+stand.check(io.exists($"{dir}notes.txt"), "but not other files")
+log:info("after clearing")
+stand.equal(#lines_of("2026-11-08"), 1, "the next line starts a fresh file")
+Atdar.profile = nil
+
+-- A file that can't be opened: one warning in Stand's log, then lines go there only
+Atdar.log_dir = $"{dir}missing\0bad/"
+stand.clear_logs()
+log:info("after the break")
+stand.check(stand.find_log("after the break"), "the line still reaches Stand's log")
+stand.check(stand.find_log("the log file can't be written"), "with one warning about the file")
+stand.clear_logs()
+log:info("again")
+stand.equal(stand.find_log("the log file can't be written"), nil, "the warning isn't repeated for every line")
+
+os.date = real_date
+stand.finish()
