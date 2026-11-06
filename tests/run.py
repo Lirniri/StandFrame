@@ -90,11 +90,14 @@ def check_natives():
 
 def run_tests(pluto, name_filter, verbose):
     results = []
-    for path in sorted(TESTS.glob("test_*.pluto")):
+    # .pluto tests run the script's code; .py tests check the Python tools (build.py)
+    paths = sorted(list(TESTS.glob("test_*.pluto")) + list(TESTS.glob("test_*.py")), key=lambda p: p.stem)
+    for path in paths:
         if name_filter and name_filter not in path.stem:
             continue
+        runner = pluto if path.suffix == ".pluto" else sys.executable
         # cwd = tests, so require("stand") finds tests/stand.pluto
-        result = subprocess.run([pluto, str(path)], cwd=TESTS, capture_output=True,
+        result = subprocess.run([runner, str(path)], cwd=TESTS, capture_output=True,
                                 text=True, encoding="utf-8", errors="replace")
         output = (result.stdout + result.stderr).strip()
         # Pluto's type-hint warnings aren't failures; keep them out of the way
