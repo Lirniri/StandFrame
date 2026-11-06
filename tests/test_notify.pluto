@@ -10,6 +10,12 @@ Atdar.natives = Atdar.loader.auto({}, "natives")
 local profile = Atdar.profile
 local Logger = Atdar.loader.load("core/logger")
 local log = new Logger("Test")
+-- The message card's picture when the profile has its default (core/profile)
+local default_picture = profile.default("notify_feed_picture")
+-- The checks below expect these values; the defaults in core/profile may be anything
+profile.set("notify_feed_style", "ticker")
+profile.set("notify_subject_color_day", "white")
+profile.set("notify_subject_color_night", "white")
 
 -- The game's feed: what was posted, and how the last post looked
 local feed = {}
@@ -65,14 +71,27 @@ stand.equal(post:get_id(), 1, "util.toast to the feed returns a FeedPost")
 post:remove()
 stand.equal(feed[1], "removed", "post:remove() removes it from the feed")
 Atdar.util.toast("card", { target = "game", style = "message", subject = "Profiles" })
-stand.equal(feed[2], $"CHAR_SOCIAL_CLUB|{Atdar.name}|Profiles|card", "style message: picture, sender, subject, text")
+stand.equal(feed[2], $"{default_picture}|{Atdar.name}|~w~Profiles|card",
+    "style message: picture, sender, subject (in the day's color), text")
 profile.set("display_name", "StandX")
 Atdar.util.toast("renamed", { target = "game", style = "message" })
-stand.equal(feed[3], "CHAR_SOCIAL_CLUB|StandX||renamed", "the sender is the profile's Display Name, not the file name")
+stand.equal(feed[3], $"{default_picture}|StandX||renamed", "the sender is the profile's Display Name, not the file name")
 profile.set("display_name", "")
 Atdar.util.toast("no name", { target = "game", style = "message" })
-stand.equal(feed[4], $"CHAR_SOCIAL_CLUB|{Atdar.name}||no name", "an empty Display Name falls back to the file name")
+stand.equal(feed[4], $"{default_picture}|{Atdar.name}||no name", "an empty Display Name falls back to the file name")
 profile.set("display_name", Atdar.name)
+
+-- The card's picture: the profile's, asked to load first; opts.picture overrides it
+local asked = {}
+_G.GRAPHICS = { REQUEST_STREAMED_TEXTURE_DICT = |name| -> table.insert(asked, name), HAS_STREAMED_TEXTURE_DICT_LOADED = || -> true }
+profile.set("notify_feed_picture", "CHAR_LESTER")
+Atdar.util.toast("pictured", { target = "game", style = "message" })
+stand.check(feed[#feed]:find("^CHAR_LESTER|") ~= nil, "the card shows the profile's picture")
+stand.equal(asked[#asked], "CHAR_LESTER", "which is asked to load first")
+Atdar.util.toast("own", { target = "game", style = "message", picture = "CHAR_MICHAEL" })
+stand.check(feed[#feed]:find("^CHAR_MICHAEL|") ~= nil, "opts.picture overrides it")
+profile.set("notify_feed_picture", default_picture)
+feed = {}
 stand.equal(Atdar.util.toast("in stand", { target = "stand" }), nil, "util.toast to Stand returns nothing")
 
 -- The feed's look comes from the profile (Appearance > Game): style, flash, colours
@@ -93,7 +112,7 @@ profile.set("notify_background_night", "10203040")
 profile.set("notify_flash_color_night", "FFFFFF")
 look = {}
 log:notify("styled")
-stand.check(feed[#feed]:find("CHAR_SOCIAL_CLUB|", 1, true), "notify_feed_style message: a message card")
+stand.check(feed[#feed]:find($"{default_picture}|", 1, true), "notify_feed_style message: a message card")
 stand.equal(look.flash, true, "notify_flash: it flashes")
 stand.equal(look.background, 128, "the background is the script's HUD colour slot")
 stand.equal(script_color, "255,128,0,128", "filled with the picked colour and its opacity")
@@ -127,6 +146,63 @@ profile.set("notify_flash", false)
 profile.set("notify_feed_style", "ticker")
 profile.set("notify_background_day", "")
 profile.set("notify_background_night", "")
+
+-- A message card from the logger: the level is the subject, the text is the message alone
+profile.set("notify_feed_style", "message")
+profile.set("notify_subject_color_day", "default")
+log:warn("careful there")
+stand.equal(feed[#feed], $"{default_picture}|{Atdar.name}|Warning|careful there",
+    "the card's subject is the level, its text without the log tag")
+log:notify("all good")
+stand.check(feed[#feed]:find("|Information|all good", 1, true) ~= nil, "notify: Information")
+-- The subject's color: the day's or the night's; a picked one or by type
+profile.set("notify_subject_color_day", "level")
+log:warn("by type")
+stand.check(feed[#feed]:find("|~y~Warning|by type", 1, true) ~= nil, "By Type: a warning is yellow")
+log:notify("by type")
+stand.check(feed[#feed]:find("|~b~Information|", 1, true) ~= nil, "information blue")
+profile.set("notify_subject_color_day", "grey")
+log:warn("grey")
+stand.check(feed[#feed]:find("|~c~Warning|grey", 1, true) ~= nil, "a picked color is the same for every type")
+profile.set("notify_subject_color_night", "orange")
+clock = 23
+log:warn("at night")
+stand.check(feed[#feed]:find("|~o~Warning|at night", 1, true) ~= nil, "at night the night's subject color")
+clock = 12
+profile.set("notify_subject_color_day", "default")
+profile.set("notify_subject_color_night", "default")
+-- With core/i18n loaded the level is in the script's language
+local i18n_name = $"{Atdar.name}/core/i18n"
+local real_i18n = package.loaded[i18n_name]
+package.loaded[i18n_name] = { text = |key, english| -> key == "logger.level.warn" and "Предупреждение" or english }
+log:warn("translated")
+stand.equal(feed[#feed], $"{default_picture}|{Atdar.name}|Предупреждение|translated", "the level is translated")
+package.loaded[i18n_name] = real_i18n
+Atdar.util.toast("own subject", { target = "game", style = "message", subject = "Profiles", level = "WARN" })
+stand.check(feed[#feed]:find("|Profiles|own subject", 1, true) ~= nil, "opts.subject wins over the level")
+profile.set("notify_feed_style", "ticker")
+log:notify("a post")
+stand.check(feed[#feed]:find("| Test] INFO: a post", 1, true) ~= nil, "a post keeps the whole log line")
+
+-- remove_all(): every post the script made goes from the feed
+local thefeed = Atdar.natives.visual.hud.thefeed
+thefeed.remove_all()
+feed = {}
+log:notify("one")
+log:notify("two")
+stand.equal(thefeed.remove_all(), 2, "remove_all() takes away the script's posts")
+stand.check(feed[1] == "removed" and feed[2] == "removed", "both are removed from the feed")
+stand.equal(thefeed.remove_all(), 0, "and forgets them")
+for i = 1, 105 do log:notify($"many {i}") end
+stand.equal(thefeed.remove_all(), 100, "only the last 100 are kept")
+feed = {}
+
+-- notify() gives the FeedPost back, so a caller can take its card away again
+local posted = log:notify("removable by the caller")
+stand.check(posted ~= nil and posted.get_id ~= nil, "log:notify returns the FeedPost of a feed notification")
+profile.set("notify", "stand")
+stand.equal(log:notify("in Stand"), nil, "and nil for a Stand one")
+profile.set("notify", "game")
 
 profile.set("notify", "none")
 stand.clear_logs()

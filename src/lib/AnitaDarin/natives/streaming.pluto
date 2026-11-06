@@ -34,16 +34,17 @@ local MAKE = {
     stealth_mode = |opts| -> new module.stealth_mode.asset(opts.name),
     ptfx = |opts| -> new module.ptfx.asset(opts.name),
     vehicle = |opts| -> new module.vehicle.asset(opts.model, opts.asset),
+    texture_dict = |opts| -> new module.texture_dict.asset(opts.name),
 }
 
 -- One entry point for all asset types; opts.what picks the type, the rest are its arguments:
---   { what = "action_mode" | "stealth_mode" | "ptfx", name = "...", timeout = 2000 }
+--   { what = "action_mode" | "stealth_mode" | "ptfx" | "texture_dict", name = "...", timeout = 2000 }
 --   { what = "vehicle", model = "adder", asset = 0, timeout = 2000 }
 -- @return Whether the asset loaded
 function module.request(opts: table): bool
     local make = MAKE[opts.what]
     if not make then
-        log:error($"unknown asset type '{tostring(opts.what)}', expected action_mode, stealth_mode, ptfx or vehicle")
+        log:error($"unknown asset type '{tostring(opts.what)}', expected action_mode, stealth_mode, ptfx, texture_dict or vehicle")
         return false
     end
     local asset = make(opts)

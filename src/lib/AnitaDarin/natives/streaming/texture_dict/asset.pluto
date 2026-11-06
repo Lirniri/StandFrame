@@ -1,0 +1,35 @@
+-- class TextureDictAsset extends StreamingAsset: a streamed texture dictionary, by name, e.g. a feed
+-- message's picture "CHAR_LESTER" (natives/visual/feed_picture).
+--
+--     local pic = new Atdar.natives.streaming.texture_dict.asset("CHAR_LESTER")
+--     pic:request(false)   -- ask without waiting (e.g. from a menu callback)
+--     pic:remove()         -- frees it when it's no longer needed
+
+local StreamingAsset = Atdar.loader.load("natives/streaming/asset")
+
+local class TextureDictAsset extends StreamingAsset
+
+    function __construct(name: string)
+        parent:__construct($"texture dictionary '{name}'")
+        self.name = name
+    end
+
+    -- State
+
+    function is_loaded(): bool
+        return GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED(self.name)
+    end
+
+    -- Actions
+
+    function send_request(): void
+        GRAPHICS.REQUEST_STREAMED_TEXTURE_DICT(self.name, false)
+    end
+
+    function remove(): void
+        GRAPHICS.SET_STREAMED_TEXTURE_DICT_AS_NO_LONGER_NEEDED(self.name)
+    end
+
+end
+
+return TextureDictAsset

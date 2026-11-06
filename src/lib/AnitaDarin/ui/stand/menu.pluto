@@ -141,6 +141,8 @@ local function unload_menu(): void
     unload_current()
     show_notice(has_builtin() ? "script_menu.unload.notice" : "menu_loader.not_found")
     rebuild_settings()
+    -- The script's notifications in the game's feed go too; "Menu unloaded" is then the only one
+    pcall(|| -> Atdar.natives.visual.hud.thefeed.remove_all())
     log:notify(i18n.text("script_menu.unload.done"))
 end
 

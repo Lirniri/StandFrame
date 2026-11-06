@@ -1,5 +1,13 @@
 {
     "language_name": "English",
+    "logger": {
+        "level": {
+            "debug": "Debug",
+            "info": "Information",
+            "warn": "Warning",
+            "error": "Error"
+        }
+    },
     "menu_loader": {
         "not_found": "Built-in menu not found",
         "load_menu": {
@@ -132,9 +140,28 @@
             "name": "Game",
             "style": {
                 "name": "Notification Type: %s",
-                "help": "Message: a card with a picture, the script's name and the text. Post: the text only",
+                "help": "Message: a card with a picture, the script's name, the notification type and the text. Post: one line, as in the log",
                 "message": "Message",
                 "ticker": "Post"
+            },
+            "picture": {
+                "name": "Picture: %s",
+                "help": "The picture on the script's message cards. Shown only while Notification Type is Message"
+            },
+            "subject_color": {
+                "level": "By Type",
+                "default": "Default",
+                "white": "White",
+                "grey": "Grey",
+                "dark_grey": "Dark Grey",
+                "black": "Black",
+                "red": "Red",
+                "green": "Green",
+                "blue": "Blue",
+                "yellow": "Yellow",
+                "orange": "Orange",
+                "purple": "Purple",
+                "pink": "Pink"
             },
             "day_start": {
                 "name": "Day Starts At",
@@ -146,19 +173,27 @@
             },
             "background_day": {
                 "name": "Day Background Color",
-                "help": "Background of the script's notifications in the game's feed during the day. Dark cyan (0, 139, 139) by default"
+                "help": "The background of the script's notifications in the game's feed during the day"
             },
             "flash_color_day": {
                 "name": "Day Flash Color",
                 "help": "The color notifications flash in during the day when Flash Notifications is on. Until one is picked, the game's own is used"
             },
+            "subject_color_day": {
+                "name": "Day Subject Color: %s",
+                "help": "The color of the notification type (Information, Warning, Error) on message cards during the day. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
+            },
             "background_night": {
                 "name": "Night Background Color",
-                "help": "Background of the script's notifications in the game's feed at night. Dark teal (26, 61, 84) by default"
+                "help": "The background of the script's notifications in the game's feed at night"
             },
             "flash_color_night": {
                 "name": "Night Flash Color",
                 "help": "The color notifications flash in at night when Flash Notifications is on. Until one is picked, the game's own is used"
+            },
+            "subject_color_night": {
+                "name": "Night Subject Color: %s",
+                "help": "The color of the notification type (Information, Warning, Error) on message cards at night. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
             }
         },
         "debug": {

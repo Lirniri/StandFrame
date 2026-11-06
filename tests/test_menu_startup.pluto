@@ -114,7 +114,13 @@ stand.check(stand.find_item(stand.root, "Self"), "Load on the pack loads it")
 stand.check(entry("AnitaDarin: loaded"), "Load Menu shows the pack as loaded")
 
 stand.clear_logs()
+local thefeed = Atdar.natives.visual.hud.thefeed
+local real_remove_all = thefeed.remove_all
+local feed_cleared = false
+thefeed.remove_all = function() feed_cleared = true return 0 end
 stand.click(stand.find_item(load_menu(), "Unload"))
+thefeed.remove_all = real_remove_all
+stand.check(feed_cleared, "Unload takes the script's notifications out of the game's feed")
 stand.check(not stand.find_item(stand.root, "Self"), "Unload takes the menu's items out")
 stand.equal(stand.name_of(stand.root.children[1]), "Built-in menu not found", "the notice is at the top again")
 stand.check(entry("AnitaDarin"), "the pack is no longer shown as loaded")

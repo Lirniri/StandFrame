@@ -95,5 +95,13 @@ stand.clear_logs()
 log:info("again")
 stand.equal(stand.find_log("the log file can't be written"), nil, "the warning isn't repeated for every line")
 
+-- stop_file(): no more file lines (deleting the script), Stand's log goes on
+Logger.stop_file()
+local files_before = #filesystem.list_files(dir)
+stand.clear_logs()
+log:info("after stop")
+stand.check(stand.find_log("after stop"), "Stand's log still gets lines")
+stand.equal(#filesystem.list_files(dir), files_before, "but no file is written")
+
 os.date = real_date
 stand.finish()

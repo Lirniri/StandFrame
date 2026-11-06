@@ -5,8 +5,10 @@
 --     local post = thefeed.post_ticker("Saved")
 --     thefeed.post_message("Text", { sender = "AnitaDarin", subject = "Profiles", picture = "CHAR_SOCIAL_CLUB" })
 --     post:remove()
+--     thefeed.remove_all()               -- every post the script made (also when the script stops)
 
 local FeedPost = Atdar.loader.load("natives/visual/hud/thefeed/post")
+local hud_color = Atdar.loader.load("natives/visual/hud_color")
 
 local module = {}
 
@@ -34,19 +36,18 @@ end
 
 -- Set
 
--- The background colour of the next post (a HUD colour index)
+-- The background colour of the next post (a HUD colour index, natives/visual/hud_color)
 function module.set_next_background(hud_color: int): void
     HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color)
 end
 
--- HUD_COLOUR_SCRIPT_VARIABLE: a HUD colour slot left for scripts to fill with their own colour
-local SCRIPT_COLOR = 128
 
 -- The background of the next post in any colour (0 - 255). The background takes only a HUD colour
 -- index, so the script slot is filled with this colour and its index is used
 function module.set_next_background_color(r: int, g: int, b: int, a: int = 255): void
     HUD.SET_SCRIPT_VARIABLE_HUD_COLOUR(r, g, b, a)
-    HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(SCRIPT_COLOR)
+    -- HUD_COLOUR_SCRIPT_VARIABLE: the slot left for scripts to fill with their own colour
+    HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color.SCRIPT_VARIABLE)
 end
 
 -- The colour the next post flashes in, when it flashes (0 - 255)
@@ -69,6 +70,33 @@ function module.freeze_next(): void
     HUD.THEFEED_FREEZE_NEXT_POST()
 end
 
+-- The script's own posts still known, oldest first: remove_all() takes them away. The game gives
+-- no list of its feed, so only posts made here can be removed. The oldest are forgotten past this many
+local KEEP_POSTS = 100
+local posts = {}
+
+local function remember(post: table): table
+    table.insert(posts, post)
+    if #posts > KEEP_POSTS then
+        table.remove(posts, 1)
+    end
+    return post
+end
+
+-- Takes every post the script made away from the feed (other scripts' and the game's stay)
+-- @return How many were removed
+function module.remove_all(): int
+    local count = #posts
+    for _, post in ipairs(posts) do
+        pcall(|| -> post:remove())
+    end
+    posts = {}
+    return count
+end
+
+-- The script's posts go with it
+util.on_stop(|| -> module.remove_all())
+
 -- Plain text.
 -- @param important Blinks
 -- @param is_mp The online style
@@ -76,9 +104,9 @@ end
 function module.post_ticker(text: string, important: bool = false, is_mp: bool = false): table
     begin_post(text)
     if is_mp then
-        return new FeedPost(HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true))
+        return remember(new FeedPost(HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true)))
     end
-    return new FeedPost(HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(important, true))
+    return remember(new FeedPost(HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(important, true)))
 end
 
 -- A message card: picture, sender (the top line), subject (under it), the text below.
@@ -90,7 +118,7 @@ function module.post_message(text: string, opts: table = {}): table
     local picture = opts.picture or "CHAR_SOCIAL_CLUB"
     local id = HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(picture, picture, opts.important == true,
         opts.icon or module.ICON.CHAT_BOX, opts.sender or "", opts.subject or "")
-    return new FeedPost(id)
+    return remember(new FeedPost(id))
 end
 
 return Atdar.loader.auto(module, "natives/visual/hud/thefeed")

@@ -175,4 +175,31 @@ stand.equal(all[1]:get_color(true), 100, "get_color(true): the HUD colour")
 stand.equal(Blip.from_entity(mine):handle(), 4, "Blip.from_entity takes a Vehicle")
 stand.equal(Blip.from_entity(42), nil, "and nil for an entity without a blip")
 
+-- ─── HUD colours and feed pictures: tables ───────────────────────────────────
+
+local hud_color = Atdar.natives.visual.hud_color
+stand.equal(hud_color.RED, 6, "hud_color.RED is the index natives take")
+stand.equal(hud_color.SCRIPT_VARIABLE, 128, "the script slot the feed background uses")
+stand.equal(hud_color.name_of(9), "BLUE", "name_of(index)")
+stand.equal(hud_color.name_of(999), nil, "name_of an unknown index is nil")
+local red = hud_color.default(hud_color.RED)
+stand.check(red.r == 224 and red.g == 50 and red.b == 50 and red.a == 255, "default(index): the RGBA from hudcolor.dat")
+red.r = 0
+stand.equal(hud_color.default(hud_color.RED).r, 224, "default() gives a copy")
+local colors = hud_color.list()
+stand.check(#colors == 235 and colors[1].index == 0 and colors[235].index == 234, "list(): every colour, indexes 0 - 234")
+
+local feed_picture = Atdar.natives.visual.feed_picture
+stand.equal(feed_picture.LESTER, "CHAR_LESTER", "feed_picture.LESTER is the full name")
+stand.check(feed_picture.is_known("CHAR_SOCIAL_CLUB") and not feed_picture.is_known("CHAR_NOPE"), "is_known(name)")
+local pictures = feed_picture.list()
+local unique = {}
+for _, name in pictures do unique[name] = true end
+local count = 0
+for _ in pairs(unique) do count += 1 end
+stand.check(#pictures == 168 and count == 168, "list(): 168 pictures, no repeats")
+stand.equal(feed_picture.ACTING_UP, "CHAR_ACTING_UP", "CHAR_ACTING_UP is there")
+stand.equal(feed_picture.title("CHAR_SOCIAL_CLUB"), "Social Club", "title(): a readable name")
+stand.equal(feed_picture.title("CHAR_CALL911"), "Call911", "title() keeps digits")
+
 stand.finish()

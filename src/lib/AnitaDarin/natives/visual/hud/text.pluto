@@ -1,4 +1,25 @@
+-- Text the game draws (the feed, help text, subtitles)
+
 local module = {}
+
+-- Colour codes put in the text itself: everything after one is in that colour, "~s~" goes back.
+--     "~r~Error~s~ in the text"
+module.COLOR = {
+    default = "~s~",
+    white = "~w~",
+    grey = "~c~",
+    dark_grey = "~m~",
+    black = "~u~",
+    red = "~r~",
+    green = "~g~",
+    blue = "~b~",
+    yellow = "~y~",
+    orange = "~o~",
+    purple = "~p~",
+    pink = "~q~",
+}
+
+-- Actions
 
 function module.add_string(text: string): void
     HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(text)

@@ -22,6 +22,10 @@ _G.STREAMING = {
     IS_MODEL_A_VEHICLE = |hash| -> hash == util.joaat("adder"),
 }
 _G.VEHICLE = { REQUEST_VEHICLE_ASSET = || -> nil, HAS_VEHICLE_ASSET_LOADED = || -> false }
+_G.GRAPHICS = {
+    REQUEST_STREAMED_TEXTURE_DICT = |name| -> request($"td:{name}"),
+    HAS_STREAMED_TEXTURE_DICT_LOADED = |name| -> loaded($"td:{name}"),
+}
 
 local fx = new streaming.ptfx.asset("scr_rcbarry2")
 stand.check(fx:request(), "ptfx loads and request() waits for it")
@@ -42,6 +46,8 @@ local ok, err = pcall(|| -> (new Broken()):request())
 stand.check(not ok and tostring(err):find("broken asset: send_request() isn't defined", 1, true), "a missing send_request() is an error")
 
 stand.check(streaming.request({ what = "ptfx", name = "other" }), "request({ what = 'ptfx' })")
+stand.check((new streaming.texture_dict.asset("CHAR_LESTER")):request(), "texture dictionary (a feed picture)")
+stand.check(streaming.request({ what = "texture_dict", name = "CHAR_MICHAEL" }), "request({ what = 'texture_dict' })")
 
 local start = stand.clock
 stand.clear_logs()

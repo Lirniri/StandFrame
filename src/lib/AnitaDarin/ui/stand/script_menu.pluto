@@ -40,7 +40,9 @@ end
 
 -- Delete Script: a list, so deleting takes its own confirm button and never happens on one click.
 -- menu.show_warning alone isn't enough: in the game it once let the delete through without asking.
--- The confirm button still shows Stand's warning as a second step, with CLICK_MENU like other scripts do.
+-- The confirm button still shows Stand's warning as a second step, with the click type Stand gave the
+-- button (CLICK_MENU there let the delete through without a warning; Clear All Log Files, which passes
+-- its own click type, shows one).
 -- Profiles and settings are kept unless switched off. Then the script deletes its files (core/installer) and stops
 -- @return The list's handle
 local function delete_script(node: table)
@@ -50,9 +52,9 @@ local function delete_script(node: table)
     list:toggle(label("delete_script.keep.name"), function(on) keep = on end, {},
         label("delete_script.keep.help"), true)
     local confirm_ref
-    confirm_ref = list:action(label("delete_script.confirm.name"), function()
+    confirm_ref = list:action(label("delete_script.confirm.name"), function(click_type)
         local warning = text(keep ? "delete_script.warning_keep" : "delete_script.warning"):format(Atdar.name)
-        menu.show_warning(confirm_ref, CLICK_MENU, warning, function()
+        menu.show_warning(confirm_ref, click_type, warning, function()
             local ok, result = installer.delete(keep)
             if not ok then
                 log:warn(text("delete_script.failed"):format(result))
@@ -120,11 +122,20 @@ local function open_folder(node: table, key: string, path: string): void
     end, {}, label($"open_folder.{key}.help"))
 end
 
+-- A path from Lua Scripts on: "store\AnitaDarin\logs\" - short enough for a warning
+local function from_scripts_dir(path: string): string
+    local root = filesystem.scripts_dir()
+    if path:sub(1, #root) == root then
+        return path:sub(#root + 1)
+    end
+    return path
+end
+
 -- Removes every log file, after a warning
 local function clear_logs(node: table): void
     local ref
     ref = node:action(label("clear_logs.name"), function(click_type)
-        menu.show_warning(ref, click_type, text("clear_logs.warning"):format(Logger.folder()), function()
+        menu.show_warning(ref, click_type, text("clear_logs.warning"):format(from_scripts_dir(Logger.folder())), function()
             log:notify(text("clear_logs.done"):format(Logger.clear()))
         end)
     end, {}, label("clear_logs.help"))

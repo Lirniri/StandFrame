@@ -16,20 +16,25 @@ local DEFAULTS = {
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
-    auto_copy_menu = "",        -- folder of a menu pack in store, copied to core at every start; "" = off
+    auto_copy_menu = "AnitaDarin",        -- folder of a menu pack in store, copied to core at every start; "" = off
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
     notify = "stand",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
     notify_errors_in_stand = true, -- errors show in Stand whatever notify says, so none goes unseen
     notify_flash = false,       -- notifications in the game's feed flash
-    notify_feed_style = "ticker", -- how a notification looks in the game's feed: "ticker" (a post) | "message" (a card)
+    notify_feed_style = "message", -- how a notification looks in the game's feed: "ticker" (a post) | "message" (a card)
+    notify_feed_picture = "CHAR_ACTING_UP", -- the message card's picture (natives/visual/feed_picture)
     -- The feed's colours by the game's clock: day from notify_day_start up to notify_night_start (hours), night the rest.
     -- Hex "RRGGBBAA"; "" = the game's own colour (the flash colours start with it)
     notify_day_start = 7,
     notify_night_start = 19,
     notify_background_day = "008B8BFF", -- dark cyan (0, 139, 139)
-    notify_flash_color_day = "",
+    notify_flash_color_day = "000000FF", -- black (0, 0, 0)
     notify_background_night = "1A3D54FF", -- dark teal (26, 61, 84)
-    notify_flash_color_night = "",
+    notify_flash_color_night = "008B8BFF", -- dark cyan (0, 139, 139)
+    -- The message card's subject colour, day and night: a natives/visual/hud/text COLOR name ("white", ...)
+    -- or "level" (by the notification's type)
+    notify_subject_color_day = "yellow",
+    notify_subject_color_night = "yellow",
 }
 
 local DEFAULT_PROFILE = "main"

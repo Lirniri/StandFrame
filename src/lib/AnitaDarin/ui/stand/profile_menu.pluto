@@ -3,7 +3,7 @@
 --   language    - Language list (Auto follows Stand)
 --   log_name    - Name In Logs
 --   appearance  - Appearance > Notifications: flash, where they show, errors always in Stand, a test;
---                 under the Game divider how they look in the game's feed (post or message card,
+--                 under the Game divider how they look in the game's feed (post or message card with its picture,
 --                 day and night hours, colours for each)
 --   profiles    - Profiles list laid out like Stand's: Create Profile, Open Folder, then one list per profile
 --                 with Save, Load, Automatically Save and Delete
@@ -24,6 +24,8 @@ local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
 local color = Atdar.loader.load("utils/color")
+local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
+local TextureDictAsset = Atdar.loader.load("natives/streaming/texture_dict/asset")
 
 local log = new Logger("Profile")
 
@@ -42,6 +44,9 @@ local SEPARATORS = { "", "_" }
 local LOG_NAMES = { "short", "display" }
 local NOTIFY_TARGETS = { "stand", "game", "none" }
 local FEED_STYLES = { "message", "ticker" }
+-- Subject Color options, in the menu's order: "level" or natives/visual/hud/text COLOR names
+local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "black", "red", "green", "blue",
+    "yellow", "orange", "purple", "pink" }
 
 -- What a colour item shows while its profile value is "" (the game's own colour)
 local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
@@ -50,7 +55,7 @@ local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
 local INPUT_KEYS = { "display_name", "short_name", "command_prefix" }
 
 -- Items of the latest build, updated in place when profile values change. Reset by begin()
-local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {} }
+local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {}, subject_colors = {} }
 -- Set while values are written from code, so their on_change doesn't count as an edit
 local updating = false
 -- Stand calls text fields again while the script stops; showing a warning then is an error
@@ -93,6 +98,26 @@ end
 local function feed_style_caption(): string
     local key = Atdar.profile.get("notify_feed_style") == "message" ? "feed.style.message" : "feed.style.ticker"
     return text("feed.style.name"):format(text(key))
+end
+
+-- "Picture: Social Club"
+local function feed_picture_caption(): string
+    return text("feed.picture.name"):format(feed_picture.title(Atdar.profile.get("notify_feed_picture") or ""))
+end
+
+-- "Day Subject Color: White"; period "day" or "night"
+local function subject_color_caption(period: string): string
+    local name = Atdar.profile.get($"notify_subject_color_{period}") or "default"
+    return text($"feed.subject_color_{period}.name"):format(text($"feed.subject_color.{name}"))
+end
+
+-- Asks the game to load the profile's picture now, without waiting, so message cards show it
+local function load_feed_picture(): void
+    local name = Atdar.profile.get("notify_feed_picture")
+    if type(name) ~= "string" or name == "" then
+        return
+    end
+    pcall(|| -> (new TextureDictAsset(name)):request(false))
 end
 
 -- A colour kept in the profile as hex -> the Stand colour a colour item shows
@@ -160,6 +185,16 @@ local function update_captions(): void
     rename(view.log_name, log_name_caption())
     rename(view.notify_target, notify_caption())
     rename(view.feed_style, feed_style_caption())
+    rename(view.feed_picture, feed_picture_caption())
+    for period, ref in pairs(view.subject_colors) do
+        rename(ref, subject_color_caption(period))
+    end
+    -- The picture and the subject are the message card's only: hidden while posts are chosen
+    local is_message = Atdar.profile.get("notify_feed_style") == "message"
+    pcall(menu.set_visible, view.feed_picture, is_message)
+    for _, ref in pairs(view.subject_colors) do
+        pcall(menu.set_visible, ref, is_message)
+    end
     rename(view.language, language_caption())
     rename(view.auto_copy, auto_copy_caption())
 end
@@ -219,12 +254,12 @@ i18n.on_change(|| -> update_captions())
 -- Starts a new build of the section; items made before it are forgotten.
 -- packs: menu packs in store (menu_builder.find_loadable_packs), offered for copying to core
 function module.begin(packs: table = {}): void
-    view = { inputs = {}, entries = {}, packs = packs, colors = {}, sliders = {} }
+    view = { inputs = {}, entries = {}, packs = packs, colors = {}, sliders = {}, subject_colors = {} }
 end
 
 -- A text field for a profile value
 local function input(node: table, key: string, allow_empty: bool): void
-    local command = "profile" .. key:gsub("_", "")
+    local command = key:gsub("_", "")
     view.inputs[key] = node:text_input(label($"{key}.name"), { command }, function(value)
         if updating or (value == "" and not allow_empty) then
             return
@@ -265,7 +300,7 @@ function module.log_name(node: table): void
     view.log_name = node:list_action(log_name_caption(),
         { label("log_name.short"), label("log_name.display") }, function(index)
         Atdar.profile.set("log_name", LOG_NAMES[index])
-    end, { "profilelogname" }, label("log_name.help"))
+    end, { "logname" }, label("log_name.help"))
 end
 
 -- ─── Appearance ──────────────────────────────────────────────────────────────
@@ -277,15 +312,23 @@ local function notifications(list: table): void
     view.notify_target = list:list_action(notify_caption(),
         { label("notify.target.stand"), label("notify.target.game"), label("notify.target.none") }, function(index)
         profile.set("notify", NOTIFY_TARGETS[index])
-    end, { "profilenotify" }, label("notify.target.help"))
+    end, { "notify" }, label("notify.target.help"))
 
     view.notify_errors = list:toggle(label("notify.errors.name"), function(on)
         if not updating then
             profile.set("notify_errors_in_stand", on)
         end
-    end, { "profilenotifyerrors" }, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
+    end, { "notifyerrors" }, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
 
-    list:action(label("notify.test.name"), || -> log:notify(text("notify.test.text")), {}, label("notify.test.help"))
+    -- The previous test card is taken away from the game's feed first, so clicking again doesn't pile them up
+    -- (Stand's own notifications can't be taken away)
+    local last_test = nil
+    list:action(label("notify.test.name"), function()
+        if last_test then
+            pcall(|| -> last_test:remove())
+        end
+        last_test = log:notify(text("notify.test.text"))
+    end, {}, label("notify.test.help"))
 end
 
 -- A colour item with opacity for a profile key kept as hex RRGGBBAA
@@ -294,9 +337,12 @@ local function color_item(node: table, key: string, name: string, commands: tabl
         local hex = color.to_hex(colour, true)
         -- Who changes the colour and when: the user or Stand by itself (debug mode)
         log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)}, updating {tostring(updating)})")
-        if not updating then
-            Atdar.profile.set(key, hex)
+        -- Stand also calls this when the script stops, with the colour the item shows: for "" (the game's
+        -- own) that's black, which would then be saved as picked. Only a different colour is a pick
+        if updating or stopping or hex == color.to_hex(profile_color(key), true) then
+            return
         end
+        Atdar.profile.set(key, hex)
     end, commands, label($"feed.{name}.help"), true)
     show_profile_value(view.colors[key], key, profile_color(key))
 end
@@ -311,6 +357,19 @@ local function hour_item(node: table, key: string, name: string, commands: table
     show_profile_value(view.sliders[key], key, Atdar.profile.get(key))
 end
 
+-- The message card's subject colour for "day" or "night"; shown only while Message is picked
+local function subject_color_item(node: table, period: string): void
+    local names = {}
+    for _, name in ipairs(SUBJECT_COLORS) do
+        table.insert(names, label($"feed.subject_color.{name}"))
+    end
+    local ref = node:list_action(subject_color_caption(period), names, function(index)
+        Atdar.profile.set($"notify_subject_color_{period}", SUBJECT_COLORS[index])
+    end, { $"feedsubject{period}" }, label($"feed.subject_color_{period}.help"))
+    view.subject_colors[period] = ref
+    pcall(menu.set_visible, ref, Atdar.profile.get("notify_feed_style") == "message")
+end
+
 -- The Game divider and below it how notifications look in the game's feed
 local function feed(list: table): void
     list:divider(label("feed.name"))
@@ -318,23 +377,37 @@ local function feed(list: table): void
     view.feed_style = list:list_action(feed_style_caption(),
         { label("feed.style.message"), label("feed.style.ticker") }, function(index)
         Atdar.profile.set("notify_feed_style", FEED_STYLES[index])
-    end, { "profilefeedstyle" }, label("feed.style.help"))
+    end, { "feedstyle" }, label("feed.style.help"))
+
+    local pictures = feed_picture.list()
+    local titles = {}
+    for _, name in ipairs(pictures) do
+        table.insert(titles, feed_picture.title(name))
+    end
+    view.feed_picture = list:list_action(feed_picture_caption(), titles, function(index)
+        Atdar.profile.set("notify_feed_picture", pictures[index])
+        load_feed_picture()
+    end, { "feedpicture" }, label("feed.picture.help"))
+    pcall(menu.set_visible, view.feed_picture, Atdar.profile.get("notify_feed_style") == "message")
+    load_feed_picture()
 
     -- Flashing is the game feed's only (Stand's notifications don't flash), so it's here
     view.notify_flash = list:toggle(label("notify.flash.name"), function(on)
         if not updating then
             Atdar.profile.set("notify_flash", on)
         end
-    end, { "profilenotifyflash" }, label("notify.flash.help"), Atdar.profile.get("notify_flash") == true)
+    end, { "notifyflash" }, label("notify.flash.help"), Atdar.profile.get("notify_flash") == true)
 
     -- Made with updating set: the profile's values are put in after (show_profile_value), not saved as changes
     updating = true
-    hour_item(list, "notify_day_start", "day_start", { "profilefeeddaystart" })
-    hour_item(list, "notify_night_start", "night_start", { "profilefeednightstart" })
-    color_item(list, "notify_background_day", "background_day", { "profilefeedbgday" })
-    color_item(list, "notify_flash_color_day", "flash_color_day", { "profilefeedflashday" })
-    color_item(list, "notify_background_night", "background_night", { "profilefeedbgnight" })
-    color_item(list, "notify_flash_color_night", "flash_color_night", { "profilefeedflashnight" })
+    hour_item(list, "notify_day_start", "day_start", { "feeddaystart" })
+    hour_item(list, "notify_night_start", "night_start", { "feednightstart" })
+    color_item(list, "notify_background_day", "background_day", { "feedbgday" })
+    color_item(list, "notify_flash_color_day", "flash_color_day", { "feedflashday" })
+    subject_color_item(list, "day")
+    color_item(list, "notify_background_night", "background_night", { "feedbgnight" })
+    color_item(list, "notify_flash_color_night", "flash_color_night", { "feedflashnight" })
+    subject_color_item(list, "night")
     updating = false
 end
 
@@ -442,7 +515,7 @@ function module.auto_copy(node: table): void
         else
             log:notify(text("auto_copy.disabled"))
         end
-    end, { "profileautocopy" }, label("auto_copy.help"))
+    end, { "autocopy" }, label("auto_copy.help"))
 end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────
@@ -452,7 +525,7 @@ function module.command_box(node: table): void
     view.separator = node:list_action(separator_caption(),
         { label("separator.none"), label("separator.underscore") }, function(index)
         Atdar.profile.set("command_separator", SEPARATORS[index])
-    end, { "profileseparator" }, label("separator.help"))
+    end, { "separator" }, label("separator.help"))
 end
 
 -- ─── Debug Mode ──────────────────────────────────────────────────────────────
@@ -462,7 +535,7 @@ function module.debug(node: table): void
         if not updating then
             Atdar.profile.set("debug", on)
         end
-    end, { "profiledebug" }, label("debug.help"), Atdar.profile.get("debug") == true)
+    end, { "debug" }, label("debug.help"), Atdar.profile.get("debug") == true)
 
     -- Works without debug mode too: it only adds lines to the log
     view.load_timing = node:toggle(label("load_timing.name"), function(on)
@@ -475,7 +548,7 @@ function module.debug(node: table): void
         if on then
             log:notify(text("load_timing.on"))
         end
-    end, { "profileloadtiming" }, label("load_timing.help"), Atdar.profile.get("load_timing") == true)
+    end, { "loadtiming" }, label("load_timing.help"), Atdar.profile.get("load_timing") == true)
 end
 
 -- ─── Keep Logs ───────────────────────────────────────────────────────────────
@@ -492,7 +565,7 @@ function module.log_keep_days(node: table): void
             Atdar.profile.set("log_keep_days", value)
             -- Fewer days apply right away, not only at the next start or day
             Logger.remove_old()
-        end, { "profilelogkeepdays" }, label("log_keep_days.help"))
+        end, { "logkeepdays" }, label("log_keep_days.help"))
     show_profile_value(view.sliders.log_keep_days, "log_keep_days", Atdar.profile.get("log_keep_days"))
     updating = false
 end

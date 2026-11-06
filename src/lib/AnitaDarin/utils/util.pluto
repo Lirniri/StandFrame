@@ -1,4 +1,24 @@
 local color = Atdar.loader.load("utils/color")
+local Logger = Atdar.loader.load("core/logger")
+local hud_text = Atdar.loader.load("natives/visual/hud/text")
+
+-- The subject colour "level": by the notification's type
+local LEVEL_COLORS = { INFO = "blue", WARN = "yellow", ERROR = "red" }
+
+-- The subject with the profile's colour code for the time of day in front ("~y~Warning")
+-- @param period "day" or "night"
+local function colored_subject(subject: string, level: ?string, period: string): string
+    local name = Atdar.profile and Atdar.profile.get and Atdar.profile.get($"notify_subject_color_{period}") or "default"
+    if name == "level" then
+        name = LEVEL_COLORS[level] or "default"
+    end
+    local code = hud_text.COLOR[name]
+    if code == nil or name == "default" then
+        return subject
+    end
+    return code .. subject
+end
+local TextureDictAsset = Atdar.loader.load("natives/streaming/texture_dict/asset")
 
 local module = {}
 
@@ -23,14 +43,26 @@ end
 
 -- How a game notification is posted: plain text, or a message card with a picture, sender and subject
 local POST = {
-    ticker = function(thefeed, message: string, opts: table, flash: bool)
+    ticker = function(thefeed, message: string, opts: table, flash: bool, period: string)
         return thefeed.post_ticker(message, flash)
     end,
-    message = function(thefeed, message: string, opts: table, flash: bool)
-        return thefeed.post_message(message, {
+    message = function(thefeed, message: string, opts: table, flash: bool, period: string)
+        local picture = opts.picture or setting("notify_feed_picture") or "CHAR_SOCIAL_CLUB"
+        -- Asked without waiting: toast can't wait here. The menu asks for the profile's picture
+        -- at the start and when it's picked, so it's loaded by the time a card shows
+        pcall(|| -> (new TextureDictAsset(picture)):request(false))
+        -- From the logger: the level goes to the subject, the card's text is the message alone
+        local subject = opts.subject
+        if subject == nil and opts.level ~= nil then
+            subject = Logger.level_title(opts.level)
+        end
+        if subject ~= nil and subject ~= "" then
+            subject = colored_subject(subject, opts.level, period)
+        end
+        return thefeed.post_message(opts.text or message, {
             sender = opts.sender or sender_name(),
-            subject = opts.subject,
-            picture = opts.picture,
+            subject = subject,
+            picture = picture,
             icon = opts.icon,
             important = flash,
         })
@@ -81,13 +113,16 @@ local function post_to_feed(message: string, opts: table): table
             thefeed.set_next_flash_color(fr, fg, fb, fa)
         end
     end
-    return post(thefeed, message, opts, flash)
+    return post(thefeed, message, opts, flash, period)
 end
 
 -- Shows a message to the user in the configured way.
 -- opts.target: "stand" | "game" (the game's feed) | "none" (default: the profile's notify, then "stand")
 -- For "game" the profile's look is used (notify_feed_style, notify_flash, day/night colours); opts can override:
---   opts.style "ticker" | "message" with opts.sender, opts.subject, opts.picture, opts.icon; opts.important (flash)
+--   opts.style "ticker" | "message" with opts.sender, opts.subject, opts.picture (default the profile's
+--   notify_feed_picture), opts.icon; opts.important (flash).
+--   From the logger: opts.level ("INFO", "WARN", "ERROR") - a card's subject, its name in the script's
+--   language; opts.text - the card's text instead of the whole log line
 -- @return The FeedPost for "game" (post:remove() takes it away), otherwise nil
 function module.toast(message: string, opts: table = {}): ?table
     local target = opts.target or setting("notify") or "stand"

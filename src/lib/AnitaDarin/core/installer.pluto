@@ -125,6 +125,8 @@ function module.delete(keep_user_data: bool = true): (bool, any)
     end
     local scripts = filesystem.scripts_dir()
     local store = $"{filesystem.store_dir()}{name}\\"
+    -- The open log file would stay behind (and lines after this would make it again)
+    Logger.stop_file()
     local removed = 0
     local left = {}
     for _, dir in ipairs({ $"{scripts}lib\\{name}\\", store, $"{filesystem.resources_dir()}{name}\\" }) do

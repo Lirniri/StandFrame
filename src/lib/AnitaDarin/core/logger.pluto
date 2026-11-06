@@ -121,6 +121,26 @@ end
 
 util.on_stop(close_file)
 
+-- ─── Level names for the user ────────────────────────────────────────────────
+
+-- Shown on screen (a message card's subject); the log keeps INFO / WARN / ERROR
+local LEVEL_ENGLISH = { DEBUG = "Debug", INFO = "Information", WARN = "Warning", ERROR = "Error" }
+
+-- @return The level's name in the script's language ("Предупреждение"); English until core/i18n has
+-- loaded (it loads after the logger, and lines can come before it)
+local function level_title(level: string): string
+    local english = LEVEL_ENGLISH[level] or level
+    local i18n = package.loaded[$"{Atdar.name}/core/i18n"]
+    if type(i18n) ~= "table" or type(i18n.text) ~= "function" then
+        return english
+    end
+    local ok, title = pcall(i18n.text, $"logger.level.{level:lower()}", english)
+    if not ok or type(title) ~= "string" then
+        return english
+    end
+    return title
+end
+
 -- ─── Logger ──────────────────────────────────────────────────────────────────
 
 local class Logger
@@ -138,7 +158,8 @@ local class Logger
         return self.source ? $"[{name} | {self.source}]" : $"[{name}]"
     end
 
-    function write(level: string, msg: string, toast: bool): void
+    -- @return The FeedPost when the toast went to the game's feed (post:remove() takes it away), otherwise nil
+    function write(level: string, msg: string, toast: bool): ?table
         local line = $"{self:tag()} {level}: {msg}"
         util.log(line)
         if not file_broken then
@@ -158,11 +179,18 @@ local class Logger
             end
             -- utils/util loads after the logger, so errors during early loading use Stand's toast.
             -- A notification that fails itself (e.g. the game's feed) still shows, in Stand
+            -- The whole line for Stand and feed posts; a message card shows the level as its subject
+            -- and the text alone (opts.level, opts.text)
             local utils = Atdar.util
-            if not (utils and utils.toast and pcall(utils.toast, line, { target = target })) then
-                util.toast(line)
+            if utils and utils.toast then
+                local ok, post = pcall(utils.toast, line, { target = target, level = level, text = msg })
+                if ok then
+                    return post
+                end
             end
+            util.toast(line)
         end
+        return nil
     end
 
     -- Only when Atdar.debug is on
@@ -177,19 +205,25 @@ local class Logger
     end
 
     -- Info the user should see, e.g. the result of something they clicked
-    function notify(msg: string): void
-        self:write("INFO", msg, true)
+    -- @return The FeedPost when it went to the game's feed, otherwise nil
+    function notify(msg: string): ?table
+        return self:write("INFO", msg, true)
     end
 
     -- Something the user should know about, but the script keeps working
-    function warn(msg: string): void
-        self:write("WARN", msg, true)
+    function warn(msg: string): ?table
+        return self:write("WARN", msg, true)
     end
 
-    function error(msg: string): void
-        self:write("ERROR", msg, true)
+    function error(msg: string): ?table
+        return self:write("ERROR", msg, true)
     end
 
+end
+
+-- @return The level's name for the user in the script's language: "INFO" -> "Information" / "Информация"
+function Logger.level_title(level: string): string
+    return level_title(level)
 end
 
 -- The folder of the log files, e.g. to open it
@@ -208,6 +242,13 @@ function Logger.clear(): int
         end
     end
     return removed
+end
+
+-- Closes the log file and writes no more files until the script starts again (Stand's log goes on).
+-- For deleting the script: an open file can't be removed, and a later line would make it again
+function Logger.stop_file(): void
+    close_file()
+    file_broken = true
 end
 
 -- Removes the files older than the profile's log_keep_days now (also done when a day's file opens)

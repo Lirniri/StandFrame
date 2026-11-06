@@ -62,14 +62,40 @@ stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short 
 local appearance = stand.find_item(settings(), "Appearance")
 stand.equal(names_in(appearance), "Notifications", "Appearance")
 local notifications = stand.find_item(appearance, "Notifications")
+-- The checks below expect these values; the defaults in core/profile may be anything
+profile.set("notify_feed_style", "ticker")
+profile.set("notify_subject_color_day", "white")
+profile.set("notify_subject_color_night", "white")
+profile.set("auto_copy_menu", "")
+local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
 stand.equal(names_in(notifications), "Type: Stand | Errors Always In Stand | Test Notification"
-    .. " | Game | Notification Type: Post | Flash Notifications | Day Starts At | Night Starts At"
-    .. " | Day Background Color | Day Flash Color | Night Background Color | Night Flash Color",
+    .. " | Game | Notification Type: Post | Picture: " .. default_picture_title .. " | Flash Notifications | Day Starts At | Night Starts At"
+    .. " | Day Background Color | Day Flash Color | Day Subject Color: White"
+    .. " | Night Background Color | Night Flash Color | Night Subject Color: White",
     "Notifications, the game's feed under the Game divider")
 stand.equal(stand.find_item(notifications, "Game").kind, "divider", "Game is a divider")
 stand.click(stand.find_item(notifications, "Type"), 2)
 stand.equal(profile.get("notify"), "game", "Type picks the game's feed")
 stand.equal(stand.name_of(stand.find_item(notifications, "Type")), "Type: Game", "and the caption follows")
+
+-- Test Notification takes its previous card away from the game's feed before posting a new one
+Atdar.util = Atdar.loader.load("utils/util")
+Atdar.natives = Atdar.loader.auto({}, "natives")
+local feed_items, removed_items = 0, {}
+_G.HUD = {
+    BEGIN_TEXT_COMMAND_THEFEED_POST = || -> nil,
+    ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME = || -> nil,
+    SET_SCRIPT_VARIABLE_HUD_COLOUR = || -> nil,
+    THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST = || -> nil,
+    END_TEXT_COMMAND_THEFEED_POST_TICKER = function() feed_items += 1 return feed_items end,
+    THEFEED_REMOVE_ITEM = |id| -> table.insert(removed_items, id),
+}
+_G.CLOCK = { GET_CLOCK_HOURS = || -> 12, GET_CLOCK_MINUTES = || -> 0 }
+local test_button = stand.find_item(notifications, "Test Notification")
+stand.click(test_button)
+stand.check(feed_items == 1 and #removed_items == 0, "the first test card is posted, nothing to take away")
+stand.click(test_button)
+stand.check(feed_items == 2 and #removed_items == 1 and removed_items[1] == 1, "the next click takes the previous card away first")
 stand.click(stand.find_item(notifications, "Type"), 1)
 stand.click(stand.find_item(notifications, "Flash Notifications"))
 stand.equal(profile.get("notify_flash"), true, "Flash Notifications")
@@ -79,7 +105,34 @@ local game = notifications
 stand.click(stand.find_item(game, "Notification Type"), 1)
 stand.equal(profile.get("notify_feed_style"), "message", "Notification Type picks a message card")
 stand.equal(stand.name_of(stand.find_item(game, "Notification Type")), "Notification Type: Message", "and the caption follows")
+-- Picture: the message card's only, so shown only while Message is picked; picking one asks the game to load it
+local requested_dicts = {}
+_G.GRAPHICS = {
+    REQUEST_STREAMED_TEXTURE_DICT = |name| -> table.insert(requested_dicts, name),
+    HAS_STREAMED_TEXTURE_DICT_LOADED = || -> false,
+}
+local picture = stand.find_item(game, "Picture")
+stand.equal(picture.visible, true, "Picture shows while Message is picked")
+stand.equal(#picture.options, #Atdar.loader.load("natives/visual/feed_picture").list(), "every feed picture is offered")
+stand.click(picture, 3)
+stand.equal(profile.get("notify_feed_picture"), "CHAR_ALL_PLAYERS_CONF", "picking one keeps its full name")
+stand.equal(stand.name_of(picture), "Picture: All Players Conf", "the caption shows a readable name")
+stand.equal(requested_dicts[#requested_dicts], "CHAR_ALL_PLAYERS_CONF", "and the game is asked to load it")
+profile.set("notify_feed_picture", profile.default("notify_feed_picture"))
+local day_subject = stand.find_item(game, "Day Subject Color")
+local night_subject = stand.find_item(game, "Night Subject Color")
+stand.check(day_subject.visible and night_subject.visible, "Day / Night Subject Color show while Message is picked")
+stand.equal(stand.name_of(day_subject), "Day Subject Color: White", "the caption shows the profile's color")
+stand.click(day_subject, 7)
+stand.equal(profile.get("notify_subject_color_day"), "red", "Day Subject Color picks the day's color")
+stand.equal(stand.name_of(day_subject), "Day Subject Color: Red", "and the caption follows")
+stand.click(night_subject, 4)
+stand.equal(profile.get("notify_subject_color_night"), "grey", "Night Subject Color picks the night's")
+stand.click(day_subject, 3)
+stand.click(night_subject, 3)
 stand.click(stand.find_item(game, "Notification Type"), 2)
+stand.equal(picture.visible, false, "Picture hides while Post is picked")
+stand.check(not day_subject.visible and not night_subject.visible, "the subject colors too")
 local background = stand.find_item(game, "Day Background Color")
 stand.equal(background.transparency, true, "the colours have Opacity, as in Stand")
 stand.equal(profile.get("notify_background_day"), "008B8BFF", "the day background is dark cyan by default")
@@ -94,6 +147,11 @@ stand.find_item(game, "Night Background Color").on_change({ r = 0, g = 0, b = 0,
 stand.equal(profile.get("notify_background_night"), "000000FF", "Night Background Color")
 stand.find_item(game, "Night Flash Color").on_change({ r = 1, g = 1, b = 1, a = 1 }, 0)
 stand.equal(profile.get("notify_flash_color_night"), "FFFFFFFF", "Night Flash Color")
+-- Stand calls the items when the script stops, with the color they show: "" (the game's own) shows
+-- black, which must not become a picked black
+profile.set("notify_flash_color_day", "")
+stand.find_item(game, "Day Flash Color").on_change({ r = 0, g = 0, b = 0, a = 1 }, 4)
+stand.equal(profile.get("notify_flash_color_day"), "", "the shown color reported back isn't saved as picked")
 local day_start = stand.find_item(game, "Day Starts At")
 stand.check(day_start.kind == "slider" and day_start.value == 7 and day_start.min == 0 and day_start.max == 23,
     "Day Starts At: an hour, 7 by default")
@@ -151,10 +209,10 @@ local function row(command)
     return nil
 end
 stand.check(#found.children > 5, $"Found Commands lists the section's commands ({#found.children})")
-stand.equal(row("atdarprofiledebug") and row("atdarprofiledebug").value, "Debug Mode", "a row shows the command and its item")
+stand.equal(row("atdardebug") and row("atdardebug").value, "Debug Mode", "a row shows the command and its item")
 stand.check(row("atdarscriptsettings"), "lists also show their command")
 menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "ad")
-stand.check(row("adprofiledebug") and not row("atdarprofiledebug"), "rows follow a new prefix in place")
+stand.check(row("addebug") and not row("atdardebug"), "rows follow a new prefix in place")
 menu.set_value(stand.find_item(find("Command Box"), "Command Prefix"), "atdar")
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
