@@ -1,95 +1,44 @@
 --[[
-    JSON key-value storage
+    JSON key-value storage on top of JsonFile (core/filesystem/json/file): same safe reads and writes
 
     Usage:
-        local self = require($"{Atdar.name}/core/filesystem/json/storage")
+        local storage = Atdar.filesystem.json.storage
 
         -- Create an instance with its own table
-        local t = self.new()
+        local t = storage.new()
         t.load("path/to/russian.json")
         t.get("menu.vehicle.explode", "Explode Vehicle")
 
         -- Or pass an existing table (e.g. from your own DB / store)
-        local t2 = self.new(my_existing_table)
+        local t2 = storage.new(my_existing_table)
         t2.get("some.key", "Fallback")
 ]]
 
-local module = {}
-
-local json = require "pluto:json"
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("Storage")
 
--- ─── Private helpers (instance-independent) ──────────────────────────────────
-
-local function ensure_file(dir: string)
-    if filesystem.exists(dir) then return end
-
-    local folder = string.match(dir, "^(.+)[\\/][^\\/]+$")
-    if folder and not filesystem.exists(folder) then
-        filesystem.mkdirs(folder)
-    end
-
-    local file = io.open(dir, "w")
-    if not file then
-        log:error("failed to create file:\n" .. dir)
-        return
-    end
-    file:write("{}")
-    file:close()
-end
-
-local function write_table(dir: string, tbl: table, write_pretty: boolean)
-    local file = io.open(dir, "w")
-    if not file then
-        log:error("failed to open file for writing:\n" .. dir)
-        return
-    end
-
-    -- "pretty" if write_pretty == true, otherwise nil (standard compact JSON)
-    local write_style = write_pretty ? "pretty" : nil
-    
-    file:write(json.encode(tbl, write_style))
-    file:close()
-end
-
--- ─── Instance factory ────────────────────────────────────────────────────────
+local module = {}
 
 --- Creates a new independent storage instance.
 --- @param initial_table table|nil  Optional ready-made table.
 ---                                 An empty one is created if omitted.
-function module.new(initial_table: table|nil)
+function module.new(initial_table: ?table)
     local instance = {}
 
-    -- Each instance has its own table and file path
+    -- Each instance has its own table and file
     local data: table = initial_table or {}
-    local dir: string = ""
+    local file = nil
 
     --- Loads a JSON file and fills the instance table.
+    --- A missing file is created empty; a damaged one falls back to its backup (JsonFile warns)
     function instance.load(path: string)
-        ensure_file(path)
-
-        local file = io.open(path, "r")
-        if not file then
-            log:error("failed to open file:\n" .. path)
-            return
+        file = new JsonFile(path)
+        data = file:read() or {}
+        if not file:exists() then
+            file:write(data)
         end
-
-        local content = file:read("*a")
-        file:close()
-
-        if content == "" then content = "{}" end
-
-        local ok, result = pcall(json.decode, content)
-        if ok then
-            data = result
-        else
-            log:error("JSON syntax error:\n" .. path)
-            data = {}
-        end
-
-        dir = path
     end
 
     --- Replaces the internal table with the given one (without reading a file).
@@ -103,10 +52,10 @@ function module.new(initial_table: table|nil)
         return data
     end
 
-    --- Resets the table and file path.
+    --- Resets the table and file.
     function instance.reset()
         data = {}
-        dir  = ""
+        file = nil
     end
 
     --- Returns the value for a key.
@@ -114,9 +63,7 @@ function module.new(initial_table: table|nil)
     --- @param path         string     Key (e.g. "menu.vehicle.explode")
     --- @param default_val  any|nil    Default value; if nil, path itself is used
     --- @param write_pretty boolean|nil
-    function instance.get(path: string, default_val: any|nil, write_pretty: boolean): any
-        local write_pretty = (write_pretty ~= false)
-
+    function instance.get(path: string, default_val: any|nil, write_pretty: ?bool): any
         if data[path] ~= nil then
             return data[path]
         end
@@ -126,10 +73,10 @@ function module.new(initial_table: table|nil)
         -- Write the new key to the table and file
         data[path] = fallback
 
-        if dir ~= "" then
-            write_table(dir, data, write_pretty)
+        if file then
+            file:write(data, write_pretty ~= false)
         else
-            log:info("key '" .. path .. "' requested before load(), skipped writing to file")
+            log:info($"key '{path}' requested before load(), skipped writing to file")
         end
 
         return fallback

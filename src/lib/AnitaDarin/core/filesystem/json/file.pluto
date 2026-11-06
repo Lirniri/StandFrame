@@ -1,0 +1,167 @@
+-- lib/AnitaDarin/core/filesystem/json/file.pluto
+--
+-- One JSON file on disk, read and written safely. Every JSON file of the script goes through it.
+--   - write() encodes before touching the file, so an encoding error (NaN, inf, a function, a cycle)
+--     leaves the old file as it was
+--   - the new text goes to <path>.tmp first; the old file becomes <path>.bak, then .tmp takes its place.
+--     Doesn't rely on os.rename replacing an existing file: on Windows it may not
+--   - read() of a damaged or missing file falls back to <path>.bak. Reading never changes files,
+--     so a typo in a pack's language file doesn't make the file disappear
+--   - a damaged file being replaced is kept as <path>.broken instead of .bak, so it never pushes out a good backup
+--
+-- Example:
+--     local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+--     local file = new JsonFile($"{Atdar.filesystem.paths.store}config.json")
+--     local data = file:read() or {}
+--     data.profile = "main"
+--     file:write(data)
+
+local json = require "pluto:json"
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("JsonFile")
+
+local function read_text(path: string): ?string
+    local file = io.open(path, "r")
+    if not file then
+        return nil
+    end
+    local text = file:read("*a")
+    file:close()
+    return text
+end
+
+-- pluto:json doesn't throw on bad input: it returns nil or the part it could parse, so a cut-off
+-- file would load with keys silently missing ('{"a":1,"b":' gives { a = 1 }). Checked here instead
+-- @return The decoded table, or nil if the text isn't one whole JSON object or array
+local function decode(text: string): ?table
+    local trimmed = text:match("^%s*(.-)%s*$")
+    local first, last = trimmed:sub(1, 1), trimmed:sub(-1)
+    if not ((first == "{" and last == "}") or (first == "[" and last == "]")) then
+        return nil
+    end
+    local data = json.decode(trimmed)
+    if type(data) ~= "table" then
+        return nil
+    end
+    -- '{bad}' decodes to an empty table
+    local compact = trimmed:gsub("%s", "")
+    if next(data) == nil and compact ~= "{}" and compact ~= "[]" then
+        return nil
+    end
+    return data
+end
+
+local class JsonFile
+
+    -- pretty: indented JSON, easier to edit by hand
+    function __construct(path: string, pretty: bool = true)
+        self.path = path
+        self.pretty = pretty
+    end
+
+    function exists(): bool
+        return filesystem.exists(self.path)
+    end
+
+    -- @return The file's table; nil if there is no file (or it's damaged) and no usable backup
+    function read(): ?table
+        local text = read_text(self.path)
+        if text ~= nil then
+            local data = decode(text)
+            if data ~= nil then
+                return data
+            end
+        end
+
+        local backup_text = read_text($"{self.path}.bak")
+        local backup = backup_text ~= nil ? decode(backup_text) : nil
+        if text == nil then
+            -- No file, e.g. the script stopped between the two renames of write()
+            if backup ~= nil then
+                log:info($"{self.path} is missing, loaded its backup")
+            end
+            return backup
+        end
+        if backup ~= nil then
+            log:warn($"{self.path} is damaged, loaded its backup instead")
+        else
+            log:warn($"{self.path} is damaged and has no backup, it's ignored")
+        end
+        return backup
+    end
+
+    -- Encodes first, then replaces the file through <path>.tmp, keeping the previous one as <path>.bak
+    -- pretty: overrides the instance's setting for this write
+    -- @return Whether the file now holds the data
+    function write(data: table, pretty: ?bool): bool
+        if pretty == nil then
+            pretty = self.pretty
+        end
+        local ok, text = pcall(json.encode, data, pretty ? "pretty" : nil)
+        if not ok then
+            log:error($"{self.path} not written, the data can't be stored as JSON: {text}")
+            return false
+        end
+
+        local folder = self.path:match("^(.+)[\\/][^\\/]+$")
+        if folder and not filesystem.exists(folder) then
+            filesystem.mkdirs(folder)
+        end
+
+        local tmp = $"{self.path}.tmp"
+        local file = io.open(tmp, "w")
+        if not file then
+            log:error($"{self.path} not written, can't create {tmp}")
+            return false
+        end
+        local written = file:write(text)
+        local closed = file:close()
+        if not written or not closed then
+            os.remove(tmp)
+            log:error($"{self.path} not written, writing {tmp} failed")
+            return false
+        end
+
+        -- Move the current file out of the way: os.rename may refuse to replace it
+        local moved_to = nil
+        if filesystem.exists(self.path) then
+            local current = read_text(self.path)
+            if current ~= nil and decode(current) ~= nil then
+                moved_to = $"{self.path}.bak"
+            else
+                moved_to = $"{self.path}.broken"
+                log:warn($"{self.path} was damaged, kept as {moved_to}")
+            end
+            os.remove(moved_to)
+            local moved, err = os.rename(self.path, moved_to)
+            if not moved then
+                os.remove(tmp)
+                log:error($"{self.path} not written, can't move the old file to {moved_to}: {err}")
+                return false
+            end
+        end
+
+        local placed, err = os.rename(tmp, self.path)
+        if not placed then
+            -- Put the old file back so nothing is lost
+            if moved_to then
+                os.rename(moved_to, self.path)
+            end
+            os.remove(tmp)
+            log:error($"{self.path} not written: {err}")
+            return false
+        end
+        return true
+    end
+
+    -- Deletes the file together with its backup and leftovers
+    function remove(): void
+        for _, suffix in { "", ".bak", ".tmp", ".broken" } do
+            os.remove(self.path .. suffix)
+        end
+    end
+
+end
+
+return JsonFile

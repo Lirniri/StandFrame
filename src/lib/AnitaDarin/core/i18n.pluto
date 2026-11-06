@@ -6,7 +6,7 @@
 -- Keys are dot paths into nested JSON: "menu.self.godmode" -> { "menu": { "self": { "godmode": "..." } } }
 -- en-us.json holds the English text, which is the label's identity; other files are its translations.
 
-local json = require "pluto:json"
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("i18n")
@@ -25,27 +25,14 @@ local labels = {}
 -- Missing keys already logged
 local reported = {}
 
--- @return Decoded language file, or an empty table if it's broken
-local function read_json(path: string): table
-    local file = io.open(path, "r")
-    if not file then
-        return {}
-    end
-    local content = file:read("*a")
-    file:close()
-    -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
-    local data = json.decode(content)
-    return type(data) == "table" ? data : {}
-end
-
--- @return { [language code] = strings } for every <code>.json in dir
+-- @return { [language code] = strings } for every <code>.json in dir; a damaged file gives no strings (JsonFile warns)
 local function read_languages(dir: string): table
     local languages = {}
     if filesystem.is_dir(dir) then
         for _, path in ipairs(filesystem.list_files(dir)) do
             local code = path:match("([^\\/]+)%.json$")
             if code then
-                languages[code] = read_json(path)
+                languages[code] = new JsonFile(path):read() or {}
             end
         end
     end

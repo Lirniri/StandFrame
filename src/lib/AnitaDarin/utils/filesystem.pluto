@@ -2,6 +2,8 @@ local module = {}
 
 module.paths = require($"{Atdar.name}/core/filesystem/paths")
 module.json = {
+    -- Class for one JSON file: new Atdar.filesystem.json.File(path)
+    File = require($"{Atdar.name}/core/filesystem/json/file"),
     storage = require($"{Atdar.name}/core/filesystem/json/storage"),
 }
 

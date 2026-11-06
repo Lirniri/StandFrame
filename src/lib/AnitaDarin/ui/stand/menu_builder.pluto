@@ -1,20 +1,13 @@
-local json = require "pluto:json"
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("MenuBuilder")
 
 local module = {}
 
--- @return Decoded JSON, or nil if the file can't be opened
-local function read_json(path: string)
-    local file = io.open(path, "r")
-    if not file then
-        return nil
-    end
-    local content = file:read("*a")
-    file:close()
-    -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
-    return json.decode(content)
+-- @return Decoded JSON, or nil if the file is missing or damaged
+local function read_json(path: string): ?table
+    return new JsonFile(path):read()
 end
 
 -- Item types for build_items: the field named after the type holds the item's name (or the
@@ -315,7 +308,7 @@ function module.remove_copied_core(lib_dir: string): (bool, any)
             removed += 1
         end
     end
-    os.remove(manifest_path(lib_dir))
+    new JsonFile(manifest_path(lib_dir)):remove()
     return true, removed
 end
 
@@ -371,10 +364,12 @@ function module.copy_pack_to_core(info: table, lib_dir: string): (bool, any)
     for _, path in ipairs(copied) do
         table.insert(relative, path:sub(#lib_dir + 1))
     end
-    local file = io.open(manifest_path(lib_dir), "w")
-    if file then
-        file:write(json.encode({ pack = info.name, files = relative }, "pretty"))
-        file:close()
+    -- Without the manifest the copy couldn't be removed later, so a failed write undoes it
+    if not new JsonFile(manifest_path(lib_dir)):write({ pack = info.name, files = relative }) then
+        for _, path in ipairs(copied) do
+            os.remove(path)
+        end
+        return false, "couldn't save the list of copied files"
     end
     return true, #plan
 end

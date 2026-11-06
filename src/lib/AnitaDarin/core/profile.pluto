@@ -2,7 +2,7 @@
 -- Defaults live here in code; a missing profile file is created from them, so profiles never need to ship in git.
 -- Stand's own profiles already keep item states, these only hold what Stand doesn't have.
 
-local json = require "pluto:json"
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("Profile")
@@ -20,7 +20,7 @@ local DEFAULT_PROFILE = "main"
 
 local STORE_DIR = $"{Atdar.filesystem.paths.store}"
 local PROFILES_DIR = $"{STORE_DIR}profiles\\"
-local CONFIG_PATH = $"{STORE_DIR}config.json"
+local config_file = new JsonFile($"{STORE_DIR}config.json")
 
 local module = {}
 
@@ -30,35 +30,8 @@ local listeners = {}
 -- Changes apply right away but reach the file only on save(), like Stand's own profiles
 local dirty = false
 
-local function read_json(path: string): ?table
-    local file = io.open(path, "r")
-    if not file then
-        return nil
-    end
-    local content = file:read("*a")
-    file:close()
-    -- pluto:json doesn't throw on bad input, it returns nil or whatever it parsed
-    local data = json.decode(content)
-    return type(data) == "table" ? data : nil
-end
-
-local function write_json(path: string, data: table): bool
-    local folder = path:match("^(.+)[\\/][^\\/]+$")
-    if folder and not filesystem.exists(folder) then
-        filesystem.mkdirs(folder)
-    end
-    local file = io.open(path, "w")
-    if not file then
-        log:error($"can't write {path}")
-        return false
-    end
-    file:write(json.encode(data, "pretty"))
-    file:close()
-    return true
-end
-
-local function profile_path(name: string): string
-    return $"{PROFILES_DIR}{name}.json"
+local function profile_file(name: string): table
+    return new JsonFile($"{PROFILES_DIR}{name}.json")
 end
 
 -- Profile names become file names: a-z, 0-9, _ and -
@@ -77,7 +50,8 @@ end
 
 -- Reads the profile, fills in keys it lacks from the defaults and writes it back if anything was missing
 local function load_profile(name: string): void
-    local data = read_json(profile_path(name)) or {}
+    local file = profile_file(name)
+    local data = file:read() or {}
     local changed = false
     values = {}
     for key, default in pairs(DEFAULTS) do
@@ -91,13 +65,13 @@ local function load_profile(name: string): void
     active = name
     dirty = false
     if changed then
-        write_json(profile_path(name), values)
+        file:write(values)
     end
 end
 
 -- Writes the current values into the active profile
 function module.save(): void
-    if write_json(profile_path(active), values) then
+    if profile_file(active):write(values) then
         dirty = false
     end
 end
@@ -153,7 +127,7 @@ end
 -- Loads a saved profile; unsaved changes of the current one are dropped
 function module.switch(name: string): void
     load_profile(name)
-    write_json(CONFIG_PATH, { profile = name })
+    config_file:write({ profile = name })
     notify_all()
 end
 
@@ -165,11 +139,14 @@ function module.create(name: string): ?string
         log:warn($"profile name '{name}' has no allowed characters (a-z, 0-9, _, -)")
         return nil
     end
-    if filesystem.exists(profile_path(clean)) then
+    local file = profile_file(clean)
+    if file:exists() then
         log:warn($"profile '{clean}' already exists")
         return nil
     end
-    write_json(profile_path(clean), values)
+    if not file:write(values) then
+        return nil
+    end
     module.switch(clean)
     return clean
 end
@@ -180,7 +157,7 @@ function module.delete(name: string): bool
         log:warn($"the '{DEFAULT_PROFILE}' profile can't be deleted")
         return false
     end
-    os.remove(profile_path(name))
+    profile_file(name):remove()
     if name == active then
         module.switch(DEFAULT_PROFILE)
     end
@@ -192,11 +169,11 @@ function module.log_name(): string
     return values.log_name == "display" ? values.display_name : values.short_name
 end
 
-local config = read_json(CONFIG_PATH) or {}
+local config = config_file:read() or {}
 local start_profile = type(config.profile) == "string" ? config.profile : DEFAULT_PROFILE
 load_profile(start_profile)
-if not filesystem.exists(CONFIG_PATH) then
-    write_json(CONFIG_PATH, { profile = active })
+if not config_file:exists() then
+    config_file:write({ profile = active })
 end
 
 -- Keep Atdar.debug in sync with the profile value at all times
