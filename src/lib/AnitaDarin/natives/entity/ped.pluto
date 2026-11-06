@@ -50,16 +50,16 @@ function module.is_jumping(ped: int, doing_beast_jump: bool = false): bool
     return PED.IS_PED_JUMPING(ped)
 end
 
-function module.is_going_in_to_cover(ped: int)
+function module.is_going_into_cover(ped: int)
     return PED.IS_PED_GOING_INTO_COVER(ped)
 end
 
-function module.in_in_higt_cover(ped: int)
+function module.is_in_higt_cover(ped: int)
     return PED.IS_PED_IN_HIGH_COVER(ped)
 end
 
 function module.is_in_cover(ped: int, exceptUseWeapon: bool = 0)
-    return PED.IS_PED_IN_COVER(ped)
+    return PED.IS_PED_IN_COVER(ped, exceptUseWeapon)
 end
 
 function module.is_swimming(ped: int, under_water: bool = false): bool
