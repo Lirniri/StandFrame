@@ -38,14 +38,22 @@ local function stub(node: table, key: string): void
     node:action(label($"{key}.name"), || -> log:notify(text("stub")), {}, label("stub"))
 end
 
--- Delete Script asks first: deleting the script can't be undone. Then the script deletes its files
--- (core/installer) and stops
--- @return The item
+-- Delete Script: a list, so deleting takes its own confirm button and never happens on one click.
+-- menu.show_warning alone isn't enough: in the game it once let the delete through without asking.
+-- The confirm button still shows Stand's warning as a second step, with CLICK_MENU like other scripts do.
+-- Profiles and settings are kept unless switched off. Then the script deletes its files (core/installer) and stops
+-- @return The list's handle
 local function delete_script(node: table)
-    local ref
-    ref = node:action(label("delete_script.name"), function(click_type)
-        menu.show_warning(ref, click_type, text("delete_script.warning"):format(Atdar.name), function()
-            local ok, result = installer.delete()
+    local list = node:list(label("delete_script.name"), {}, label("delete_script.help"))
+    list:divider(label("delete_script.cannot_undo"))
+    local keep = true
+    list:toggle(label("delete_script.keep.name"), function(on) keep = on end, {},
+        label("delete_script.keep.help"), true)
+    local confirm_ref
+    confirm_ref = list:action(label("delete_script.confirm.name"), function()
+        local warning = text(keep ? "delete_script.warning_keep" : "delete_script.warning"):format(Atdar.name)
+        menu.show_warning(confirm_ref, CLICK_MENU, warning, function()
+            local ok, result = installer.delete(keep)
             if not ok then
                 log:warn(text("delete_script.failed"):format(result))
                 return
@@ -53,8 +61,8 @@ local function delete_script(node: table)
             log:notify(text("delete_script.done"):format(Atdar.name, result))
             installer.stop()
         end)
-    end, {}, label("delete_script.help"))
-    return ref
+    end, {}, label("delete_script.confirm.help"))
+    return list.handle
 end
 
 -- ─── Found Commands ──────────────────────────────────────────────────────────

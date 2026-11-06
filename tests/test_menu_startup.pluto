@@ -137,15 +137,26 @@ Atdar.name = real_name
 stand.write_file(scripts .. "AnitaDarin.pluto", "-- launcher")
 io.makedirs(resources .. "AnitaDarin/sub")
 stand.write_file(resources .. "AnitaDarin/sub/image.png", "x")
+local profiles = stand.store .. "AnitaDarin/profiles/"
+local delete_list = stand.find_item(stand.find_item(stand.root, "Debug"), "Delete Script")
 local real_warning = menu.show_warning
 menu.show_warning = |_, _, _, proceed| -> proceed()
-stand.click(stand.find_item(stand.find_item(stand.root, "Debug"), "Delete Script"))
-menu.show_warning = real_warning
+
+-- By default profiles and settings stay: what build.py never touches either
+stand.click(stand.find_item(delete_list, "Delete Script For Good"))
 stand.check(not io.exists(scripts .. "AnitaDarin.pluto"), "the launcher is deleted")
 stand.check(not io.exists(lib), "lib/AnitaDarin is deleted")
-stand.check(not io.exists(stand.store .. "AnitaDarin"), "store/AnitaDarin is deleted, profiles too")
 stand.check(not io.exists(resources .. "AnitaDarin"), "resources/AnitaDarin is deleted, with its subfolders")
+stand.check(not io.exists(stand.store .. "AnitaDarin/menu"), "store files from the project are deleted")
+stand.check(io.exists(profiles .. "main.json") and io.exists(stand.store .. "AnitaDarin/config.json"),
+    "profiles and config.json are kept by default")
 stand.check(stand.stopped, "the script stops after deleting itself")
+
+-- With Keep Profiles And Settings off, store goes too
+stand.click(stand.find_item(delete_list, "Keep Profiles"))
+stand.click(stand.find_item(delete_list, "Delete Script For Good"))
+stand.check(not io.exists(stand.store .. "AnitaDarin"), "without keeping, store/AnitaDarin is deleted with the profiles")
+menu.show_warning = real_warning
 stand.check(io.exists(stand.SRC .. "lib/AnitaDarin/bootstrap.pluto"), "src is untouched")
 
 stand.finish()

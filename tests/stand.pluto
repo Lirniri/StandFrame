@@ -218,6 +218,9 @@ _G.lang = {
 }
 
 -- ─── menu ────────────────────────────────────────────────────────────────────
+
+-- Click types Stand defines as globals
+_G.CLICK_MENU = 0
 --
 -- Every item is a table: { kind, name, help, parent, children, value, visible, ... }.
 -- Callbacks are called the way Stand calls them; stand.click() acts like the user

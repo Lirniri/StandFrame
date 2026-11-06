@@ -74,13 +74,23 @@ end
 -- Pluto's io.remove also removes (empty) folders; plain Lua's os.remove can't on Windows
 local remove_path = io.remove or os.remove
 
--- Deletes a folder with everything in it: files first, then the folders from the deepest up
+-- Whether a path inside store/<name>/ is the user's data, written by the script while it runs:
+-- config.json (and its .bak) and profiles/. Same rule as build.py
+local function is_user_data(relative: string): bool
+    local first = relative:match("^[\\/]*([^\\/]+)")
+    return first == "profiles" or (first ~= nil and first:match("^config%.json") ~= nil)
+end
+
+-- Deletes a folder with everything in it: files first, then the folders from the deepest up.
+-- keep(relative_path): files and folders it says yes to stay (and so do the folders holding them)
 -- @return Number of files deleted, and whether the folder itself is gone
-local function remove_tree(dir: string): (int, bool)
+local function remove_tree(dir: string, keep: ?function = nil): (int, bool)
     local files, folders = {}, {}
     local function collect(path: string)
         for _, child in ipairs(filesystem.list_files(path)) do
-            if filesystem.is_dir(child) then
+            if keep and keep(child:sub(#dir + 1)) then
+                -- kept, with everything inside it
+            elseif filesystem.is_dir(child) then
                 collect($"{child}\\")
                 table.insert(folders, child)
             else
@@ -103,23 +113,27 @@ local function remove_tree(dir: string): (int, bool)
     return removed, not filesystem.exists(dir)
 end
 
--- Deletes the whole script: its launcher and its lib, store (profiles too) and resources folders.
+-- Deletes the script: its launcher and its lib, store and resources folders. keep_user_data keeps
+-- the profiles and config.json in store (what build.py never touches either), so a reinstall finds them.
 -- Can't be undone; the menu asks first. The script keeps running from memory until stop()
 -- @return true and the number of deleted files, or false and a reason
-function module.delete(): (bool, any)
+function module.delete(keep_user_data: bool = true): (bool, any)
     local name = Atdar.name
     -- The name is part of every path below: never delete with an empty or odd one
     if not module.valid_name(name) then
         return false, $"'{name}' isn't a valid script name"
     end
     local scripts = filesystem.scripts_dir()
+    local store = $"{filesystem.store_dir()}{name}\\"
     local removed = 0
     local left = {}
-    for _, dir in ipairs({ $"{scripts}lib\\{name}\\", $"{filesystem.store_dir()}{name}\\", $"{filesystem.resources_dir()}{name}\\" }) do
+    for _, dir in ipairs({ $"{scripts}lib\\{name}\\", store, $"{filesystem.resources_dir()}{name}\\" }) do
         if filesystem.exists(dir) then
-            local count, gone = remove_tree(dir)
+            local keep = (keep_user_data and dir == store) ? is_user_data : nil
+            local count, gone = remove_tree(dir, keep)
             removed += count
-            if not gone then
+            -- store stays on purpose when its user data is kept
+            if not gone and not keep then
                 table.insert(left, dir)
             end
         end

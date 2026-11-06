@@ -223,10 +223,20 @@
         },
         "delete_script": {
             "name": "Delete Script",
-            "help": "Deletes the script with all its files. Asks first",
-            "warning": "Delete the script '%s' with all its files (launcher, lib, store and resources folders)?\nThis can't be undone.",
+            "help": "Deletes the script from Stand's Lua Scripts. Opens a list with the confirm button",
+            "warning": "Delete the script '%s' with all its files, profiles and settings too (launcher, lib, store and resources folders)?\nThis can't be undone.",
             "done": "Script '%s' deleted (%d file(s)). It stops now",
-            "failed": "Not deleted: %s"
+            "failed": "Not deleted: %s",
+            "cannot_undo": "This can't be undone",
+            "keep": {
+                "name": "Keep Profiles And Settings",
+                "help": "Keeps store/<name>/profiles and config.json, so a reinstall finds them"
+            },
+            "confirm": {
+                "name": "Delete Script For Good",
+                "help": "Deletes the launcher and the lib, store and resources folders, then stops the script"
+            },
+            "warning_keep": "Delete the script '%s' (launcher, lib, store and resources folders)? Profiles and settings are kept.\nThis can't be undone."
         }
     }
 }

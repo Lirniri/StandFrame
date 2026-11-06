@@ -119,13 +119,20 @@ stand.check(all_visible(false), "divider, Modules and Delete Script are hidden w
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
 
--- Delete Script asks first. The answer is never "yes" here: this test runs on the real src folder,
--- deleting is tested in test_delete_script on a temp copy
-local asked = nil
+-- Delete Script is a list with its own confirm button, so one click never deletes anything.
+-- The answer to the warning is never "yes" here: this test runs on the real src folder,
+-- deleting is tested in test_menu_startup on a temp install
+local delete_list = stand.find_item(debug_list, "Delete Script")
+stand.equal(delete_list.kind, "list", "Delete Script opens a list")
+stand.equal(names_in(delete_list), "This can't be undone | Keep Profiles And Settings | Delete Script For Good",
+    "the list: a divider, Keep Profiles And Settings, the confirm button")
+stand.equal(stand.find_item(delete_list, "Keep Profiles").value, true, "profiles are kept by default")
+local asked, asked_click = nil, nil
 local real_warning = menu.show_warning
-menu.show_warning = function(_, _, message) asked = message end
-stand.click(stand.find_item(debug_list, "Delete Script"))
-stand.check(asked and asked:find("Delete the script 'AnitaDarin'", 1, true), "Delete Script asks before deleting")
+menu.show_warning = function(_, click_type, message) asked = message asked_click = click_type end
+stand.click(stand.find_item(delete_list, "Delete Script For Good"))
+stand.check(asked and asked:find("Profiles and settings are kept", 1, true), "the confirm button asks once more")
+stand.equal(asked_click, CLICK_MENU, "with CLICK_MENU, like other scripts")
 stand.check(io.exists($"{stand.SRC}lib/AnitaDarin/bootstrap.pluto"), "nothing is deleted without a yes")
 menu.show_warning = real_warning
 stand.click(stand.find_item(debug_list, "Debug Mode"))
