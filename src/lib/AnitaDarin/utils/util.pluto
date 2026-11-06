@@ -37,14 +37,20 @@ function module.toast(message: string, opts: table = {}): ?int
 end
 
 -- Model name -> hash; a number is taken as a hash already
-function module.hash(name_or_hash: int|string): int
-    if type(name_or_hash) == "string" then
-        return util.joaat(name_or_hash)
+function module.hash(name_or_hash: int|string, reverse: bool = false): int
+    if reverse then
+        if type(name_or_hash) == "string" then
+            return util.reverse_joaat(name_or_hash)
+        end
+    else
+        if type(name_or_hash) == "string" then
+            return util.joaat(name_or_hash)
+        end
     end
     return name_or_hash
 end
 
-function module.uhash(hash: int|string): int
+function module.uhash(hash: string): int
     return util.ujoaat(hash)
 end
 
