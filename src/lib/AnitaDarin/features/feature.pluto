@@ -8,6 +8,8 @@ local Feature
 
 -- Lifecycle methods hold the re-entry guards; subclasses override on_* hooks instead
 local SEALED = { 
+    "save_state",
+    "load_state",
     "tick",
     "enable",
     "disable",
@@ -15,7 +17,14 @@ local SEALED = {
     "is_enabled"
 }
 
-local HOOKS = { on_tick = true, on_enable = true, on_disable = true, on_trigger = true }
+local HOOKS = {
+    on_save_state = true,
+    on_load_state = true,
+    on_tick = true,
+    on_enable = true,
+    on_disable = true,
+    on_trigger = true
+}
 
 -- Valid kinds and the hook each can't work without (from opts or a subclass override)
 local KINDS = {
@@ -68,7 +77,9 @@ Feature = class
 
         self.id = opts.id
         self.kind = opts.kind
-        self.enabled = false
+
+        self.enabled = false -- for enable/disable
+        self.triggered = false -- for trigger
 
         self.on_tick = opts.on_tick or self.on_tick
         self.on_enable = opts.on_enable or self.on_enable
@@ -88,7 +99,19 @@ Feature = class
         end
     end
 
-    
+    function save_state()
+        self:on_save_state()
+    end
+    function on_save_state()
+        -- body
+    end
+
+    function load_state()
+        self:on_load_state()
+    end
+    function on_load_state()
+        -- body
+    end
 
     function tick()
         if !self.enabled then
@@ -108,17 +131,18 @@ Feature = class
         if self.enabled then
             return
         end
+        self:call_hook("save_state")
         self.enabled = true
         self:call_hook("on_enable")
     end
     function on_enable(): void
         -- body
     end
-
     function disable(): void
         if !self.enabled then
             return
         end
+        self:call_hook("load_state")
         self.enabled = false
         self:call_hook("on_disable")
     end
@@ -126,8 +150,16 @@ Feature = class
         -- body
     end
 
+    function is_triggering()
+        return self.triggered
+    end
     function trigger()
+        if self.triggered then
+            return -- still running from the previous click
+        end
+        self.triggered = true
         self:call_hook("on_trigger")
+        self.triggered = false
     end
     function on_trigger()
         -- body

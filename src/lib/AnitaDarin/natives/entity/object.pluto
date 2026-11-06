@@ -1,7 +1,7 @@
 local module = {}
 
-function module.get_all(as_pointer: bool = false)
-    if as_pointer then
+function module.get_all(as_pointers: bool = false)
+    if as_pointers then
         return entities.get_all_objects_as_pointers()
     end
     return entities.get_all_objects_as_handles()

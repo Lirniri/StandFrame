@@ -8,8 +8,8 @@ end
 
 -- Get
 
-function module.get_all(as_pointer: bool = false): table
-    if as_pointer then
+function module.get_all(as_pointers: bool = false): table
+    if as_pointers then
         return entities.get_all_vehicles_as_pointers()
     end
     return entities.get_all_vehicles_as_handles()

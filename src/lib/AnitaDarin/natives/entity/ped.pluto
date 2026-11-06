@@ -18,8 +18,17 @@ function module.is_male(ped: int): bool
     return PED.IS_PED_MALE(ped)
 end
 
+
+function module.is_walking(ped: int): bool
+    return PED.IS_PED_WALKING(ped)
+end
+
 function module.is_stopped(ped: int): bool
     return PED.IS_PED_STOPPED(ped)
+end
+
+function module.is_running(ped: int): bool
+    return TASK.IS_PED_RUNNING(ped)
 end
 
 function module.is_sprinting(ped: int): bool
@@ -34,12 +43,27 @@ function module.is_still(ped: int): bool
     return PED.IS_PED_STILL(ped)
 end
 
-function module.is_jumping(ped: int): bool
+function module.is_jumping(ped: int, doing_beast_jump: bool = false): bool
+    if doing_beast_jump then
+        return PED.IS_PED_DOING_A_BEAST_JUMP(ped)
+    end
     return PED.IS_PED_JUMPING(ped)
 end
 
+function module.is_going_in_to_cover(ped: int)
+    return PED.IS_PED_GOING_INTO_COVER(ped)
+end
+
+function module.in_in_higt_cover(ped: int)
+    return PED.IS_PED_IN_HIGH_COVER(ped)
+end
+
+function module.is_in_cover(ped: int, exceptUseWeapon: bool = 0)
+    return PED.IS_PED_IN_COVER(ped)
+end
+
 function module.is_swimming(ped: int, under_water: bool = false): bool
-    if under_water then
+    if under_water do
         return PED.IS_PED_SWIMMING_UNDER_WATER(ped)
     end
     return PED.IS_PED_SWIMMING(ped)
@@ -56,8 +80,8 @@ end
 
 -- Get
 
-function module.get_all(as_pointer: bool = false)
-    if as_pointer then
+function module.get_all(as_pointers: bool = false)
+    if as_pointers then
         return entities.get_all_peds_as_pointers()
     end
     return entities.get_all_peds_as_handles()
@@ -93,7 +117,9 @@ end
 
 function module.from_net_id(net_id): ?int
     local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
+    if not is_net_id_exist then
+        return nil
+    end
     return NETWORK.NET_TO_PED(net_id)
 end
 
