@@ -78,9 +78,15 @@ Feature = class
         self.id = opts.id
         self.kind = opts.kind
 
+        -- States
         self.enabled = false -- for enable/disable
         self.triggered = false -- for trigger
 
+        -- States > Save/Load
+        self.on_save_state = opts.on_save_state or self.on_save_state
+        self.on_load_state = opts.on_load_state or self.on_load_state
+        
+        -- Actions
         self.on_tick = opts.on_tick or self.on_tick
         self.on_enable = opts.on_enable or self.on_enable
         self.on_disable = opts.on_disable or self.on_disable
