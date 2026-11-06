@@ -2,12 +2,12 @@ local module = {}
 
 -- State
 
-function module.is_ped(ped): bool
+function module.is_ped(ped: int): bool
     return ENTITY.IS_ENTITY_A_PED(ped)
 end
 
-function module.is_player(player_id: int): bool
-    return PED.IS_PED_A_PLAYER(player_id)
+function module.is_player(ped: int): bool
+    return PED.IS_PED_A_PLAYER(ped)
 end
 
 function module.is_human(ped: int): bool
@@ -19,13 +19,22 @@ function module.is_male(ped: int): bool
 end
 
 
+function module.is_dead(ped: int): bool
+    local entity = Atdar.natives.entity
+    if module.is_ped(ped) then
+        return entity.is_dead(ped)
+    else
+        return nil
+    end
+end
+
+-- State > Movement
 function module.is_stopped(ped: int): bool
     return PED.IS_PED_STOPPED(ped)
 end
 
--- State > Movement
 function module.is_walking(ped: int): bool
-    return PED.IS_PED_WALKING(ped)
+    return TASK.IS_PED_WALKING(ped)
 end
 
 function module.is_running(ped: int): bool
@@ -41,11 +50,11 @@ function module.is_strafing(ped: int): bool
 end
 
 function module.is_still(ped: int): bool
-    return PED.IS_PED_STILL(ped)
+    return TASK.IS_PED_STILL(ped)
 end
 
 function module.is_getting_up(ped: int): bool
-    return PED.IS_PED_GETTING_UP(ped)
+    return TASK.IS_PED_GETTING_UP(ped)
 end
 
 function module.is_jumping(ped: int, doing_beast_jump: bool = false): bool
@@ -55,32 +64,34 @@ function module.is_jumping(ped: int, doing_beast_jump: bool = false): bool
     return PED.IS_PED_JUMPING(ped)
 end
 
-function module.is_going_into_cover(ped: int)
+function module.is_going_into_cover(ped: int): bool
     return PED.IS_PED_GOING_INTO_COVER(ped)
 end
 
-function module.is_in_higt_cover(ped: int)
+function module.is_in_high_cover(ped: int): bool
     return PED.IS_PED_IN_HIGH_COVER(ped)
 end
 
-function module.is_in_cover(ped: int, exceptUseWeapon: bool = 0)
+function module.is_in_cover(ped: int, exceptUseWeapon: bool = false): bool
     return PED.IS_PED_IN_COVER(ped, exceptUseWeapon)
 end
 
 function module.is_swimming(ped: int, under_water: bool = false): bool
-    if under_water do
+    if under_water then
         return PED.IS_PED_SWIMMING_UNDER_WATER(ped)
     end
     return PED.IS_PED_SWIMMING(ped)
 end
 
 function module.is_scuba(ped: int): bool
-    return module.flags.get_config(ped, module.flags.CONFIG.IS_SCUBA)
+    local flag = module.flags.CONFIG.IS_SCUBA
+    return module.flags.get_config(ped, flag)
 end
 
 function module.is_max_health(ped: int): bool
     local health = module.get_health(ped)
-    return health ~= nil and health >= module.get_max_health(ped)
+    local max_health = module.get_max_health(ped)
+    return health ~= nil and health >= max_health
 end
 
 -- Get

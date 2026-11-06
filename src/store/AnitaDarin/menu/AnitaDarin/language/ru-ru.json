@@ -27,6 +27,26 @@
                 "restore_health": {
                     "menu_name": "Восстановить здоровье"
                 },
+                "regeneration_health": {
+                    "menu_name": "Регенерация здоровья",
+                    "start": {
+                        "menu_name": "Регенерировать"
+                    },
+                    "divider": {
+                        "settings": {
+                            "menu_name": "Настройки"
+                        }
+                    },
+                    "amount": {
+                        "menu_name": "Количество за шаг"
+                    },
+                    "interval": {
+                        "menu_name": "Интервал (мс)"
+                    },
+                    "target": {
+                        "menu_name": "До уровня (%)"
+                    }
+                },
                 "armor": {
                     "divider": {
                         "menu_name": "Броня"

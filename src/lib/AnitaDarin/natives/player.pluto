@@ -2,7 +2,7 @@ local module = {}
 
 -- State
 
-function module.is_exist(player_id: ?int = nil): int
+function module.is_exist(player_id: int): bool
     local player = player_id
     return NETWORK.NETWORK_IS_PLAYER_ACTIVE(player)
 end
@@ -20,6 +20,12 @@ function module.is_godmode(player_id: int): bool
     return players.is_godmode(player)
 end
 
+function module.is_dead(player_id: int): bool
+    local entity = Atdar.natives.entity
+    local ped = module.get_ped_id(player_id)
+    return entity.is_dead(ped)
+end
+
 function module.is_ragdoll(ped: int): bool
     return PED.IS_PED_RAGDOLL(ped)
 end
@@ -34,7 +40,7 @@ function module.get_id(): int
     return PLAYER.PLAYER_ID()
 end
 
-function module.get_all_id(include_user: bool = true): int
+function module.get_all_id(include_user: bool = true): table
     local ids = {}
     for _, p_id in players.list(include_user, true, true) do
         ids[p_id] = p_id
@@ -46,7 +52,7 @@ function module.get_name(player_id: int, ignore_streamer_spoof: bool = false)
     return players.get_name(player_id, ignore_streamer_spoof)
 end
 
-function module.get_rockstar_id(player_id: int, ignore_streamer_spoof: bool = false)
+function module.get_rockstar_id(player_id: int)
     return players.get_rockstar_id(player_id)
 end
 

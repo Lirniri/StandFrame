@@ -17,7 +17,7 @@ local class DisableSprint extends Feature
     function set_sprint(toggle)
         local n_player = Atdar.natives.player
         local player = n_player.get_id()
-        local debug_text = toggle ? "sprint is disabled :)" : "sprint is enabled :("
+        local debug_text = toggle ? "sprint is enabled" : "sprint is disabled"
 
         n_player.movement.set_sprint(player, toggle)
         log:debug($"id: {self.id}: {debug_text}")

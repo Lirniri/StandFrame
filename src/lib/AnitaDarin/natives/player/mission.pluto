@@ -2,7 +2,7 @@ local module = {}
 
 -- State
 
-function module.can_start(player_id: int, level: int): void
+function module.can_start(player_id: int): bool
     return PLAYER.CAN_PLAYER_START_MISSION(player_id)
 end
 

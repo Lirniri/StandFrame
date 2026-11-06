@@ -21,9 +21,10 @@ function module.has_with_component(ped: int, weaponHash: int|string, componentHa
     return WEAPON.HAS_PED_GOT_WEAPON_COMPONENT(ped, hash, compHash)
 end
 
-function module.has_manager(ped: int): bool
-    return WEAPON.HAS_PED_GOT_WEAPON_MANAGER(ped)
-end
+-- TODO: there is no HAS_PED_GOT_WEAPON_MANAGER in natives 3407a, find the right native
+-- function module.has_manager(ped: int): bool
+--     return WEAPON.HAS_PED_GOT_WEAPON_MANAGER(ped)
+-- end
 
 -- Get
 

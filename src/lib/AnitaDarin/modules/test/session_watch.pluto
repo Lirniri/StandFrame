@@ -17,6 +17,12 @@ local class SessionWatch extends Module
 
     -- Notifies only on a change, not every tick
     function on_tick()
+        local vehicle = Atdar.natives.entity.vehicle
+        local handle = Atdar.natives.player.user.get_vehicle()
+        local vehicle_class = vehicle.get_class(handle)
+
+        self.log:notify($"vehicle class: {vehicle_class}")
+
         local online = util.is_session_started()
         if online ~= self.online then
             self.online = online

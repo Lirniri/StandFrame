@@ -45,6 +45,38 @@ return {
             { "restorehealth" }
         )
 
+        local regen = features.get("self.state.regeneration_health")
+        local regen_submenu = state_submenu:list(
+            lang.translate("menu.self.state.regeneration_health.menu_name")
+        )
+        regen_submenu:add_feature(
+            regen,
+            lang.translate("menu.self.state.regeneration_health.start.menu_name"),
+            { "regenhealth" }
+        )
+        regen_submenu:divider(
+            lang.translate("menu.self.state.regeneration_health.divider.settings.menu_name")
+        )
+        -- Sliders start at the feature's values and write back into it
+        regen_submenu:slider(
+            lang.translate("menu.self.state.regeneration_health.amount.menu_name"),
+            1, 100, regen.amount, 1,
+            function(value) regen.amount = value end,
+            { "regenhealthamount" }
+        )
+        regen_submenu:slider(
+            lang.translate("menu.self.state.regeneration_health.interval.menu_name"),
+            10, 2000, regen.interval, 10,
+            function(value) regen.interval = value end,
+            { "regenhealthinterval" }
+        )
+        regen_submenu:slider(
+            lang.translate("menu.self.state.regeneration_health.target.menu_name"),
+            1, 100, regen.target, 1,
+            function(value) regen.target = value end,
+            { "regenhealthtarget" }
+        )
+
         state_submenu:divider(
             lang.translate("menu.self.state.armor.divider.menu_name")
         )

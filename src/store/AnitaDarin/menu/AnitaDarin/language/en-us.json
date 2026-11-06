@@ -27,6 +27,26 @@
                 "restore_health": {
                     "menu_name": "Restore Health"
                 },
+                "regeneration_health": {
+                    "menu_name": "Health Regeneration",
+                    "start": {
+                        "menu_name": "Regenerate"
+                    },
+                    "divider": {
+                        "settings": {
+                            "menu_name": "Settings"
+                        }
+                    },
+                    "amount": {
+                        "menu_name": "Amount per Step"
+                    },
+                    "interval": {
+                        "menu_name": "Interval (ms)"
+                    },
+                    "target": {
+                        "menu_name": "Up to (%)"
+                    }
+                },
                 "armor": {
                     "divider": {
                         "menu_name": "Armor"

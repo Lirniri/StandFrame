@@ -22,11 +22,6 @@ function module.is_ptfx_loaded(asset)
     return STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(asset)
 end
 
--- asset: vehicle asset id (int), not the model name
-function module.is_vehicle_loaded(asset)
-    return VEHICLE.HAS_VEHICLE_ASSET_LOADED(asset)
-end
-
 -- Actions
 
 -- Requests a PTFX asset without waiting for it; name nil -> the script's default PTFX asset.
@@ -85,7 +80,7 @@ end
 function module.request_vehicle(model: int|string, asset: int, timeout: int = 2000): bool
     local hash = type(model) == "string" ? util.joaat(model) : model
     VEHICLE.REQUEST_VEHICLE_ASSET(hash, asset)
-    return wait_loaded($"vehicle asset {asset} of '{model}'", || -> module.is_vehicle_loaded(asset), timeout)
+    return wait_loaded($"vehicle asset {asset} of '{model}'", || -> Atdar.natives.streaming.vehicle.asset.is_loaded(asset), timeout)
 end
 
 

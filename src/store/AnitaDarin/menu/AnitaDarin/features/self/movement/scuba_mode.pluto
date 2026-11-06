@@ -5,7 +5,7 @@ local Logger = load("core/logger")
 
 local log = new Logger("ScubaMode")
 
--- Control is held only while the ped is ragdolling
+-- Scuba mode is on only while the ped swims under water
 local class ScubaMode extends Feature
     function __construct()
         parent:__construct({

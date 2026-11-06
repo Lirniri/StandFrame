@@ -36,4 +36,16 @@ function module.toast(message: string, opts: table = {}): ?int
     return nil
 end
 
+-- Model name -> hash; a number is taken as a hash already
+function module.hash(name_or_hash: int|string): int
+    if type(name_or_hash) == "string" then
+        return util.joaat(name_or_hash)
+    end
+    return name_or_hash
+end
+
+function module.uhash(hash: int|string): int
+    return util.ujoaat(hash)
+end
+
 return module

@@ -1,6 +1,6 @@
 local module = {}
 
-function module.gel_all(as_pointers: bool = false)
+function module.get_all(as_pointers: bool = false)
     if as_pointers then
         return entities.get_all_pickups_as_pointers()
     end

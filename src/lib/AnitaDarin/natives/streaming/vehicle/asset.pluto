@@ -1,0 +1,8 @@
+local module = {}
+
+-- asset: vehicle asset id (int), not the model name
+function module.is_loaded(asset)
+    return VEHICLE.HAS_VEHICLE_ASSET_LOADED(asset)
+end
+
+return module

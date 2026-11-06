@@ -64,7 +64,7 @@ local ITEM_TYPES = {
     },
     textslider = {
         required = { "options", "on_click" },
-        build = |node, item| -> node:textslider(item.textslider, item.options, item.on_click,
+        build = |node, item| -> node:text_slider(item.textslider, item.options, item.on_click,
             item.commands or {}, item.help or ""),
     },
     list_action = {
