@@ -22,8 +22,18 @@ local module = {}
 local sources = {}
 -- key -> label, reset whenever sources change since the text behind a key may change
 local labels = {}
+-- Every label made so far: label -> { key, english }. Never reset: items already in the menu keep
+-- their labels, and set_language() has to reach them all
+local made = {}
 -- Missing keys already logged
 local reported = {}
+-- Language code chosen in the profile ("ru-ru"); nil follows Stand's language
+local forced = nil
+-- What set_language() was last asked for; applied again when Stand's language changes,
+-- e.g. it couldn't be shown with Stand in English and now Stand isn't
+local requested = nil
+-- Called after the shown language changed (on_change), e.g. to rebuild texts made with text()
+local listeners = {}
 
 -- @return { [language code] = strings } for every <code>.json in dir; a damaged file gives no strings (JsonFile warns)
 local function read_languages(dir: string): table
@@ -82,6 +92,35 @@ local function stand_code(code: string): string
     return STAND_CODE_ALIASES[base] or base
 end
 
+-- Our file code for Stand's current language (Stand's "ru" -> "ru-ru"), or nil if there's no file for it
+local function current_code(): ?string
+    local current = lang.get_current()
+    for _, code in ipairs(translated_codes()) do
+        if stand_code(code) == current then
+            return code
+        end
+    end
+    return nil
+end
+
+-- A chosen language is shown by giving its text to Stand as the translation into Stand's current
+-- language. The label itself stays the English text, so Stand's profiles still match the items.
+-- Without a chosen language this puts back the translation for Stand's language (or the English text)
+local function apply_current(label: int, key: string, english: string): void
+    local code = forced or current_code()
+    local text = code and find(code, key) or english
+    -- Fails for English (see can_choose_language); then there's nothing to put
+    if pcall(lang.set_translate, lang.get_current()) then
+        lang.translate(label, text)
+    end
+end
+
+-- Whether a language other than Stand's can be shown. Stand takes no translations into English,
+-- its source language ("Provided language has no data"), so with Stand in English the script follows it
+function module.can_choose_language(): bool
+    return pcall(lang.set_translate, lang.get_current())
+end
+
 -- Adds a folder with <language>.json files; its strings win over the ones added before it
 -- @return Handle for remove_source
 function module.add_source(dir: string, required: bool = false): table
@@ -131,10 +170,103 @@ function module.label(key: string, fallback: ?string = nil): int
             lang.translate(label, text)
         end
     end
+    made[label] = { key = key, english = english }
+    if forced then
+        apply_current(label, key, english)
+    end
 
     labels[key] = label
     return label
 end
+
+-- @return Whether any source has a <code>.json file
+function module.has_language(code: string): bool
+    for _, source in ipairs(sources) do
+        if source.languages[code] then
+            return true
+        end
+    end
+    return false
+end
+
+-- @return { { code, name } } for every language with a file, English first, the rest by name.
+-- The name is the file's own "language_name", e.g. "Русский"
+function module.languages(): table
+    local list = {}
+    local seen = {}
+    for _, source in ipairs(sources) do
+        for code in pairs(source.languages) do
+            if not seen[code] then
+                seen[code] = true
+                table.insert(list, { code = code, name = find(code, "language_name") or code })
+            end
+        end
+    end
+    table.sort(list, function(a, b)
+        if (a.code == ENGLISH) ~= (b.code == ENGLISH) then
+            return a.code == ENGLISH
+        end
+        return a.name < b.name
+    end)
+    return list
+end
+
+-- Shows the script in one language whatever Stand's is; "auto" (or nil) follows Stand's language again.
+-- Applies to items already in the menu too
+function module.set_language(code: ?string): void
+    if code == "auto" or code == "" then
+        code = nil
+    end
+    requested = code
+    if code and not module.has_language(code) then
+        log:warn($"no language file '{code}.json', following Stand's language")
+        code = nil
+    end
+    local can_choose = module.can_choose_language()
+    if code and not can_choose then
+        log:warn(module.text("profile.language.unavailable"))
+        code = nil
+    end
+    forced = code
+    -- With Stand in English nothing was ever put on the labels, so there's nothing to restore either
+    if can_choose then
+        for label, source in pairs(made) do
+            apply_current(label, source.key, source.english)
+        end
+    end
+    for _, fn in ipairs(listeners) do
+        fn()
+    end
+end
+
+-- fn() runs after the shown language changed: labels follow by themselves, texts from text() don't
+function module.on_change(fn: function): void
+    table.insert(listeners, fn)
+end
+
+-- @return The chosen language code, or nil when following Stand's language
+function module.get_language(): ?string
+    return forced
+end
+
+-- Stand's language can change while the script runs: the chosen language is put on its new language
+-- (or becomes possible / impossible to show). A string compare per frame
+local stand_language = lang.get_current()
+util.create_tick_handler(function()
+    local current = lang.get_current()
+    if current ~= stand_language then
+        stand_language = current
+        if requested then
+            module.set_language(requested)
+        else
+            -- Labels follow Stand by themselves; texts made with text() have to be made again
+            for _, fn in ipairs(listeners) do
+                fn()
+            end
+        end
+    end
+    return true
+end)
 
 -- @return Text for key in Stand's current language, for strings built from parts (format, concatenation)
 function module.text(key: string, fallback: ?string = nil): string

@@ -1,0 +1,83 @@
+-- Script start as bootstrap.pluto does it, with the profile's auto_copy_menu set:
+-- the pack is copied into core (replacing an older copy) and loads as the built-in menu.
+-- The script's lib and store are temp folders here, so nothing is written into src
+local stand = require("stand")
+stand.boot()
+
+-- Where the copy goes: <scripts>/lib/AnitaDarin/. The code itself still loads from src (package.path)
+local scripts = stand.tmpdir("startup_scripts")
+local lib = $"{scripts}lib\\AnitaDarin\\"
+filesystem.scripts_dir = || -> scripts
+
+-- store: the real AnitaDarin pack and base language files, and a profile that copies the pack
+stand.store = stand.tmpdir("startup_store")
+local function copy_tree(from: string, to: string): void
+    for _, path in io.listdir(from, true) do
+        local target = to .. path:sub(#from + 1)
+        if io.isdir(path) then
+            io.makedirs(target)
+        else
+            stand.write_file(target, stand.read_file(path))
+        end
+    end
+end
+copy_tree($"{stand.SRC}store/AnitaDarin/menu/AnitaDarin", $"{stand.store}AnitaDarin/menu/AnitaDarin")
+copy_tree($"{stand.SRC}store/AnitaDarin/language", $"{stand.store}AnitaDarin/language")
+io.makedirs($"{stand.store}AnitaDarin/profiles")
+stand.write_file($"{stand.store}AnitaDarin/profiles/main.json", '{"auto_copy_menu": "AnitaDarin", "language": "ru-ru"}')
+
+-- An older copy in core: its manifest lists a file the pack no longer has
+io.makedirs($"{lib}ui\\stand\\menu")
+stand.write_file($"{lib}ui\\stand\\menu\\old.pluto", "return {}")
+stand.write_file($"{lib}ui\\stand\\menu\\.copied.json", '{"pack": "AnitaDarin", "files": ["ui\\\\stand\\\\menu\\\\old.pluto"]}')
+
+-- bootstrap.pluto, from the utilities on
+for _, name in { "util", "filesystem", "lang" } do
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
+end
+Atdar.profile = Atdar.loader.load("core/profile")
+Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.modules = Atdar.loader.load("core/module_manager")
+Atdar.features = Atdar.loader.load("features/registry")
+stand.clear_logs()
+Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
+
+stand.check(stand.find_log("'AnitaDarin' copied to core"), "the pack was copied at start")
+stand.check(stand.find_log("Stand is in English"), "a saved language Stand can't show is reported, not a crash")
+stand.check(io.exists($"{lib}ui\\stand\\menu\\main.pluto"), "its menu is in core")
+stand.check(io.exists($"{lib}features\\self\\godmode.pluto"), "its features are in core")
+stand.check(not io.exists($"{lib}ui\\stand\\menu\\old.pluto"), "the older copy's files are gone")
+stand.check(stand.read_file($"{lib}ui\\stand\\menu\\.copied.json"):find('"AnitaDarin"', 1, true), "the new copy has a manifest")
+
+-- Loaded as the built-in menu, in the main body: the pack's lists are in the root
+stand.check(stand.find_item(stand.root, "Self"), "the pack's Self list is in the menu")
+stand.check(Atdar.features.has("self.godmode"), "its features are registered")
+stand.equal(stand.find_log("not found"), nil, "no 'menu not found' notice")
+
+-- Disable Sprint: the native is called every frame, but the debug log only shows changes
+local running = true
+_G.PLAYER = { PLAYER_ID = || -> 0, PLAYER_PED_ID = || -> 1, SET_PLAYER_SPRINT = || -> nil }
+_G.TASK = { IS_PED_RUNNING = || -> running, IS_PED_SPRINTING = || -> false }
+Atdar.debug = true
+stand.clear_logs()
+stand.click(stand.find_item(stand.root, "Disable Sprint"))
+stand.frame(5)
+running = false
+stand.frame(5)
+local sprint_lines = 0
+for _, line in stand.logs do
+    if line:find("sprint is", 1, true) then
+        sprint_lines += 1
+    end
+end
+stand.equal(sprint_lines, 2, "Disable Sprint logs only its two changes in 10 frames")
+Atdar.debug = false
+
+-- The setting itself, in Settings
+local item = stand.find_item(stand.root, "Copy Menu To Core")
+stand.equal(item and stand.name_of(item), "Copy Menu To Core: AnitaDarin", "Settings show the copied pack")
+stand.click(item, 1)
+stand.equal(Atdar.profile.get("auto_copy_menu"), "", "picking Off clears it")
+stand.equal(stand.name_of(item), "Copy Menu To Core: Off", "and the caption follows")
+
+stand.finish()

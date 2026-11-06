@@ -14,6 +14,8 @@ local DEFAULTS = {
     command_separator = "",     -- "" -> atdargodmode, "_" -> atdar_godmode
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
+    auto_copy_menu = "",        -- folder of a menu pack in store, copied to core at every start; "" = off
+    language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
 }
 
 local DEFAULT_PROFILE = "main"

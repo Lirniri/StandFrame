@@ -196,7 +196,13 @@ _G.lang = {
         return #labels
     end,
     find_registered = |text| -> label_of[text] or 0,
-    set_translate = function(code) translating = code end,
+    -- Like Stand: English is the source language, it takes no translations
+    set_translate = function(code)
+        if code == "en" then
+            error("Provided language has no data")
+        end
+        translating = code
+    end,
     translate = function(label, text)
         translations[translating] ??= {}
         translations[translating][label] = text
@@ -295,6 +301,13 @@ function stand.click(it, option: ?int): void
         it.on_select(option, it.options[option], 0)
     else
         error($"stand.click: can't click a {it.kind}")
+    end
+end
+
+-- The script stopping: runs the util.on_stop handlers
+function stand.stop(): void
+    for _, fn in stop_handlers do
+        fn()
     end
 end
 

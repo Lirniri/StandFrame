@@ -1,0 +1,192 @@
+-- ui/stand/script_menu (+ profile_menu, i18n languages): the script's section as laid out,
+-- language choice, profiles, stubs, debug items
+local stand = require("stand")
+stand.boot()
+
+-- A store of its own (profiles get written), with the script's real language files
+stand.store = stand.tmpdir("script_menu_store")
+-- resources: a folder that doesn't exist yet, so Open Resource Folder has to make it
+local resources_root = stand.tmpdir("script_menu_resources")
+filesystem.resources_dir = || -> resources_root
+local base = $"{stand.store}AnitaDarin/language/base/"
+io.makedirs(base)
+for _, file in { "en-us.json", "ru-ru.json" } do
+    stand.write_file($"{base}{file}", stand.read_file($"{stand.SRC}store/AnitaDarin/language/base/{file}"))
+end
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+Atdar.profile = Atdar.loader.load("core/profile")
+Atdar.modules = Atdar.loader.load("core/module_manager")
+local profile = Atdar.profile
+local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+local script_menu = Atdar.loader.load("ui/stand/script_menu")
+local profiles_dir = $"{stand.store}AnitaDarin/profiles/"
+
+-- Rebuilding the section, as menu.pluto's rebuild_settings does; the menu picker is faked
+local function rebuild()
+    stand.root.children = {}
+    script_menu.build(new MenuNode(stand.root), {
+        refresh = rebuild,
+        packs = { { folder = "AnitaDarin", name = "AnitaDarin" } },
+        fill_menus = |node| -> node:divider("Menus"),
+    })
+end
+rebuild()
+
+local function names_in(node)
+    local names = {}
+    for _, child in node.children do
+        table.insert(names, stand.name_of(child))
+    end
+    return table.concat(names, " | ")
+end
+-- Searches the section's own items only: nested lists have items with the same names (Open Folder)
+local function find(text)
+    for _, child in stand.root.children do
+        if stand.name_of(child):find(text, 1, true) then
+            return child
+        end
+    end
+    return nil
+end
+local function settings() return find("Settings") end
+local function profiles() return find("Profiles") end
+local function entry(name) return stand.find_item(profiles(), name) end
+
+-- ─── Layout ──────────────────────────────────────────────────────────────────
+
+stand.equal(names_in(stand.root),
+    "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug",
+    "the section's layout")
+stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short Name | Rename Script", "Settings")
+stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
+stand.equal(names_in(find("Command Box")), "Command Prefix | Separator: None | Found Commands", "Command Box")
+stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder", "Open Folder")
+
+-- Open Folder opens the script's own folders; a missing one is made first
+local function opened(item_name)
+    stand.click(stand.find_item(find("Open Folder"), item_name))
+    return stand.toasts[#stand.toasts]
+end
+stand.equal(opened("Open Lib Folder"), $"open_folder {stand.SRC}lib\\AnitaDarin\\", "Open Lib Folder")
+stand.equal(opened("Open Store Folder"), $"open_folder {stand.store}AnitaDarin\\", "Open Store Folder")
+stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin doesn't exist yet")
+stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
+stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
+stand.equal(names_in(find("Debug")), "Debug Mode | Debug | Modules | Delete Script", "Debug")
+stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
+stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Delete", "a profile's own list")
+
+-- Stubs say they aren't made yet
+stand.clear_logs()
+stand.click(stand.find_item(find("Load Menu"), "Unload"))
+stand.check(stand.find_log("Not made yet"), "a stub says it isn't made yet")
+
+-- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
+local debug_list = find("Debug")
+local debug_only = { debug_list.children[2], debug_list.children[3], debug_list.children[4] }
+local function all_visible(on)
+    for _, it in debug_only do
+        if it.visible ~= on then return false end
+    end
+    return true
+end
+stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
+stand.click(stand.find_item(debug_list, "Debug Mode"))
+stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
+
+-- Delete Script asks first
+local asked = nil
+local real_warning = menu.show_warning
+menu.show_warning = function(_, _, message, proceed) asked = message proceed() end
+stand.clear_logs()
+stand.click(stand.find_item(debug_list, "Delete Script"))
+stand.check(asked and asked:find("Delete the script 'AnitaDarin'", 1, true), "Delete Script asks before deleting")
+stand.check(stand.find_log("Not made yet"), "and after that it's still a stub")
+menu.show_warning = real_warning
+stand.click(stand.find_item(debug_list, "Debug Mode"))
+stand.check(all_visible(false), "turning debug mode off hides them again")
+
+-- ─── Language ────────────────────────────────────────────────────────────────
+
+local language = stand.find_item(settings(), "Language")
+stand.equal(names_in(language), "Auto (Stand) | English | Русский", "languages: Auto, English first, then the others")
+
+-- Stand in English takes no translations: the choice is kept but the script follows Stand, without errors
+stand.clear_logs()
+stand.click(stand.find_item(language, "Русский"))
+stand.equal(profile.get("language"), "ru-ru", "the choice is kept in the profile")
+stand.check(stand.find_log("Stand is in English"), "with Stand in English it says why it can't")
+stand.equal(stand.name_of(language), "Language: Русский (not with Stand in English)", "the caption shows it's unavailable")
+stand.check(find("Settings"), "items stay in English")
+
+-- Stand switched to another language while the script runs: the chosen language is shown by itself,
+-- item names keep their English labels
+stand.language = "de"
+stand.frame()
+stand.equal(stand.name_of(language), "Язык: Русский", "with Stand in German the script shows in Russian")
+stand.check(find("Настройки") and type(find("Настройки").name) == "number", "names follow, the label stays English")
+stand.click(stand.find_item(language, "Авто"))
+stand.equal(stand.name_of(language), "Language: Auto (Stand)", "Auto follows Stand again (German has no file: English)")
+stand.language = "ru"
+stand.frame()
+stand.equal(stand.name_of(language), "Язык: Авто (Stand)", "on Auto, Stand switching to Russian remakes the captions")
+stand.language = "en"
+stand.frame()
+
+-- ─── Profiles (next to Settings) ────────────────────────────────────────
+
+local short_name = find("Short Name")
+menu.set_value(short_name, "Edited")
+stand.check(entry("main (active)*"), "an unsaved change shows *")
+stand.click(stand.find_item(entry("main (active)"), "Save"))
+stand.check(entry("main (active)") and not entry("main (active)*"), "Save clears *")
+stand.check(stand.read_file($"{profiles_dir}main.json"):find('"Edited"', 1, true), "Save wrote the profile")
+
+stand.click(stand.find_item(entry("main (active)"), "Automatically Save"))
+menu.set_value(short_name, "Auto")
+stand.check(stand.read_file($"{profiles_dir}main.json"):find('"Auto"', 1, true) and not profile.is_dirty(),
+    "Automatically Save writes every change")
+stand.click(stand.find_item(entry("main (active)"), "Automatically Save"))
+
+menu.set_value(stand.find_item(profiles(), "Create Profile"), "Second")
+stand.equal(profile.active_name(), "second", "Create Profile makes and loads a profile")
+stand.check(entry("second (active)") and entry("main"), "both profiles are listed")
+stand.check(find("Profile: second"), "the header follows the active profile")
+
+menu.set_value(find("Short Name"), "Second's")
+stand.click(stand.find_item(entry("main"), "Load"))
+stand.equal(profile.active_name(), "main", "Load makes main active")
+stand.equal(find("Short Name").value, "Auto", "main's values are back in the fields")
+
+stand.click(stand.find_item(entry("second"), "Save"))
+stand.check(stand.read_file($"{profiles_dir}second.json"):find('"Auto"', 1, true), "Save on another profile overwrites it")
+
+stand.clear_logs()
+stand.click(stand.find_item(entry("main (active)"), "Delete"))
+stand.check(stand.find_log("can't be deleted"), "main can't be deleted")
+stand.click(stand.find_item(entry("second"), "Delete"))
+stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "second is deleted")
+stand.check(not io.exists($"{profiles_dir}second.json"), "with its file")
+
+-- Copy Menu To Core and Command Box work from their new places
+stand.click(stand.find_item(find("Load Menu"), "Copy Menu To Core"), 2)
+stand.equal(profile.get("auto_copy_menu"), "AnitaDarin", "Copy Menu To Core is set from Load Menu")
+stand.click(stand.find_item(find("Command Box"), "Separator"), 2)
+stand.equal(profile.get("command_separator"), "_", "Separator is set from Command Box")
+
+-- ─── Rename Script: no warning while the script stops ────────────────────────
+
+local warnings = 0
+local real_warning = menu.show_warning
+menu.show_warning = function() warnings += 1 end
+local rename_field = stand.find_item(settings(), "Rename Script")
+menu.set_value(rename_field, "Other")
+stand.equal(warnings, 1, "a new name is asked about")
+menu.set_value(rename_field, "AnitaDarin")
+stand.equal(warnings, 1, "the current name isn't asked about")
+stand.stop()
+menu.set_value(rename_field, "Third")
+stand.equal(warnings, 1, "no warning while the script stops")
+menu.show_warning = real_warning
+
+stand.finish()

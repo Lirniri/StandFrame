@@ -1,4 +1,5 @@
 {
+    "language_name": "English",
     "menu_loader": {
         "not_found": "Built-in menu not found",
         "load_menu": {
@@ -97,6 +98,14 @@
             "name": "Debug Mode",
             "help": "Show debug-level log lines in the Stand console and notifications"
         },
+        "auto_copy": {
+            "name": "Copy Menu To Core: %s",
+            "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
+            "off": "Off",
+            "missing": "%s (not in store)",
+            "later": "'%s' will be copied to core at the next start. Save the profile to keep it",
+            "disabled": "Copying a menu to core is off from the next start; the copy already in core stays until you remove it in Load Menu"
+        },
         "script": "Script",
         "rename": {
             "name": "Rename Script",
@@ -105,6 +114,14 @@
             "invalid": "'%s' isn't a valid name: use letters, digits and _",
             "failed": "Not renamed: %s",
             "done": "Renamed to %s. If it doesn't start by itself, start %s in Stand > Lua Scripts"
+        },
+        "language": {
+            "name": "Language: %s",
+            "help": "Language of the script. Auto follows Stand's language",
+            "auto": "Auto (Stand)",
+            "auto_help": "Show the script in Stand's language",
+            "unavailable": "Stand is in English, so the script can't be shown in another language: it follows Stand. The choice is kept and works while Stand is in another language",
+            "unavailable_mark": "%s (not with Stand in English)"
         }
     },
     "modules": {
@@ -138,6 +155,44 @@
             "running": "running",
             "stopped": "stopped",
             "failed": "failed"
+        }
+    },
+    "script_menu": {
+        "stub": "Not made yet",
+        "unload": {
+            "name": "Unload"
+        },
+        "command_box": {
+            "name": "Command Box",
+            "help": "Command names of the script's items"
+        },
+        "found_commands": {
+            "name": "Found Commands"
+        },
+        "open_folder": {
+            "name": "Open Folder",
+            "help": "The script's folders in Stand's Lua Scripts",
+            "lib": {
+                "name": "Open Lib Folder",
+                "help": "The script's code: lib/AnitaDarin in Stand's Lua Scripts"
+            },
+            "resources": {
+                "name": "Open Resource Folder",
+                "help": "The script's resources (images, sounds): resources/AnitaDarin. Made if it doesn't exist yet"
+            },
+            "store": {
+                "name": "Open Store Folder",
+                "help": "The script's data: profiles, settings, menus and translations, store/AnitaDarin"
+            }
+        },
+        "debug": {
+            "name": "Debug",
+            "help": "Debug mode, the script's modules and the script itself"
+        },
+        "delete_script": {
+            "name": "Delete Script",
+            "help": "Deletes the script with all its files. Asks first",
+            "warning": "Delete the script '%s' with all its files (launcher, lib, store and resources folders)?\nThis can't be undone."
         }
     }
 }

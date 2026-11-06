@@ -49,7 +49,7 @@ local function refresh(): void
     end
 end
 
--- The "Debug" divider and the list are shown and hidden together
+-- The "Debug" divider, the list and the items added with debug_only() are shown and hidden together
 local function set_visible(on: bool): void
     if view.divider then
         pcall(menu.set_visible, view.divider, on)
@@ -57,6 +57,16 @@ local function set_visible(on: bool): void
     if view.list then
         pcall(menu.set_visible, view.list.handle, on)
     end
+    for _, ref in ipairs(view.extra or {}) do
+        pcall(menu.set_visible, ref, on)
+    end
+end
+
+-- Puts an item made after build() under the "Debug" divider's visibility: shown only in debug mode
+function module.debug_only(ref): void
+    view.extra ??= {}
+    table.insert(view.extra, ref)
+    pcall(menu.set_visible, ref, Atdar.debug == true)
 end
 
 -- Options shown for each module, in this order: label key and what it does with the module

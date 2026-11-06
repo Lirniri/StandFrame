@@ -1,0 +1,105 @@
+-- The script's own section (settings.pluto builds it, at the root or inside a pack's Settings).
+-- Lays out the parts from profile_menu, modules_menu and the menu picker of menu.pluto:
+--
+--   ── Profile: main ──
+--   Display Name, Short Name
+--   Settings >      Language, Name In Logs, Rename Script
+--   Profiles >      Create Profile, Open Folder, one list per profile
+--   Load Menu >     Unload*, Copy Menu To Core, ── Menus ──, the menus
+--   Command Box >   Command Prefix, Separator, Found Commands*
+--   Open Folder >   Lib, Resources, Store
+--   Debug >         Debug Mode, then at the bottom in debug mode only:
+--                   ── Debug ──, Modules, Delete Script* (asks first)
+--
+-- * not made yet: a stub that says so. Stand adds every item at the end of its list,
+-- so the order of the calls below is the order in the menu. Strings: language/base "script_menu"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
+local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
+
+local log = new Logger("Menu")
+
+local module = {}
+
+local function label(key: string): int
+    return i18n.label($"script_menu.{key}")
+end
+
+local function text(key: string): string
+    return i18n.text($"script_menu.{key}")
+end
+
+-- An item that isn't made yet: says so when used
+local function stub(node: table, key: string): void
+    node:action(label($"{key}.name"), || -> log:notify(text("stub")), {}, label("stub"))
+end
+
+-- Delete Script asks first: deleting the script can't be undone. The deleting itself isn't made yet
+-- @return The item
+local function delete_script(node: table)
+    local ref
+    ref = node:action(label("delete_script.name"), function(click_type)
+        menu.show_warning(ref, click_type, text("delete_script.warning"):format(Atdar.name),
+            || -> log:notify(text("stub")))
+    end, {}, label("delete_script.help"))
+    return ref
+end
+
+-- Opens one of the script's folders in Explorer; one that doesn't exist yet (resources) is made first,
+-- since Explorer can't open a missing folder
+local function open_folder(node: table, key: string, path: string): void
+    node:action(label($"open_folder.{key}.name"), function()
+        if not filesystem.exists(path) then
+            filesystem.mkdirs(path)
+        end
+        util.open_folder(path)
+    end, {}, label($"open_folder.{key}.help"))
+end
+
+-- A list that isn't made yet: its only line says so
+local function stub_list(node: table, key: string): void
+    node:list(label($"{key}.name"), {}, label("stub")):readonly_name(label("stub"))
+end
+
+-- opts.refresh:    rebuilds the section (after a profile is created or deleted)
+-- opts.packs:      menu packs in store, offered for copying to core
+-- opts.fill_menus: fill_menus(node) adds the Menus divider and an entry per menu (menu.pluto)
+function module.build(section: table, opts: table): void
+    profile_menu.begin(opts.packs)
+
+    profile_menu.header(section)
+
+    local settings = section:list(i18n.label("profile.settings.name"), { "scriptsettings" },
+        i18n.label("profile.settings.help"))
+    profile_menu.language(settings)
+    profile_menu.log_name(settings)
+    profile_menu.rename(settings)
+
+    profile_menu.profiles(section, opts.refresh)
+
+    local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), {},
+        i18n.label("menu_loader.load_menu.help"))
+    stub(load_menu, "unload")
+    profile_menu.auto_copy(load_menu)
+    opts.fill_menus(load_menu)
+
+    local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
+    profile_menu.command_box(command_box)
+    stub_list(command_box, "found_commands")
+
+    local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
+    local paths = Atdar.filesystem.paths
+    open_folder(folders, "lib", paths.lib)
+    open_folder(folders, "resources", paths.resources)
+    open_folder(folders, "store", paths.store)
+
+    local debug = section:list(label("debug.name"), {}, label("debug.help"))
+    profile_menu.debug(debug)
+    -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
+    modules_menu.build(debug)
+    modules_menu.debug_only(delete_script(debug))
+end
+
+return module

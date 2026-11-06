@@ -2,8 +2,7 @@ local load = Atdar.loader.load
 local MenuNode = load("ui/stand/menu_node")
 local builder = load("ui/stand/menu_builder")
 local settings = load("ui/stand/settings")
-local profile_menu = load("ui/stand/profile_menu")
-local modules_menu = load("ui/stand/modules_menu")
+local script_menu = load("ui/stand/script_menu")
 local i18n = load("core/i18n")
 local Logger = load("core/logger")
 local features = Atdar.features
@@ -219,19 +218,54 @@ local function fill_picker(node: table): void
     end
 end
 
--- Added before any menu loads, so unloading a menu never drops them
+-- The script's own section (script_menu lays it out). Added before any menu loads,
+-- so unloading a menu never drops it
 settings.add(function(node)
-    profile_menu.build(node, rebuild_settings)
+    script_menu.build(node, {
+        refresh = rebuild_settings,
+        packs = builder.find_loadable_packs(PACKS_DIR),
+        fill_menus = fill_picker,
+    })
 end)
 
-settings.add(function(node)
-    fill_picker(node:list(label("load_menu.name"), {}, label("load_menu.help")))
-end)
+-- The active profile can keep a pack copied into core (its auto_copy_menu). At every start the pack is
+-- copied again, so changes made to it in store reach the copy, and then loads as the built-in menu.
+-- Built here, in the script's main body, its items get the states saved in Stand's profile,
+-- which a menu loaded later by hand doesn't
+local function auto_copy(): void
+    local id = Atdar.profile.get("auto_copy_menu")
+    if type(id) ~= "string" or id == "" then
+        return
+    end
+    local info = nil
+    for _, pack in ipairs(builder.find_loadable_packs(PACKS_DIR)) do
+        if pack.folder == id then
+            info = pack
+            break
+        end
+    end
+    if not info then
+        log:warn($"menu '{id}' to copy to core isn't in store")
+        return
+    end
+    local manifest = builder.read_core_manifest(paths.lib)
+    -- A built-in menu that wasn't copied from a pack belongs to the script: never replaced
+    if has_builtin() and not manifest then
+        log:warn($"menu '{id}' not copied to core: the script has its own built-in menu")
+        return
+    end
+    if manifest then
+        builder.remove_copied_core(paths.lib)
+    end
+    local ok, result = builder.copy_pack_to_core(info, paths.lib)
+    if ok then
+        log:info($"'{info.name}' copied to core ({result} file(s))")
+    else
+        log:warn($"'{info.name}' not copied to core: {result}")
+    end
+end
 
--- Shown only in debug mode
-settings.add(function(node)
-    modules_menu.build(node)
-end)
+auto_copy()
 
 if has_builtin() then
     load_builtin()
