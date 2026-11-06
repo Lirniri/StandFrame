@@ -19,12 +19,13 @@ function module.is_male(ped: int): bool
 end
 
 
-function module.is_walking(ped: int): bool
-    return PED.IS_PED_WALKING(ped)
-end
-
 function module.is_stopped(ped: int): bool
     return PED.IS_PED_STOPPED(ped)
+end
+
+-- State > Movement
+function module.is_walking(ped: int): bool
+    return PED.IS_PED_WALKING(ped)
 end
 
 function module.is_running(ped: int): bool
@@ -41,6 +42,10 @@ end
 
 function module.is_still(ped: int): bool
     return PED.IS_PED_STILL(ped)
+end
+
+function module.is_getting_up(ped: int): bool
+    return PED.IS_PED_GETTING_UP(ped)
 end
 
 function module.is_jumping(ped: int, doing_beast_jump: bool = false): bool

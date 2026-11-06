@@ -142,9 +142,9 @@ Feature = class
         if !self.enabled then
             return
         end
-        self:call_hook("load_state")
         self.enabled = false
         self:call_hook("on_disable")
+        self:call_hook("load_state")
     end
     function on_disable(): void
         -- body

@@ -6,6 +6,10 @@ function module.is_reloading(ped: int): bool
     return PED.IS_PED_RELOADING(ped)
 end
 
+function module.is_switching(ped: int): bool
+    return PED.IS_PED_SWITCHING_WEAPON(ped)
+end
+
 function module.has(ped: int, weaponHash: int|string, p2: bool = false): bool
     local hash = util.joaat(weaponHash)
     return WEAPON.HAS_PED_GOT_WEAPON(ped, hash, p2)
