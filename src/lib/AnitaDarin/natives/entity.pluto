@@ -33,6 +33,16 @@ end
 
 -- Get
 
+function module.get_net_id(entity): int
+    return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(entity)
+end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_ENT(net_id)
+end
+
 function module.get_health(entity: int): int
     return ENTITY.GET_ENTITY_HEALTH(entity)
 end
@@ -47,16 +57,6 @@ function module.get_coords(entity: int, max_height: number|bool = 1.3): vector3
     local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))
     world.snap_to_ground(coords, max_height)
     return coords
-end
-
-function module.get_net_id(entity): int
-    return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(entity)
-end
-
-function module.from_net_id(net_id): ?int
-    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
-    return NETWORK.NET_TO_ENT(net_id)
 end
 
 -- Set
