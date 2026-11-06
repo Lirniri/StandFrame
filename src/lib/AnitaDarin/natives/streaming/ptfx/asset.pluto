@@ -1,0 +1,41 @@
+local module = {}
+
+-- Particle effect assets are requested by name, e.g. "scr_rcbarry2"
+
+-- State
+
+-- name nil -> the script's default PTFX asset
+function module.is_loaded(name: ?string): bool
+    if name ~= nil then
+        return STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(name)
+    end
+    return STREAMING.HAS_PTFX_ASSET_LOADED()
+end
+
+-- Actions
+
+-- name nil -> the script's default PTFX asset.
+-- timeout false -> only request, don't wait; returns whether it's already loaded
+function module.request(name: ?string, timeout: int|bool = 2000): bool
+    if name ~= nil then
+        STREAMING.REQUEST_NAMED_PTFX_ASSET(name)
+    else
+        STREAMING.REQUEST_PTFX_ASSET()
+    end
+    if timeout == false then
+        return module.is_loaded(name)
+    end
+    local what = name ~= nil ? $"ptfx asset '{name}'" : "default ptfx asset"
+    return Atdar.natives.streaming.wait_loaded(what, || -> module.is_loaded(name), timeout)
+end
+
+-- Frees the asset when it's no longer needed; name nil -> the script's default PTFX asset
+function module.remove(name: ?string): void
+    if name ~= nil then
+        STREAMING.REMOVE_NAMED_PTFX_ASSET(name)
+    else
+        STREAMING.REMOVE_PTFX_ASSET()
+    end
+end
+
+return module
