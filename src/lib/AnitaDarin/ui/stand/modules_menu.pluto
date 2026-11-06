@@ -1,0 +1,116 @@
+-- Modules list in the script's settings section, shown only in debug mode: each module's status,
+-- deps and error, with Start / Stop / Restart / Reload. Strings live in language/base under "modules".
+-- Restart runs the same module again; Reload re-reads its file, so code changes apply
+--
+-- The list is always built and only hidden outside debug mode: rebuilding the section when debug
+-- is switched would delete the Profile list the user is in, which Stand doesn't do cleanly
+
+local i18n = Atdar.loader.load("core/i18n")
+
+local module = {}
+
+local function label(key: string): int
+    return i18n.label($"modules.{key}")
+end
+
+local function text(key: string): string
+    return i18n.text($"modules.{key}")
+end
+
+-- Items of the latest build: the list itself and one entry per module name
+local view = {}
+
+local function caption(mod: table): string
+    return text("entry.name"):format(mod.name, text($"status.{mod.status}"))
+end
+
+local function help(mod: table): string
+    local deps = #mod.deps > 0 ? table.concat(mod.deps, ", ") : text("entry.no_deps")
+    local lines = {
+        text("entry.deps"):format(deps),
+        text(mod:has_tick() ? "entry.ticks" : "entry.no_tick"),
+    }
+    if mod.error then
+        table.insert(lines, text("entry.error"):format(mod.error))
+    end
+    return table.concat(lines, "\n")
+end
+
+-- Statuses also change on their own (a module can fail in its tick), so Refresh and every action
+-- update all entries. The refs may belong to a section that was already removed: a failed update is skipped
+local function refresh(): void
+    local modules = Atdar.modules
+    for name, ref in pairs(view.entries or {}) do
+        if modules.has(name) then
+            local mod = modules.get(name)
+            pcall(menu.set_menu_name, ref, caption(mod))
+            pcall(menu.set_help_text, ref, help(mod))
+        end
+    end
+end
+
+-- The "Debug" divider and the list are shown and hidden together
+local function set_visible(on: bool): void
+    if view.divider then
+        pcall(menu.set_visible, view.divider, on)
+    end
+    if view.list then
+        pcall(menu.set_visible, view.list.handle, on)
+    end
+end
+
+-- Options shown for each module, in this order: label key and what it does with the module
+local ACTIONS = {
+    { key = "start", run = |name| -> Atdar.modules.start_module(name) },
+    { key = "restart", run = function(name)
+        Atdar.modules.stop_module(name)
+        Atdar.modules.start_module(name)
+    end },
+    { key = "stop", run = |name| -> Atdar.modules.stop_module(name) },
+    { key = "reload", run = |name| -> Atdar.modules.reload_module(name) },
+}
+
+function module.build(parent: table): void
+    local modules = Atdar.modules
+    -- The manager failed to load: the loader left an empty table
+    if type(modules.names) ~= "function" then
+        return
+    end
+
+    local divider = parent:divider(label("divider"))
+    local node = parent:list(label("title"), {}, label("help"))
+    view = { divider = divider, list = node, entries = {} }
+
+    -- The copy Stand runs, which Reload reads, not the project's src
+    node:action(label("open_folder.name"), function()
+        util.open_folder($"{Atdar.filesystem.paths.lib}modules")
+    end, {}, label("open_folder.help"))
+    node:action(label("refresh.name"), refresh, {}, label("refresh.help"))
+    node:divider(label("list"))
+
+    local names = modules.names()
+    local options = {}
+    for _, action in ipairs(ACTIONS) do
+        table.insert(options, label(action.key))
+    end
+    for _, name in ipairs(names) do
+        local mod = modules.get(name)
+        view.entries[name] = node:list_action(caption(mod), options, function(index)
+            ACTIONS[index].run(name)
+            refresh()
+        end, {}, help(mod))
+    end
+    if #names == 0 then
+        node:readonly_name(label("empty"))
+    end
+
+    set_visible(Atdar.debug == true)
+end
+
+Atdar.profile.on_change(function(key: string, value)
+    if key == "debug" then
+        set_visible(value == true)
+    end
+end)
+
+return module

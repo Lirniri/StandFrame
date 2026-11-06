@@ -86,5 +86,38 @@
             "name": "Debug Mode",
             "help": "Show debug-level log lines in the Stand console and notifications"
         }
+    },
+    "modules": {
+        "divider": "Debug",
+        "title": "Modules",
+        "help": "The script's internal modules. Shown in debug mode only",
+        "open_folder": {
+            "name": "Open Folder",
+            "help": "Opens the modules folder in Stand's Lua Scripts. Reload reads modules from there, so copy your changes there first (build.py)"
+        },
+        "refresh": {
+            "name": "Refresh",
+            "help": "Re-read every module's status"
+        },
+        "list": "Modules",
+        "empty": "No modules registered",
+        "start": "Start",
+        "stop": "Stop",
+        "restart": "Restart",
+        "reload": "Reload",
+        "entry": {
+            "name": "%s: %s",
+            "deps": "Needs: %s",
+            "no_deps": "nothing",
+            "ticks": "Ticks every frame",
+            "no_tick": "Doesn't tick",
+            "error": "Error: %s"
+        },
+        "status": {
+            "registered": "registered",
+            "running": "running",
+            "stopped": "stopped",
+            "failed": "failed"
+        }
     }
 }

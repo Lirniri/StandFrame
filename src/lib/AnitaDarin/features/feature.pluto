@@ -79,6 +79,10 @@ Feature = class
         self.kind = opts.kind
 
         -- States
+        self.error = nil -- set when a hook failed and switched the feature off; cleared by disable()
+        self.failure_handler = nil -- set by the menu: switches its item off (set_failure_handler)
+        
+        -- State > for Actions
         self.enabled = false -- for enable/disable
         self.triggered = false -- for trigger
 
@@ -94,15 +98,46 @@ Feature = class
     end
 
     -- Calls a hook, logs which version runs and catches its errors
-    private function call_hook(name: string): void
+    -- @return Whether the hook finished without an error
+    private function call_hook(name: string): bool
         local overridden = self[name] ~= Feature[name]
         if name ~= "on_tick" then -- on_tick runs every frame, would flood the log
             log:debug($"{self.id}: {name} ({overridden ? "overridden" : "default"})")
         end
         local ok, err = pcall(self[name], self)
         if not ok then
-            log:error($"{self.id}: {name} failed\n{err}")
+            self:fail(name, err)
         end
+        return ok
+    end
+
+    -- A failed hook switches the feature off, so a broken on_tick doesn't fail (and notify) every frame.
+    -- The error is shown once; the feature stays off until the user switches it on again
+    private function fail(name: string, err): void
+        -- A failure in the cleanup itself is only logged: disabling again from here would loop
+        local cleanup = name == "on_disable" or name == "load_state"
+        if cleanup or not self.enabled then
+            log:error($"{self.id}: {name} failed\n{err}")
+            return
+        end
+        log:error($"{self.id}: {name} failed, switched off\n{err}")
+        -- on_disable and load_state undo what the feature did before it broke
+        self:disable()
+        -- After disable(), which clears it
+        self.error = $"{name}: {err}"
+        if self.failure_handler then
+            pcall(self.failure_handler)
+        end
+    end
+
+    -- fn() is called after a hook failed and switched the feature off; the menu uses it to switch its item off
+    function set_failure_handler(fn: function): void
+        self.failure_handler = fn
+    end
+
+    -- @return What failed and why, or nil
+    function get_error(): ?string
+        return self.error
     end
 
     function save_state()
@@ -120,6 +155,10 @@ Feature = class
     end
 
     function tick()
+        -- Failed and not switched off yet: don't start again on the next frame
+        if self.error then
+            return
+        end
         if !self.enabled then
             self:enable()
         end
@@ -145,6 +184,8 @@ Feature = class
         -- body
     end
     function disable(): void
+        -- Switching off also clears a failure, so switching on again tries anew
+        self.error = nil
         if !self.enabled then
             return
         end

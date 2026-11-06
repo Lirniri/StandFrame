@@ -1,0 +1,21 @@
+-- EXAMPLE 1: the smallest module, written as a table of options.
+-- Good for a module that only does something on start and undoes it on stop.
+--
+-- Options: name (required, unique), deps (optional), on_start / on_stop / on_tick (all optional)
+
+local Module = Atdar.loader.load("core/module")
+
+return Atdar.modules.add(new Module({
+    name = "example.basic",
+
+    -- Once, when the script starts (after the modules in deps)
+    on_start = function(self)
+        -- self.log: a logger tagged with the module's name
+        self.log:notify($"'{self.name}' started")
+    end,
+
+    -- Once, when the script stops or the module is stopped from the Modules menu
+    on_stop = function(self)
+        self.log:notify($"'{self.name}' stopped")
+    end,
+}))

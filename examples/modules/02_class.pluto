@@ -1,0 +1,26 @@
+-- EXAMPLE 2: a module as a class. Use it when the module keeps its own state
+-- or gives other modules functions to call (see 04_deps.pluto, which uses this one).
+--
+-- Override only the on_* hooks. start / stop / tick belong to Module and can't be overridden
+
+local Module = Atdar.loader.load("core/module")
+
+local class Clock extends Module
+    function __construct()
+        parent:__construct({ name = "example.clock" })
+        -- State lives in fields; set defaults here
+        self.started_at = 0
+    end
+
+    function on_start()
+        self.started_at = util.current_time_millis()
+        self.log:notify($"'{self.name}' started")
+    end
+
+    -- For other modules: how long this one has been running
+    function uptime_ms(): int
+        return util.current_time_millis() - self.started_at
+    end
+end
+
+return Atdar.modules.add(new Clock())

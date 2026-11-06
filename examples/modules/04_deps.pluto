@@ -1,0 +1,41 @@
+-- EXAMPLE 4: a module that needs another one (example.clock from 02_class.pluto).
+--
+-- deps = { "example.clock" } means: start after example.clock. File order doesn't matter.
+-- If example.clock is missing or failed, this module is marked failed and doesn't start;
+-- the other modules still start. Stopping example.clock from the menu stops this one first.
+--
+-- self:get(name) returns another module. Call it when you need it (in on_start / on_tick),
+-- not at the top of the file: modules are registered first and started later
+
+local Module = Atdar.loader.load("core/module")
+
+-- Every 5 seconds: often enough to see it working, rare enough not to flood the log
+local INTERVAL_MS = 5000
+
+local class Reporter extends Module
+    function __construct()
+        parent:__construct({
+            name = "example.reporter",
+            deps = { "example.clock" },
+        })
+        self.next_report = 0
+    end
+
+    function on_start()
+        self.next_report = util.current_time_millis() + INTERVAL_MS
+    end
+
+    function on_tick()
+        local now = util.current_time_millis()
+        if now < self.next_report then
+            return
+        end
+        self.next_report = now + INTERVAL_MS
+
+        local clock = self:get("example.clock")
+        -- debug: only in the log, and only with Debug Mode on in the script's profile
+        self.log:debug($"clock has been running for {clock:uptime_ms() // 1000} s")
+    end
+end
+
+return Atdar.modules.add(new Reporter())

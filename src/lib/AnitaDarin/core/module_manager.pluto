@@ -18,6 +18,10 @@ local order = {}
 -- Start order; stop() goes through it backwards, so a module stops before the modules it needs
 local started = {}
 local tick_handler_created = false
+-- Module name -> the file that registered it, so reload_module() can run it again
+local files = {}
+-- The file run_file() is running right now; add() records it for the modules the file registers
+local loading_file = nil
 
 function module.add(mod: table): table
     local name = mod.name
@@ -29,6 +33,7 @@ function module.add(mod: table): table
     end
     by_name[name] = mod
     table.insert(order, mod)
+    files[name] = loading_file
     return mod
 end
 
@@ -139,6 +144,65 @@ function module.stop(): void
     started = {}
 end
 
+-- Takes a module out of the start order, so a later start doesn't tick it twice
+local function forget(mod: table): void
+    for i = #started, 1, -1 do
+        if started[i] == mod then
+            table.remove(started, i)
+        end
+    end
+end
+
+-- @return Set of modules that need `name`, directly or through other modules: { [name] = true }
+local function dependents_of(name: string): table
+    local found = {}
+    local queue = { name }
+    while #queue > 0 do
+        local current = table.remove(queue)
+        for _, mod in ipairs(order) do
+            if not found[mod.name] then
+                for _, dep in ipairs(mod.deps) do
+                    if dep == current then
+                        found[mod.name] = true
+                        table.insert(queue, mod.name)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    return found
+end
+
+-- Starts one module and its deps. A failed module gets another try
+-- @return Whether it's running afterwards
+function module.start_module(name: string): bool
+    local mod = module.get(name)
+    if mod.status == "failed" then
+        -- A module that failed in its tick is still in the start order
+        forget(mod)
+        mod.status = "registered"
+        mod.error = nil
+    end
+    local ok = start_one(mod, {})
+    create_tick_handler()
+    return ok
+end
+
+-- Stops one module; the modules that need it stop first, so none keeps running without its dep
+function module.stop_module(name: string): void
+    local to_stop = dependents_of(name)
+    to_stop[module.get(name).name] = true
+    -- Backwards: a module started after its deps, so it stops before them
+    for i = #started, 1, -1 do
+        local mod = started[i]
+        if to_stop[mod.name] then
+            mod:stop()
+            table.remove(started, i)
+        end
+    end
+end
+
 local function collect_pluto_files(dir: string, out: table): void
     for _, path in ipairs(filesystem.list_files(dir)) do
         if filesystem.is_dir(path) then
@@ -149,30 +213,110 @@ local function collect_pluto_files(dir: string, out: table): void
     end
 end
 
+-- Runs one module file; the modules it registers remember it for reload_module()
+-- @return Whether it ran without errors
+local function run_file(path: string): bool
+    local chunk, err = loadfile(path)
+    local ok = chunk ~= nil
+    if ok then
+        loading_file = path
+        ok, err = pcall(chunk)
+        loading_file = nil
+    end
+    if not ok then
+        log:error($"module file failed: {path}\n{err}")
+    end
+    return ok
+end
+
 -- Runs every module file in dir and its subfolders; a broken file skips only itself
 -- @return Number of files that ran without errors
 function module.load_dir(dir: string): int
     if not filesystem.is_dir(dir) then
         return 0
     end
-    local files = {}
-    collect_pluto_files(dir, files)
-    table.sort(files)
+    local paths = {}
+    collect_pluto_files(dir, paths)
+    table.sort(paths)
 
     local loaded = 0
-    for _, path in ipairs(files) do
-        local chunk, err = loadfile(path)
-        local ok = chunk ~= nil
-        if ok then
-            ok, err = pcall(chunk)
-        end
-        if ok then
+    for _, path in ipairs(paths) do
+        if run_file(path) then
             loaded += 1
-        else
-            log:error($"module file failed: {path}\n{err}")
         end
     end
     return loaded
+end
+
+-- Puts a module back into by_name/order/files, at its old place in the order
+local function register_at(mod: table, index: int, path: ?string): void
+    by_name[mod.name] = mod
+    table.insert(order, math.min(index, #order + 1), mod)
+    files[mod.name] = path
+end
+
+-- Takes a module out of by_name/order/files
+-- @return Its index in the order
+local function unregister(mod: table): int
+    local index = #order + 1
+    for i, other in ipairs(order) do
+        if other == mod then
+            index = i
+            table.remove(order, i)
+            break
+        end
+    end
+    by_name[mod.name] = nil
+    files[mod.name] = nil
+    return index
+end
+
+-- Runs the module's file again, so changes in its code apply without restarting the script.
+-- Modules that need it are stopped for the reload and started again after.
+-- If the new code fails to load, the old module is put back and started again.
+-- Only the module's own file is re-read: lib files it loads stay as they are (require caches them)
+-- @return Whether the reloaded module is running
+function module.reload_module(name: string): bool
+    local old = module.get(name)
+    local path = files[name]
+    if not path then
+        log:warn($"'{name}' wasn't loaded from a file, can't reload it")
+        return false
+    end
+
+    -- Dependents that were running, to start them again once the module is back
+    local restart = {}
+    for dep_name in pairs(dependents_of(name)) do
+        if by_name[dep_name]:is_running() then
+            table.insert(restart, dep_name)
+        end
+    end
+    module.stop_module(name)
+    local index = unregister(old)
+
+    local ok = run_file(path)
+    local fresh = by_name[name]
+    local reloaded = ok and fresh ~= nil
+    if not reloaded then
+        if fresh then
+            unregister(fresh)
+        elseif ok then
+            log:error($"{path} didn't register '{name}' again")
+        end
+        log:warn($"'{name}' not reloaded, the old version is back")
+        register_at(old, index, path)
+    else
+        -- The file registered it at the end; move it back to where it was
+        unregister(fresh)
+        register_at(fresh, index, path)
+        log:info($"'{name}' reloaded from {path}")
+    end
+
+    local running = module.start_module(name)
+    for _, dep_name in ipairs(restart) do
+        module.start_module(dep_name)
+    end
+    return reloaded and running
 end
 
 util.on_stop(module.stop)

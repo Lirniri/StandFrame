@@ -186,6 +186,10 @@ MenuNode = class
         local ref = self:track(create(self.handle, feature, name, Commands.names(commands), help), commands)
         if TOGGLE_KINDS[feature.kind] then
             table.insert(self.toggles, ref)
+            -- A failed feature is switched off; its toggle follows. The ref may be deleted by then
+            feature:set_failure_handler(function()
+                pcall(menu.set_value, ref, false)
+            end)
         end
         return ref
     end
