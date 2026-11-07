@@ -55,6 +55,13 @@ function module.file_of(name: string): ?string
     return files[name]
 end
 
+-- The text the code running now was read from (the file may be edited since): its line numbers are
+-- the ones debug.getinfo gives for the module's functions
+-- @return nil for a file that isn't a module file or hasn't run
+function module.loaded_text_of(path: string): ?string
+    return loaded_text[path]
+end
+
 function module.get(name: string): table
     local mod = by_name[name]
     if not mod then

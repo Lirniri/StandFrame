@@ -8,8 +8,6 @@ Atdar.loader.measure("natives-3407a (util.require_natives)", util.require_native
 
 Atdar.globals = Atdar.loader.load("globals")
 
-menu.ref_by_path("luascripts")
-
 -- Libraries
 local UTILS = {
     "util",

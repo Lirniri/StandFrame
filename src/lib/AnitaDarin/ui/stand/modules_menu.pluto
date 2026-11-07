@@ -377,23 +377,38 @@ end
 
 -- ─── Showing what a call gave ────────────────────────────────────────────────
 
--- File path -> its lines, or false if it can't be read; read once
+-- File path -> { text = the text, lines = its lines }; split again only when the text is another
 local source_lines = {}
 
+-- The lines a function's line numbers belong to. A module file: the text its running code was read
+-- from, so an edit or a Reload never leaves them pointing at other lines. Any other file (the lib's,
+-- not changed while the script runs): read from disk once
+-- @return The lines, or false if there's no text
 local function lines_of(path: string)
-    if source_lines[path] == nil then
-        local lines = false
+    local text = Atdar.modules.loaded_text_of(path)
+    local cached = source_lines[path]
+    if text == nil and cached ~= nil then
+        return cached.lines
+    end
+    if cached ~= nil and cached.text == text then
+        return cached.lines
+    end
+    if text == nil then
         local file = io.open(path, "r")
         if file ~= nil then
-            lines = {}
-            for line in file:lines() do
-                table.insert(lines, line)
-            end
+            text = file:read("*a")
             file:close()
         end
-        source_lines[path] = lines
     end
-    return source_lines[path]
+    local lines = false
+    if text ~= nil then
+        lines = {}
+        for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+            table.insert(lines, (line:gsub("\r$", "")))
+        end
+    end
+    source_lines[path] = { text = text, lines = lines }
+    return lines
 end
 
 -- The return type written after a function's parameters ("function name(a, b): bool" -> "bool").

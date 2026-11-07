@@ -592,6 +592,22 @@ stand.equal(stand.child(two_node, "Call When Opened").value, true, "Call When Op
 stand.clear_logs()
 stand.click(two_node)
 stand.check(stand.find_log("Module 5.two() -> 2"), "and opening the new list calls the function")
+-- The return type is read from the code that runs: after the file is edited and reloaded, from the new
+-- text, though the lines moved; an edit not reloaded yet doesn't change it
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function two(): int return 2 end"))
+stand.click(stand.child(entry_reloader, "Reload"))
+stand.check(stand.child(reloader_fns(), "two(): int") ~= nil, "a type written after reloading shows")
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("\n\n    -- moved down\n    function two(): string return '2' end"))
+stand.click(stand.child(entry_reloader, "Reload"))
+stand.check(stand.child(reloader_fns(), "two(): string") ~= nil, "the lines moved: the new type, from the new lines")
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function two(): bool return true end"))
+stand.click(stand.child(entry_reloader, "Disable Function Categories"))
+stand.click(stand.child(entry_reloader, "Disable Function Categories"))
+stand.check(stand.child(reloader_fns(), "two(): string") ~= nil, "edited but not reloaded: the type of the code that runs")
+stand.click(stand.child(entry_reloader, "Reload"))
 
 -- Stop All, under Refresh: every module stops, on_tick run by hand too
 stand.check(names_in(list):find("Refresh | Stop All", 1, true), "Stop All comes right under Refresh")
