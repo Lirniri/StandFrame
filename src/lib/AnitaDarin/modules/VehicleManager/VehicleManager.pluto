@@ -31,12 +31,16 @@ local class VehicleManager extends Module
     -- The vehicle the player is in at the start is remembered too
     function on_start()
         self.current_vehicle = 0
-        self:_remember_current_vehicle()
+        if self:is_remembered_current_vehicle() then
+            self:_remember_current_vehicle()
+        end
     end
 
     -- Remembers every vehicle the player gets into
     function on_tick()
-        self:_remember_current_vehicle()
+        if self:is_remembered_current_vehicle() then
+            self:_remember_current_vehicle()
+        end
     end
 
     function on_stop()
@@ -101,6 +105,13 @@ local class VehicleManager extends Module
             self.last_handle = nil
         end
     end
+    -- Forgets the vehicle remembered last (only from the table: the vehicle stays in the game)
+    function remove_last_vehicle(): void
+        if self.last_handle == nil then
+            return
+        end
+        self:remove_vehicle(self.last_handle)
+    end
     -- Forgets all vehicles
     function remove_all_vehicles(): void
         self.vehicles = {}
@@ -109,15 +120,15 @@ local class VehicleManager extends Module
 
     -- Action
 
-    -- function explode_all(): void
-    --     local n_vehicle = Atdar.natives.entity.vehicle
-    --     for _, handle in pairs(self:get_handles()) do
-    --         n_vehicle.explode({
-    --             vehicle = handle,
-    --             net_id = n_vehicle.get_net_id(handle)
-    --         })
-    --     end
-    -- end
+    function explode_all(): void
+        local n_vehicle = Atdar.natives.entity.vehicle
+        for _, handle in pairs(self:get_handles()) do
+            n_vehicle.explode({
+                vehicle = handle,
+                net_id = n_vehicle.get_net_id(handle)
+            })
+        end
+    end
 
     -- Spawns a vehicle and remembers it. By default 5 m in front of the player, facing where the player faces.
     -- Yields while the model loads: call it from a feature's action or a tick, not the script's main body

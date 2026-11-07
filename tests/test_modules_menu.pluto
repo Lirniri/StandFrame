@@ -100,8 +100,10 @@ local function names_in(node)
     return table.concat(names, " | ")
 end
 stand.equal(entry_b.kind, "list", "a module is a list")
-stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Base Functions"
-    .. " | on_start(): void | on_tick(): void | on_stop(): void | Module Functions | No functions", "actions, the hooks, then its own functions; one made without a class has none")
+stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Module Functions"
+    .. " | Base Functions | on_start(): void | on_tick(): void | on_stop(): void", "actions, the hooks, then the Module Functions list")
+stand.equal(names_in(stand.child(entry_b, "Module Functions")), "Variables | Functions | No functions",
+    "in it the Variables list; one made without a class has no functions")
 
 local entry_a = stand.find_item(list, "1: a: ")
 stand.click(stand.child(entry_a, "Stop"))
@@ -115,19 +117,79 @@ stand.equal(stand.name_of(entry_a), "1: a: running", "Start on b starts its dep 
 -- ─── Functions: the module's own, a button without parameters, a text field with ─────────────
 
 local entry_counter = stand.find_item(list, "3: counter: ")
-stand.equal(names_in(entry_counter), "Status: running | Start | Restart | Stop | Reload | Base Functions"
-    .. " | on_start(): void | on_tick(): void | on_stop(): void | Module Functions | add(amount, note) | broken() | reset()",
-    "its own functions by name with their parameters; hooks, Module's own and _names left out")
-local add_node = stand.child(entry_counter, "add(amount, note)")
+local counter_functions = stand.child(entry_counter, "Module Functions")
+stand.equal(counter_functions.kind, "list", "Module Functions is a list")
+stand.equal(names_in(counter_functions), "Variables | Functions | add(amount, note) | broken() | reset()"
+    .. " | Internal Functions (_) | _hidden()",
+    "Variables, its own functions by name with their parameters, then the _ ones at the bottom; hooks and Module's own left out")
+stand.equal(stand.child(counter_functions, "_hidden()").kind, "list", "a _ function is callable the same way")
+-- Variables: the module's fields and their values when the list is opened
+local variables = stand.child(counter_functions, "Variables")
+counter.label = "main"
+counter.items = { 1, 2 }
+local function values_in(node)
+    local lines = {}
+    for _, child in node.children do
+        table.insert(lines, $"{stand.name_of(child)}: {child.value}")
+    end
+    return table.concat(lines, " | ")
+end
+counter.vehicles = { [158214] = true, [169734] = true, nested = { x = 1 } }
+stand.click(variables)
+stand.equal(names_in(variables), "count | items (2) | label | vehicles (3)",
+    "Variables: the module's own fields, sorted; a table is a list named with how many entries it has")
+stand.equal(stand.child(variables, "count").value, "0", "a value as it is")
+stand.equal(stand.child(variables, "label").value, '"main"', "a text in quotes")
+local vehicles_node = stand.child(variables, "vehicles (3)")
+stand.equal(vehicles_node.kind, "list", "a table field is a list")
+stand.equal(values_in(stand.child(variables, "items (2)")), "[1]: 1 | [2]: 2", "a list's entries by index")
+stand.equal(names_in(vehicles_node), "[158214] | [169734] | nested (1)", "other keys sorted, tables inside are lists too")
+stand.equal(stand.child(vehicles_node, "[158214]").value, "true", "each entry with its value")
+stand.equal(stand.child(stand.child(vehicles_node, "nested (1)"), "x").value, "1", "down into a table inside")
+-- While it's open: a changed value changes in place, a new entry makes the list again
+local count_line = stand.child(variables, "count")
+counter.count = 3
+stand.clock += 300
+stand.frame()
+stand.equal(count_line.value, "3", "a changed value shows while the list is open")
+stand.equal(stand.child(variables, "count"), count_line, "in place: the same line")
+counter.vehicles[200000] = true
+stand.clock += 300
+stand.frame()
+stand.check(stand.child(variables, "vehicles (4)") ~= nil, "an entry that came: the list is made again")
+stand.back(variables)
+counter.count = 9
+stand.clock += 300
+stand.frame()
+stand.equal(#variables.children, 0, "gone back: nothing is looked at or made any more")
+counter.count = 0
+counter.vehicles = nil
+counter.count = 7
+stand.back(variables)
+stand.click(variables)
+stand.equal(stand.child(variables, "count").value, "7", "opened again: the values now")
+counter.count = 0
+counter.label = nil
+counter.items = nil
+local add_node = stand.child(counter_functions, "add(amount, note)")
 stand.equal(add_node.kind, "list", "with parameters: a list too")
-stand.equal(names_in(add_node), "Arguments | Call | Call When Opened | Call When Hovered | Loop | Loop With Interval"
-    .. " | Stop | Status: stopped", "with the Arguments field on top")
+stand.equal(names_in(add_node), "Arguments | Call | Call After | Call When Opened | Call When Hovered | Loop | Loop With Interval"
+    .. " | Status: stopped", "with the Arguments field on top")
 local add_args = stand.child(add_node, "Arguments")
 stand.equal(add_args.kind, "text_input", "Arguments is a text field")
-local reset_node = stand.child(entry_counter, "reset()")
+local reset_node = stand.child(counter_functions, "reset()")
 stand.equal(reset_node.kind, "list", "without: a list")
-stand.equal(names_in(reset_node), "Call | Call When Opened | Call When Hovered | Loop | Loop With Interval | Stop"
-    .. " | Status: stopped", "of Call, Call When Opened / Hovered, Loop, Loop With Interval, Stop and its Status")
+stand.equal(names_in(reset_node), "Call | Call After | Call When Opened | Call When Hovered | Loop | Loop With Interval"
+    .. " | Status: stopped", "of Call, Call After, Call When Opened / Hovered, Loop, Loop With Interval and its Status")
+-- Call After: once, after the ms picked
+counter.count = 5
+local clock_before = stand.clock
+stand.clear_logs()
+stand.click(stand.child(reset_node, "Call After"), 500)
+stand.check(stand.find_log("Module 3.reset(): called in 500 ms"), "Call After tells when")
+stand.check(stand.clock - clock_before >= 500 and counter.count == 0, "and calls the function after that wait")
+counter.count = 0
+stand.equal(stand.child(reset_node, "Loop").kind, "toggle", "Loop is a toggle")
 
 stand.clear_logs()
 menu.set_value(add_args, '5, "a, b"')
@@ -139,7 +201,7 @@ stand.click(stand.child(reset_node, "Call"))
 stand.equal(counter.count, 0, "a button calls the function")
 stand.check(stand.find_log("Module 3.reset(): done"), "a call without results says it's done")
 stand.clear_logs()
-stand.click(stand.child(stand.child(entry_counter, "broken()"), "Call"))
+stand.click(stand.child(stand.child(counter_functions, "broken()"), "Call"))
 stand.check(stand.find_log("Module 3.broken() failed: it broke"), "an error in the function is told, not thrown")
 stand.check(stand.find_log("| ERROR] Module 3.broken() failed"), "as an error: Errors Always In Stand applies to it")
 -- Call When Opened: opening the list calls the function, only while it's on
@@ -175,14 +237,12 @@ stand.equal(stand.name_of(reset_status), "Status: running", "Status: running")
 counter.count = 5
 stand.frame()
 stand.equal(counter.count, 0, "Loop calls the function every frame")
-stand.click(stand.child(reset_node, "Stop"))
-stand.check(stand.find_log("Module 3.reset(): loop stopped"), "Stop is told")
+stand.click(stand.child(reset_node, "Loop"))
+stand.check(stand.find_log("Module 3.reset(): loop stopped"), "switching Loop off is told")
 stand.equal(stand.name_of(reset_status), "Status: stopped", "Status: stopped")
 counter.count = 5
 stand.frame()
-stand.equal(counter.count, 5, "Stop ends the loop")
-stand.click(stand.child(reset_node, "Stop"))
-stand.check(stand.find_log("Module 3.reset(): no loop running"), "Stop with no loop says so")
+stand.equal(counter.count, 5, "Loop off ends the loop")
 -- With an interval: once every so many ms (a frame is stand.FRAME_MS here)
 local adds = 0
 local real_reset = counter.reset
@@ -190,6 +250,7 @@ counter.reset = function() adds += 1 end
 stand.click(stand.child(reset_node, "Loop With Interval"), 300)
 stand.check(stand.find_log("Module 3.reset(): loop every 300 ms"), "Loop With Interval tells its interval")
 stand.equal(stand.name_of(reset_status), "Status: every 300 ms", "Status: every 300 ms")
+stand.equal(stand.child(reset_node, "Loop").value, true, "Loop With Interval switches Loop on")
 for _ = 1, 9 do
     stand.frame()
     stand.clock += stand.FRAME_MS
@@ -198,6 +259,7 @@ stand.check(adds >= 3 and adds <= 4, $"called once every 300 ms ({adds} calls in
 -- The module's Stop ends its functions' loops
 stand.click(stand.child(entry_counter, "Stop"))
 stand.equal(stand.name_of(reset_status), "Status: stopped", "the module's Stop ends its functions' loops")
+stand.equal(stand.child(reset_node, "Loop").value, false, "and switches Loop off")
 adds = 0
 stand.frame(3)
 stand.equal(adds, 0, "nothing is called any more")
@@ -209,6 +271,17 @@ stand.click(stand.child(reset_node, "Loop"))
 stand.frame()
 stand.check(stand.find_log("| ERROR] Module 3.reset() failed: loop broke"), "an error in a loop is told as an error")
 stand.equal(stand.name_of(reset_status), "Status: error", "Status: error, the loop ended")
+stand.equal(stand.child(reset_node, "Loop").value, false, "Loop switched off by the error")
+-- Loop With Interval, then Loop off: the interval loop stops
+counter.reset = function() adds += 1 end
+stand.click(stand.child(reset_node, "Loop With Interval"), 300)
+stand.click(stand.child(reset_node, "Loop"))
+adds = 0
+for _ = 1, 6 do
+    stand.frame()
+    stand.clock += stand.FRAME_MS
+end
+stand.equal(adds, 0, "Loop off stops a loop started with an interval")
 counter.reset = real_reset
 counter.count = 0
 
@@ -354,7 +427,7 @@ stand.debug_texts = {}
 stand.frame()
 stand.equal(#stand.debug_texts, 1, "once a frame, not twice")
 -- A table is unpacked
-stand.click(stand.child(add_node, "Stop"))
+stand.click(stand.child(add_node, "Loop"))
 local real_add = counter.add
 counter.add = function() return { 1, "a", { x = 2 } } end
 stand.click(stand.child(add_node, "Loop"))
@@ -362,7 +435,7 @@ stand.frame()
 stand.equal(stand.debug_texts[#stand.debug_texts], 'counter.add(amount, note) -> {1, "a", {x = 2}}', "a table unpacked")
 counter.add = real_add
 counter.count = 5
-stand.click(stand.child(add_node, "Stop"))
+stand.click(stand.child(add_node, "Loop"))
 counter.count = 2
 menu.set_value(add_args, "missing.call()")
 stand.click(stand.child(add_node, "Call"))
@@ -440,22 +513,24 @@ stand.check(stand.find_log("No changed modules"), "nothing changed: says so")
 
 -- Reload: the code is read again, its functions in the menu are made again
 local entry_reloader = stand.find_item(list, "5: reloader: ")
-stand.check(stand.child(entry_reloader, "one()") ~= nil and stand.child(entry_reloader, "old_field(x)") ~= nil,
+local function reloader_fns() return stand.child(entry_reloader, "Module Functions") end
+stand.check(stand.child(reloader_fns(), "one()") ~= nil and stand.child(reloader_fns(), "old_field(x)") ~= nil,
     "a module from a file: its functions one() and old_field(x)")
 stand.write_file($"{reload_dir}reloader.pluto",
     reloader_file("    function two() return 2 end\n    function three(x) return x end"))
 stand.click(stand.child(entry_reloader, "Reload"))
-stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Base Functions"
-    .. " | on_start(): void | on_tick(): void | on_stop(): void | Module Functions | three(x) | two()",
-    "after Reload the functions are the new code's: one() and the field old_field(x) gone, nothing twice")
+stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Module Functions"
+    .. " | Base Functions | on_start(): void | on_tick(): void | on_stop(): void", "after Reload the list is made again, once")
+stand.equal(names_in(reloader_fns()), "Variables | Functions | three(x) | two()",
+    "with the new code's functions: one() and the field old_field(x) gone, nothing twice")
 stand.clear_logs()
-stand.click(stand.child(stand.child(entry_reloader, "two()"), "Call"))
+stand.click(stand.child(stand.child(reloader_fns(), "two()"), "Call"))
 stand.check(stand.find_log("Module 5.two() -> 2"), "and they call the new code")
 -- Call When Opened stays on when Reload makes the list again
-local two_node = stand.child(entry_reloader, "two()")
+local two_node = stand.child(reloader_fns(), "two()")
 stand.click(stand.child(two_node, "Call When Opened"))
 stand.click(stand.child(entry_reloader, "Reload"))
-two_node = stand.child(entry_reloader, "two()")
+two_node = stand.child(reloader_fns(), "two()")
 stand.equal(stand.child(two_node, "Call When Opened").value, true, "Call When Opened stays on after Reload")
 stand.clear_logs()
 stand.click(two_node)

@@ -46,7 +46,9 @@ local names = {}
 for _, fn in ipairs(Module.functions_of(counter)) do
     table.insert(names, fn.name)
 end
-stand.equal(table.concat(names, ", "), "add, save, value", "counter's functions for the menu, _reset_quietly hidden")
+stand.equal(table.concat(names, ", "), "add, save, value", "counter's functions for the menu, _reset_quietly apart")
+local internal = Module.functions_of(counter, true)
+stand.check(#internal == 1 and internal[1].name == "_reset_quietly", "functions_of(mod, true): the _ ones")
 stand.equal(counter:add(3), 3, "add(amount) works")
 
 -- ─── features/ ───────────────────────────────────────────────────────────────

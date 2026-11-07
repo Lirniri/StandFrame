@@ -730,6 +730,21 @@ end
 local function_loops = {}
 -- The same key -> the Status divider in the function's list
 local loop_statuses = {}
+-- The same key -> the Loop toggle in the function's list: on while a loop of it runs (any kind)
+local loop_toggles = {}
+-- Keys whose toggle the script itself is switching: its on_change isn't the user's then
+local syncing = {}
+
+-- Switches the Loop toggle to how the loop is, without starting or stopping anything
+local function sync_loop_toggle(key: string, on: bool): void
+    local ref = loop_toggles[key]
+    if ref == nil then
+        return
+    end
+    syncing[key] = true
+    pcall(menu.set_value, ref, on)
+    syncing[key] = nil
+end
 -- The same key -> true when the function is called each time its list is opened (Call When Opened).
 -- Kept by key, so it stays on when Reload makes the list again
 local call_on_open = {}
@@ -762,6 +777,8 @@ end
 
 -- state: "running" / "every" (ms) / "stopped" / "failed"
 local function show_loop_status(key: string, state: string, every: ?int): void
+    -- The Loop toggle follows: on while it runs (also with an interval), off when it ended in any way
+    sync_loop_toggle(key, state == "running" or state == "every")
     local ref = loop_statuses[key]
     if ref == nil then
         return
@@ -891,6 +908,20 @@ local function function_list(entry: table, mod: table, fn: table): void
         end, call_args[key] or ""))
     end
     node:action(label("loop.call"), || -> call_with_args(module_name, fn, key), {}, label("call.button_help"))
+    -- Once, after the ms picked; the arguments are worked out then, not at the click
+    node:track(menu.click_slider(node.handle, label("loop.call_after"), {}, label("loop.call_after_help"),
+        100, 60000, 1000, 100, function(ms, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        log:notify(text("loop.call_scheduled"):format($"{short_name(module_name)}.{signature(fn)}", ms))
+        util.create_thread(function()
+            util.yield(ms)
+            if not stopping then
+                call_with_args(module_name, fn, key)
+            end
+        end)
+    end))
     node:toggle(label("loop.call_on_open"), function(on)
         call_on_open[key] = on or nil
     end, {}, label("loop.call_on_open_help"), call_on_open[key] == true)
@@ -903,7 +934,22 @@ local function function_list(entry: table, mod: table, fn: table): void
             call_with_args(module_name, fn, key)
         end
     end)
-    node:action(label("loop.loop"), || -> start_loop(module_name, fn, nil), {}, label("loop.loop_help"))
+    -- On: every frame; off: the loop stops, also one started with an interval. Made as the loop is now
+    syncing[key] = true
+    loop_toggles[key] = node:toggle(label("loop.loop"), function(on)
+        if stopping or syncing[key] then
+            return
+        end
+        -- Only a real change: the toggle following a loop (e.g. one with an interval) starts nothing,
+        -- even if Stand calls this later than the switch
+        local running = function_loops[key] ~= nil
+        if on and not running then
+            start_loop(module_name, fn, nil)
+        elseif not on and running then
+            stop_loop(module_name, fn)
+        end
+    end, {}, label("loop.loop_help"), function_loops[key] ~= nil)
+    syncing[key] = nil
     node:track(menu.click_slider(node.handle, label("loop.every"), {}, label("loop.every_help"),
         100, 60000, 1000, 100, function(ms, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
@@ -911,7 +957,6 @@ local function function_list(entry: table, mod: table, fn: table): void
         end
         start_loop(module_name, fn, ms)
     end))
-    node:action(label("loop.stop"), || -> stop_loop(module_name, fn), {}, label("loop.stop_help"))
     loop_statuses[key] = node:divider(
         text("entry.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
@@ -922,6 +967,191 @@ local function function_list(entry: table, mod: table, fn: table): void
     end
 end
 
+-- ─── Variables: the module's fields and their values now ─────────────────────
+
+-- Fields every module has (Module's own): not the module's variables
+local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true }
+
+-- The module's own fields (set in its __construct or later), sorted by name: { name, value }.
+-- Functions (hooks given as options) and Module's fields are left out
+local function variables_of(mod: table): table
+    local list = {}
+    for key, value in pairs(mod) do
+        if type(key) == "string" and not MODULE_FIELDS[key] and key:sub(1, 2) ~= "__"
+            and type(value) ~= "function" then
+            table.insert(list, { name = key, value = value })
+        end
+    end
+    table.sort(list, |a, b| -> a.name < b.name)
+    return list
+end
+
+-- A table's entries in the order they're shown: the list part, then the other keys sorted.
+-- @return { key_text, value }: "[1]", "name", "[158214]"
+local function table_entries(tbl: table): table
+    local entries = {}
+    local length = #tbl
+    for i = 1, length do
+        table.insert(entries, { key_text = $"[{i}]", value = tbl[i] })
+    end
+    local keys = {}
+    for key in pairs(tbl) do
+        if math.type(key) ~= "integer" or key < 1 or key > length then
+            table.insert(keys, key)
+        end
+    end
+    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+    for _, key in ipairs(keys) do
+        local key_text = key
+        if type(key) ~= "string" or not key:match("^[%a_][%w_]*$") then
+            -- Not a plain name: in brackets, a text in quotes ([158214], ["a b"])
+            local shown = describe_item(key, 0, {})
+            key_text = $"[{shown}]"
+        end
+        table.insert(entries, { key_text = key_text, value = tbl[key] })
+    end
+    return entries
+end
+
+-- Entries shown of one table; the rest is a "..." line
+local MAX_TABLE_ENTRIES = 100
+-- Tables inside tables made lists this deep; deeper ones are a line ("{...}")
+local MAX_VARIABLE_DEPTH = 3
+
+-- How often an open Variables list looks at the values again, ms
+local VARIABLES_REFRESH_MS = 250
+
+-- A variable as items to show, added to out in menu order: a line { kind = "line", name, text } or
+-- for a table a list { kind = "list", name = "name (entries)" } with its entries after it. Each has
+-- a path (where it is, unique) and parent (the path of the list it's in, "" - the Variables list).
+-- seen: the tables on the way here, so one inside itself is a line, not lists without end
+local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table): void
+    local path = $"{parent}/{name}"
+    if type(value) ~= "table" or seen[value] or depth >= MAX_VARIABLE_DEPTH then
+        table.insert(out, { kind = "line", path = path, parent = parent, name = name,
+            text = describe_item(value, depth, seen) })
+        return
+    end
+    local entries = table_entries(value)
+    table.insert(out, { kind = "list", path = path, parent = parent, name = $"{name} ({#entries})" })
+    if #entries == 0 then
+        table.insert(out, { kind = "note", path = $"{path}/", parent = path, name = "{}" })
+        return
+    end
+    seen[value] = true
+    for i, entry in ipairs(entries) do
+        if i > MAX_TABLE_ENTRIES then
+            table.insert(out, { kind = "note", path = $"{path}/...", parent = path, name = "..." })
+            break
+        end
+        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen)
+    end
+    seen[value] = nil
+end
+
+-- Every item of the module's Variables, in menu order (collect_variable), nil if there's no such module
+local function collect_variables(module_name: string): ?table
+    local modules = Atdar.modules
+    if not modules.has(module_name) then
+        return nil
+    end
+    local out = {}
+    for _, variable in ipairs(variables_of(modules.get(module_name))) do
+        collect_variable(out, "", variable.name, variable.value, 0, {})
+    end
+    return out
+end
+
+-- What the items are without their values: the same shape means only values changed
+local function shape_of(items: table): string
+    local parts = {}
+    for _, item in ipairs(items) do
+        table.insert(parts, $"{item.kind}:{item.path}:{item.name}")
+    end
+    return table.concat(parts, "\n")
+end
+
+-- Makes the items in list
+-- @return path -> the ref of each line, to change its value later
+local function build_variables(list: table, items: table): table
+    local lines = {}
+    if #items == 0 then
+        list:readonly_name(label("no_variables"))
+        return lines
+    end
+    local nodes = { [""] = list }
+    for _, item in ipairs(items) do
+        local parent = nodes[item.parent]
+        if item.kind == "list" then
+            nodes[item.path] = parent:list(item.name)
+        elseif item.kind == "line" then
+            lines[item.path] = parent:readonly(item.name, item.text)
+        else
+            parent:readonly_name(item.name)
+        end
+    end
+    return lines
+end
+
+-- The Variables list: a line per field, "count: 0" (texts in quotes), a list per table field.
+-- Made when it's opened; while it's open the values are looked at again every VARIABLES_REFRESH_MS:
+-- changed values change in place, a field or entry that came or went makes the list again
+local function variables_list(node: table, module_name: string): void
+    local list = nil
+    -- The current opening: a newer one (or going back) ends the refresh of the one before
+    local opened = nil
+    list = node:list(label("variables"), {}, label("variables_help"), function()
+        opened = nil
+        list:clear()
+    end, function()
+        local this = {}
+        opened = this
+        list:clear()
+        local items = collect_variables(module_name) or {}
+        local shape = shape_of(items)
+        local texts = {}
+        for _, item in ipairs(items) do
+            texts[item.path] = item.text
+        end
+        local lines = build_variables(list, items)
+        local next_look = util.current_time_millis() + VARIABLES_REFRESH_MS
+
+        util.create_tick_handler(function()
+            if stopping or opened ~= this then
+                return false
+            end
+            local now = util.current_time_millis()
+            if now < next_look then
+                return true
+            end
+            next_look = now + VARIABLES_REFRESH_MS
+            local fresh = collect_variables(module_name)
+            if fresh == nil then
+                return false
+            end
+            local fresh_shape = shape_of(fresh)
+            if fresh_shape ~= shape then
+                -- Something came or went: made again
+                list:clear()
+                shape = fresh_shape
+                texts = {}
+                lines = build_variables(list, fresh)
+                for _, item in ipairs(fresh) do
+                    texts[item.path] = item.text
+                end
+                return true
+            end
+            for _, item in ipairs(fresh) do
+                if item.kind == "line" and texts[item.path] ~= item.text then
+                    texts[item.path] = item.text
+                    pcall(menu.set_value, lines[item.path], item.text)
+                end
+            end
+            return true
+        end)
+    end)
+end
+
 -- The hooks the manager calls, to call by hand too (they don't change the module's status)
 local HOOKS = {
     { name = "on_start", params = {}, vararg = false },
@@ -929,9 +1159,30 @@ local HOOKS = {
     { name = "on_stop", params = {}, vararg = false },
 }
 
--- The Base Functions divider with the hooks, then the Module Functions divider and an item per function
--- of the module
+-- The Module Functions list (its Variables, then a list per function of the module), then the Base Functions
+-- divider with the hooks
 local function functions_of(entry: table, mod: table): void
+    local functions_node = entry:list(label("functions"), {}, label("functions_help"))
+    variables_list(functions_node, mod.name)
+    functions_node:divider(label("functions_divider"))
+    local functions = Module.functions_of(mod)
+    if #functions == 0 then
+        functions_node:readonly_name(label("no_functions"))
+    end
+    for _, fn in ipairs(functions) do
+        fn.returns = return_type(mod[fn.name])
+        function_list(functions_node, mod, fn)
+    end
+    -- At the bottom: the module's helpers, the functions named with _ (callable the same way)
+    local internal = Module.functions_of(mod, true)
+    if #internal > 0 then
+        functions_node:divider(label("internal_functions"))
+        for _, fn in ipairs(internal) do
+            fn.returns = return_type(mod[fn.name])
+            function_list(functions_node, mod, fn)
+        end
+    end
+
     entry:divider(label("base_functions"))
     for _, hook in ipairs(HOOKS) do
         -- The module's own type, or the one Module declares the hook with (a module's override may leave it out)
@@ -943,17 +1194,6 @@ local function functions_of(entry: table, mod: table): void
         else
             entry:action(item_name(named), || -> call(mod.name, hook, {}, 0), {}, label("call.hook_help"))
         end
-    end
-
-    entry:divider(label("functions"))
-    local functions = Module.functions_of(mod)
-    if #functions == 0 then
-        entry:readonly_name(label("no_functions"))
-        return
-    end
-    for _, fn in ipairs(functions) do
-        fn.returns = return_type(mod[fn.name])
-        function_list(entry, mod, fn)
     end
 end
 
@@ -1044,6 +1284,7 @@ local function empty(node: table): void
         view = {}
         tick_statuses = {}
         loop_statuses = {}
+        loop_toggles = {}
     end
 end
 

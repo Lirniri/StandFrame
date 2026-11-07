@@ -2,9 +2,9 @@
 --
 -- Settings > Debug > Modules lists each module's functions (the ones its class adds) to call by hand:
 -- Call, Call When Opened / Hovered, Loop, Loop With Interval, and an Arguments field for parameters.
--- The menu shows the return type written in the code: "add(amount): int". Names starting with _
--- are left out, so helpers stay hidden; so are Module's own (get, start, stop, folder, json_file...),
--- don't give a function one of those names.
+-- The menu shows the return type written in the code: "add(amount): int". Names starting with _ (helpers)
+-- are at the bottom, under Internal Functions (_). Module's own (get, start, stop, folder, json_file...)
+-- are left out: don't give a function one of those names.
 --
 -- self:folder() is the folder of the module's file, self:json_file(name) a JSON file there.
 -- Put the module in a folder of its own: modules/Counter/Counter.pluto -> modules/Counter/counter.json.
@@ -46,7 +46,7 @@ local class Counter extends Module
         return file ~= nil and file:write({ count = self.count })
     end
 
-    -- Not in the menu: starts with _
+    -- At the bottom of the menu, under Internal Functions (_): starts with _
     function _reset_quietly(): void
         self.count = 0
     end
