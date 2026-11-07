@@ -314,7 +314,7 @@
         "functions": "Module Functions",
         "no_functions": "No functions",
         "call": {
-            "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text",
+            "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call",
             "button_help": "Calls the function",
             "done": "%s: done",
             "result": "%s -> %s",
@@ -323,8 +323,13 @@
             "bad_args": "%s: bad arguments: %s"
         },
         "loop": {
-            "help": "Calls the function once or in a loop",
+            "help": "Calls the function once or in a loop, with the Arguments typed",
+            "args": "Arguments",
             "call": "Call",
+            "call_on_open": "Call When Opened",
+            "call_on_open_help": "Calls the function every time its list is opened",
+            "call_on_focus": "Call When Hovered",
+            "call_on_focus_help": "Calls the function every time the cursor comes onto its list",
             "loop": "Loop",
             "loop_help": "Calls the function every frame until stopped",
             "every": "Loop With Interval",

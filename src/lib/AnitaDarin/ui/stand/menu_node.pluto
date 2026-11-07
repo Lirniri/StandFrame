@@ -121,8 +121,9 @@ MenuNode = class
 
     -- on_back(): Stand calls it when the user goes back out of the list (optional; no "= nil" default:
     -- that shifts Pluto's other defaults)
-    function list(name: string|int, commands: table = {}, help: string|int = "", on_back): table
-        local child = new MenuNode(menu.list(self.handle, name, Commands.names(commands), help, nil, on_back))
+    -- on_open(): Stand calls it when the user opens the list (optional, like on_back)
+    function list(name: string|int, commands: table = {}, help: string|int = "", on_back, on_open): table
+        local child = new MenuNode(menu.list(self.handle, name, Commands.names(commands), help, on_open, on_back))
         self:track(child.handle, commands)
         table.insert(self.sublists, child)
         return child

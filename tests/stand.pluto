@@ -98,6 +98,8 @@ stand.logs = {}
 stand.toasts = {}
 -- Names profiling.once / profiling.tick timed, in order
 stand.profiled = {}
+-- Lines util.draw_debug_text drew, in order
+stand.debug_texts = {}
 
 function stand.clear_logs(): void
     stand.logs = {}
@@ -170,6 +172,7 @@ _G.util = {
     stop_script = function() stand.stopped = true end,
     joaat = joaat,
     open_folder = |path| -> table.insert(stand.toasts, $"open_folder {path}"),
+    draw_debug_text = |line| -> table.insert(stand.debug_texts, line),
 }
 
 -- ─── filesystem (on the real disk) ───────────────────────────────────────────
@@ -317,6 +320,11 @@ _G.menu = {
     set_command_names = function(it, names) it.commands = names end,
     -- Where the cursor was sent last (stand.focused)
     focus = function(it) stand.focused = it end,
+    -- Called when the cursor comes onto the item (stand.hover)
+    on_focus = function(it, fn)
+        it.on_focus_handlers ??= {}
+        table.insert(it.on_focus_handlers, fn)
+    end,
     -- Proceeds right away, as if the user confirmed
     show_warning = |_, _, _, proceed| -> proceed(),
 }
@@ -331,8 +339,27 @@ function stand.click(it, option: ?int): void
         it.on_select(option, it.options[option], 0)
     elseif it.kind == "click_slider" then
         it.on_click(option or it.value, 0)
+    elseif it.kind == "list" then
+        -- Opening the list
+        if it.on_click then
+            it.on_click(0)
+        end
     else
         error($"stand.click: can't click a {it.kind}")
+    end
+end
+
+-- Acts like the user moving the cursor onto an item: its menu.on_focus handlers run
+function stand.hover(it): void
+    for _, fn in it.on_focus_handlers or {} do
+        fn()
+    end
+end
+
+-- Acts like the user going back out of a list: its on_back runs
+function stand.back(it): void
+    if it.on_back then
+        it.on_back()
     end
 end
 
