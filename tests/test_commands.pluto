@@ -32,6 +32,32 @@ stand.equal(table.concat(item.commands, ","), "anidar_godmode", "a new prefix is
 profile_set("command_prefix", "")
 stand.equal(table.concat(item.commands, ","), "godmode", "an empty prefix means none")
 
+-- An item deleted without untrack: renaming the rest doesn't fail on it, and it's forgotten
+local forgotten = menu.action(stand.root, "Forgotten", commands.names({ "forgotten" }), "", || -> nil)
+commands.track(forgotten, { "forgotten" })
+local kept = menu.action(stand.root, "Kept", commands.names({ "kept" }), "", || -> nil)
+commands.track(kept, { "kept" })
+menu.delete(forgotten)
+local real_set_names = menu.set_command_names
+menu.set_command_names = function(it, names)
+    if it.deleted then
+        error("deleted command")
+    end
+    real_set_names(it, names)
+end
+local renamed_ok = pcall(profile_set, "command_prefix", "zz")
+menu.set_command_names = real_set_names
+stand.check(renamed_ok, "a new prefix doesn't fail on an item deleted without untrack")
+stand.equal(kept.commands[1], "zz_kept", "the other items are renamed")
+stand.equal(commands.names_of(forgotten), nil, "and the deleted one is forgotten")
+local listed = false
+for _, item in ipairs(commands.list()) do
+    if item.ref == forgotten then listed = true end
+end
+stand.check(not listed, "nor listed in Found Commands")
+commands.untrack(kept)
+profile_set("command_prefix", "")
+
 -- Untracked (deleted) items aren't touched any more
 commands.untrack(item)
 profile_set("command_prefix", "x")

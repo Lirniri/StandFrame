@@ -258,7 +258,7 @@ function module.build(section: table, opts: table): void
     profile_menu.begin(opts.packs)
 
     profile_menu.header(section)
-
+    
     local settings = section:list(i18n.label("profile.settings.name"), { "settings" },
         i18n.label("profile.settings.help"))
     profile_menu.appearance(settings)

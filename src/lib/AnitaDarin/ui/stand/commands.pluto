@@ -132,10 +132,30 @@ function module.track(ref, bases: table): void
     end
 end
 
--- Must be called before an item is deleted, or refresh() would touch a deleted item
+-- Should be called before an item is deleted. One deleted without it is dropped the next time it's
+-- looked at (prune), so renaming never touches a deleted item
 function module.untrack(ref): void
     tracked[ref] = nil
     owner[ref] = nil
+end
+
+-- Whether Stand still has the item. Without menu.is_ref_valid (an older Stand) every item counts as
+-- there: dropping them all would be worse, and renaming is guarded by pcall anyway
+local function is_valid(ref): bool
+    if type(menu.is_ref_valid) ~= "function" then
+        return true
+    end
+    local ok, valid = pcall(menu.is_ref_valid, ref)
+    return ok and valid == true
+end
+
+-- Forgets items Stand doesn't have any more (deleted without untrack)
+local function prune(): void
+    for ref in pairs(tracked) do
+        if not is_valid(ref) then
+            module.untrack(ref)
+        end
+    end
 end
 
 -- @return An item's full command names with the current settings, or nil if it isn't tracked
@@ -230,6 +250,7 @@ function module.set_custom(ref, name: string): (bool, ?string)
         names[base] = nil
     else
         -- Two items with one command: Stand would only find one of them
+        prune()
         for other in pairs(tracked) do
             if other ~= ref then
                 for _, other_name in ipairs(module.bases_of(other)) do
@@ -241,7 +262,7 @@ function module.set_custom(ref, name: string): (bool, ?string)
         end
         names[base] = new_name
     end
-    menu.set_command_names(ref, module.names_of(ref))
+    pcall(menu.set_command_names, ref, module.names_of(ref))
     if not save(owner[ref]) then
         return false, "not_saved"
     end
@@ -250,6 +271,7 @@ end
 
 -- @return { ref, names } for every item that has commands, sorted by the first name
 function module.list(): table
+    prune()
     local items = {}
     for ref in pairs(tracked) do
         table.insert(items, { ref = ref, names = module.names_of(ref) })
@@ -259,9 +281,12 @@ function module.list(): table
 end
 
 -- Renames every tracked item with the current settings
+-- Renames every tracked item with the current settings; a deleted one is dropped instead
 function module.refresh(): void
+    prune()
     for ref in pairs(tracked) do
-        menu.set_command_names(ref, module.names_of(ref))
+        -- Still guarded: one item failing mustn't stop the rest from being renamed
+        pcall(menu.set_command_names, ref, module.names_of(ref))
     end
 end
 

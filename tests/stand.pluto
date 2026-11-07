@@ -292,6 +292,8 @@ _G.menu = {
         end
     end,
     get_value = |it| -> it.value,
+    -- Deleted items aren't valid any more
+    is_ref_valid = |it| -> type(it) == "table" and not it.deleted,
     get_menu_name = |it| -> it.name,
     set_value = set_value,
     set_menu_name = function(it, name) it.name = name end,
