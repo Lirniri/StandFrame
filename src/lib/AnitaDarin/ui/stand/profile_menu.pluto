@@ -271,9 +271,12 @@ function module.begin(packs: table = {}): void
     view = { inputs = {}, entries = {}, packs = packs, colors = {}, sliders = {}, subject_colors = {} }
 end
 
--- A text field for a profile value
-local function input(node: table, key: string, allow_empty: bool): void
-    local command = key:gsub("_", "")
+-- A text field for a profile value. command: its command name; none given - the key without "_"
+-- (no "= nil" default: Pluto shifts the other defaults with one)
+local function input(node: table, key: string, allow_empty: bool, command): void
+    if command == nil then
+        command = key:gsub("_", "")
+    end
     view.inputs[key] = node:text_input(label($"{key}.name"), { command }, function(value)
         if updating or (value == "" and not allow_empty) then
             return
@@ -579,15 +582,16 @@ end
 -- Base Commands (the script's own) and Found Commands (the loaded menu's) each have a prefix and a separator
 function module.command_box(node: table): void
     local options = { label("separator.none"), label("separator.underscore") }
-    input(node, "command_prefix", true)
+    -- Commands start with cb (command box): cbprefix, cbseparator, cbfoundprefix, cbfoundseparator
+    input(node, "command_prefix", true, "cbprefix")
     view.separator = node:list_action(separator_caption(), options, function(index)
         Atdar.profile.set("command_separator", SEPARATORS[index])
-    end, { "separator" }, label("separator.help"))
-    input(node, "found_command_prefix", true)
+    end, { "cbseparator" }, label("separator.help"))
+    input(node, "found_command_prefix", true, "cbfoundprefix")
     view.found_separator = node:list_action(separator_caption("found_command_separator", "found_separator.name"), options,
         function(index)
         Atdar.profile.set("found_command_separator", SEPARATORS[index])
-    end, { "foundseparator" }, label("found_separator.help"))
+    end, { "cbfoundseparator" }, label("found_separator.help"))
 end
 
 -- ─── Debug Mode ──────────────────────────────────────────────────────────────
