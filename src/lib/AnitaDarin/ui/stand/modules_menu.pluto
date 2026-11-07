@@ -1,11 +1,18 @@
--- Modules list in the script's settings section, shown only in debug mode: each module's status,
--- deps and error, with Start / Stop / Restart / Reload. Strings live in language/base under "modules".
+-- Modules list in the script's settings section, shown only in debug mode: each module a list with its
+-- status, deps and error, Start / Restart / Stop / Reload, and under the Functions divider the module's own
+-- functions to call by hand (Module.functions_of): a button for one without parameters, a text field for
+-- one with, the arguments separated by commas. Strings live in language/base under "modules".
 -- Restart runs the same module again; Reload re-reads its file, so code changes apply
 --
 -- The list is always built and only hidden outside debug mode: rebuilding the section when debug
 -- is switched would delete the Profile list the user is in, which Stand doesn't do cleanly
 
 local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local Module = Atdar.loader.load("core/module")
+local commands = Atdar.loader.load("ui/stand/commands")
+
+local log = new Logger("Modules")
 
 local module = {}
 
@@ -22,6 +29,11 @@ local view = {}
 
 local function caption(mod: table): string
     return text("entry.name"):format(mod.name, text($"status.{mod.status}"))
+end
+
+-- "Status: running", the divider on top of a module's list
+local function status_line(mod: table): string
+    return text("entry.status_line"):format(text($"status.{mod.status}"))
 end
 
 local function help(mod: table): string
@@ -45,6 +57,10 @@ local function refresh(): void
             local mod = modules.get(name)
             pcall(menu.set_menu_name, ref, caption(mod))
             pcall(menu.set_help_text, ref, help(mod))
+            local status_ref = (view.statuses or {})[name]
+            if status_ref ~= nil then
+                pcall(menu.set_menu_name, status_ref, status_line(mod))
+            end
         end
     end
 end
@@ -80,6 +96,562 @@ local ACTIONS = {
     { key = "reload", run = |name| -> Atdar.modules.reload_module(name) },
 }
 
+-- ─── Calling a module's functions ────────────────────────────────────────────
+
+-- One argument as typed: nil, true, false, a number, otherwise the text itself
+local function value_of(raw: string)
+    if raw == "nil" then
+        return nil
+    end
+    if raw == "true" then
+        return true
+    end
+    if raw == "false" then
+        return false
+    end
+    local number = tonumber(raw)
+    if number ~= nil then
+        return number
+    end
+    return raw
+end
+
+-- 'adder, 5, true, "a, b"' -> "adder", 5, true, "a, b": split by commas, a quoted text kept whole
+-- (quotes "" or ''), spaces around each argument dropped. For what isn't a Lua expression (see parse_args)
+-- @return The arguments and how many there are (nil ones count too)
+local function split_args(input: string)
+    local args, count = {}, 0
+    local i, len = 1, #input
+    while i <= len do
+        local c = input:sub(i, i)
+        if c:match("%s") then
+            i += 1
+        elseif c == '"' or c == "'" then
+            local close = input:find(c, i + 1, true) or (len + 1)
+            count += 1
+            args[count] = input:sub(i + 1, close - 1)
+            local comma = input:find(",", close + 1, true)
+            i = comma ~= nil ? comma + 1 : len + 1
+        else
+            local comma = input:find(",", i, true)
+            local stop = comma ~= nil ? comma - 1 : len
+            count += 1
+            args[count] = value_of(input:sub(i, stop):match("^%s*(.-)%s*$"))
+            i = stop + 2
+        end
+    end
+    return args, count
+end
+
+-- ─── Reading the arguments as expressions ────────────────────────────────────
+-- Stand's Lua has no load, so the expressions are read here. Understood: nil, true, false, numbers
+-- (5, -2.5, 0x1F), "text" / 'text', names the script sees (natives, entities, Atdar, v3, ...) with .field,
+-- :method(...) and calls (...) after them. A bare word that names nothing is its own text: adder -> "adder".
+-- The reader is a table { src, pos }; what isn't an expression is thrown as { unreadable = why }
+
+local KEYWORDS = { ["nil"] = { n = 1 }, ["true"] = { n = 1, true }, ["false"] = { n = 1, false } }
+
+local function unreadable(reader: table, why: string): void
+    error({ unreadable = $"{why} at {reader.pos}" }, 0)
+end
+
+-- The next character that isn't a space ("" at the end), without taking it
+local function peek(reader: table): string
+    reader.pos = reader.src:find("%S", reader.pos) or (#reader.src + 1)
+    return reader.src:sub(reader.pos, reader.pos)
+end
+
+-- Takes a name (letters, digits, _) if one is next
+local function take_name(reader: table): ?string
+    peek(reader)
+    local name = reader.src:match("^[%a_][%w_]*", reader.pos)
+    if name ~= nil then
+        reader.pos += #name
+    end
+    return name
+end
+
+-- Takes the name after '.' or ':'
+local function need_name(reader: table, after: string): string
+    local name = take_name(reader)
+    if name == nil then
+        unreadable(reader, $"a name expected after '{after}'")
+    end
+    return name
+end
+
+local read_list
+
+-- One expression; its values packed (a call may give several, nil ones too)
+local function read_expr(reader: table): table
+    local c = peek(reader)
+    if c == '"' or c == "'" then
+        local close = reader.src:find(c, reader.pos + 1, true)
+        if close == nil then
+            unreadable(reader, "unclosed text")
+        end
+        local value = reader.src:sub(reader.pos + 1, close - 1)
+        reader.pos = close + 1
+        return { n = 1, value }
+    end
+
+    local number_text = reader.src:match("^%-?%.?%d[%w%.]*", reader.pos)
+    if number_text ~= nil then
+        local number = tonumber(number_text)
+        if number == nil then
+            unreadable(reader, $"'{number_text}' isn't a number")
+        end
+        reader.pos += #number_text
+        return { n = 1, number }
+    end
+
+    local name = take_name(reader)
+    if name == nil then
+        unreadable(reader, $"unexpected '{c}'")
+    end
+    if KEYWORDS[name] ~= nil then
+        return KEYWORDS[name]
+    end
+    local values = { n = 1, _G[name] }
+    local next_c = peek(reader)
+    if values[1] == nil then
+        if next_c ~= "." and next_c ~= ":" and next_c ~= "(" then
+            return { n = 1, name }
+        end
+        error($"'{name}' isn't known", 0)
+    end
+
+    -- .field, :method(...), (...)
+    while true do
+        next_c = peek(reader)
+        if next_c == "." then
+            reader.pos += 1
+            local field = need_name(reader, ".")
+            values = { n = 1, values[1][field] }
+        elseif next_c == ":" then
+            reader.pos += 1
+            local method = need_name(reader, ":")
+            if peek(reader) ~= "(" then
+                unreadable(reader, "'(' expected after a method")
+            end
+            reader.pos += 1
+            local target = values[1]
+            local args, count = read_list(reader, ")")
+            values = table.pack(target[method](target, table.unpack(args, 1, count)))
+        elseif next_c == "(" then
+            reader.pos += 1
+            local args, count = read_list(reader, ")")
+            values = table.pack(values[1](table.unpack(args, 1, count)))
+        else
+            return values
+        end
+    end
+end
+
+-- Expressions separated by commas up to close (")", or "" for the end of the text), close taken too.
+-- As in Lua, only the last one gives all its values, the others their first
+-- @return The values and how many there are
+read_list = function(reader, close)
+    local args, count = {}, 0
+    if peek(reader) == close then
+        reader.pos += 1
+        return args, count
+    end
+    while true do
+        local values = read_expr(reader)
+        local c = peek(reader)
+        if c == "," then
+            count += 1
+            args[count] = values[1]
+            reader.pos += 1
+        elseif c == close then
+            for i = 1, values.n do
+                args[count + i] = values[i]
+            end
+            reader.pos += 1
+            return args, count + values.n
+        else
+            unreadable(reader, close == "" ? "',' expected" : $"',' or '{close}' expected")
+        end
+    end
+end
+
+-- The arguments as typed, read as expressions separated by commas: numbers, true, false, nil, "text",
+-- calls (entities.get_user_vehicle_as_handle(), PLAYER.PLAYER_PED_ID()), vectors (v3.new(1, 2, 3)).
+-- A bare word is its own text: adder -> "adder". What isn't an expression at all (hello world) is split
+-- by commas into texts instead
+-- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
+function module.parse_args(input: string)
+    local ok, args, count = pcall(read_list, { src = input, pos = 1 }, "")
+    if ok then
+        return args, count, nil
+    end
+    if type(args) == "table" and args.unreadable ~= nil then
+        local texts, texts_count = split_args(input)
+        return texts, texts_count, nil
+    end
+    return {}, 0, tostring(args)
+end
+
+-- "create(model, coords, heading)"
+local function signature(fn: table): string
+    local params = table.concat(fn.params, ", ")
+    if fn.vararg then
+        params = params == "" ? "..." : $"{params}, ..."
+    end
+    return $"{fn.name}({params})"
+end
+
+-- ─── Showing what a call gave ────────────────────────────────────────────────
+
+-- File path -> its lines, or false if it can't be read; read once
+local source_lines = {}
+
+local function lines_of(path: string)
+    if source_lines[path] == nil then
+        local lines = false
+        local file = io.open(path, "r")
+        if file ~= nil then
+            lines = {}
+            for line in file:lines() do
+                table.insert(lines, line)
+            end
+            file:close()
+        end
+        source_lines[path] = lines
+    end
+    return source_lines[path]
+end
+
+-- The return type written after a function's parameters ("function name(a, b): bool" -> "bool").
+-- Type hints are gone once the code runs, so it's read from the file at the line the function starts;
+-- the parameters may take a few lines
+-- @return The type, or nil if none is written or the file can't be read (lambdas have none)
+local function return_type(fn): ?string
+    local info = debug.getinfo(fn, "S")
+    if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
+        return nil
+    end
+    local lines = lines_of(info.source:sub(2))
+    if not lines then
+        return nil
+    end
+    local joined = ""
+    for i = info.linedefined, math.min(info.linedefined + 5, #lines) do
+        joined ..= lines[i] .. " "
+        local after = joined:match("function[^(]*%b()(.*)")
+        if after ~= nil then
+            return after:match("^%s*:%s*([%w_?|%.]+)")
+        end
+    end
+    return nil
+end
+
+-- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known
+local function function_text(fn): string
+    local info = debug.getinfo(fn, "u")
+    local params = {}
+    for i = 1, info.nparams do
+        local name = debug.getlocal(fn, i)
+        if i ~= 1 or name ~= "self" then
+            table.insert(params, name)
+        end
+    end
+    if info.isvararg then
+        table.insert(params, "...")
+    end
+    local params_text = table.concat(params, ", ")
+    local returns = return_type(fn)
+    if returns == nil then
+        return $"function({params_text})"
+    end
+    return $"function({params_text}): {returns}"
+end
+
+-- Items shown of one table; the rest is "..."
+local MAX_ITEMS = 20
+-- Tables inside tables shown this deep; deeper ones are "{...}"
+local MAX_DEPTH = 3
+
+local describe
+
+-- A value inside a table: a text in quotes, so "1" and 1 differ
+local function describe_item(value, depth: int, seen: table): string
+    if type(value) == "string" then
+        return $"\"{value}\""
+    end
+    return describe(value, depth, seen)
+end
+
+-- A value as text: a table unpacked ({1, 2}, {"a", "b"}, {name = "x", [5] = true}), a function as its
+-- signature, the rest by tostring. seen: the tables being shown, so one inside itself is "{...}"
+describe = function(value, depth, seen)
+    local kind = type(value)
+    if kind == "function" then
+        return function_text(value)
+    end
+    if kind ~= "table" then
+        return tostring(value)
+    end
+    if seen[value] or depth >= MAX_DEPTH then
+        return "{...}"
+    end
+    seen[value] = true
+
+    local parts = {}
+    local length = #value
+    for i = 1, length do
+        table.insert(parts, describe_item(value[i], depth + 1, seen))
+    end
+    -- The other keys after the list part, in a fixed order
+    local keys = {}
+    for key in pairs(value) do
+        if math.type(key) ~= "integer" or key < 1 or key > length then
+            table.insert(keys, key)
+        end
+    end
+    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+    for _, key in ipairs(keys) do
+        local key_text = type(key) == "string" and key:match("^[%a_][%w_]*$") ? key
+            : $"[{describe_item(key, depth + 1, seen)}]"
+        table.insert(parts, $"{key_text} = {describe_item(value[key], depth + 1, seen)}")
+    end
+
+    seen[value] = nil
+    if #parts > MAX_ITEMS then
+        parts = table.move(parts, 1, MAX_ITEMS, 1, {})
+        table.insert(parts, "...")
+    end
+    return "{" .. table.concat(parts, ", ") .. "}"
+end
+
+-- A value as it's shown in a call's notice
+function module.describe(value): string
+    return describe(value, 0, {})
+end
+
+-- A call's results for the notice: "5, x, {1, 2}, function(a): bool"
+local function results_text(results: table): string
+    local parts = {}
+    for i = 2, results.n do
+        table.insert(parts, module.describe(results[i]))
+    end
+    return table.concat(parts, ", ")
+end
+
+-- Calls a function of the module by name: the module as it is now (Reload makes a new one).
+-- In a thread of its own, since a function may wait (e.g. for a model to load)
+local function call(module_name: string, fn: table, args: table, count: int): void
+    util.create_thread(function()
+        local modules = Atdar.modules
+        if not modules.has(module_name) then
+            return
+        end
+        local mod = modules.get(module_name)
+        local name = $"{module_name}.{signature(fn)}"
+        local results = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
+        if not results[1] then
+            -- An error, so it goes to Stand when Errors Always In Stand is on
+            log:error(text("call.failed"):format(name, tostring(results[2])))
+            return
+        end
+        if results.n <= 1 then
+            log:notify(text("call.done"):format(name))
+        else
+            log:notify(text("call.result"):format(name, results_text(results)))
+        end
+    end)
+end
+
+-- Click types of Stand's own calls (restoring a field's state, bulk changes): not the user's
+local NOT_USER_CLICKS = { [4] = true }
+for _, click_name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
+    if _G[click_name] ~= nil then
+        NOT_USER_CLICKS[_G[click_name]] = true
+    end
+end
+-- Stand calls text fields again while the script stops: nothing it sends then is a call
+local stopping = false
+util.on_stop(function() stopping = true end)
+
+-- ─── on_tick by hand ─────────────────────────────────────────────────────────
+-- A module's on_tick run every frame from the menu, with or without a time limit, whatever its status.
+-- Each run is a table of its own: a newer run or Stop replaces it, and its tick handler ends then
+
+-- Module name -> the run going on: { ends = ms, or nil without a limit }
+local manual_ticks = {}
+
+local function tick_name(module_name: string): string
+    return $"{module_name}.on_tick()"
+end
+
+-- Module name -> the Status line in its on_tick() list
+local tick_statuses = {}
+
+-- Shows how the manual on_tick of the module is: state "running" / "running_for" (seconds left) /
+-- "stopped" / "failed"
+local function show_tick_status(module_name: string, state: string, seconds_left: ?int): void
+    local ref = tick_statuses[module_name]
+    if ref == nil then
+        return
+    end
+    local value = text($"tick.state.{state}")
+    if seconds_left ~= nil then
+        value = value:format(seconds_left)
+    end
+    -- The list may belong to a section that was already removed
+    pcall(menu.set_value, ref, value)
+end
+
+-- Seconds left of a run with a limit, rounded up: 10 at the start, 1 in its last second
+local function seconds_left(run: table): int
+    return math.ceil((run.ends - util.current_time_millis()) / 1000)
+end
+
+-- Runs the module's on_tick every frame; seconds: for how long, nil - until Stop
+local function start_tick(module_name: string, seconds: ?int): void
+    -- A running module is ticked by the manager already: stopped, so on_tick runs once a frame, by hand
+    local modules = Atdar.modules
+    if modules.has(module_name) and modules.get(module_name):is_running() then
+        modules.stop_module(module_name)
+        refresh()
+        log:notify(text("tick.module_stopped"):format(module_name))
+    end
+
+    local run = { ends = nil, shown = nil }
+    if seconds ~= nil then
+        run.ends = util.current_time_millis() + seconds * 1000
+    end
+    manual_ticks[module_name] = run
+    if seconds == nil then
+        show_tick_status(module_name, "running")
+        log:notify(text("tick.started"):format(tick_name(module_name)))
+    else
+        run.shown = seconds
+        show_tick_status(module_name, "running_for", seconds)
+        log:notify(text("tick.started_for"):format(tick_name(module_name), seconds))
+    end
+
+    util.create_tick_handler(function()
+        -- Stopped, or replaced by a newer run
+        if stopping or manual_ticks[module_name] ~= run then
+            return false
+        end
+        if run.ends ~= nil then
+            local left = seconds_left(run)
+            if left <= 0 then
+                manual_ticks[module_name] = nil
+                show_tick_status(module_name, "stopped")
+                log:notify(text("tick.finished"):format(tick_name(module_name)))
+                return false
+            end
+            -- Once a second, not every frame
+            if left ~= run.shown then
+                run.shown = left
+                show_tick_status(module_name, "running_for", left)
+            end
+        end
+        -- The module as it is now (Reload makes a new one)
+        local modules = Atdar.modules
+        if not modules.has(module_name) then
+            manual_ticks[module_name] = nil
+            show_tick_status(module_name, "stopped")
+            return false
+        end
+        local mod = modules.get(module_name)
+        local ok, err = pcall(mod.on_tick, mod)
+        if not ok then
+            manual_ticks[module_name] = nil
+            show_tick_status(module_name, "failed")
+            log:error(text("call.failed"):format(tick_name(module_name), tostring(err)))
+            return false
+        end
+        return true
+    end)
+end
+
+local function stop_tick(module_name: string): void
+    if manual_ticks[module_name] == nil then
+        log:notify(text("tick.not_running"):format(tick_name(module_name)))
+        return
+    end
+    manual_ticks[module_name] = nil
+    show_tick_status(module_name, "stopped")
+    log:notify(text("tick.stopped"):format(tick_name(module_name)))
+end
+
+-- Stops every manual on_tick (Stop All)
+local function stop_all_ticks(): void
+    for module_name in pairs(manual_ticks) do
+        show_tick_status(module_name, "stopped")
+    end
+    manual_ticks = {}
+end
+
+-- The on_tick() list: Start, Start For A While (seconds), Stop, then the Status of the run
+local function tick_list(entry: table, mod: table): void
+    local name = mod.name
+    local node = entry:list("on_tick()", {}, label("tick.help"))
+    node:action(label("tick.start"), || -> start_tick(name, nil), {}, label("tick.start_help"))
+    node:track(menu.click_slider(node.handle, label("tick.start_for"), {}, label("tick.start_for_help"),
+        1, 600, 10, 1, function(seconds, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        start_tick(name, seconds)
+    end))
+    node:action(label("tick.stop"), || -> stop_tick(name), {}, label("tick.stop_help"))
+    tick_statuses[name] = node:readonly(label("tick.status"), text("tick.state.stopped"))
+end
+
+-- The hooks the manager calls, to call by hand too (they don't change the module's status)
+local HOOKS = {
+    { name = "on_start", params = {}, vararg = false },
+    { name = "on_tick", params = {}, vararg = false },
+    { name = "on_stop", params = {}, vararg = false },
+}
+
+-- The Base Functions divider with the hooks, then the Module Functions divider and an item per function
+-- of the module
+local function functions_of(entry: table, mod: table): void
+    entry:divider(label("base_functions"))
+    for _, hook in ipairs(HOOKS) do
+        -- on_tick runs every frame, so it's a list to start and stop, not a button
+        if hook.name == "on_tick" then
+            tick_list(entry, mod)
+        else
+            entry:action(signature(hook), || -> call(mod.name, hook, {}, 0), {}, label("call.hook_help"))
+        end
+    end
+
+    entry:divider(label("functions"))
+    local functions = Module.functions_of(mod)
+    if #functions == 0 then
+        entry:readonly_name(label("no_functions"))
+        return
+    end
+    for _, fn in ipairs(functions) do
+        if #fn.params == 0 and not fn.vararg then
+            entry:action(signature(fn), || -> call(mod.name, fn, {}, 0), {}, label("call.button_help"))
+        else
+            -- A text field takes its text through the command box, so it needs a command; not one of the
+            -- found commands (made without commands.track)
+            menu.text_input(entry.handle, signature(fn), commands.names({ $"call{mod.name}{fn.name}" }),
+                label("call.help"), function(value, click_type)
+                if stopping or NOT_USER_CLICKS[click_type] then
+                    return
+                end
+                local args, count, err = module.parse_args(value)
+                if err ~= nil then
+                    log:error(text("call.bad_args"):format($"{mod.name}.{signature(fn)}", err))
+                    return
+                end
+                call(mod.name, fn, args, count)
+            end, "")
+        end
+    end
+end
+
 function module.build(parent: table): void
     local modules = Atdar.modules
     -- The manager failed to load: the loader left an empty table
@@ -89,26 +661,35 @@ function module.build(parent: table): void
 
     local divider = parent:divider(label("divider"))
     local node = parent:list(label("title"), {}, label("help"))
-    view = { divider = divider, list = node, entries = {} }
+    view = { divider = divider, list = node, entries = {}, statuses = {} }
 
     -- The copy Stand runs, which Reload reads, not the project's src
     node:action(label("open_folder.name"), function()
         util.open_folder($"{Atdar.filesystem.paths.lib}modules")
     end, {}, label("open_folder.help"))
     node:action(label("refresh.name"), refresh, {}, label("refresh.help"))
+    node:action(label("stop_all.name"), function()
+        -- On_tick run by hand stops too: nothing of the modules keeps running
+        stop_all_ticks()
+        modules.stop()
+        refresh()
+        log:notify(text("stop_all.done"))
+    end, {}, label("stop_all.help"))
     node:divider(label("list"))
 
     local names = modules.names()
-    local options = {}
-    for _, action in ipairs(ACTIONS) do
-        table.insert(options, label(action.key))
-    end
     for _, name in ipairs(names) do
         local mod = modules.get(name)
-        view.entries[name] = node:list_action(caption(mod), options, function(index)
-            ACTIONS[index].run(name)
-            refresh()
-        end, {}, help(mod))
+        local entry = node:list(caption(mod), {}, help(mod))
+        view.entries[name] = entry.handle
+        view.statuses[name] = entry:divider(status_line(mod))
+        for _, action in ipairs(ACTIONS) do
+            entry:action(label(action.key), function()
+                action.run(name)
+                refresh()
+            end)
+        end
+        functions_of(entry, mod)
     end
     if #names == 0 then
         node:readonly_name(label("empty"))

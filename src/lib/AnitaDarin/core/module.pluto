@@ -155,4 +155,34 @@ Module = class
 
 end
 
+-- Hooks the manager calls; not offered as functions to call by hand
+local NOT_CALLABLE = { on_start = true, on_stop = true, on_tick = true }
+
+-- @return The module's own functions, the ones a subclass of Module added (its methods, also those of
+-- classes between it and Module), sorted by name: { name, params = { "model", "coords" }, vararg = bool }.
+-- Module's own methods, the hooks and names starting with _ are left out
+function Module.functions_of(instance: table): table
+    local found = {}
+    local list = {}
+    local cls = getmetatable(instance)
+    while type(cls) == "table" and cls ~= Module do
+        for name, value in pairs(cls) do
+            if type(name) == "string" and type(value) == "function" and not found[name]
+                and name:sub(1, 1) ~= "_" and not NOT_CALLABLE[name] and rawget(Module, name) == nil then
+                found[name] = true
+                -- The parameters' names, without self
+                local info = debug.getinfo(value, "u")
+                local params = {}
+                for i = 2, info.nparams do
+                    table.insert(params, debug.getlocal(value, i))
+                end
+                table.insert(list, { name = name, params = params, vararg = info.isvararg })
+            end
+        end
+        cls = rawget(cls, "__parent")
+    end
+    table.sort(list, |a, b| -> a.name < b.name)
+    return list
+end
+
 return Module

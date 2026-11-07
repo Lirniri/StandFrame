@@ -22,18 +22,39 @@ local class VehicleManager extends Module
         -- body
     end
 
+    -- Get
+
+    -- The last vehicle remembered (add_vehicle), or nil if there's none
+    function get_handle(): ?int
+        return self.last_handle
+    end
+
+    -- Every vehicle remembered, as a list of handles
+    function get_handles(): table
+        local handles = {}
+        for handle in pairs(self.vehicles) do
+            table.insert(handles, handle)
+        end
+        return handles
+    end
+
     -- Remembers a vehicle the script made
     function add_vehicle(handle: int): void
         self.vehicles[handle] = true
+        self.last_handle = handle
     end
 
     -- Forgets a vehicle
     function remove_vehicle(handle: int): void
         self.vehicles[handle] = nil
+        if self.last_handle == handle then
+            self.last_handle = nil
+        end
     end
     -- Forgets all vehicles
     function remove_all_vehicles(): void
         self.vehicles = {}
+        self.last_handle = nil
     end
 
     -- Action

@@ -273,6 +273,8 @@ _G.menu = {
         { commands = commands, options = options, on_select = on_select }),
     slider = |parent, name, commands, help, min, max, default, step, on_change| -> item("slider", parent, name, help,
         { commands = commands, min = min, max = max, value = default, default = default, step = step, on_change = on_change }),
+    click_slider = |parent, name, commands, help, min, max, default, step, on_click| -> item("click_slider", parent, name,
+        help, { commands = commands, min = min, max = max, value = default, step = step, on_click = on_click }),
     textslider = |parent, name, commands, help, options, on_click| -> item("textslider", parent, name, help,
         { commands = commands, options = options, on_click = on_click }),
     text_input = |parent, name, commands, help, on_change, default| -> item("text_input", parent, name, help,
@@ -314,6 +316,8 @@ function stand.click(it, option: ?int): void
         it.on_click(0)
     elseif it.kind == "list_action" then
         it.on_select(option, it.options[option], 0)
+    elseif it.kind == "click_slider" then
+        it.on_click(option or it.value, 0)
     else
         error($"stand.click: can't click a {it.kind}")
     end
