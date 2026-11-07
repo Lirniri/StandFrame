@@ -103,7 +103,7 @@ local function names_in(node)
     return table.concat(names, " | ")
 end
 stand.equal(entry_b.kind, "list", "a module is a list")
-stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories"
+stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories | Arguments Guide"
     .. " | Module Functions | Base Functions", "actions, Disable Function Categories, Module Functions, Base Functions")
 stand.equal(stand.child(entry_b, "Base Functions").kind, "list", "Base Functions is a list, like a category")
 stand.equal(names_in(stand.child(entry_b, "Base Functions")), "on_start(): void | on_tick(): void | on_stop(): void",
@@ -179,7 +179,7 @@ counter.label = nil
 counter.items = nil
 local add_node = stand.child(stand.child(counter_functions, "Add"), "add(amount, note)")
 stand.equal(add_node.kind, "list", "with parameters: a list too")
-stand.equal(names_in(add_node), "Arguments | Call | Call After | Call When Opened | Call When Hovered"
+stand.equal(names_in(add_node), "Arguments | Call After Typing | Call | Call After | Call When Opened | Call When Hovered"
     .. " | Variable: — | Loop Status: stopped | Loop | Loop With Interval", "with the Arguments field on top")
 local add_args = stand.child(add_node, "Arguments")
 stand.equal(add_args.kind, "text_input", "Arguments is a text field")
@@ -206,8 +206,7 @@ menu.set_value(add_args, '5, "a, b"')
 stand.equal(counter.count, 0, "typing the arguments calls nothing")
 stand.click(stand.child(add_node, "Call"))
 stand.equal(counter.count, 5, "the arguments are passed: a number")
-stand.check(stand.find_item(add_node, "Variable (integer, string): 5, a, b") ~= nil,
-    "Variable shows what the call gave last, with the type of each value")
+stand.check(stand.find_item(add_node, "Variable: 5, a, b") ~= nil, "Variable shows what the call gave last")
 stand.check(stand.find_log('Module 3.add(amount, note) -> 5, a, b'), "and the results are told, the quoted text whole")
 stand.click(stand.child(reset_node, "Call"))
 stand.equal(counter.count, 0, "a button calls the function")
@@ -395,6 +394,16 @@ stand.equal(describe("text"), "text", "a text on its own without quotes")
 -- Stand restoring the field only sets the arguments
 add_args.on_change("7", 4)
 stand.equal(counter.count, 0, "Stand's own change of Arguments calls nothing")
+-- Call After Typing: typing the arguments calls the function, Stand putting the field back doesn't
+stand.click(stand.child(add_node, "Call After Typing"))
+add_args.on_change("4", 0)
+stand.equal(counter.count, 4, "with Call After Typing on, typing the arguments calls the function")
+add_args.on_change("3", 4)
+stand.equal(counter.count, 4, "Stand's own change of the field still calls nothing")
+stand.click(stand.child(add_node, "Call After Typing"))
+add_args.on_change("5", 0)
+stand.equal(counter.count, 4, "off again: typing only keeps the arguments")
+counter.count = 0
 
 -- The arguments as typed
 local modules_menu_args = modules_menu.parse_args
@@ -433,7 +442,7 @@ menu.set_value(add_args, "1")
 stand.click(stand.child(add_node, "Loop"))
 stand.frame(3)
 stand.equal(counter.count, 5, "a loop passes the arguments at each call")
-stand.check(stand.find_item(add_node, "Variable (integer, nil): 5, nil") ~= nil, "a loop keeps Variable up to date")
+stand.check(stand.find_item(add_node, "Variable: 5, nil") ~= nil, "a loop keeps Variable up to date")
 stand.equal(stand.debug_texts[#stand.debug_texts], "counter.add(amount, note) -> 5, nil",
     "what the call gave is drawn on screen (debug text)")
 stand.debug_texts = {}
@@ -451,24 +460,24 @@ local value_list = stand.find_item(add_node, "Value (3)")
 stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
 stand.equal(names_in(value_list), "[1] | [2] | [3] (1)", "its entries, a table inside as a list")
 stand.equal(stand.child(value_list, "[2]").value, '"a"', "each with its value")
-stand.check(stand.find_item(add_node, "Variable (table)") ~= nil, "a table of mixed kinds: just table")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table", "a table of mixed kinds: just table")
 -- Types in words: a table by what it holds
 counter.add = function() return { 1, 2, 3 } end
 stand.frame()
-stand.equal(stand.name_of(stand.find_item(add_node, "Variable (")), "Variable (table of integers)",
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table of integers",
     "a table of integers: the type only, what it holds is in the Value list")
 counter.add = function() return { 1, 2.5 } end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (table of numbers)") ~= nil, "integers and floats: a table of numbers")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table of numbers", "integers and floats: a table of numbers")
 counter.add = function() return { "a", "b" } end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (table of strings)") ~= nil, "a table of strings")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table of strings", "a table of strings")
 counter.add = function() return {} end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (empty table)") ~= nil, "an empty table")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: empty table", "an empty table")
 counter.add = function() return 2.5 end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (float): 2.5") ~= nil, "a float")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "a plain value: the value, no type")
 counter.add = real_add
 counter.count = 5
 stand.click(stand.child(add_node, "Loop"))
@@ -567,7 +576,7 @@ stand.check(stand.child(reloader_fns(), "one()") ~= nil and stand.child(reloader
 stand.write_file($"{reload_dir}reloader.pluto",
     reloader_file("    function two() return 2 end\n    function three(x) return x end"))
 stand.click(stand.child(entry_reloader, "Reload"))
-stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories"
+stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories | Arguments Guide"
     .. " | Module Functions | Base Functions", "after Reload the list is made again, once")
 stand.equal(names_in(reloader_fns()), "Variables | Functions | three(x) | two()",
     "with the new code's functions: one() and the field old_field(x) gone, nothing twice")
@@ -691,7 +700,20 @@ stand.check(park_node.help:find("Parks a vehicle", 1, true) and park_node.help:f
     "the function's help and its parameters' from the module")
 local park_args = stand.child(park_node, "Arguments")
 stand.equal(park_args.value, "42", "the module's default arguments are in the field")
-stand.check(park_args.help:find("handle - the vehicle's handle", 1, true), "the field's help tells the parameters too")
+stand.equal(park_args.help, "\nhandle: 42 (the vehicle's handle)", "each parameter by name with its argument and what it is, from a new line")
+menu.set_value(park_args, "7")
+stand.equal(park_args.help, "\nhandle: 7 (the vehicle's handle)", "typed: the help follows")
+menu.set_value(park_args, "")
+stand.equal(park_args.help, "\nhandle: — (the vehicle's handle)", "none typed: the parameter without one, marked —")
+menu.set_value(park_args, 'f(1, 2), "a, b"')
+stand.equal(park_args.help, '\nhandle: f(1, 2) (the vehicle\'s handle)\nleft over: "a, b"',
+    "commas inside brackets and quotes don't split; more than its parameters: left over")
+menu.set_value(park_args, "42")
+-- Arguments Guide: how to write them, as a notice in Stand
+stand.toasts = {}
+stand.click(stand.child(garage_entry, "Arguments Guide"))
+stand.check(stand.toasts[#stand.toasts]:find("Arguments separated by commas", 1, true), "Arguments Guide tells it in Stand")
+stand.check(stand.toasts[#stand.toasts]:find("— in the help: not given", 1, true), "and what — in the help means")
 stand.clear_logs()
 stand.click(stand.child(park_node, "Call"))
 stand.check(stand.find_log("park(handle) -> 42"), "and Call uses them")
@@ -707,16 +729,16 @@ stand.click(get_cars_node)
 garage.cars = 3
 stand.clock += 300
 stand.frame()
-stand.check(stand.find_item(get_cars_node, "Variable (integer): 3") ~= nil, "a getter's Variable follows the value while open")
+stand.check(stand.find_item(get_cars_node, "Variable: 3") ~= nil, "a getter's Variable follows the value while open")
 garage.cars = 4
 stand.clock += 300
 stand.frame()
-stand.check(stand.find_item(get_cars_node, "Variable (integer): 4") ~= nil, "and keeps following it")
+stand.check(stand.find_item(get_cars_node, "Variable: 4") ~= nil, "and keeps following it")
 stand.back(get_cars_node)
 garage.cars = 5
 stand.clock += 300
 stand.frame()
-stand.check(stand.find_item(get_cars_node, "Variable (integer): 4") ~= nil, "gone back: not called any more")
+stand.check(stand.find_item(get_cars_node, "Variable: 4") ~= nil, "gone back: not called any more")
 local sell_node = stand.child(garage_fns, "sell(): void")
 local sold = 0
 garage.sell = function() sold += 1 end

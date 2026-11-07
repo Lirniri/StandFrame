@@ -146,4 +146,41 @@ function module.auto(tbl: table, base: string): table
     })
 end
 
+-- ─── Reloading ───────────────────────────────────────────────────────────────
+
+-- Tables files keep across a reload, by name (see keep)
+local kept = {}
+
+-- A table that outlives reloads of the file asking for it: the same table comes back after the file
+-- is loaded again, for state that must not be lost (e.g. the feed posts the script made)
+-- Example: local state = Atdar.loader.keep("natives/visual/hud/thefeed")
+function module.keep(name: string): table
+    if kept[name] == nil then
+        kept[name] = {}
+    end
+    return kept[name]
+end
+
+-- Loads the files under lib/AnitaDarin/<base>/ again, each on its first use after this: forgets them
+-- in require's cache and takes the loaded ones out of tbl, a table made by auto (e.g. Atdar.natives).
+-- Code that asks tbl each time (Atdar.natives.entity.vehicle in a function) gets the new files;
+-- a table kept in a variable from before stays the old one
+-- @return How many loaded files were forgotten
+function module.reload(tbl: table, base: string): int
+    local prefix = $"{Atdar.name}/{base}/"
+    local forgotten = 0
+    for name in pairs(package.loaded) do
+        if type(name) == "string" and name:sub(1, #prefix) == prefix then
+            package.loaded[name] = nil
+            forgotten += 1
+        end
+    end
+    for key in pairs(tbl) do
+        rawset(tbl, key, nil)
+    end
+    -- A fresh auto: files added since are found too
+    module.auto(tbl, base)
+    return forgotten
+end
+
 return module

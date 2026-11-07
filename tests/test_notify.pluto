@@ -240,6 +240,11 @@ stand.check(feed[1] == "removed" and feed[2] == "removed", "both are removed fro
 stand.equal(thefeed.remove_all(), 0, "and forgets them")
 for i = 1, 105 do log:notify($"many {i}") end
 stand.equal(thefeed.remove_all(), 100, "only the last 100 are kept")
+-- Reload Natives: the posts made before are still known to the new thefeed
+log:notify("before the reload")
+Atdar.loader.reload(Atdar.natives, "natives")
+stand.check(not rawequal(Atdar.natives.visual.hud.thefeed, thefeed), "after a reload thefeed is loaded anew")
+stand.equal(Atdar.natives.visual.hud.thefeed.remove_all(), 1, "and still takes away the posts made before it")
 feed = {}
 
 -- A text longer than the game shows (99 bytes) goes out as more posts, cut at spaces, never inside a letter

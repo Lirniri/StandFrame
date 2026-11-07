@@ -236,7 +236,7 @@ stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin d
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
-    "Debug Mode | Load Timing | Logs | Name In Logs: "
+    "Debug Mode | Load Timing | Reload Natives | Logs | Name In Logs: "
     .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
     .. " | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
@@ -297,7 +297,7 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9] }
+local debug_only = { debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end

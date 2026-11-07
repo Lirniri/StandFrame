@@ -1,6 +1,5 @@
 {
     "not_handle": "'%s' isn't a vehicle's handle, not remembered",
-    "wreck": "Vehicle %s is repaired but can't be driven: it exploded, the game keeps it a wreck",
     "not_model": "'%s' isn't a vehicle model",
     "not_made": "The game made no '%s'",
     "not_in_game": "%s isn't a vehicle in the game",

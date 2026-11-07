@@ -115,10 +115,14 @@ end
 
 -- Actions
 
+-- Kept across Reload Natives, so the posts made before are still taken away
+local state = Atdar.loader.keep("natives/visual/hud/thefeed")
+state.parts_of ??= {}
+state.posts ??= {}
 -- The first post of a long text -> the ids of all its parts
-local parts_of = {}
+local parts_of = state.parts_of
 -- The script's own posts still known, oldest first (see remove_all below)
-local posts = {}
+local posts = state.posts
 
 -- Takes a post away from the feed; the first post of a long text takes all its parts
 function module.remove(id: int): void
@@ -170,8 +174,13 @@ function module.remove_all(): int
     for _, id in ipairs(posts) do
         pcall(HUD.THEFEED_REMOVE_ITEM, id)
     end
-    posts = {}
-    parts_of = {}
+    -- Emptied in place: the tables are kept across a reload
+    for i = #posts, 1, -1 do
+        posts[i] = nil
+    end
+    for first in pairs(parts_of) do
+        parts_of[first] = nil
+    end
     return count
 end
 

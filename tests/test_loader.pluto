@@ -99,4 +99,25 @@ stand.check(rawequal(Atdar.natives.visual.hud, Atdar.natives.visual.hud), "a sub
 stand.equal(type(rawget(Atdar.natives.visual, "hud")), "table", "a loaded submodule is stored in the facade")
 stand.equal(type(Atdar.natives.world.snap_to_ground), "function", "the facade's own functions are there")
 
+-- reload(): the loaded files are forgotten and load again on first use; a typo found missing before
+-- is checked again (a file may have been added)
+local old_hud = Atdar.natives.visual.hud
+local forgotten = loader.reload(Atdar.natives, "natives")
+stand.check(forgotten >= 2, "reload forgets the loaded native files")
+stand.equal(rawget(Atdar.natives, "visual"), nil, "and takes them out of Atdar.natives")
+stand.check(package.loaded["AnitaDarin/natives/visual/hud"] == nil, "and out of require's cache")
+local new_hud = Atdar.natives.visual.hud
+stand.equal(type(new_hud), "table", "they load again on first use")
+stand.check(not rawequal(new_hud, old_hud), "as new tables, read from disk again")
+checks = 0
+filesystem.exists = function(path) checks += 1 return real_exists(path) end
+stand.equal(Atdar.natives.visual.hudd, nil, "a typo is still nil")
+stand.check(checks > 0, "but is checked on disk again after a reload")
+filesystem.exists = real_exists
+
+-- keep(): the same table by name, across reloads
+local kept = loader.keep("test/state")
+kept.value = 5
+stand.check(rawequal(loader.keep("test/state"), kept) and loader.keep("test/state").value == 5, "keep gives the same table back")
+
 stand.finish()

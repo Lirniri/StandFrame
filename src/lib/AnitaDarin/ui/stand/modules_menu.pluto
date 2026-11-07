@@ -562,20 +562,20 @@ local function type_text(value): string
     return text($"types.table_of_{inner}")
 end
 
--- "Variable (integer): 147462", "Variable: -" before a call or when it gave nothing
+-- "Variable: 147462", "Variable: table of integers" for a table (what it holds is in the Value list right
+-- under), "Variable: -" before a call or when it gave nothing
 local function result_line(key: string): string
     local value = last_results[key]
     if value == nil then
         return text("loop.result_line"):format(text("loop.no_result"))
     end
-    -- A table: its type only, what it holds is in the Value list right under
     if last_tables[key] ~= nil then
-        return text("loop.result_line_table"):format(last_types[key] or "")
+        return text("loop.result_line"):format(last_types[key] or "")
     end
     if #value > MAX_RESULT_CHARS then
         value = value:sub(1, MAX_RESULT_CHARS) .. "..."
     end
-    return text("loop.result_line_typed"):format(last_types[key] or "", value)
+    return text("loop.result_line"):format(value)
 end
 
 -- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
@@ -861,6 +861,8 @@ end
 local call_on_open = {}
 -- The same, for Call When Hovered: called when the cursor comes onto the function's list
 local call_on_focus = {}
+-- The same, for Call After Typing: called as soon as its arguments are typed in
+local call_on_enter = {}
 -- The same key -> the Arguments typed for the function (worked out again at each call)
 local call_args = {}
 
@@ -1062,6 +1064,39 @@ local function keep_live(module_name: string, fn: table, key: string, opened): v
     end)
 end
 
+-- The arguments as typed, split at the commas between them, not those inside brackets or quotes, and
+-- trimmed; nothing is worked out: 'FAKE.add(1, 2), "a, b"' -> { "FAKE.add(1, 2)", '"a, b"' }
+local function split_top(input: string): table
+    local pieces = {}
+    local depth, quote, start = 0, nil, 1
+    for i = 1, #input do
+        local c = input:sub(i, i)
+        if quote ~= nil then
+            if c == quote then
+                quote = nil
+            end
+        elseif c == '"' or c == "'" then
+            quote = c
+        elseif c == "(" or c == "{" or c == "[" then
+            depth += 1
+        elseif c == ")" or c == "}" or c == "]" then
+            depth -= 1
+        elseif c == "," and depth == 0 then
+            table.insert(pieces, input:sub(start, i - 1))
+            start = i + 1
+        end
+    end
+    table.insert(pieces, input:sub(start))
+    local trimmed = {}
+    for _, piece in ipairs(pieces) do
+        local clean = piece:match("^%s*(.-)%s*$")
+        if clean ~= "" then
+            table.insert(trimmed, clean)
+        end
+    end
+    return trimmed
+end
+
 local function function_list(entry: table, mod: table, fn: table): void
     local module_name = mod.name
     local key = loop_key(module_name, fn.name)
@@ -1102,15 +1137,46 @@ local function function_list(entry: table, mod: table, fn: table): void
     if #fn.params > 0 or fn.vararg then
         -- Only kept: Call and the loops use it. A text field takes its text through the command box, so it
         -- needs a command; not one of the found commands (tracked without its command)
-        local args_help = params_text ~= "" and $"{text("call.help")}\n{params_text}" or text("call.help")
+        -- Its help: each parameter with the argument typed for it ("dirt_level: true", "-" for none) and what
+        -- the module says of it. How to write them is in the module's Arguments Guide
+        local function args_help(): string
+            local pieces = split_top(call_args[key] or "")
+            local lines = {}
+            for i, param in ipairs(fn.params) do
+                local value = pieces[i] or text("loop.no_result")
+                local line = $"{param}: {value}"
+                local about = (fn_opts.params or {})[param]
+                if about ~= nil then
+                    line = $"{line} ({about})"
+                end
+                table.insert(lines, line)
+            end
+            -- More than it has parameters: the rest goes to ... or is left over
+            if #pieces > #fn.params then
+                local rest = table.concat(pieces, ", ", #fn.params + 1)
+                table.insert(lines, fn.vararg and $"...: {rest}" or text("loop.args_extra"):format(rest))
+            end
+            -- From a new line: the command box puts "Arguments - " before the help
+            return "\n" .. table.concat(lines, "\n")
+        end
         -- Short and the same each time: "moduleargsfor1_5" - the module's number, then the function's
         local command = $"moduleargsfor{number_of(module_name)}_{fn.number or 0}"
-        node:track(menu.text_input(node.handle, label("loop.args"), commands.names({ command }),
-            args_help, function(value)
-            if not stopping then
-                call_args[key] = value
+        local args_ref = nil
+        args_ref = node:track(menu.text_input(node.handle, label("loop.args"), commands.names({ command }),
+            args_help(), function(value, click_type)
+            if stopping then
+                return
+            end
+            call_args[key] = value
+            pcall(menu.set_help_text, args_ref, args_help())
+            -- Typed by the user (not Stand putting the field back), with Call After Typing on
+            if call_on_enter[key] and not NOT_USER_CLICKS[click_type] then
+                call_with_args(module_name, fn, key)
             end
         end, call_args[key] or ""))
+        node:toggle(label("loop.call_on_enter"), function(on)
+            call_on_enter[key] = on or nil
+        end, {}, label("loop.call_on_enter_help"), call_on_enter[key] == true)
     end
     node:action(label("loop.call"), || -> call_with_args(module_name, fn, key), {}, label("call.button_help"))
     -- Once, after the ms picked; the arguments are worked out then, not at the click
@@ -1665,6 +1731,10 @@ local function fill_module(entry: table, name: string): void
         no_categories[name] = on or nil
         rebuild_functions(name)
     end, {}, label("no_categories.help"), no_categories[name] == true)
+    -- How to write the arguments of its functions, as a notice in Stand (there's room for it there)
+    entry:action(label("call.guide.name"), function()
+        log:notify(text("call.help"), "stand")
+    end, {}, label("call.guide.help"))
     -- Where the functions start, so Reload can make them again
     view.sections[name] = { entry = entry, first = #entry.children + 1 }
     functions_of(entry, mod)

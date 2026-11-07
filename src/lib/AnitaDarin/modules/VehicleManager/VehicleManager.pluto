@@ -137,8 +137,6 @@ local class VehicleManager extends Module
         self.last_handle = nil
     end
 
-
-
     -- Actions
 
     -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
@@ -159,38 +157,29 @@ local class VehicleManager extends Module
     -- Repairs a vehicle (natives entity.vehicle.repair): damage and dents gone, full health, drivable
     -- @param dirt_level A number - the dirt it gets (0.0 - 15.0); true - washed clean; nothing - the dirt stays
     -- @return Whether it was a vehicle in the game
-    function repair(handle: int, dirt_level: float|bool): bool
+    function repair(handle: int, dirt_level: float|bool, start_engine: bool): bool
         if math.type(handle) ~= "integer" then
             return false
         end
-        local n_vehicle = Atdar.natives.entity.vehicle
-        if not n_vehicle.repair(handle, dirt_level or false) then
-            return false
-        end
-        -- An exploded one stays a wreck for the game, repaired or not
-        if not n_vehicle.is_driveable(handle) then
-            self.log:warn(self:text("wreck", "Vehicle %s is repaired but can't be driven: it exploded, the game keeps it a wreck")
-                :format(tostring(handle)))
-        end
-        return true
+        return Atdar.natives.entity.vehicle.repair(handle, dirt_level or false, start_engine)
     end
 
     -- Repairs the vehicle remembered last
     -- @return Whether there was one in the game
-    function repair_last(dirt_level: float|bool): bool
+    function repair_last(dirt_level: float|bool, start_engine: bool): bool
         local handle = self:get_handle()
         if handle == nil then
             return false
         end
-        return self:repair(handle, dirt_level)
+        return self:repair(handle, dirt_level, start_engine)
     end
 
     -- Repairs every remembered vehicle still in the game
     -- @return How many were repaired
-    function repair_all(dirt_level: float|bool): int
+    function repair_all(dirt_level: float|bool, start_engine): int
         local repaired = 0
         for _, handle in ipairs(self:get_handles()) do
-            if self:repair(handle, dirt_level) then
+            if self:repair(handle, dirt_level, start_engine) then
                 repaired += 1
             end
         end
@@ -199,8 +188,13 @@ local class VehicleManager extends Module
 
     function explode(handle): bool
         local n_vehicle = Atdar.natives.entity.vehicle
-        local handle = self:get_handle()
-        if handle == nil or not n_vehicle.is_exist(handle) then
+        if math.type(handle) ~= "integer" then
+            return false
+        end
+        if not n_vehicle.is_exist(handle) then
+            return false
+        end
+        if n_vehicle.is_dead(handle) then
             return false
         end
         n_vehicle.explode({
@@ -218,6 +212,9 @@ local class VehicleManager extends Module
         if handle == nil or not n_vehicle.is_exist(handle) then
             return false
         end
+        if n_vehicle.is_dead(handle) then
+            return false
+        end
         n_vehicle.explode({
             vehicle = handle,
             net_id = n_vehicle.get_net_id(handle)
@@ -232,11 +229,10 @@ local class VehicleManager extends Module
             if math.type(handle) == "integer"
                 and n_vehicle.is_exist(handle)
                 then
-                n_vehicle.explode({
-                    vehicle = handle,
-                    net_id = n_vehicle.get_net_id(handle)
-                })
-                exploded += 1
+
+                if self:explode(handle) then
+                    exploded += 1
+                end
             end
         end
         return exploded

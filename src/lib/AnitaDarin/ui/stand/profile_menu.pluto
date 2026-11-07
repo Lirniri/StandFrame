@@ -720,6 +720,12 @@ function module.debug(node: table): void
             log:notify(text("load_timing.on"))
         end
     end, { "loadtiming" }, label("load_timing.help"), Atdar.profile.get("load_timing") == true)
+
+    -- The native wrappers read from disk again, to try a change without restarting the script
+    node:action(label("reload_natives.name"), function()
+        local count = Atdar.loader.reload(Atdar.natives, "natives")
+        log:success(text("reload_natives.done"):format(count))
+    end, { "reloadnatives" }, label("reload_natives.help"))
 end
 
 -- ─── Keep Logs ───────────────────────────────────────────────────────────────

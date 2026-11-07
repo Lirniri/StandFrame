@@ -277,6 +277,11 @@
             "on": "Load times go to Stand's log: each file as it loads, and a full report at the next start",
             "done": "Load times are in Stand's log"
         },
+        "reload_natives": {
+            "name": "Reload Natives",
+            "help": "Reads the native files (lib/AnitaDarin/natives) from disk again: changes to them work without restarting the script",
+            "done": "Natives reloaded, files: %d. They load again on first use"
+        },
         "log_keep_days": {
             "name": "Keep Logs (Days)",
             "help": "How many days of the script's log files (store/<script>/logs, a file per day) are kept, today included. Older files are removed at the start and when a new day begins. 0 keeps them all"
@@ -398,17 +403,24 @@
         },
         "no_functions": "No functions",
         "call": {
-            "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call",
+            "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. — in the help: not given",
             "button_help": "Calls the function once; what it gives shows in a notification and on the Variable line",
             "done": "%s: done",
             "result": "%s -> %s",
             "failed": "%s failed: %s",
             "hook_help": "Calls the module's hook; its status doesn't change",
-            "bad_args": "%s: bad arguments: %s"
+            "bad_args": "%s: bad arguments: %s",
+            "guide": {
+                "name": "Arguments Guide",
+                "help": "Sends to Stand how to write the functions' arguments in the Arguments field"
+            }
         },
         "loop": {
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
             "args": "Arguments",
+            "args_extra": "left over: %s",
+            "call_on_enter": "Call After Typing",
+            "call_on_enter_help": "Calls the function as soon as the Arguments are typed in",
             "call": "Call",
             "call_after": "Call After",
             "call_after_help": "Calls the function once after so many milliseconds",
@@ -433,8 +445,6 @@
             },
             "status_line": "Loop Status: %s",
             "result_line": "Variable: %s",
-            "result_line_typed": "Variable (%s): %s",
-            "result_line_table": "Variable (%s)",
             "result_list": "Value (%d)",
             "no_result": "—"
         },
