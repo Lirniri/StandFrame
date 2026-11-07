@@ -1,16 +1,18 @@
--- natives classes: Entity, Ped (+ components), Vehicle, Player (+ components), Blip on fake natives
+-- natives: functions with the handle (id, name) first, on fake natives: entity, ped, vehicle, player,
+-- hud.blip, and the hud_color / feed_picture tables
 local stand = require("stand")
 stand.boot()
 Atdar.util = Atdar.loader.load("utils/util")
 Atdar.natives = Atdar.loader.auto({}, "natives")
-local Entity = Atdar.natives.entity
-local Ped = Atdar.natives.ped
-local Vehicle = Atdar.natives.vehicle
-local Player = Atdar.natives.player
+local entity = Atdar.natives.entity
+local ped = Atdar.natives.entity.ped
+local vehicle = Atdar.natives.entity.vehicle
+local player = Atdar.natives.player
 
--- A fake game: the local player is id 0; their ped changes handle on respawn
+-- A fake game: the local player is id 0 with ped 100
 local game = { player = 0, ped = 100, health = {}, max_health = {}, dead = {}, in_vehicle = {}, calls = {} }
 local function call(name, ...) table.insert(game.calls, table.concat({ name, ... }, " ")) end
+local function last_call() return game.calls[#game.calls] end
 _G.PLAYER = {
     PLAYER_ID = || -> game.player,
     PLAYER_PED_ID = || -> game.ped,
@@ -18,9 +20,11 @@ _G.PLAYER = {
     SET_PLAYER_SPRINT = |id, on| -> call("SET_PLAYER_SPRINT", id, tostring(on)),
     SET_PLAYER_INVINCIBLE = |id, on| -> call("SET_PLAYER_INVINCIBLE", id, tostring(on)),
     GET_PLAYER_MAX_ARMOUR = || -> 100,
+    GET_MAX_WANTED_LEVEL = function(...) call("GET_MAX_WANTED_LEVEL", select("#", ...)) return 5 end,
 }
 _G.ENTITY = {
     DOES_ENTITY_EXIST = |h| -> h ~= -1,
+    IS_ENTITY_A_PED = |h| -> h >= 100 and h < 500,
     IS_ENTITY_A_VEHICLE = |h| -> h >= 500,
     IS_ENTITY_DEAD = |h| -> game.dead[h] == true,
     GET_ENTITY_HEALTH = |h| -> game.health[h] or 0,
@@ -32,97 +36,76 @@ _G.PED = {
     GET_VEHICLE_PED_IS_IN = |h| -> game.in_vehicle[h] or 0,
     SET_PED_ARMOUR = |h, value| -> call("SET_PED_ARMOUR", h, value),
     SET_PED_CONFIG_FLAG = |h, flag, on| -> call("SET_PED_CONFIG_FLAG", h, flag, tostring(on)),
+    GET_PED_PARACHUTE_LANDING_TYPE = || -> 2,
 }
+_G.WEAPON = { GIVE_WEAPON_TO_PED = |h, hash, ammo| -> call("GIVE_WEAPON_TO_PED", h, hash, ammo) }
 _G.NETWORK = {
-    NETWORK_GET_PLAYER_INDEX_FROM_PED = |h| -> h == game.ped ? game.player : -1,
+    NETWORK_DOES_NETWORK_ID_EXIST = |net| -> net == 9,
+    NET_TO_ENT = |net| -> 500 + net,
     NETWORK_EXPLODE_VEHICLE = |h, _, _, net| -> call("NETWORK_EXPLODE_VEHICLE", h, net),
 }
 _G.VEHICLE = { EXPLODE_VEHICLE = |h| -> call("EXPLODE_VEHICLE", h) }
-local user_vehicle = -1
-_G.entities = { get_user_vehicle_as_handle = || -> user_vehicle }
+_G.players = { user_ped = || -> game.ped }
+_G.v3 = { new = |v| -> v }
 
--- ─── Ped.user(): one object, the handle read on every call ───────────────────
+-- ─── entity ──────────────────────────────────────────────────────────────────
 
-local me = Ped.user()
-stand.check(rawequal(me, Ped.user()), "Ped.user() is the same object every time")
-stand.equal(me:handle(), 100, "its handle is the player's ped")
-game.ped = 101
-stand.equal(me:handle(), 101, "after a respawn the same object has the new handle")
+game.health[100] = 50
+entity.set_health(100)
+stand.equal(game.health[100], 200, "entity.set_health(handle) with no value restores the maximum")
+entity.set_health(100, 80)
+stand.equal(game.health[100], 80, "and sets a given value")
+stand.equal(entity.from_net_id(9), 509, "from_net_id gives the entity behind a network id")
+stand.equal(entity.from_net_id(1), nil, "and nil for one that doesn't exist")
 
--- Components use the owner's handle now, not when they were made
-game.in_vehicle[101] = 500
-stand.check(me.vehicle:is_in_any(), "ped.vehicle sees the current ped")
-local car = me.vehicle:get()
-stand.check(car and car:handle() == 500 and car:is_exist(), "ped.vehicle:get() gives a Vehicle")
-game.in_vehicle[101] = nil
-stand.equal(me.vehicle:get(), nil, "nil when not in a vehicle")
-me:set_scuba(true)
-stand.equal(game.calls[#game.calls], $"SET_PED_CONFIG_FLAG 101 {Ped.CONFIG.IS_SCUBA} true", "set_scuba goes through ped.flags")
+-- ─── ped (and its parts: flags, weapon, parachute) ───────────────────────────
 
--- Entity methods on a ped: health with nil restores the maximum
-game.health[101] = 50
-stand.check(not me:is_max_health(), "is_max_health")
-me:set_health()
-stand.equal(game.health[101], 200, "set_health() with nothing restores the maximum")
+stand.check(ped.is_ped(100) and not ped.is_ped(600), "ped.is_ped")
+ped.set_scuba(100, true)
+stand.equal(last_call(), $"SET_PED_CONFIG_FLAG 100 {ped.flags.CONFIG.IS_SCUBA} true", "set_scuba goes through ped.flags")
+ped.weapon.give(100, "WEAPON_PISTOL", 30)
+stand.equal(last_call(), $"GIVE_WEAPON_TO_PED 100 {util.joaat('WEAPON_PISTOL')} 30", "weapon.give takes a weapon name")
+ped.weapon.give(100, 12345)
+stand.equal(last_call(), "GIVE_WEAPON_TO_PED 100 12345 1", "and a hash as it is")
+stand.equal(ped.parachute.get_landing_type(100), 2, "parachute.get_landing_type (was get_lading_type)")
+game.in_vehicle[100] = 501
+stand.check(ped.vehicle.is_in_any(100) and ped.vehicle.get(100) == 501, "ped.vehicle")
+game.in_vehicle[100] = nil
 
--- A fixed handle; handle_of takes objects and handles alike
-local other = new Ped(42)
-stand.equal(other:handle(), 42, "new Ped(handle)")
-stand.equal(Entity.handle_of(other), 42, "handle_of(object)")
-stand.equal(Entity.handle_of(7), 7, "handle_of(handle)")
+-- ─── vehicle ─────────────────────────────────────────────────────────────────
 
--- The Pluto extends bug: a subclass declared after an Entity was made still finds its own methods
-local _ = new Entity(1)
-local class Car extends Entity
-    function kind() return "car" end
-end
-stand.equal(new Car(2):kind(), "car", "a subclass declared after an Entity was made works")
+stand.check(vehicle.is_exist(501) and not vehicle.is_exist(100), "vehicle.is_exist: an existing entity that's a vehicle")
+vehicle.explode({ vehicle = 501, net_id = 9 })
+stand.equal(last_call(), "NETWORK_EXPLODE_VEHICLE 501 9", "explode with a net id is networked")
+vehicle.explode({ vehicle = 501 })
+stand.equal(last_call(), "EXPLODE_VEHICLE 501", "explode without one is local")
 
--- ─── Vehicle ─────────────────────────────────────────────────────────────────
+-- ─── player ──────────────────────────────────────────────────────────────────
 
-local mine = Vehicle.user()
-stand.check(not mine:is_exist(), "no vehicle: Vehicle.user() doesn't exist (handle -1)")
-user_vehicle = 501
-stand.check(mine:is_exist(), "the same object sees the vehicle once there is one")
-stand.check(not new Vehicle(42):is_exist(), "a ped's handle isn't a vehicle")
-mine:explode({ net_id = 9 })
-stand.equal(game.calls[#game.calls], "NETWORK_EXPLODE_VEHICLE 501 9", "explode with a net id is networked")
-mine:explode()
-stand.equal(game.calls[#game.calls], "EXPLODE_VEHICLE 501", "explode without one is local")
+stand.equal(player.get_id(), 0, "player.get_id: the local player")
+stand.equal(player.get_ped_id(), 100, "get_ped_id(): the local player's ped")
+stand.equal(player.get_ped_id(3), 203, "get_ped_id(id): another player's")
+player.movement.set_sprint(0, false)
+stand.equal(last_call(), "SET_PLAYER_SPRINT 0 false", "player.movement")
+player.set_godmode(0, true)
+stand.equal(last_call(), "SET_PLAYER_INVINCIBLE 0 true", "set_godmode")
+stand.equal(player.wanted_level.get_max(), 5, "wanted_level.get_max")
+stand.equal(last_call(), "GET_MAX_WANTED_LEVEL 0", "with no arguments: the native takes none")
 
--- ─── Player ──────────────────────────────────────────────────────────────────
+game.health[100] = 10
+game.dead[100] = true
+player.user.restore_health()
+stand.equal(game.health[100], 10, "user.restore_health leaves a dead ped alone")
+game.dead[100] = nil
+player.user.restore_health()
+stand.equal(game.health[100], 200, "and restores a living one")
+player.user.restore_armor()
+stand.equal(last_call(), "SET_PED_ARMOUR 100 100", "user.restore_armor: the player's max armor")
 
-local player = Player.user()
-stand.check(rawequal(player, Player.user()), "Player.user() is the same object every time")
-stand.equal(player:get_id(), 0, "the local player's id")
-stand.check(rawequal(player:get_ped(), player:get_ped()), "player:get_ped() is one Ped")
-stand.equal(player:get_ped():handle(), 101, "it's the player's current ped")
-stand.equal(new Player(3):get_ped():handle(), 203, "another player's ped")
+-- ─── hud.blip and the waypoint ───────────────────────────────────────────────
 
-player.movement:set_sprint(false)
-stand.equal(game.calls[#game.calls], "SET_PLAYER_SPRINT 0 false", "player.movement uses the player's id")
-player:set_godmode(true)
-stand.equal(game.calls[#game.calls], "SET_PLAYER_INVINCIBLE 0 true", "set_godmode")
-
-game.health[101] = 10
-game.dead[101] = true
-player:restore_health()
-stand.equal(game.health[101], 10, "restore_health leaves a dead ped alone")
-game.dead[101] = nil
-player:restore_health()
-stand.equal(game.health[101], 200, "and restores a living one")
-player:restore_armor()
-stand.equal(game.calls[#game.calls], "SET_PED_ARMOUR 101 100", "restore_armor sets the player's max armor")
-
-stand.check(Player.from_ped(me):get_id() == 0, "Player.from_ped finds the player")
-stand.equal(Player.from_ped(42), nil, "and nil for a ped that isn't a player's")
-stand.check(rawequal(Player.get_vehicle(), Vehicle.user()), "Player.get_vehicle() is the user's Vehicle")
-
--- ─── Blip ────────────────────────────────────────────────────────────────────
-
--- Blips by handle: 1..3 have sprite 8 (the waypoint's), 4 belongs to entity 501; the waypoint is placed anew each time
-local Blip = Atdar.natives.blip
-local blips = { [1] = 8, [2] = 8, [3] = 8, [4] = 1 }
+local blip = Atdar.natives.visual.hud.blip
+local blips = { [1] = 8, [2] = 8, [3] = 1 }
 local waypoint_blip = 0
 local next_index = {}
 _G.HUD = {
@@ -130,18 +113,10 @@ _G.HUD = {
     GET_WAYPOINT_BLIP_ENUM_ID = || -> 8,
     GET_FIRST_BLIP_INFO_ID = function(sprite)
         if sprite == 8 and waypoint_blip ~= 0 then
-            next_index[sprite] = 1
             return waypoint_blip
         end
-        next_index[sprite] = 1
-        for h = 1, 4 do
-            if blips[h] == sprite then return h end
-        end
-        return 0
-    end,
-    GET_NEXT_BLIP_INFO_ID = function(sprite)
-        local start = next_index[sprite] + 1
-        for h = start, 4 do
+        next_index[sprite] = 0
+        for h = 1, 3 do
             if blips[h] == sprite then
                 next_index[sprite] = h
                 return h
@@ -149,31 +124,30 @@ _G.HUD = {
         end
         return 0
     end,
-    GET_BLIP_FROM_ENTITY = |h| -> h == 501 ? 4 : 0,
+    GET_NEXT_BLIP_INFO_ID = function(sprite)
+        for h = next_index[sprite] + 1, 3 do
+            if blips[h] == sprite then
+                next_index[sprite] = h
+                return h
+            end
+        end
+        return 0
+    end,
+    GET_BLIP_FROM_ENTITY = |h| -> h == 501 ? 3 : 0,
     GET_BLIP_COLOUR = |h| -> h * 10,
     GET_BLIP_HUD_COLOUR = |h| -> h * 100,
     GET_BLIP_INFO_ID_COORD = |h| -> { x = h, y = 0, z = 0 },
+    IS_WAYPOINT_ACTIVE = || -> waypoint_blip ~= 0,
 }
-_G.v3 = { new = |v| -> v }
-
-local waypoint = Blip.waypoint()
-stand.check(rawequal(waypoint, Blip.waypoint()), "Blip.waypoint() is the same object every time")
+stand.equal(#blip.get_all(8), 2, "blip.get_all(sprite): every blip with it")
+stand.equal(blip.get_color(1), 10, "get_color")
+stand.equal(blip.get_color(1, true), 100, "get_color(blip, true): the HUD colour")
+stand.equal(blip.get_from_entity(501), 3, "get_from_entity")
+stand.equal(blip.get_from_entity(42), nil, "and nil for an entity without one")
 waypoint_blip = 2
-stand.equal(waypoint:get_coords().x, 2, "the waypoint's blip")
-waypoint_blip = 3
-stand.equal(waypoint:get_coords().x, 3, "a new waypoint: the same object follows it")
-blips[3] = nil
-stand.equal(waypoint:get_coords(), nil, "get_coords() is nil when the blip is gone")
-blips[3] = 8
+stand.equal(Atdar.natives.visual.hud.waypoint.get_blip(), 2, "waypoint.get_blip")
+stand.equal(Atdar.natives.world.map.waypoint.get_coords().x, 2, "world.map.waypoint.get_coords")
 waypoint_blip = 0
-
-local all = Blip.get_all(8)
-stand.equal(#all, 3, "Blip.get_all(sprite) finds every blip with that sprite")
-stand.equal(all[2]:handle(), 2, "as Blip objects")
-stand.equal(all[1]:get_color(), 10, "get_color()")
-stand.equal(all[1]:get_color(true), 100, "get_color(true): the HUD colour")
-stand.equal(Blip.from_entity(mine):handle(), 4, "Blip.from_entity takes a Vehicle")
-stand.equal(Blip.from_entity(42), nil, "and nil for an entity without a blip")
 
 -- ─── HUD colours and feed pictures: tables ───────────────────────────────────
 

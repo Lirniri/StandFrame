@@ -60,7 +60,12 @@ local function delete_script(node: table)
     local keep = true
     list:toggle(label("delete_script.keep.name"), function(on) keep = on end, {},
         label("delete_script.keep.help"), true)
+    -- Set once the script is deleted: it's stopping, further clicks must do nothing
+    local deleted = false
     confirm_ref = list:action(label("delete_script.confirm.name"), function()
+        if deleted then
+            return
+        end
         local now = util.current_time_millis()
         if armed_until == nil or now > armed_until then
             armed_until = now + CONFIRM_MS
@@ -84,6 +89,7 @@ local function delete_script(node: table)
             log:warn(text("delete_script.failed"):format(result))
             return
         end
+        deleted = true
         log:notify(text("delete_script.done"):format(Atdar.name, result))
         installer.stop()
     end, {}, label("delete_script.confirm.help"))

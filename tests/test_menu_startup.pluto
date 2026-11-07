@@ -239,10 +239,16 @@ stand.check(io.exists(profiles .. "main.json") and io.exists(stand.store .. "Ani
     "profiles and config.json are kept by default")
 stand.check(stand.stopped, "the script stops after deleting itself")
 
+stand.check(Atdar.leaving, "and it's leaving: notifications go to Stand only now")
+
+-- Clicks after the delete (the script is stopping) do nothing: no new warning, nothing posted
+stand.clear_logs()
+stand.click(confirm)
+stand.click(confirm)
+stand.equal(stand.find_log("Click it again"), nil, "a click after the delete asks nothing")
+
 -- With Keep Profiles And Settings off, store goes too
-stand.click(stand.find_item(delete_list, "Keep Profiles"))
-stand.click(confirm)
-stand.click(confirm)
+installer.delete(false)
 stand.check(not io.exists(stand.store .. "AnitaDarin"), "without keeping, store/AnitaDarin is deleted with the profiles")
 stand.check(io.exists(stand.SRC .. "lib/AnitaDarin/bootstrap.pluto"), "src is untouched")
 

@@ -26,7 +26,8 @@ local Logger = Atdar.loader.load("core/logger")
 local color = Atdar.loader.load("utils/color")
 local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
 local confirm = Atdar.loader.load("ui/stand/confirm")
-local TextureDictAsset = Atdar.loader.load("natives/streaming/texture_dict/asset")
+local texture_dict = Atdar.loader.load("natives/streaming/texture_dict/asset")
+local thefeed = Atdar.loader.load("natives/visual/hud/thefeed")
 
 local log = new Logger("Profile")
 
@@ -128,7 +129,7 @@ local function load_feed_picture(): void
     if type(name) ~= "string" or name == "" then
         return
     end
-    pcall(|| -> (new TextureDictAsset(name)):request(false))
+    pcall(texture_dict.request, name, false)
 end
 
 -- A colour kept in the profile as hex -> the Stand colour a colour item shows
@@ -328,7 +329,7 @@ local test_post = nil
 -- Takes the test card away from the game's feed (Stand's own notifications can't be taken away)
 local function remove_test_post(): void
     if test_post then
-        pcall(|| -> test_post:remove())
+        pcall(thefeed.remove, test_post)
         test_post = nil
     end
 end

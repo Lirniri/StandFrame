@@ -63,11 +63,14 @@ function module.rename(new_name: string): (bool, string)
         table.insert(done, step)
     end
     log:info($"renamed {old_name} -> {new_name} ({#done} part(s))")
+    -- Leaving: from here on notifications go to Stand only (utils/util.toast)
+    Atdar.leaving = true
     return true, ""
 end
 
 -- Starts the script under its new name and stops this copy.
--- Stand may not see the renamed file until its script list refreshes, so the notice says how to start it by hand
+-- Stand may not see the renamed file until its script list refreshes, so the notice says how to start it by hand.
+-- (Going through Lua Scripts in the menu to wait for the new file didn't help: Stand doesn't start it either)
 function module.restart_as(new_name: string): void
     util.create_thread(function()
         menu.trigger_commands($"startlua{new_name:lower()}")
@@ -154,6 +157,8 @@ function module.delete(keep_user_data: bool = true): (bool, any)
     else
         log:info($"deleted {name}: {removed} file(s)")
     end
+    -- Leaving: from here on notifications go to Stand only (utils/util.toast)
+    Atdar.leaving = true
     return true, removed
 end
 

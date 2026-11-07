@@ -1,7 +1,0 @@
-local module = {}
-
-function module.flash(looped: bool): void
-    HUD.FLASH_WANTED_DISPLAY(looped)
-end
-
-return module

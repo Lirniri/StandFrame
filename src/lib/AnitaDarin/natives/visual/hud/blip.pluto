@@ -55,7 +55,7 @@ function module.get_all(sprite: int = 0): table
     local blips = {}
     local blip = HUD.GET_FIRST_BLIP_INFO_ID(sprite)
     while module.is_exist(blip) do
-        blips:insert(blip)
+        table.insert(blips, blip)
         blip = HUD.GET_NEXT_BLIP_INFO_ID(sprite)
     end
     return blips

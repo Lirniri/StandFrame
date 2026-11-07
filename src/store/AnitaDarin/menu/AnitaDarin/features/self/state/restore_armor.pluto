@@ -9,12 +9,13 @@ local class RestoreArmor extends Feature
     function __construct()
         parent:__construct({
             id = "self.state.restore_armor",
-            kind = "action"
+            kind = "action" 
         })
     end
 
     function on_trigger()
-        Atdar.natives.player.user():restore_armor()
+        local player = Atdar.natives.player.user
+        player.restore_armor()
     end
 end
 

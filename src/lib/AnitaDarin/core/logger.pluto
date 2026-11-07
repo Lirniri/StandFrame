@@ -158,8 +158,8 @@ local class Logger
         return self.source ? $"[{name} | {self.source}]" : $"[{name}]"
     end
 
-    -- @return The FeedPost when the toast went to the game's feed (post:remove() takes it away), otherwise nil
-    function write(level: string, msg: string, toast: bool): ?table
+    -- @return The post's id when the toast went to the game's feed (thefeed.remove(id) takes it away), otherwise nil
+    function write(level: string, msg: string, toast: bool): ?int
         local line = $"{self:tag()} {level}: {msg}"
         util.log(line)
         if not file_broken then
@@ -205,17 +205,17 @@ local class Logger
     end
 
     -- Info the user should see, e.g. the result of something they clicked
-    -- @return The FeedPost when it went to the game's feed, otherwise nil
-    function notify(msg: string): ?table
+    -- @return The post's id when it went to the game's feed, otherwise nil
+    function notify(msg: string): ?int
         return self:write("INFO", msg, true)
     end
 
     -- Something the user should know about, but the script keeps working
-    function warn(msg: string): ?table
+    function warn(msg: string): ?int
         return self:write("WARN", msg, true)
     end
 
-    function error(msg: string): ?table
+    function error(msg: string): ?int
         return self:write("ERROR", msg, true)
     end
 

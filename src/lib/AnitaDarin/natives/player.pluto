@@ -1,210 +1,148 @@
--- class Player: a player in the session, the local one or anyone else.
---
---     local Player = Atdar.natives.player
---     local me = Player.user()              -- the local player
---     me:set_godmode(true)
---     me:get_ped():is_ragdoll()             -- the player's Ped
---     me.movement:set_sprint(false)         -- components: camera, movement, wanted_level, mission, weapon
---     for _, player in Player.all(false) do player:get_name() end
+local module = {}
 
-local class_utils = Atdar.globals.pluto.class
-local Ped = Atdar.loader.load("natives/ped")
-local Vehicle = Atdar.loader.load("natives/vehicle")
-local PlayerCamera = Atdar.loader.load("natives/player/camera")
-local PlayerMovement = Atdar.loader.load("natives/player/movement")
-local PlayerWantedLevel = Atdar.loader.load("natives/player/wanted_level")
-local PlayerMission = Atdar.loader.load("natives/player/mission")
-local PlayerWeapon = Atdar.loader.load("natives/player/weapon")
+-- State
 
-local class Player
-
-    -- target: a player id (int) or a function returning one
-    function __construct(target)
-        class_utils.fix_index(self)
-        if type(target) == "function" then
-            self.resolve = target
-        else
-            self.fixed = target
-        end
-        self.camera = new PlayerCamera(self)
-        self.movement = new PlayerMovement(self)
-        self.wanted_level = new PlayerWantedLevel(self)
-        self.mission = new PlayerMission(self)
-        self.weapon = new PlayerWeapon(self)
-    end
-
-    -- @return The player id now
-    function get_id(): int
-        if self.resolve then
-            return self.resolve()
-        end
-        return self.fixed
-    end
-
-    -- @return The player's Ped. Its handle is read on every call, so it follows respawns
-    function get_ped(): table
-        self.ped ??= new Ped(|| -> PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(self:get_id()))
-        return self.ped
-    end
-
-    -- State
-
-    function is_exist(): bool
-        return NETWORK.NETWORK_IS_PLAYER_ACTIVE(self:get_id())
-    end
-
-    function is_dead(): bool
-        return self:get_ped():is_dead()
-    end
-
-    function is_godmode(): bool
-        return players.is_godmode(self:get_id())
-    end
-
-    function is_friend(): bool
-        local handle = memory.alloc(104)
-        NETWORK.NETWORK_HANDLE_FROM_PLAYER(self:get_id(), handle, 13)
-        if not NETWORK.NETWORK_IS_HANDLE_VALID(handle, 13) then
-            return false
-        end
-        return NETWORK.NETWORK_IS_FRIEND(handle)
-    end
-
-    -- Get
-
-    function get_name(ignore_streamer_spoof: bool = false): string
-        return players.get_name(self:get_id(), ignore_streamer_spoof)
-    end
-
-    function get_rockstar_id(): int
-        return players.get_rockstar_id(self:get_id())
-    end
-
-    function get_net(): int
-        return players.get_net_player(self:get_id())
-    end
-
-    -- @param kind 0 - total, 1 - wallet, 2 - bank
-    function get_money(kind: int = 0): int
-        local id = self:get_id()
-        switch kind do
-            case 1:
-                return players.get_wallet(id)
-            case 2:
-                return players.get_bank(id)
-            default:
-                return players.get_money(id)
-        end
-    end
-
-    function get_position(): vector3
-        return players.get_position(self:get_id())
-    end
-
-    function get_waypoint(): vector3
-        return players.get_waypoint(self:get_id())
-    end
-
-    function get_max_armor(): int
-        return PLAYER.GET_PLAYER_MAX_ARMOUR(self:get_id())
-    end
-
-    -- Set
-
-    function set_godmode(toggle: bool): void
-        PLAYER.SET_PLAYER_INVINCIBLE(self:get_id(), toggle)
-    end
-
-    -- Invincible, but still reacts to hits
-    function set_half_godmode(toggle: bool): void
-        PLAYER.SET_PLAYER_INVINCIBLE_BUT_HAS_REACTIONS(self:get_id(), toggle)
-    end
-
-    function set_max_armor(value: int): void
-        PLAYER.SET_PLAYER_MAX_ARMOUR(self:get_id(), value)
-    end
-
-    -- Actions
-
-    function give_ragdoll_control(toggle: bool): void
-        PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(self:get_id(), toggle)
-    end
-
-    function remove_helmet(p2: bool = false): void
-        PLAYER.REMOVE_PLAYER_HELMET(self:get_id(), p2)
-    end
-
-    -- Full health, unless dead
-    function restore_health(): void
-        local ped = self:get_ped()
-        if ped:is_dead() then
-            return
-        end
-        ped:set_health()
-    end
-
-    -- Full armor, unless dead
-    function restore_armor(): void
-        local ped = self:get_ped()
-        if ped:is_dead() then
-            return
-        end
-        ped:set_armor(self:get_max_armor())
-    end
-
-    function restore_stamina(value: float = 1.0): void
-        if self:is_dead() then
-            return
-        end
-        self.movement:restore_sprint_stamina(value)
-    end
-
-    function reset_stamina(): void
-        if self:is_dead() then
-            return
-        end
-        self.movement:reset_sprint_stamina()
-    end
-
+function module.is_exist(player_id: int): bool
+    local player = player_id
+    return NETWORK.NETWORK_IS_PLAYER_ACTIVE(player)
 end
 
--- One object for the local player, made on first use; its id is read on every call
-local user = nil
-
--- @return The local player
-function Player.user(): table
-    user ??= new Player(|| -> PLAYER.PLAYER_ID())
-    return user
+function module.is_friend(player_id: int): bool
+    local player_handle = memory.alloc(104)
+    NETWORK.NETWORK_HANDLE_FROM_PLAYER(player_id, player_handle, 13)
+    local isFriend = NETWORK.NETWORK_IS_HANDLE_VALID(player_handle, 13) and NETWORK.NETWORK_IS_FRIEND(player_handle)
+    return isFriend
 end
 
--- @return Every player in the session, as Player objects
-function Player.all(include_user: bool = true): table
-    local list = {}
-    for _, id in players.list(include_user, true, true) do
-        table.insert(list, new Player(id))
+function module.is_godmode(player_id: int): bool
+    local player = player_id
+    -- return PLAYER.GET_PLAYER_INVINCIBLE(player)
+    return players.is_godmode(player)
+end
+
+function module.is_dead(player_id: int): bool
+    local entity = Atdar.natives.entity
+    local ped = module.get_ped_id(player_id)
+    return entity.is_dead(ped)
+end
+
+function module.is_ragdoll(ped: int): bool
+    return PED.IS_PED_RAGDOLL(ped)
+end
+
+function module.can_ragdoll(ped: int): bool
+    return PED.CAN_PED_RAGDOLL(ped)
+end
+
+-- Get
+
+function module.get_id(): int
+    return PLAYER.PLAYER_ID()
+end
+
+function module.get_all_id(include_user: bool = true): table
+    local ids = {}
+    for _, p_id in players.list(include_user, true, true) do
+        ids[p_id] = p_id
     end
-    return list
+    return ids
 end
 
--- @return The player whose ped this is (a Ped or a handle), or nil if the ped isn't a player's
-function Player.from_ped(ped: table|int): ?table
-    local id = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(Atdar.natives.entity.handle_of(ped))
-    if id == -1 then
-        return nil
+function module.get_name(player_id: int, ignore_streamer_spoof: bool = false)
+    return players.get_name(player_id, ignore_streamer_spoof)
+end
+
+function module.get_rockstar_id(player_id: int)
+    return players.get_rockstar_id(player_id)
+end
+
+function module.get_net(player_id: int)
+    local player = player_id
+    return players.get_net_player(player)
+end
+
+function module.get_money(player_id: int, type: int = 0)
+    switch type do
+        case 1:
+            return players.get_wallet(player_id)
+            break
+        case 2:
+            return players.get_bank(player_id)
+            break
+        default:
+            return players.get_money(player_id)
     end
-    return new Player(id)
 end
 
--- The local player's own things, not anyone else's
-
--- @return Index of the active character slot
-function Player.get_char_slot(): int
-    return util.get_char_slot()
+function module.get_position(player_id: int): vector3
+    return players.get_position(player_id)
 end
 
--- @return The local player's (last) vehicle; check is_exist()
-function Player.get_vehicle(include_last: bool = true): table
-    return Vehicle.user(include_last)
+function module.get_waypoint(player_id: int): vector3
+    return players.get_waypoint(player_id)
 end
 
-return Player
+function module.get_max_armor(player_id: int): int
+    local player = player_id
+    return PLAYER.GET_PLAYER_MAX_ARMOUR(player)
+end
+
+function module.get_ped_from_id(player_id: int): int
+    return PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player_id)
+end
+
+-- @return Ped of the given player, or of the local player if player_id is nil
+function module.get_ped_id(player_id: ?int = nil): int
+    if player_id ~= nil then
+        return module.get_ped_from_id(player_id)
+    end
+    return PLAYER.PLAYER_PED_ID()
+end
+
+-- @return Table of { [player_id] = ped } for every player in session
+function module.get_all_peds(include_user: bool = true): table
+    local peds = {}
+    for _, p_id in players.list(include_user, true, true) do
+        peds[p_id] = module.get_ped_from_id(p_id)
+    end
+    return peds
+end
+
+-- @return Player id that owns the given ped (-1 if the ped is not a player), or the local player if ped is nil
+function module.from_ped_to_id(ped: ?int = nil): int
+    if ped ~= nil then
+        return NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(ped)
+    end
+    return PLAYER.PLAYER_ID()
+end
+
+-- Set
+
+function module.set_godmode(player_id: int, toggle: bool): void
+    local player = player_id
+    PLAYER.SET_PLAYER_INVINCIBLE(player, toggle)
+end
+
+function module.set_half_godmode(player_id: int, toggle: bool): void
+    local player = player_id
+    PLAYER.SET_PLAYER_INVINCIBLE_BUT_HAS_REACTIONS(player, toggle)
+end
+
+function module.set_max_armor(player_id: int, value: int): int
+    local player = player_id
+    return PLAYER.SET_PLAYER_MAX_ARMOUR(player, value)
+end
+
+-- Actions
+
+function module.give_ragdoll_control(player_id: int, toggle: bool): void
+    local player = player_id
+    PLAYER.GIVE_PLAYER_RAGDOLL_CONTROL(player, toggle)
+end
+
+function module.remove_helmet(player_id: int, p2: bool)
+    local player = player_id
+    PLAYER.REMOVE_PLAYER_HELMET(player, p2)
+end
+
+return Atdar.loader.auto(module, "natives/player")

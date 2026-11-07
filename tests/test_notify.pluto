@@ -12,6 +12,12 @@ local Logger = Atdar.loader.load("core/logger")
 local log = new Logger("Test")
 -- The message card's picture when the profile has its default (core/profile)
 local default_picture = profile.default("notify_feed_picture")
+-- The default background colours as the game gets them ("r,g,b,a"), whatever they're set to
+local color = Atdar.loader.load("utils/color")
+local function game_rgba(key)
+    local r, g, b, a = color.to_game(color.from_hex(profile.default(key)))
+    return $"{r},{g},{b},{a}"
+end
 -- The checks below expect these values; the defaults in core/profile may be anything
 profile.set("notify_feed_style", "ticker")
 profile.set("notify_subject_color_day", "white")
@@ -53,7 +59,9 @@ local function shown(fn)
     return #stand.toasts, #feed
 end
 
-stand.equal(profile.get("notify"), "stand", "notifications show in Stand by default")
+-- The checks below start from Stand, whatever the default is
+profile.set("notify", "stand")
+stand.equal(profile.get("notify"), "stand", "notifications start in Stand here")
 stand.equal(profile.get("notify_errors_in_stand"), true, "errors always in Stand by default")
 
 local toasts, posts = shown(|| -> log:notify("hello"))
@@ -67,12 +75,12 @@ stand.check(toasts == 0 and posts == 1, "warnings follow the choice too")
 toasts, posts = shown(|| -> log:error("broke"))
 stand.check(toasts == 1 and posts == 0, "errors still go to Stand")
 
--- util.toast to the feed gives a FeedPost that can take the post away; the message card gets the script's name
+-- util.toast to the feed gives the post's id, thefeed.remove(id) takes it away; the card gets the script's name
 feed = {}
-local post = Atdar.util.toast("removable", { target = "game" })
-stand.equal(post:get_id(), 1, "util.toast to the feed returns a FeedPost")
-post:remove()
-stand.equal(feed[1], "removed", "post:remove() removes it from the feed")
+local post_id = Atdar.util.toast("removable", { target = "game" })
+stand.equal(post_id, 1, "util.toast to the feed returns the post's id")
+Atdar.natives.visual.hud.thefeed.remove(post_id)
+stand.equal(feed[1], "removed", "thefeed.remove(id) removes it from the feed")
 Atdar.util.toast("card", { target = "game", style = "message", subject = "Profiles" })
 stand.equal(feed[2], $"{default_picture}|{Atdar.name}|~w~Profiles|card",
     "style message: picture, sender, subject (in the day's color), text")
@@ -101,11 +109,11 @@ stand.equal(Atdar.util.toast("in stand", { target = "stand" }), nil, "util.toast
 look = {}
 feed = {}
 log:notify("plain")
-stand.check(look.background == 128 and script_color == "0,139,139,255" and look.flash == false,
-    "by default: the day background dark cyan (noon by the fake clock), no flash")
+stand.check(look.background == 128 and script_color == game_rgba("notify_background_day") and look.flash == false,
+    "by default: the day background (noon by the fake clock), no flash")
 clock = 22
 log:notify("night")
-stand.equal(script_color, "26,61,84,255", "and the night one dark teal")
+stand.equal(script_color, game_rgba("notify_background_night"), "and the night one")
 clock = 12
 profile.set("notify_feed_style", "message")
 profile.set("notify_flash", true)
@@ -212,6 +220,12 @@ stand.equal(look.icon, 2, "opts.icon overrides it")
 profile.set("notify_feed_icon", "CHAT_BOX")
 profile.set("notify_feed_style", "ticker")
 
+-- While the script is leaving (deleted, renamed, stopping) nothing goes to the game's feed
+Atdar.leaving = true
+local toasts_leaving, posts_leaving = shown(|| -> log:notify("leaving"))
+stand.check(toasts_leaving == 1 and posts_leaving == 0, "a leaving script notifies in Stand, not the feed")
+Atdar.leaving = nil
+
 -- A paused feed shows nothing: the notification goes to Stand instead
 local feed_paused = false
 HUD.THEFEED_IS_PAUSED = || -> feed_paused
@@ -224,9 +238,9 @@ local toasts_running, posts_running = shown(|| -> log:notify("running again"))
 stand.check(toasts_running == 0 and posts_running == 1, "once the feed runs again, it goes there")
 HUD.THEFEED_IS_PAUSED = nil
 
--- notify() gives the FeedPost back, so a caller can take its card away again
+-- notify() gives the post's id back, so a caller can take its card away again
 local posted = log:notify("removable by the caller")
-stand.check(posted ~= nil and posted.get_id ~= nil, "log:notify returns the FeedPost of a feed notification")
+stand.equal(type(posted), "number", "log:notify returns the post's id of a feed notification")
 profile.set("notify", "stand")
 stand.equal(log:notify("in Stand"), nil, "and nil for a Stand one")
 profile.set("notify", "game")

@@ -15,13 +15,20 @@ local class ScubaMode extends Feature
     end
 
     function set_scuba(toggle)
-        Atdar.natives.ped.user():set_scuba(toggle)
+        local n_player = Atdar.natives.player
+        local n_ped = Atdar.natives.entity.ped
+        local ped = n_player.get_ped_id()
+        n_ped.set_scuba(ped, toggle)
     end
 
     function on_tick()
-        self:set_scuba(Atdar.natives.ped.user():is_swimming(true))
+        local n_player = Atdar.natives.player
+        local n_ped = Atdar.natives.entity.ped
+        local ped = n_player.get_ped_id()
+        
+        self:set_scuba(n_ped.is_swimming(ped, true))
     end
-
+    
     function on_disable()
         self:set_scuba(false)
     end

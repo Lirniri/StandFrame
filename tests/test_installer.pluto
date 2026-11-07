@@ -48,4 +48,15 @@ log:info("written again")
 stand.check(#filesystem.list_files(Atdar.log_dir) >= before and stand.read_file(filesystem.list_files(Atdar.log_dir)[1]):find("written again", 1, true),
     "resume_file() writes the file again")
 
+-- ─── restart_as: asks Stand to start the new name, then stops this copy ──────
+
+local real_trigger = menu.trigger_commands
+local asked = nil
+menu.trigger_commands = function(command) asked = command end
+stand.stopped = false
+installer.restart_as("Renamed")
+menu.trigger_commands = real_trigger
+stand.equal(asked, "startluarenamed", "restart_as asks Stand to start the renamed script")
+stand.check(stand.stopped, "and stops this copy")
+
 stand.finish()

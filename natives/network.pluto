@@ -1,7 +1,0 @@
-local module = {}
-
-function module.is_net_id_exist(net_id)
-    return NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-end
-
-return Atdar.loader.auto(module, "natives/network")

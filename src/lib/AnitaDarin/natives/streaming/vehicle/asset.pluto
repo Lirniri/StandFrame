@@ -1,30 +1,23 @@
--- class VehicleAsset extends StreamingAsset: a vehicle asset. They're numbered per model (asset id), not named.
---
---     new Atdar.natives.streaming.vehicle.asset("adder", 0):request()
+local module = {}
 
-local StreamingAsset = Atdar.loader.load("natives/streaming/asset")
+-- Vehicle assets are numbered per model (asset id), not named
 
-local class VehicleAsset extends StreamingAsset
+-- State
 
-    -- model: vehicle model name or hash; asset: the asset id (int)
-    function __construct(model: int|string, asset: int)
-        parent:__construct($"vehicle asset {asset} of '{model}'")
-        self.model = type(model) == "string" ? util.joaat(model) : model
-        self.asset = asset
-    end
-
-    -- State
-
-    function is_loaded(): bool
-        return VEHICLE.HAS_VEHICLE_ASSET_LOADED(self.asset)
-    end
-
-    -- Actions
-
-    function send_request(): void
-        VEHICLE.REQUEST_VEHICLE_ASSET(self.model, self.asset)
-    end
-
+-- asset: vehicle asset id (int), not the model name
+function module.is_loaded(asset: int): bool
+    return VEHICLE.HAS_VEHICLE_ASSET_LOADED(asset)
 end
 
-return VehicleAsset
+-- Actions
+
+-- Requests the asset and waits until it loads (yields, see streaming.wait_loaded)
+-- model: vehicle model name or hash
+-- @return Whether it loaded before the timeout (ms)
+function module.request(model: int|string, asset: int, timeout: int = 2000): bool
+    local hash = type(model) == "string" ? util.joaat(model) : model
+    VEHICLE.REQUEST_VEHICLE_ASSET(hash, asset)
+    return Atdar.natives.streaming.wait_loaded($"vehicle asset {asset} of '{model}'", || -> module.is_loaded(asset), timeout)
+end
+
+return module

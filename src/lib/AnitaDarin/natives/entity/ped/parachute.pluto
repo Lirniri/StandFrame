@@ -13,7 +13,7 @@ function module.get_state(ped: int): int
     return PED.GET_PED_PARACHUTE_STATE(ped)
 end
 
-function module.get_lading_type(ped: int): int
+function module.get_landing_type(ped: int): int
     --[[ @return:
         -1: no landing
         0: landing on both feet

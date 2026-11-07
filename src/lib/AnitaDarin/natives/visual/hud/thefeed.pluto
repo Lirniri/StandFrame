@@ -1,13 +1,12 @@
--- thefeed: the game's notification feed (above the minimap). A module: there's one feed;
--- every post is a FeedPost (thefeed/post.pluto) that can be removed.
+-- thefeed: the game's notification feed (above the minimap). Every post gets an id the game gives,
+-- thefeed.remove(id) takes it away again.
 --
 --     local thefeed = Atdar.natives.visual.hud.thefeed
---     local post = thefeed.post_ticker("Saved")
+--     local id = thefeed.post_ticker("Saved")
 --     thefeed.post_message("Text", { sender = "AnitaDarin", subject = "Profiles", picture = "CHAR_SOCIAL_CLUB" })
---     post:remove()
+--     thefeed.remove(id)
 --     thefeed.remove_all()               -- every post the script made (also when the script stops)
 
-local FeedPost = Atdar.loader.load("natives/visual/hud/thefeed/post")
 local hud_color = Atdar.loader.load("natives/visual/hud_color")
 
 local module = {}
@@ -58,6 +57,11 @@ end
 
 -- Actions
 
+-- Takes a post away from the feed
+function module.remove(id: int): void
+    HUD.THEFEED_REMOVE_ITEM(id)
+end
+
 function module.pause(): void
     HUD.THEFEED_PAUSE()
 end
@@ -76,20 +80,21 @@ end
 local KEEP_POSTS = 100
 local posts = {}
 
-local function remember(post: table): table
-    table.insert(posts, post)
+-- @return The id, for the caller
+local function remember(id: int): int
+    table.insert(posts, id)
     if #posts > KEEP_POSTS then
         table.remove(posts, 1)
     end
-    return post
+    return id
 end
 
 -- Takes every post the script made away from the feed (other scripts' and the game's stay)
 -- @return How many were removed
 function module.remove_all(): int
     local count = #posts
-    for _, post in ipairs(posts) do
-        pcall(|| -> post:remove())
+    for _, id in ipairs(posts) do
+        pcall(module.remove, id)
     end
     posts = {}
     return count
@@ -101,25 +106,25 @@ util.on_stop(|| -> module.remove_all())
 -- Plain text.
 -- @param important Blinks
 -- @param is_mp The online style
--- @return FeedPost
-function module.post_ticker(text: string, important: bool = false, is_mp: bool = false): table
+-- @return The post's id (remove(id) takes it away)
+function module.post_ticker(text: string, important: bool = false, is_mp: bool = false): int
     begin_post(text)
     if is_mp then
-        return remember(new FeedPost(HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true)))
+        return remember(HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true))
     end
-    return remember(new FeedPost(HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(important, true)))
+    return remember(HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(important, true))
 end
 
 -- A message card: picture, sender (the top line), subject (under it), the text below.
 -- opts: sender, subject, picture (a texture dictionary that's also the texture name, e.g. "CHAR_SOCIAL_CLUB"),
 --       icon (module.ICON, default CHAT_BOX), important (flashes)
--- @return FeedPost
-function module.post_message(text: string, opts: table = {}): table
+-- @return The post's id (remove(id) takes it away)
+function module.post_message(text: string, opts: table = {}): int
     begin_post(text)
     local picture = opts.picture or "CHAR_SOCIAL_CLUB"
     local id = HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(picture, picture, opts.important == true,
         opts.icon or module.ICON.CHAT_BOX, opts.sender or "", opts.subject or "")
-    return remember(new FeedPost(id))
+    return remember(id)
 end
 
-return Atdar.loader.auto(module, "natives/visual/hud/thefeed")
+return module

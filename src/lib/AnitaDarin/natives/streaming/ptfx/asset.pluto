@@ -1,52 +1,41 @@
--- class PtfxAsset extends StreamingAsset: a particle effect asset, by name, e.g. "scr_rcbarry2".
---
---     local fx = new Atdar.natives.streaming.ptfx.asset("scr_rcbarry2")
---     fx:request()
---     fx:remove()                       -- frees it when it's no longer needed
---     new Atdar.natives.streaming.ptfx.asset()   -- no name: the script's default PTFX asset
+local module = {}
 
-local StreamingAsset = Atdar.loader.load("natives/streaming/asset")
+-- Particle effect assets are requested by name, e.g. "scr_rcbarry2"
 
-local class PtfxAsset extends StreamingAsset
+-- State
 
-    -- name nil -> the script's default PTFX asset
-    function __construct(name: ?string)
-        if name ~= nil then
-            parent:__construct($"ptfx asset '{name}'")
-        else
-            parent:__construct("default ptfx asset")
-        end
-        self.name = name
+-- name nil -> the script's default PTFX asset
+function module.is_loaded(name: ?string): bool
+    if name ~= nil then
+        return STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(name)
     end
-
-    -- State
-
-    function is_loaded(): bool
-        if self.name ~= nil then
-            return STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(self.name)
-        end
-        return STREAMING.HAS_PTFX_ASSET_LOADED()
-    end
-
-    -- Actions
-
-    function send_request(): void
-        if self.name ~= nil then
-            STREAMING.REQUEST_NAMED_PTFX_ASSET(self.name)
-            return
-        end
-        STREAMING.REQUEST_PTFX_ASSET()
-    end
-
-    -- Frees the asset when it's no longer needed
-    function remove(): void
-        if self.name ~= nil then
-            STREAMING.REMOVE_NAMED_PTFX_ASSET(self.name)
-            return
-        end
-        STREAMING.REMOVE_PTFX_ASSET()
-    end
-
+    return STREAMING.HAS_PTFX_ASSET_LOADED()
 end
 
-return PtfxAsset
+-- Actions
+
+-- name nil -> the script's default PTFX asset.
+-- timeout false -> only request, don't wait; returns whether it's already loaded
+function module.request(name: ?string, timeout: int|bool = 2000): bool
+    if name ~= nil then
+        STREAMING.REQUEST_NAMED_PTFX_ASSET(name)
+    else
+        STREAMING.REQUEST_PTFX_ASSET()
+    end
+    if timeout == false then
+        return module.is_loaded(name)
+    end
+    local what = name ~= nil ? $"ptfx asset '{name}'" : "default ptfx asset"
+    return Atdar.natives.streaming.wait_loaded(what, || -> module.is_loaded(name), timeout)
+end
+
+-- Frees the asset when it's no longer needed; name nil -> the script's default PTFX asset
+function module.remove(name: ?string): void
+    if name ~= nil then
+        STREAMING.REMOVE_NAMED_PTFX_ASSET(name)
+    else
+        STREAMING.REMOVE_PTFX_ASSET()
+    end
+end
+
+return module

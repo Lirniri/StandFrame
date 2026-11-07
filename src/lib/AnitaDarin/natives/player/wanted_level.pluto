@@ -1,53 +1,48 @@
--- player.wanted_level: a player's wanted stars. Part of every Player
+local module = {}
 
-local class PlayerWantedLevel
+-- State
 
-    function __construct(player: table)
-        self.player = player
-    end
+-- Get
 
-    -- Get
-
-    function get_current(): int
-        return PLAYER.GET_PLAYER_WANTED_LEVEL(self.player:get_id())
-    end
-
-    function get_max(): int
-        return PLAYER.GET_MAX_WANTED_LEVEL()
-    end
-
-    function get_radius(): float
-        return PLAYER.GET_WANTED_LEVEL_RADIUS(self.player:get_id())
-    end
-
-    -- Set
-
-    function set(level: int, disable_on_mission: bool = false): void
-        PLAYER.SET_PLAYER_WANTED_LEVEL(self.player:get_id(), level, disable_on_mission)
-    end
-
-    function set_no_drop(level: int, p2: bool = false): void
-        PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(self.player:get_id(), level, p2)
-    end
-
-    function set_now(p1: bool = false): void
-        PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(self.player:get_id(), p1)
-    end
-
-    -- Actions
-
-    -- Sets the level right away: for the local player through the natives, for others through Stand
-    function change(level: int): void
-        local id = self.player:get_id()
-        if id ~= players.user() then
-            players.set_wanted_level(id, level)
-            return
-        end
-        PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(id, level, false)
-        PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(id, false)
-        PLAYER.SET_PLAYER_WANTED_LEVEL(id, level, false)
-    end
-
+function module.get_current(player_id: int): int
+    return PLAYER.GET_PLAYER_WANTED_LEVEL(player_id)
 end
 
-return PlayerWantedLevel
+-- The game's highest wanted level (the same for every player: the native takes no player)
+function module.get_max(): int
+    return PLAYER.GET_MAX_WANTED_LEVEL()
+end
+
+function module.get_radius(player_id: int): float
+    return PLAYER.GET_WANTED_LEVEL_RADIUS(player_id)
+end
+
+-- Set
+
+function module.set(player_id: int, level: int, disableOnMission: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL(player_id, level, disableOnMission)
+end
+
+function module.set_no_drop(player_id: int, level: int, p2: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player_id, level, p2)
+end
+
+function module.set_now(player_id: int, p1: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(player_id, p1)
+end
+
+-- Actions
+
+function module.change(player_id: int, level: int): void
+    local player = player_id
+
+    if player == players.user() then
+        PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player, level, false)
+        PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(player, false)
+        PLAYER.SET_PLAYER_WANTED_LEVEL(player, level, false)
+    else
+        players.set_wanted_level(player, level)
+    end
+end
+
+return module

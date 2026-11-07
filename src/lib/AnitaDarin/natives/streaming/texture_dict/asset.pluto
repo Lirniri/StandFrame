@@ -1,35 +1,30 @@
--- class TextureDictAsset extends StreamingAsset: a streamed texture dictionary, by name, e.g. a feed
--- message's picture "CHAR_LESTER" (natives/visual/feed_picture).
---
---     local pic = new Atdar.natives.streaming.texture_dict.asset("CHAR_LESTER")
---     pic:request(false)   -- ask without waiting (e.g. from a menu callback)
---     pic:remove()         -- frees it when it's no longer needed
+local module = {}
 
-local StreamingAsset = Atdar.loader.load("natives/streaming/asset")
+-- Streamed texture dictionaries are requested by name, e.g. a feed message's picture "CHAR_LESTER"
+-- (natives/visual/feed_picture)
 
-local class TextureDictAsset extends StreamingAsset
+-- State
 
-    function __construct(name: string)
-        parent:__construct($"texture dictionary '{name}'")
-        self.name = name
-    end
-
-    -- State
-
-    function is_loaded(): bool
-        return GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED(self.name)
-    end
-
-    -- Actions
-
-    function send_request(): void
-        GRAPHICS.REQUEST_STREAMED_TEXTURE_DICT(self.name, false)
-    end
-
-    function remove(): void
-        GRAPHICS.SET_STREAMED_TEXTURE_DICT_AS_NO_LONGER_NEEDED(self.name)
-    end
-
+function module.is_loaded(name: string): bool
+    return GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED(name)
 end
 
-return TextureDictAsset
+-- Actions
+
+-- Requests the dictionary and waits until it loads (yields, see streaming.wait_loaded).
+-- timeout false -> only request, don't wait (e.g. from a menu callback); returns whether it's already loaded
+-- @return Whether it loaded before the timeout (ms)
+function module.request(name: string, timeout: int|bool = 2000): bool
+    GRAPHICS.REQUEST_STREAMED_TEXTURE_DICT(name, false)
+    if timeout == false then
+        return module.is_loaded(name)
+    end
+    return Atdar.natives.streaming.wait_loaded($"texture dictionary '{name}'", || -> module.is_loaded(name), timeout)
+end
+
+-- Frees the dictionary when it's no longer needed
+function module.remove(name: string): void
+    GRAPHICS.SET_STREAMED_TEXTURE_DICT_AS_NO_LONGER_NEEDED(name)
+end
+
+return module

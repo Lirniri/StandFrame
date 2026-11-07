@@ -7,7 +7,9 @@ local Module = Atdar.loader.load("core/module")
 
 local class Clock extends Module
     function __construct()
-        parent:__construct({ name = "example.clock" })
+        parent:__construct({
+            name = "example.clock"
+        })
         -- State lives in fields; set defaults here
         self.started_at = 0
     end

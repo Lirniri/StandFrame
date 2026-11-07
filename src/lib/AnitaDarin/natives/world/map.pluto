@@ -1,4 +1,13 @@
-local module = {}
--- body
--- The waypoint's coords: natives.blip.waypoint():get_coords()
+local hud = Atdar.loader.load("natives/visual/hud")
+
+local module = {
+    waypoint = {}
+}
+
+function module.waypoint.get_coords(): ?vector3
+    local blip = hud.waypoint.get_blip()
+    if blip == nil then return nil end
+    return hud.blip.get_coords(blip)
+end
+
 return module

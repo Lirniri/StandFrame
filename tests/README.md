@@ -18,7 +18,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | Тест | Что проверяет |
 |---|---|
 | `test_loader` | `loader.load` переживает сломанные файлы; `loader.auto` достаёт каждый файл `natives` |
-| `test_natives` | классы нативов: `Ped.user()` после возрождения, компоненты, `Vehicle`, `Player`, `Blip`; таблицы `hud_color` и `feed_picture` |
+| `test_natives` | нативы функциями: `entity`, `ped` и его части, `vehicle`, `player`, `hud.blip`; таблицы `hud_color` и `feed_picture` |
 | `test_feature` | проверку опций Feature, порядок хуков, выключение при ошибке, повторные нажатия |
 | `test_module_manager` | зависимости, остановку по цепочке, повторный запуск, тик, перезагрузку с диска |
 | `test_modules_menu` | меню модулей: видимость в режиме отладки, действия, перевод |
@@ -32,7 +32,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_json_file` | JsonFile: безопасную запись, испорченные файлы, `.bak`; профили поверх него |
 | `test_commands` | имена команд с префиксом профиля и переименование на лету |
 | `test_i18n` | строки из языковых файлов через метки Stand, слои источников |
-| `test_streaming` | классы ассетов каждого типа, `request(false)`, таймауты |
+| `test_streaming` | загрузку ассетов каждого типа (и `texture_dict`), `request(false)`, таймауты |
 | `test_examples` | примеры из `examples/modules` работают как написаны |
 
 ## Как написать тест

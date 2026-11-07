@@ -1,28 +1,20 @@
--- class StealthModeAsset extends StreamingAsset: a stealth mode (movement style) asset, by name.
---
---     new Atdar.natives.streaming.stealth_mode.asset(name):request()
+local module = {}
 
-local StreamingAsset = Atdar.loader.load("natives/streaming/asset")
+-- Stealth mode assets are requested by name
 
-local class StealthModeAsset extends StreamingAsset
+-- State
 
-    function __construct(name: string)
-        parent:__construct($"stealth mode asset '{name}'")
-        self.name = name
-    end
-
-    -- State
-
-    function is_loaded(): bool
-        return PED.HAS_STEALTH_MODE_ASSET_LOADED(self.name)
-    end
-
-    -- Actions
-
-    function send_request(): void
-        PED.REQUEST_STEALTH_MODE_ASSET(self.name)
-    end
-
+function module.is_loaded(name: string): bool
+    return PED.HAS_STEALTH_MODE_ASSET_LOADED(name)
 end
 
-return StealthModeAsset
+-- Actions
+
+-- Requests the asset and waits until it loads (yields, see streaming.wait_loaded)
+-- @return Whether it loaded before the timeout (ms)
+function module.request(name: string, timeout: int = 2000): bool
+    PED.REQUEST_STEALTH_MODE_ASSET(name)
+    return Atdar.natives.streaming.wait_loaded($"stealth mode asset '{name}'", || -> module.is_loaded(name), timeout)
+end
+
+return module

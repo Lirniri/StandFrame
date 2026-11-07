@@ -18,9 +18,12 @@ local function colored_subject(subject: string, level: ?string, period: string):
     end
     return code .. subject
 end
-local TextureDictAsset = Atdar.loader.load("natives/streaming/texture_dict/asset")
+local texture_dict = Atdar.loader.load("natives/streaming/texture_dict/asset")
 
 local module = {}
+
+-- Stopping: Atdar.leaving (see toast)
+util.on_stop(function() Atdar.leaving = true end)
 
 -- A profile value, or nil before the profile has loaded (early errors)
 local function setting(key: string)
@@ -50,7 +53,7 @@ local POST = {
         local picture = opts.picture or setting("notify_feed_picture") or "CHAR_ACTING_UP"
         -- Asked without waiting: toast can't wait here. The menu asks for the profile's picture
         -- at the start and when it's picked, so it's loaded by the time a card shows
-        pcall(|| -> (new TextureDictAsset(picture)):request(false))
+        pcall(texture_dict.request, picture, false)
         -- From the logger: the level goes to the subject, the card's text is the message alone
         local subject = opts.subject
         if subject == nil and opts.level ~= nil then
@@ -89,7 +92,7 @@ local function time_of_day(): string
 end
 
 -- Posts to the game's feed, looking the way the profile says unless opts says otherwise
-local function post_to_feed(message: string, opts: table): table
+local function post_to_feed(message: string, opts: table): int
     local style = opts.style or setting("notify_feed_style") or "ticker"
     local post = POST[style]
     if not post then
@@ -123,9 +126,15 @@ end
 --   notify_feed_picture), opts.icon; opts.important (flash).
 --   From the logger: opts.level ("INFO", "WARN", "ERROR") - a card's subject, its name in the script's
 --   language; opts.text - the card's text instead of the whole log line
--- @return The FeedPost for "game" (post:remove() takes it away), otherwise nil
-function module.toast(message: string, opts: table = {}): ?table
+-- @return The post's id for "game" (thefeed.remove(id) takes it away), otherwise nil
+function module.toast(message: string, opts: table = {}): ?int
     local target = opts.target or setting("notify") or "stand"
+    -- While the script is leaving (deleted, renamed, stopping) nothing goes to the game's feed: posting
+    -- calls the game with texts and pictures, and doing that as the script goes away crashed the game.
+    -- Stand's own notification is plain text
+    if target == "game" and Atdar.leaving then
+        target = "stand"
+    end
     if target == "stand" then
         util.toast(message)
     elseif target == "game" then

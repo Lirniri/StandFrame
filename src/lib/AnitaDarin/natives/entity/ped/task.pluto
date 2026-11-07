@@ -8,7 +8,7 @@ function module.get_active(ped: int, type: int)
     return TASK.GET_IS_TASK_ACTIVE(ped, type)
 end
 
--- @param mode 1 — all tasks, 2 — secondary task, 3 — all tasks immediately
+-- @param mode 1 - all tasks immediately, 2 - the secondary task, anything else - all tasks
 function module.clear(ped: int, mode: int = 0): void
     switch mode do
         case 1:

@@ -1,5 +1,7 @@
 local module = {}
 
+-- Weapons and components are names ("WEAPON_PISTOL") or hashes: Atdar.util.hash takes both
+
 -- State
 
 function module.is_reloading(ped: int): bool
@@ -11,13 +13,13 @@ function module.is_switching(ped: int): bool
 end
 
 function module.has(ped: int, weaponHash: int|string, p2: bool = false): bool
-    local hash = util.joaat(weaponHash)
+    local hash = Atdar.util.hash(weaponHash)
     return WEAPON.HAS_PED_GOT_WEAPON(ped, hash, p2)
 end
 
 function module.has_with_component(ped: int, weaponHash: int|string, componentHash: int|string): bool
-    local hash = util.joaat(weaponHash)
-    local compHash = util.joaat(componentHash)
+    local hash = Atdar.util.hash(weaponHash)
+    local compHash = Atdar.util.hash(componentHash)
     return WEAPON.HAS_PED_GOT_WEAPON_COMPONENT(ped, hash, compHash)
 end
 
@@ -40,7 +42,7 @@ end
 -- Actions
 
 function module.give(ped: int, weaponHash: int|string, ammoCount: int = 1, isHidden: bool = false, bForceInHand: bool = false): void
-    local hash = util.joaat(weaponHash)
+    local hash = Atdar.util.hash(weaponHash)
     WEAPON.GIVE_WEAPON_TO_PED(ped, hash, ammoCount, isHidden, bForceInHand)
 end
 

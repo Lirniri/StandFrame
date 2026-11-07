@@ -11,15 +11,17 @@ return Atdar.features.add(new Feature({
     kind = "loop",
 
     on_tick = function(self)
-        local me = Atdar.natives.player.user()
-        if not me:is_godmode() then
+        local n_player = Atdar.natives.player
+        local player = n_player.get_id()
+        if not n_player.is_godmode(player) then
             log:debug($"id: {self.id}: half-godmode is given :)")
-            me:set_half_godmode(true)
+            n_player.set_half_godmode(player, true)
         end
     end,
 
     on_disable = function(self)
-        Atdar.natives.player.user():set_half_godmode(false)
+        local n_player = Atdar.natives.player
+        n_player.set_half_godmode(n_player.get_id(), false)
         log:debug($"id: {self.id}: half-godmode is removed :(")
     end,
 }))

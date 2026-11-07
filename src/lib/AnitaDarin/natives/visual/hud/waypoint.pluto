@@ -1,11 +1,14 @@
--- The waypoint on the map. Its blip is natives.blip.waypoint()
+local blip = Atdar.loader.load("natives/visual/hud/blip")
 
 local module = {}
 
--- State
-
 function module.is_active(): bool
     return HUD.IS_WAYPOINT_ACTIVE()
+end
+
+function module.get_blip(): ?int
+    local handle = HUD.GET_FIRST_BLIP_INFO_ID(blip.waypoint.get_sprite())
+    return blip.is_exist(handle) ? handle : nil
 end
 
 return module

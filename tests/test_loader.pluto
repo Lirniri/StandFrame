@@ -11,11 +11,9 @@ stand.check(stand.find_log("failed to load 'test_throws'"), "throwing file is lo
 stand.equal(next(loader.load("test_no_table")), nil, "file without a table loads as an empty table")
 stand.check(stand.find_log("'test_no_table' did not return a table"), "file without a table is logged")
 
--- Every .pluto under natives/ loads as a table without errors. Modules are also reachable by their path
--- through auto() (natives.visual.hud.minimap); the classes' components (natives/ped/vehicle.pluto) are parts
--- of each object (ped.vehicle), not of the class, so for them only the load is checked
+-- Every .pluto under natives/ loads as a table without errors, and is reachable by its path through
+-- auto() (natives.visual.hud.minimap, natives.entity.ped.weapon)
 Atdar.natives = loader.auto({}, "natives")
-local CLASSES = { entity = true, ped = true, vehicle = true, object = true, player = true }
 local natives_dir = $"{stand.SRC}lib/AnitaDarin/natives"
 local count = 0
 stand.clear_logs()
@@ -29,7 +27,7 @@ for _, path in io.listdir(natives_dir, true) do
         end
         local dotted = table.concat(parts, ".")
         stand.equal(type(loader.load($"natives/{table.concat(parts, '/')}")), "table", $"natives/{dotted} loads")
-        if not (CLASSES[parts[1]] and #parts > 1) then
+        do
             local value = Atdar.natives
             for _, part in parts do
                 value = type(value) == "table" ? value[part] : nil
@@ -48,13 +46,13 @@ local timing_of = function(path)
     end
     return nil
 end
-local ped = timing_of("natives/ped")
 local entity = timing_of("natives/entity")
-stand.check(ped and entity, "natives/ped and natives/entity were timed")
-stand.check(ped.total >= ped.own and ped.own >= 0, "total includes nested loads, own doesn't")
-stand.check(entity.depth > ped.depth, "natives/entity is loaded inside natives/ped: one level deeper")
+local world = timing_of("natives/world")
+stand.check(entity and world, "natives/entity and natives/world were timed")
+stand.check(entity.total >= entity.own and entity.own >= 0, "total includes nested loads, own doesn't")
+stand.check(world.depth > entity.depth, "natives/world is loaded inside natives/entity: one level deeper")
 local before = #loader.timings
-loader.load("natives/ped")
+loader.load("natives/entity")
 stand.equal(#loader.timings, before, "a file already loaded isn't timed again")
 
 -- measure(): times any work, passes its results and errors through
