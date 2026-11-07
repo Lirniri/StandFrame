@@ -14,9 +14,10 @@ Atdar.debug = true
 
 -- ─── modules/ ────────────────────────────────────────────────────────────────
 
-stand.equal(modules.load_dir($"{stand.ROOT}/examples/modules/"), 5, "all five module examples load")
+stand.equal(modules.load_dir($"{stand.ROOT}/examples/modules/"), 6, "all six module examples load")
 modules.start()
-for _, name in { "example.basic", "example.clock", "example.session_watch", "example.reporter", "example.counter" } do
+for _, name in { "example.basic", "example.clock", "example.session_watch", "example.reporter", "example.counter",
+        "example.garage" } do
     stand.equal(modules.has(name) and modules.get(name).status, "running", $"{name} runs")
 end
 
@@ -47,8 +48,13 @@ for _, fn in ipairs(Module.functions_of(counter)) do
     table.insert(names, fn.name)
 end
 stand.equal(table.concat(names, ", "), "add, save, value", "counter's functions for the menu, _reset_quietly apart")
-local internal = Module.functions_of(counter, true)
-stand.check(#internal == 1 and internal[1].name == "_reset_quietly", "functions_of(mod, true): the _ ones")
+-- 06_debug_display: its debug option is accepted, its functions work
+local garage = modules.get("example.garage")
+stand.equal(garage.debug.groups[1].name, "Getting", "the debug option is kept")
+garage:park_many({ 5, 6, 5 })
+stand.equal(garage:count(), 2, "park_many parks each vehicle once")
+local internal = Module.functions_of(counter, "internal")
+stand.check(#internal == 1 and internal[1].name == "_reset_quietly", 'functions_of(mod, "internal"): the _ ones')
 stand.equal(counter:add(3), 3, "add(amount) works")
 
 -- ─── features/ ───────────────────────────────────────────────────────────────

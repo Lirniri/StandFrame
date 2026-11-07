@@ -318,13 +318,30 @@
             "manual": "running by hand"
         },
         "base_functions": "Base Functions",
+        "base_functions_help": "on_start, on_tick, on_stop: the hooks the module manager calls",
+        "no_categories": {
+            "name": "Disable Function Categories",
+            "help": "The module's functions in one list, without Getters, Setters and the others; the base functions as a section, not a list"
+        },
         "functions": "Module Functions",
         "functions_help": "The module's variables and functions",
         "variables": "Variables",
         "variables_help": "The module's fields and their values, kept up to date while the list is open",
         "no_variables": "No variables",
         "functions_divider": "Functions",
-        "internal_functions": "Internal Functions (_)",
+        "internal_functions": "Internal Functions",
+        "private_functions": "Private Functions",
+        "categories": {
+            "add": "Add",
+            "getters": "Getters",
+            "setters": "Setters",
+            "checks": "Checks",
+            "loading": "Loading",
+            "saving": "Saving",
+            "remove": "Remove",
+            "create": "Create",
+            "delete": "Delete"
+        },
         "no_functions": "No functions",
         "call": {
             "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call",
@@ -359,7 +376,10 @@
                 "every": "every %d ms",
                 "stopped": "stopped",
                 "failed": "error"
-            }
+            },
+            "status_line": "Loop Status: %s",
+            "result_line": "Variable: %s",
+            "no_result": "—"
         },
         "tick": {
             "help": "Runs on_tick by hand every frame; the time it takes shows on screen. A running module is stopped first",

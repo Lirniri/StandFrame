@@ -5,9 +5,20 @@
 -- Something the user switches on and off is a Feature instead.
 --
 -- Made like a Feature: new Module({ name = ..., deps = {...}, on_start = fn, on_stop = fn, on_tick = fn })
--- or `local class X extends Module` with parent:__construct({ name = ..., deps = {...} }) and on_* overrides
+-- or `local class X extends Module` with parent:__construct({ name = ..., deps = {...} }) and on_* overrides.
+--
+-- debug = { ... } (optional): how the module shows in Settings > Debug > Modules (ui/stand/modules_menu):
+--     functions = { add_vehicle = { help = "...", params = { handle = "..." }, args = "...", live = false } },
+--     groups = { { name = "Getting", functions = { "get_handle", "get_handles" } }, ... },
+--     hide = { "explode_all", "current_vehicle" },   -- functions and variables not shown
+--     categories = { { key = "getters", words = { "find" } },  -- more words for a list there is
+--                    { key = "shop", name = "Shop", words = { "buy", "sell" } } },  -- a list of its own
+-- See examples/modules/06_debug_display.pluto
 
 local class_utils = Atdar.globals.pluto.class
+-- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake
+-- (a missing `local`) doesn't break reading functions here
+local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 
@@ -26,6 +37,46 @@ local SEALED = {
 
 local HOOKS = { on_start = true, on_stop = true, on_tick = true }
 
+-- The debug option's parts and what each must be
+local DEBUG_PARTS = { functions = "table", groups = "table", hide = "table", categories = "table" }
+
+-- debug = { functions, groups, hide }: wrong types are errors, so a typo shows at once, not as a menu
+-- that silently ignores it
+local function validate_debug(label: string, debug_opts): void
+    if type(debug_opts) ~= "table" then
+        error($"{label} debug must be a table, got {type(debug_opts)}")
+    end
+    for key, value in pairs(debug_opts) do
+        local wanted = DEBUG_PARTS[key]
+        if wanted == nil then
+            error($"{label} debug: unknown part '{tostring(key)}', expected functions, groups, hide or categories")
+        end
+        if type(value) ~= wanted then
+            error($"{label} debug.{key} must be a {wanted}, got {type(value)}")
+        end
+    end
+    for name, fn_opts in pairs(debug_opts.functions or {}) do
+        if type(fn_opts) ~= "table" then
+            error($"{label} debug.functions.{tostring(name)} must be a table, got {type(fn_opts)}")
+        end
+        for key in pairs(fn_opts) do
+            if key ~= "help" and key ~= "params" and key ~= "args" and key ~= "live" then
+                error($"{label} debug.functions.{name}: unknown '{tostring(key)}', expected help, params, args or live")
+            end
+        end
+    end
+    for i, category in ipairs(debug_opts.categories or {}) do
+        if type(category) ~= "table" or type(category.key) ~= "string" or type(category.words) ~= "table" then
+            error(label .. " debug.categories[" .. i .. "] must be { key = \"...\", words = { ... }, name = ... }")
+        end
+    end
+    for i, group in ipairs(debug_opts.groups or {}) do
+        if type(group) ~= "table" or group.name == nil or type(group.functions) ~= "table" then
+            error(label .. " debug.groups[" .. i .. "] must be { name = ..., functions = { ... } }")
+        end
+    end
+end
+
 local function validate_opts(opts: table): void
     if type(opts.name) ~= "string" or opts.name == "" then
         error($"[Module] name must be a non-empty string, got {type(opts.name)}")
@@ -33,12 +84,16 @@ local function validate_opts(opts: table): void
     local label = $"[Module '{opts.name}']"
 
     for key, value in pairs(opts) do
-        if key ~= "name" and key ~= "deps" and not HOOKS[key] then
+        if key ~= "name" and key ~= "deps" and key ~= "debug" and not HOOKS[key] then
             error($"{label} unknown option '{key}'")
         end
         if HOOKS[key] and type(value) ~= "function" then
             error($"{label} '{key}' must be a function, got {type(value)}")
         end
+    end
+
+    if opts.debug ~= nil then
+        validate_debug(label, opts.debug)
     end
 
     if opts.deps ~= nil then
@@ -70,6 +125,8 @@ Module = class
         self.status = "registered"
         self.error = nil
         self.log = new Logger(opts.name)
+        -- How it shows in the debug menu (see the top of this file)
+        self.debug = opts.debug or {}
 
         self.on_start = opts.on_start or self.on_start
         self.on_stop = opts.on_stop or self.on_stop
@@ -179,18 +236,39 @@ end
 -- Hooks the manager calls; not offered as functions to call by hand
 local NOT_CALLABLE = { on_start = true, on_stop = true, on_tick = true }
 
+-- The class's own functions, never the module's: the constructor and Lua's metamethods
+local CLASS_FUNCTIONS = {}
+for _, name in ipairs({ "__construct", "__index", "__newindex", "__call", "__tostring", "__gc", "__close", "__mode",
+        "__name", "__eq", "__lt", "__le", "__concat", "__len", "__unm", "__add", "__sub", "__mul", "__div",
+        "__mod", "__pow", "__idiv", "__band", "__bor", "__bxor", "__shl", "__shr", "__bnot", "__pairs",
+        "__metatable", "__parent" }) do
+    CLASS_FUNCTIONS[name] = true
+end
+
+-- What kind a function is by its name: "public" (add), "internal" (_helper), "private" (__secret)
+local function kind_of(name: string): string
+    if name:sub(1, 2) == "__" then
+        return "private"
+    end
+    if name:sub(1, 1) == "_" then
+        return "internal"
+    end
+    return "public"
+end
+
 -- @return The module's own functions, the ones a subclass of Module added (its methods, also those of
 -- classes between it and Module), sorted by name: { name, params = { "model", "coords" }, vararg = bool }.
--- Module's own methods and the hooks are left out, and so are names starting with _ (helpers);
--- internal = true gives just those instead (names starting with __ never: they're the class's own)
-function Module.functions_of(instance: table, internal: bool = false): table
+-- Module's own methods, the hooks and the class's own (__construct, metamethods) are left out.
+-- kind: "public" (default) - names without _; "internal" - names starting with _ (helpers);
+-- "private" - names starting with __
+function Module.functions_of(instance: table, kind: string = "public"): table
     local found = {}
     local list = {}
     local cls = getmetatable(instance)
     while type(cls) == "table" and cls ~= Module do
         for name, value in pairs(cls) do
             if type(name) == "string" and type(value) == "function" and not found[name]
-                and (name:sub(1, 1) == "_") == internal and name:sub(1, 2) ~= "__"
+                and kind_of(name) == kind and not CLASS_FUNCTIONS[name]
                 and not NOT_CALLABLE[name] and rawget(Module, name) == nil then
                 found[name] = true
                 -- The parameters' names, without self

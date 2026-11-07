@@ -21,7 +21,16 @@ local class VehicleManager extends Module
     
     function __construct()
         parent:__construct({
-            name = "VehicleManager"
+            name = "VehicleManager",
+            -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
+            debug = {
+                functions = {
+
+                },
+                hide = {
+                    "_free_name"
+                }
+            }
         })
         -- State lives in fields; set defaults here
         self.remember_vehicle = true

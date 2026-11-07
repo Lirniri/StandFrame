@@ -1,0 +1,94 @@
+-- EXAMPLE 6: how a module shows in the debug menu (Settings > Debug > Modules), the debug option.
+--
+-- Everything in it is optional; a module without it shows as it always does. Wrong types and typos
+-- in it are errors when the module is made, so they show at once
+--
+--   functions = { <name> = {
+--       help = "...",                  -- the function's description (its list's help)
+--       params = { <param> = "..." },  -- what each parameter is, shown under it and on Arguments
+--       args = "...",                  -- what's in Arguments until something else is typed (Lua, as typed)
+--       live = true,                   -- called by itself while its list is open, the Variable line kept
+--                                      -- up to date (by default: names with get, is, has, can)
+--   } }
+--   groups = { { name = "...", functions = { "<name>", ... } }, ... }
+--                                      -- dividers of your own, functions in this order (a _ one too);
+--                                      -- the ones in no group stay under Functions / Internal / Private
+--   hide = { "<name>", ... }           -- functions and variables (fields) not shown
+--   categories = { { key = "...", words = { "..." }, name = "..." }, ... }
+--                                      -- functions go into lists by a word in their names: get -> Getters,
+--                                      -- set -> Setters, is -> Checks; more words for a list by its key,
+--                                      -- or a list of its own (name). For every module:
+--                                      -- modules_menu.add_category(key, words, name)
+
+local Module = Atdar.loader.load("core/module")
+
+local class Garage extends Module
+    function __construct()
+        parent:__construct({
+            name = "example.garage",
+            debug = {
+                functions = {
+                    park = {
+                        help = "Remembers a vehicle as parked",
+                        params = { handle = "the vehicle's handle" },
+                        args = "entities.get_user_vehicle_as_handle()",
+                    },
+                    park_many = {
+                        params = { handles = "a list of handles: {1, 2}" },
+                    },
+                },
+                groups = {
+                    { name = "Getting", functions = { "count", "list" } },
+                    { name = "Parking", functions = { "park", "park_many", "clear" } },
+                },
+                hide = { "_index" },
+                -- has_room goes into Checks with the is_ ones
+                categories = {
+                    { key = "checks", words = { "has" } },
+                },
+            },
+        })
+        self.parked = {}
+        -- Hidden from Variables (debug.hide): a lookup only the code needs
+        self._index = {}
+    end
+
+    function count(): int
+        return #self.parked
+    end
+
+    function list(): table
+        return self.parked
+    end
+
+    function park(handle: int): int
+        if self._index[handle] == nil then
+            table.insert(self.parked, handle)
+            self._index[handle] = #self.parked
+        end
+        return #self.parked
+    end
+
+    function park_many(handles: table): int
+        for _, handle in ipairs(handles) do
+            self:park(handle)
+        end
+        return #self.parked
+    end
+
+    -- In Checks (is), with has_room (has, from categories above)
+    function is_empty(): bool
+        return #self.parked == 0
+    end
+
+    function has_room(): bool
+        return #self.parked < 10
+    end
+
+    function clear(): void
+        self.parked = {}
+        self._index = {}
+    end
+end
+
+return Atdar.modules.add(new Garage())
