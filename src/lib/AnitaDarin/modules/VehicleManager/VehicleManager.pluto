@@ -24,9 +24,6 @@ local class VehicleManager extends Module
             name = "VehicleManager",
             -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
             debug = {
-                functions = {
-
-                },
                 hide = {
                     "_free_name"
                 }
@@ -128,7 +125,6 @@ local class VehicleManager extends Module
     end
 
     -- Action
-
     function explode_all(): void
         local n_vehicle = Atdar.natives.entity.vehicle
         for _, handle in pairs(self:get_handles()) do
