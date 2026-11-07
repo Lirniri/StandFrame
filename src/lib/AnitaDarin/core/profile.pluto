@@ -31,10 +31,10 @@ local DEFAULTS = {
     -- Hex "RRGGBBAA"; "" = the game's own colour (the flash colours start with it)
     notify_day_start = 7,
     notify_night_start = 19,
-    notify_background_day = "008B8BFF", -- dark cyan (0, 139, 139)
+    notify_background_day = "00687DFF", -- Sea wave (0, 104, 125)
     notify_flash_color_day = "000000FF", -- black (0, 0, 0)
     notify_background_night = "1A3D54FF", -- dark teal (26, 61, 84)
-    notify_flash_color_night = "008B8BFF", -- dark cyan (0, 139, 139)
+    notify_flash_color_night = "00687DFF", -- Sea wave (0, 104, 125)
     -- The message card's subject colour, day and night: a natives/visual/hud/text COLOR name ("white", ...)
     -- or "level" (by the notification's type)
     notify_subject_color_day = "yellow",
