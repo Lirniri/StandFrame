@@ -1,7 +1,7 @@
 -- ui/stand/commands: command names with the profile's prefix, renamed in place when it changes
 local stand = require("stand")
 stand.boot()
-local values = { command_prefix = "atdar", command_separator = "" }
+local values = { command_prefix = "atdar", command_separator = "", found_command_prefix = "atdar", found_command_separator = "" }
 local listeners = {}
 Atdar.profile = {
     get = |key| -> values[key],
@@ -36,6 +36,25 @@ stand.equal(table.concat(item.commands, ","), "godmode", "an empty prefix means 
 commands.untrack(item)
 profile_set("command_prefix", "x")
 stand.equal(table.concat(item.commands, ","), "godmode", "untracked items keep their names")
+
+-- The loaded menu's commands have a prefix and separator of their own: the same base name can't clash
+profile_set("command_prefix", "atdar")
+profile_set("command_separator", "")
+local script_item = menu.action(stand.root, "Settings", commands.names({ "settings" }), "", || -> nil)
+commands.track(script_item, { "settings" })
+commands.begin_menu({ read = || -> nil })
+local menu_item = menu.action(stand.root, "Pack Settings", commands.names({ "settings" }), "", || -> nil)
+commands.track(menu_item, { "settings" })
+commands.end_menu()
+stand.equal(script_item.commands[1], menu_item.commands[1], "with the same prefix and separator they clash")
+profile_set("found_command_separator", "_")
+stand.equal(menu_item.commands[1], "atdar_settings", "the found separator renames the menu's commands")
+stand.equal(script_item.commands[1], "atdarsettings", "and leaves the script's alone")
+profile_set("found_command_prefix", "ad")
+stand.equal(menu_item.commands[1], "ad_settings", "the found prefix too")
+stand.equal(script_item.commands[1], "atdarsettings", "the script's commands keep theirs")
+commands.untrack(script_item)
+commands.untrack(menu_item)
 
 stand.clear_logs()
 commands.set_separator("-")

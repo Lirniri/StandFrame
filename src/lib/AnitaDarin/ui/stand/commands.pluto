@@ -1,5 +1,7 @@
 -- Builds Stand command names for menu items: base name -> prefix + separator + base,
 -- and renames every tracked item right away when the prefix settings change.
+-- The script's own commands (Base Commands) and the loaded menu's (Found Commands) each have their own
+-- prefix and separator, so the same base name in both can't clash (atdar_settings and atdarsettings).
 --
 -- Every item can have a custom name: it takes the base name's place, the prefix stays
 -- (godmode -> god gives atdargod). Custom names are kept in a commands.json of whoever made the item:
@@ -15,10 +17,11 @@ local log = new Logger("Commands")
 
 local module = {}
 
+-- Prefix and separator of each owner: "script" (Base Commands) and "menu" (Found Commands)
 local config = {
-    prefix = "atdar",
     use_prefix = true,
-    separator = "", -- "" -> atdargodmode, "_" -> atdar_godmode
+    script = { prefix = "atdar", separator = "" }, -- separator "" -> atdargodmode, "_" -> atdar_godmode
+    menu = { prefix = "atdar", separator = "" },
 }
 
 -- ref -> base names it was created with
@@ -92,9 +95,11 @@ local function effective(clean: string, who: string): string
     return custom_of_owner(who)[clean] or clean
 end
 
-local function full_name(clean: string): string
-    if config.use_prefix and config.prefix ~= "" then
-        return $"{config.prefix}{config.separator}{clean}"
+-- who: "script" or "menu", whose prefix and separator
+local function full_name(clean: string, who: string): string
+    local own = config[who] or config.script
+    if config.use_prefix and own.prefix ~= "" then
+        return $"{own.prefix}{own.separator}{clean}"
     end
     return clean
 end
@@ -112,7 +117,7 @@ function module.names(bases: table): table
     local names = {}
     local who = current_owner()
     for _, clean in ipairs(clean_bases(bases, true)) do
-        table.insert(names, full_name(effective(clean, who)))
+        table.insert(names, full_name(effective(clean, who), who))
     end
     return names
 end
@@ -141,7 +146,7 @@ function module.names_of(ref): ?table
     end
     local names = {}
     for _, name in ipairs(clean) do
-        table.insert(names, full_name(effective(name, owner[ref])))
+        table.insert(names, full_name(effective(name, owner[ref]), owner[ref]))
     end
     return names
 end
@@ -260,8 +265,9 @@ function module.refresh(): void
     end
 end
 
-function module.set_prefix(prefix: string): void
-    config.prefix = module.sanitize(prefix)
+-- who: "script" (default) or "menu"
+function module.set_prefix(prefix: string, who: string = "script"): void
+    config[who].prefix = module.sanitize(prefix)
     module.refresh()
 end
 
@@ -270,31 +276,50 @@ function module.set_use_prefix(use: bool): void
     module.refresh()
 end
 
--- "" or "_"
-function module.set_separator(separator: string): void
+-- "" or "_"; who: "script" (default) or "menu"
+function module.set_separator(separator: string, who: string = "script"): void
     if separator ~= "" and separator ~= "_" then
         log:warn($"separator must be '' or '_', got '{separator}'")
         return
     end
-    config.separator = separator
+    config[who].separator = separator
     module.refresh()
 end
 
-function module.get_config(): table
-    return { prefix = config.prefix, use_prefix = config.use_prefix, separator = config.separator }
+-- who: "script" (default) or "menu"
+function module.get_config(who: string = "script"): table
+    return { prefix = config[who].prefix, use_prefix = config.use_prefix, separator = config[who].separator }
 end
 
--- Prefix and separator come from the script profile and follow its changes; an empty prefix means none
+-- Profile keys of each owner's prefix and separator
+local PROFILE_KEYS = {
+    command_prefix = { who = "script", what = "prefix" },
+    command_separator = { who = "script", what = "separator" },
+    found_command_prefix = { who = "menu", what = "prefix" },
+    found_command_separator = { who = "menu", what = "separator" },
+}
+
+-- Prefixes and separators come from the script profile and follow its changes; an empty prefix means none
 local profile = Atdar.profile
 if profile and profile.get then
-    config.prefix = module.sanitize(profile.get("command_prefix") or "")
-    local separator = profile.get("command_separator")
-    config.separator = (separator == "_") ? "_" : ""
+    for key, target in pairs(PROFILE_KEYS) do
+        local value = profile.get(key)
+        if target.what == "prefix" then
+            -- No found_command_prefix in the profile (an old one): the same as the script's
+            config[target.who].prefix = module.sanitize(value or profile.get("command_prefix") or "")
+        else
+            config[target.who].separator = (value == "_") ? "_" : ""
+        end
+    end
     profile.on_change(function(key: string, value)
-        if key == "command_prefix" then
-            module.set_prefix(value)
-        elseif key == "command_separator" then
-            module.set_separator(value)
+        local target = PROFILE_KEYS[key]
+        if target == nil then
+            return
+        end
+        if target.what == "prefix" then
+            module.set_prefix(value or "", target.who)
+        else
+            module.set_separator((value == "_") ? "_" : "", target.who)
         end
     end)
 end

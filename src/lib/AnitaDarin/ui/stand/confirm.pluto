@@ -1,0 +1,48 @@
+-- A button that acts only on a second click within a few seconds: for things that can't be undone.
+-- Stand's menu.show_warning isn't used: in the game it let such clicks through without showing anything.
+--
+--     local reset_ref, cancel = confirm.action(node, label("reset.name"), label("reset.again"),
+--         function() ... end,                       -- on the second click
+--         function() log:warn("Click again...") end, -- on the first: say what would happen
+--         label("reset.help"))
+--     -- cancel() forgets a first click, e.g. when the user goes back out of the list
+
+local module = {}
+
+-- How long a first click waits for the second, ms
+module.WAIT_MS = 5000
+
+-- @param name The button's name; again_name - its name while it waits for the second click
+-- @param on_confirm Called on the second click
+-- @param on_first Called on the first click (optional): say what the second one would do
+-- @return The button's ref, and cancel()
+function module.action(node: table, name, again_name, on_confirm, on_first, help = "")
+    local ref
+    -- Until when a second click confirms; nil - not waiting
+    local armed_until = nil
+    ref = node:action(name, function()
+        local now = util.current_time_millis()
+        if armed_until == nil or now > armed_until then
+            armed_until = now + module.WAIT_MS
+            pcall(menu.set_menu_name, ref, again_name)
+            if on_first then
+                on_first()
+            end
+            -- The button gets its name back when the time is up or the click was cancelled
+            util.create_tick_handler(function()
+                if armed_until ~= nil and util.current_time_millis() <= armed_until then
+                    return true
+                end
+                armed_until = nil
+                pcall(menu.set_menu_name, ref, name)
+                return false
+            end)
+            return
+        end
+        armed_until = nil
+        on_confirm()
+    end, {}, help)
+    return ref, function() armed_until = nil end
+end
+
+return module

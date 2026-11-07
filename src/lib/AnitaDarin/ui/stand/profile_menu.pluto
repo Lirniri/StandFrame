@@ -25,6 +25,7 @@ local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
 local color = Atdar.loader.load("utils/color")
 local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
+local confirm = Atdar.loader.load("ui/stand/confirm")
 local TextureDictAsset = Atdar.loader.load("natives/streaming/texture_dict/asset")
 
 local log = new Logger("Profile")
@@ -52,7 +53,7 @@ local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "blac
 local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
 
 -- Profile keys edited through text fields
-local INPUT_KEYS = { "display_name", "short_name", "command_prefix" }
+local INPUT_KEYS = { "display_name", "short_name", "command_prefix", "found_command_prefix" }
 
 -- Items of the latest build, updated in place when profile values change. Reset by begin()
 local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {}, subject_colors = {} }
@@ -75,9 +76,10 @@ local function settings_caption(): string
     return text("settings.of"):format(Atdar.profile.active_name())
 end
 
-local function separator_caption(): string
-    local key = Atdar.profile.get("command_separator") == "_" ? "separator.underscore" : "separator.none"
-    return text("separator.name"):format(text(key))
+-- "Base Commands Separator: None"; key: the profile key, name: the caption's label key
+local function separator_caption(key: string = "command_separator", name: string = "separator.name"): string
+    local value = Atdar.profile.get(key) == "_" ? "separator.underscore" : "separator.none"
+    return text(name):format(text(value))
 end
 
 local function log_name_caption(): string
@@ -191,6 +193,7 @@ local function update_captions(): void
     end
     rename(view.settings_of, settings_caption())
     rename(view.separator, separator_caption())
+    rename(view.found_separator, separator_caption("found_command_separator", "found_separator.name"))
     rename(view.log_name, log_name_caption())
     rename(view.notify_target, notify_caption())
     rename(view.feed_style, feed_style_caption())
@@ -452,7 +455,13 @@ end
 
 local function build_entry(parent: table, name: string, refresh: function): void
     local profile = Atdar.profile
-    local entry = parent:list(entry_caption(name), {}, label("entry.help"))
+    -- Going back out of the list cancels a first click on Reset
+    local cancel_reset = nil
+    local entry = parent:list(entry_caption(name), {}, label("entry.help"), function()
+        if cancel_reset then
+            cancel_reset()
+        end
+    end)
     view.entries[name] = entry.handle
 
     local save_ref
@@ -492,6 +501,24 @@ local function build_entry(parent: table, name: string, refresh: function): void
         profile.set_autosave(name, on)
         update_captions()
     end, {}, label("autosave.help"), profile.is_autosave(name))
+
+    -- Every value back to the defaults in core/profile, after a second click
+    local _
+    _, cancel_reset = confirm.action(entry, label("reset.name"), label("reset.again"), function()
+        if not profile.reset(name) then
+            log:warn(text("reset.failed"):format(name))
+            return
+        end
+        if name == profile.active_name() then
+            update_captions()
+            if not update_fields() then
+                refresh()
+            end
+        end
+        log:notify(text("reset.done"):format(name))
+    end, function()
+        log:warn(text("reset.warning"):format(name, confirm.WAIT_MS // 1000))
+    end, label("reset.help"))
 
     local delete_ref
     delete_ref = entry:action(label("delete.name"), function(click_type)
@@ -549,12 +576,18 @@ end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────
 
+-- Base Commands (the script's own) and Found Commands (the loaded menu's) each have a prefix and a separator
 function module.command_box(node: table): void
+    local options = { label("separator.none"), label("separator.underscore") }
     input(node, "command_prefix", true)
-    view.separator = node:list_action(separator_caption(),
-        { label("separator.none"), label("separator.underscore") }, function(index)
+    view.separator = node:list_action(separator_caption(), options, function(index)
         Atdar.profile.set("command_separator", SEPARATORS[index])
     end, { "separator" }, label("separator.help"))
+    input(node, "found_command_prefix", true)
+    view.found_separator = node:list_action(separator_caption("found_command_separator", "found_separator.name"), options,
+        function(index)
+        Atdar.profile.set("found_command_separator", SEPARATORS[index])
+    end, { "foundseparator" }, label("found_separator.help"))
 end
 
 -- ─── Debug Mode ──────────────────────────────────────────────────────────────

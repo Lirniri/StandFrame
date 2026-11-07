@@ -59,7 +59,7 @@ stand.equal(stand.find_log("not found"), nil, "no 'menu not found' notice")
 
 -- ─── Found Commands: the menu's commands get custom names, kept in its commands.json ─────
 
-local function found_commands() return stand.find_item(stand.find_item(stand.root, "Command Box"), "Found Commands") end
+local function found_commands() return stand.child(stand.find_item(stand.root, "Command Box"), "Found Commands") end
 local function found_row(name)
     for _, child in found_commands().children do
         if stand.name_of(child) == name then
@@ -88,7 +88,7 @@ menu.set_value(stand.find_item(godmode, "Custom Name"), "halfgodmode")
 stand.check(stand.find_log("already a command"), "another item's command can't be taken")
 stand.equal(stand.name_of(godmode), "god", "and the name stays")
 stand.equal(found_row("debug"), nil, "the script's own commands aren't among the menu's")
-local base_commands = stand.find_item(stand.find_item(stand.root, "Command Box"), "Base Commands")
+local base_commands = stand.child(stand.find_item(stand.root, "Command Box"), "Base Commands")
 stand.check(stand.find_item(base_commands, "debug"), "they're in Base Commands")
 stand.equal(stand.find_item(base_commands, "godmode"), nil, "and the menu's aren't there")
 

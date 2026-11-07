@@ -366,6 +366,20 @@ function stand.find_item(parent, text: string): ?table
     return nil
 end
 
+-- A direct child of parent whose name is exactly text (find_item matches a part of the name), or nil
+function stand.child(parent, text: string): ?table
+    if parent == nil then
+        return nil
+    end
+    for _, child in parent.children do
+        if stand.name_of(child) == text then
+            return child
+        end
+    end
+    return nil
+end
+
+
 -- ─── Atdar ───────────────────────────────────────────────────────────────────
 
 -- Creates Atdar with its loader and globals, like the launcher and the top of bootstrap.pluto

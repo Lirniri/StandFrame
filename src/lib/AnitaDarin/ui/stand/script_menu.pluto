@@ -210,7 +210,8 @@ end
 
 -- A new prefix or separator renames the commands (ui/stand/commands): the full ones inside the lists follow
 Atdar.profile.on_change(function(key: string)
-    if key ~= "command_prefix" and key ~= "command_separator" then
+    if key ~= "command_prefix" and key ~= "command_separator" and key ~= "found_command_prefix"
+        and key ~= "found_command_separator" then
         return
     end
     for _, found in ipairs(found_rows) do
@@ -275,6 +276,7 @@ function module.build(section: table, opts: table): void
 
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
     profile_menu.command_box(command_box)
+    command_box:divider(label("commands_divider"))
     local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
     local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
 

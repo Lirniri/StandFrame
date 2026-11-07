@@ -67,6 +67,8 @@ profile.set("notify_feed_style", "ticker")
 profile.set("notify_subject_color_day", "white")
 profile.set("notify_subject_color_night", "white")
 profile.set("auto_copy_menu", "")
+profile.set("command_separator", "")
+profile.set("found_command_separator", "")
 profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
 local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
@@ -192,7 +194,8 @@ menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
-stand.equal(names_in(find("Command Box")), "Command Prefix | Separator: None | Base Commands | Found Commands", "Command Box")
+stand.equal(names_in(find("Command Box")), "Base Commands Prefix | Base Commands Separator: None | Found Commands Prefix"
+    .. " | Found Commands Separator: None | Commands | Base Commands | Found Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
 
 -- Open Folder opens the script's own folders; a missing one is made first
@@ -208,7 +211,7 @@ stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before ope
 stand.equal(names_in(find("Debug")),
     "Debug Mode | Load Timing | Logs | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
-stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Delete", "a profile's own list")
+stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
 -- Unload runs menu.pluto's unload (tested in test_menu_startup)
 stand.click(stand.find_item(find("Load Menu"), "Unload"))
@@ -216,8 +219,8 @@ stand.check(UNLOADED, "Unload calls the menu's unload")
 
 -- Base Commands: the script's own, one list per item with commands, built after the whole section.
 -- Found Commands is the loaded menu's: none here
-local found = stand.find_item(find("Command Box"), "Base Commands")
-stand.equal(names_in(stand.find_item(find("Command Box"), "Found Commands")), "No menu is loaded or it has no commands",
+local found = stand.child(find("Command Box"), "Base Commands")
+stand.equal(names_in(stand.child(find("Command Box"), "Found Commands")), "No menu is loaded or it has no commands",
     "Found Commands: no menu, no commands")
 local function row(command)
     for _, child in found.children do
@@ -244,7 +247,7 @@ stand.check(stand.read_file(script_names) and stand.read_file(script_names):find
     "kept in store/AnitaDarin/commands.json")
 -- Made again (a rebuild, the next start), the item gets its custom name right away
 rebuild()
-found = stand.find_item(find("Command Box"), "Base Commands")
+found = stand.child(find("Command Box"), "Base Commands")
 debug_row = row("dbg")
 stand.check(debug_row and stand.find_item(debug_row, "Command").value == "atdardbg", "a rebuilt item keeps its custom name")
 stand.click(stand.find_item(debug_row, "Reset Name"))
@@ -389,6 +392,28 @@ stand.click(stand.find_item(find("Load Menu"), "Copy Menu To Core"), 2)
 stand.equal(profile.get("auto_copy_menu"), "AnitaDarin", "Copy Menu To Core is set from Load Menu")
 stand.click(stand.find_item(find("Command Box"), "Separator"), 2)
 stand.equal(profile.get("command_separator"), "_", "Separator is set from Command Box")
+
+-- ─── Reset To Defaults: a second click within 5 seconds ──────────────────────
+
+local main_entry = entry("main (active)")
+local reset = stand.child(main_entry, "Reset To Defaults")
+profile.set("log_name", "display")
+profile.set("command_separator", "")
+stand.clear_logs()
+stand.click(reset)
+stand.equal(profile.get("log_name"), "display", "the first click resets nothing")
+stand.equal(stand.name_of(reset), "Click Again To Reset", "it asks for a second click")
+stand.check(stand.find_log("within 5 seconds"), "and says what would happen")
+main_entry.on_back()
+stand.frame()
+stand.equal(stand.name_of(reset), "Reset To Defaults", "going back out of the list cancels it")
+stand.click(reset)
+stand.click(reset)
+stand.equal(profile.get("log_name"), profile.default("log_name"), "the second click resets the active profile")
+stand.equal(profile.get("command_separator"), profile.default("command_separator"), "every value")
+local log_name_shown = profile.default("log_name") == "display" and "Display Name" or "Short Name"
+stand.equal(stand.name_of(stand.find_item(settings(), "Name In Logs")), $"Name In Logs: {log_name_shown}", "and the menu shows it")
+stand.check(profile.is_dirty(), "kept on Save, like any change")
 
 -- ─── Rename Script: no warning while the script stops ────────────────────────
 

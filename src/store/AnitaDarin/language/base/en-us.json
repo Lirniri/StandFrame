@@ -73,6 +73,14 @@
             "name": "Automatically Save",
             "help": "Every change of this profile's values is saved right away"
         },
+        "reset": {
+            "name": "Reset To Defaults",
+            "again": "Click Again To Reset",
+            "help": "Puts every value of this profile back to the script's defaults. Click twice within 5 seconds",
+            "warning": "Reset every value of profile '%s' to the defaults?\nClick again within %d seconds to reset",
+            "done": "Profile '%s' is back to the defaults",
+            "failed": "Profile '%s' wasn't reset"
+        },
         "delete": {
             "name": "Delete",
             "help": "Deletes this profile; deleting the active one loads main",
@@ -93,14 +101,22 @@
             "help": "Short name, e.g. for log and notification lines"
         },
         "command_prefix": {
-            "name": "Command Prefix",
-            "help": "Prefix of the script's command names; empty for none. Commands are renamed right away"
+            "name": "Base Commands Prefix",
+            "help": "Prefix of the script's own commands (Base Commands); empty for none. Commands are renamed right away"
         },
         "separator": {
-            "name": "Separator: %s",
-            "help": "Between the prefix and the command name",
+            "name": "Base Commands Separator: %s",
+            "help": "Between the prefix and the name of the script's own commands",
             "none": "None",
             "underscore": "_ (underscore)"
+        },
+        "found_command_prefix": {
+            "name": "Found Commands Prefix",
+            "help": "Prefix of the loaded menu's commands (Found Commands); empty for none. Commands are renamed right away"
+        },
+        "found_separator": {
+            "name": "Found Commands Separator: %s",
+            "help": "Between the prefix and the name of the loaded menu's commands. A different prefix or separator than the base commands' keeps the same names apart"
         },
         "log_name": {
             "name": "Name In Logs: %s",
@@ -293,6 +309,7 @@
             "name": "Command Box",
             "help": "Command names of the script's items"
         },
+        "commands_divider": "Commands",
         "base_commands": {
             "name": "Base Commands",
             "help": "The script's own commands, without the prefix. Each opens a list where it can be renamed; the names are kept in store/AnitaDarin/commands.json",

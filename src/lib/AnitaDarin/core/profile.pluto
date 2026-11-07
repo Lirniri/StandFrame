@@ -11,7 +11,10 @@ local DEFAULTS = {
     display_name = Atdar.name,  -- shown to the user: settings section, built-in menu entry
     short_name = "AniDar",
     command_prefix = "atdar",
-    command_separator = "",     -- "" -> atdargodmode, "_" -> atdar_godmode
+    command_separator = "_",     -- "" -> atdargodmode, "_" -> atdar_godmode
+    -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
+    found_command_prefix = "atdar",
+    found_command_separator = "",
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
@@ -23,7 +26,7 @@ local DEFAULTS = {
     notify_flash = true,       -- notifications in the game's feed flash
     notify_feed_style = "message", -- how a notification looks in the game's feed: "ticker" (a post) | "message" (a card)
     notify_feed_picture = "CHAR_ACTING_UP", -- the message card's picture (natives/visual/feed_picture)
-    notify_feed_icon = "CHAT_BOX", -- the message card's icon: a natives/visual/hud/thefeed ICON name
+    notify_feed_icon = "ARROW", -- the message card's icon: a natives/visual/hud/thefeed ICON name
     -- The feed's colours by the game's clock: day from notify_day_start up to notify_night_start (hours), night the rest.
     -- Hex "RRGGBBAA"; "" = the game's own colour (the flash colours start with it)
     notify_day_start = 7,
@@ -196,6 +199,26 @@ function module.switch(name: string): void
     config.profile = name
     write_config()
     notify_all()
+end
+
+-- Puts a profile's values back to the defaults above. The active one applies right away (saved
+-- now if it saves itself, otherwise on Save, like any change); another profile is written as is
+-- @return Whether it was done
+function module.reset(name: string): bool
+    local defaults = {}
+    for key, value in pairs(DEFAULTS) do
+        defaults[key] = value
+    end
+    if name ~= active then
+        return profile_file(name):write(defaults)
+    end
+    values = defaults
+    dirty = true
+    if config.autosave[active] then
+        module.save()
+    end
+    notify_all()
+    return true
 end
 
 -- Creates a profile from the current values (saved or not) and switches to it; the old profile's file is untouched
