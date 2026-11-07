@@ -47,8 +47,8 @@ stand.check(divider.visible and list.visible, "shown when debug mode turns on")
 for _, fn in listeners do fn("debug", false) end
 stand.check(not divider.visible and not list.visible, "hidden again when it turns off")
 
-local entry_b = stand.find_item(list, "b: ")
-stand.equal(stand.name_of(entry_b), "b: running", "an entry shows the module's status")
+local entry_b = stand.find_item(list, "2: b: ")
+stand.equal(stand.name_of(entry_b), "2: b: running", "an entry shows the module's name, number and status")
 stand.check(entry_b.help:find("Needs: a", 1, true), "its help shows the deps")
 
 -- Each module is a list: its actions in the menu's order, then its functions
@@ -63,18 +63,18 @@ stand.equal(entry_b.kind, "list", "a module is a list")
 stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Base Functions | on_start() | on_tick()"
     .. " | on_stop() | Module Functions | No functions", "actions, the hooks, then its own functions; one made without a class has none")
 
-local entry_a = stand.find_item(list, "a: ")
+local entry_a = stand.find_item(list, "1: a: ")
 stand.click(stand.child(entry_a, "Stop"))
-stand.equal(stand.name_of(entry_a), "a: stopped", "Stop stops the module")
-stand.equal(stand.name_of(entry_b), "b: stopped", "and what needs it; the entries are refreshed")
+stand.equal(stand.name_of(entry_a), "1: a: stopped", "Stop stops the module")
+stand.equal(stand.name_of(entry_b), "2: b: stopped", "and what needs it; the entries are refreshed")
 stand.equal(stops, 1, "b's on_stop ran")
 stand.equal(stand.name_of(entry_a.children[1]), "Status: stopped", "the Status divider follows the module's status")
 stand.click(stand.child(entry_b, "Start"))
-stand.equal(stand.name_of(entry_a), "a: running", "Start on b starts its dep a too")
+stand.equal(stand.name_of(entry_a), "1: a: running", "Start on b starts its dep a too")
 
 -- ─── Functions: the module's own, a button without parameters, a text field with ─────────────
 
-local entry_counter = stand.find_item(list, "counter: ")
+local entry_counter = stand.find_item(list, "3: counter: ")
 stand.equal(names_in(entry_counter), "Status: running | Start | Restart | Stop | Reload | Base Functions | on_start() | on_tick()"
     .. " | on_stop() | Module Functions | add(amount, note) | broken() | reset()",
     "its own functions by name with their parameters; hooks, Module's own and _names left out")
@@ -84,65 +84,66 @@ stand.equal(stand.child(entry_counter, "reset()").kind, "action", "without: a bu
 stand.clear_logs()
 menu.set_value(stand.child(entry_counter, "add(amount, note)"), '5, "a, b"')
 stand.equal(counter.count, 5, "the arguments are passed: a number")
-stand.check(stand.find_log('counter.add(amount, note) -> 5, a, b'), "and the results are told, the quoted text whole")
+stand.check(stand.find_log('Module 3.add(amount, note) -> 5, a, b'), "and the results are told, the quoted text whole")
 stand.click(stand.child(entry_counter, "reset()"))
 stand.equal(counter.count, 0, "a button calls the function")
-stand.check(stand.find_log("counter.reset(): done"), "a call without results says it's done")
+stand.check(stand.find_log("Module 3.reset(): done"), "a call without results says it's done")
 stand.clear_logs()
 stand.click(stand.child(entry_counter, "broken()"))
-stand.check(stand.find_log("counter.broken() failed: it broke"), "an error in the function is told, not thrown")
-stand.check(stand.find_log("ERROR: counter.broken() failed"), "as an error: Errors Always In Stand applies to it")
+stand.check(stand.find_log("Module 3.broken() failed: it broke"), "an error in the function is told, not thrown")
+stand.check(stand.find_log("ERROR: Module 3.broken() failed"), "as an error: Errors Always In Stand applies to it")
 -- The hooks by hand: on_stop runs, the status stays
 stops = 0
 stand.click(stand.child(entry_b, "on_stop()"))
 stand.equal(stops, 1, "on_stop() calls the module's hook")
-stand.equal(stand.name_of(entry_b), "b: running", "without changing its status")
+stand.equal(stand.name_of(entry_b), "2: b: running", "without changing its status")
 -- on_tick by hand: a list with Start, Start For A While, Stop; works on a stopped module too
-local entry_ticker = stand.find_item(list, "ticker: ")
+local entry_ticker = stand.find_item(list, "4: ticker: ")
 stand.click(stand.child(entry_ticker, "Stop"))
 local tick_node = stand.child(entry_ticker, "on_tick()")
-stand.equal(names_in(tick_node), "Start | Start For A While | Stop | Status",
+stand.equal(names_in(tick_node), "Start | Start For A While | Stop | Status: stopped",
     "on_tick() is a list of Start, Start For A While, Stop, then its Status")
-local tick_status = stand.child(tick_node, "Status")
-stand.equal(tick_status.value, "stopped", "Status: stopped before a start")
+local tick_status = stand.child(tick_node, "Status: stopped")
+stand.equal(tick_status.kind, "divider", "the Status is a divider")
+stand.equal(stand.name_of(tick_status), "Status: stopped", "Status: stopped before a start")
 ticks = 0
 stand.frame(3)
 stand.equal(ticks, 0, "a stopped module doesn't tick")
 stand.clear_logs()
 stand.click(stand.child(tick_node, "Start"))
-stand.check(stand.find_log("ticker.on_tick(): running every frame"), "Start is told")
+stand.check(stand.find_log("Module 4.on_tick(): running every frame"), "Start is told")
 stand.frame(3)
 stand.equal(ticks, 3, "Start runs on_tick every frame")
-stand.equal(tick_status.value, "running", "Status: running")
+stand.equal(stand.name_of(tick_status), "Status: running", "Status: running")
 stand.click(stand.child(tick_node, "Stop"))
-stand.check(stand.find_log("ticker.on_tick(): stopped"), "Stop is told")
+stand.check(stand.find_log("Module 4.on_tick(): stopped"), "Stop is told")
 stand.frame(3)
 stand.equal(ticks, 3, "Stop ends it")
-stand.equal(tick_status.value, "stopped", "Status: stopped after Stop")
+stand.equal(stand.name_of(tick_status), "Status: stopped", "Status: stopped after Stop")
 stand.click(stand.child(tick_node, "Stop"))
-stand.check(stand.find_log("ticker.on_tick() isn't running by hand"), "Stop with nothing running says so")
+stand.check(stand.find_log("Module 4.on_tick() isn't running by hand"), "Stop with nothing running says so")
 -- For a while: 1 s at stand.FRAME_MS a frame
 ticks = 0
 stand.click(stand.child(tick_node, "Start For A While"), 1)
-stand.check(stand.find_log("ticker.on_tick(): running for 1 s"), "Start For A While tells for how long")
-stand.equal(tick_status.value, "running, 1 s left", "Status shows the seconds left")
+stand.check(stand.find_log("Module 4.on_tick(): running for 1 s"), "Start For A While tells for how long")
+stand.equal(stand.name_of(tick_status), "Status: running, 1 s left", "Status shows the seconds left")
 for _ = 1, 30 do
     stand.frame()
     stand.clock += stand.FRAME_MS
 end
 local ticked_for = ticks
 stand.check(ticked_for > 0 and ticked_for <= 1000 // stand.FRAME_MS + 1, $"it ticks about 1 s ({ticked_for} frames)")
-stand.check(stand.find_log("ticker.on_tick(): time's up, stopped"), "and stops by itself, told")
-stand.equal(tick_status.value, "stopped", "Status: stopped when the time's up")
+stand.check(stand.find_log("Module 4.on_tick(): time's up, stopped"), "and stops by itself, told")
+stand.equal(stand.name_of(tick_status), "Status: stopped", "Status: stopped when the time's up")
 -- Start again while running: the newer run replaces it, not twice a frame. A running module is stopped
 -- first, so the manager doesn't tick it as well
 stand.click(stand.child(entry_ticker, "Start"))
-stand.equal(stand.name_of(entry_ticker), "ticker: running", "the module runs (the manager ticks it)")
+stand.equal(stand.name_of(entry_ticker), "4: ticker: running", "the module runs (the manager ticks it)")
 stand.clear_logs()
 ticks = 0
 stand.click(stand.child(tick_node, "Start"))
-stand.equal(stand.name_of(entry_ticker), "ticker: stopped", "starting on_tick by hand stops the running module")
-stand.check(stand.find_log("ticker was running: stopped"), "and says so")
+stand.equal(stand.name_of(entry_ticker), "4: ticker: stopped", "starting on_tick by hand stops the running module")
+stand.check(stand.find_log("Module 4 was running: stopped"), "and says so")
 stand.click(stand.child(tick_node, "Start"))
 stand.frame(2)
 stand.equal(ticks, 2, "on_tick runs once a frame: not with the manager, not twice for starting again")
@@ -153,12 +154,12 @@ bad_tick.on_tick = function() error("tick broke", 0) end
 stand.clear_logs()
 stand.click(stand.child(tick_node, "Start"))
 stand.frame(2)
-stand.check(stand.find_log("ERROR: ticker.on_tick() failed: tick broke"), "an error in on_tick is told as an error")
+stand.check(stand.find_log("ERROR: Module 4.on_tick() failed: tick broke"), "an error in on_tick is told as an error")
 bad_tick.on_tick = function() ticks += 1 end
 ticks = 0
 stand.frame(2)
 stand.equal(ticks, 0, "and the run stopped")
-stand.equal(tick_status.value, "error", "Status: error")
+stand.equal(stand.name_of(tick_status), "Status: error", "Status: error")
 
 -- What a call gave, as told: tables unpacked, functions as their signatures (the return type read from
 -- the file they're written in)
@@ -232,16 +233,17 @@ ticks = 0
 stand.click(stand.child(tick_node, "Start"))
 stand.clear_logs()
 stand.click(stand.child(list, "Stop All"))
-for _, name in { "a", "b", "counter", "ticker" } do
-    stand.equal(stand.name_of(stand.find_item(list, $"{name}: ")), $"{name}: stopped", $"Stop All stops {name}")
+for number, name in { "a", "b", "counter", "ticker" } do
+    local caption = $"{number}: {name}: "
+    stand.equal(stand.name_of(stand.find_item(list, caption)), $"{caption}stopped", $"Stop All stops {name}")
 end
 stand.equal(stand.name_of(entry_b.children[1]), "Status: stopped", "and the Status dividers follow")
 stand.check(stand.find_log("All modules stopped"), "Stop All is told")
 stand.frame(2)
 stand.equal(ticks, 0, "on_tick run by hand stops too")
-stand.equal(tick_status.value, "stopped", "its Status too")
+stand.equal(stand.name_of(tick_status), "Status: stopped", "its Status too")
 stand.click(stand.child(entry_b, "Start"))
-stand.equal(stand.name_of(entry_b), "b: running", "a module starts again after Stop All")
+stand.equal(stand.name_of(entry_b), "2: b: running", "a module starts again after Stop All")
 
 -- Open Folder opens the copy Stand runs
 stand.click(stand.find_item(list, "Open Folder"))
@@ -250,6 +252,6 @@ stand.check(stand.toasts[#stand.toasts]:find("lib\\AnitaDarin\\modules", 1, true
 -- Russian, through Stand's labels
 stand.language = "ru"
 stand.click(stand.find_item(list, "Обновить"))
-stand.equal(stand.name_of(entry_a), "a: работает", "statuses follow Stand's language")
+stand.equal(stand.name_of(entry_a), "1: a: работает", "statuses follow Stand's language")
 
 stand.finish()

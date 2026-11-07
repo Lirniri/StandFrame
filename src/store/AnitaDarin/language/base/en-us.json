@@ -287,7 +287,8 @@
         "restart": "Restart",
         "reload": "Reload",
         "entry": {
-            "name": "%s: %s",
+            "name": "%d: %s: %s",
+            "short": "Module %d",
             "deps": "Needs: %s",
             "no_deps": "nothing",
             "ticks": "Ticks every frame",
@@ -326,7 +327,6 @@
             "stopped": "%s: stopped",
             "finished": "%s: time's up, stopped",
             "not_running": "%s isn't running by hand",
-            "status": "Status",
             "state": {
                 "running": "running",
                 "running_for": "running, %d s left",
