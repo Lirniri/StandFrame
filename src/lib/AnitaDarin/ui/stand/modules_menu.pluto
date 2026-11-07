@@ -520,13 +520,56 @@ local result_lines = {}
 -- Longer results are cut in the Variable line (the notice and the debug text show them whole)
 local MAX_RESULT_CHARS = 60
 
--- "Variable: 147462", "Variable: -" before a call or when it gave nothing
+-- The same key -> the type(s) of what it gave last: "integer", "table of integers", "integer, string"
+local last_types = {}
+
+-- A value's kind for the types' strings: integer and float apart, the rest as type() says
+local function kind_of(value): string
+    local kind = type(value)
+    if kind == "number" then
+        return math.type(value) == "integer" and "integer" or "float"
+    end
+    return kind
+end
+
+-- A value's type in words: "integer", "float", "table of strings"... A table by what it holds: all of one
+-- kind - "table of <kind>" (integers and floats together: "table of numbers"), mixed - "table", none -
+-- "empty table". Cheap: one look at each entry, only when the value changed
+local function type_text(value): string
+    local kind = kind_of(value)
+    if kind ~= "table" then
+        return text($"types.{kind}")
+    end
+    local inner = nil
+    for _, entry in pairs(value) do
+        local entry_kind = kind_of(entry)
+        if inner == nil then
+            inner = entry_kind
+        elseif inner ~= entry_kind then
+            local numbers = (inner == "integer" or inner == "float" or inner == "number")
+                and (entry_kind == "integer" or entry_kind == "float")
+            if not numbers then
+                return text("types.table")
+            end
+            inner = "number"
+        end
+    end
+    if inner == nil then
+        return text("types.table_empty")
+    end
+    return text($"types.table_of_{inner}")
+end
+
+-- "Variable (integer): 147462", "Variable: -" before a call or when it gave nothing
 local function result_line(key: string): string
-    local value = last_results[key] or text("loop.no_result")
+    local value = last_results[key]
+    if value == nil then
+        return text("loop.result_line"):format(text("loop.no_result"))
+    end
     if #value > MAX_RESULT_CHARS then
         value = value:sub(1, MAX_RESULT_CHARS) .. "..."
     end
-    return text("loop.result_line"):format(value)
+    return text("loop.result_line_typed"):format(last_types[key] or "", value)
 end
 
 -- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
@@ -543,6 +586,12 @@ local function show_result(key: string, results: table): void
         return
     end
     last_results[key] = value
+    -- Each value's type, as many as it gave ("integer, string")
+    local types = {}
+    for i = 2, results.n do
+        table.insert(types, type_text(results[i]))
+    end
+    last_types[key] = table.concat(types, ", ")
     last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
     update_result_list(key)
     local ref = result_lines[key]

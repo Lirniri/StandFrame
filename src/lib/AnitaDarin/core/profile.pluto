@@ -249,10 +249,16 @@ function module.create(name: string): ?string
 end
 
 -- Deletes a profile; the main one stays, and deleting the active one switches to main
+-- Deletes a profile, main and the last one too (like Stand; create_main makes main again). Deleting the
+-- active one loads another; with none left the script goes on with the values it has, unsaved (Save
+-- writes them back), and the next start makes the profile it was on again with the defaults
+-- @return Whether it was deleted
 function module.delete(name: string): bool
-    if name == DEFAULT_PROFILE then
-        log:warn($"the '{DEFAULT_PROFILE}' profile can't be deleted")
-        return false
+    local others = {}
+    for _, other in ipairs(module.list()) do
+        if other ~= name then
+            table.insert(others, other)
+        end
     end
     profile_file(name):remove()
     if config.autosave[name] then
@@ -260,7 +266,42 @@ function module.delete(name: string): bool
         write_config()
     end
     if name == active then
-        module.switch(DEFAULT_PROFILE)
+        if #others == 0 then
+            dirty = true
+            return true
+        end
+        -- main when it's there, otherwise the first one by name
+        local next_name = others[1]
+        for _, other in ipairs(others) do
+            if other == DEFAULT_PROFILE then
+                next_name = other
+            end
+        end
+        module.switch(next_name)
+    end
+    return true
+end
+
+-- The main profile's name ("main"): the one a new script starts with
+function module.main_name(): string
+    return DEFAULT_PROFILE
+end
+
+function module.exists(name: string): bool
+    return profile_file(name):exists()
+end
+
+-- Makes the main profile with the defaults; one that's there is made again (its values lost). The caller
+-- asks first when it's there. While it's the active one, the defaults apply right away
+-- @return Whether it was written
+function module.create_main(): bool
+    if not module.reset(DEFAULT_PROFILE) then
+        return false
+    end
+    -- The active one gets the defaults in memory only (reset writes it just with autosave on): its file is
+    -- written here, so main is there again, e.g. after it was deleted while active
+    if DEFAULT_PROFILE == active then
+        return module.save_to(DEFAULT_PROFILE)
     end
     return true
 end

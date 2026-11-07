@@ -117,13 +117,23 @@ end
 
 -- The first post of a long text -> the ids of all its parts
 local parts_of = {}
+-- The script's own posts still known, oldest first (see remove_all below)
+local posts = {}
 
 -- Takes a post away from the feed; the first post of a long text takes all its parts
 function module.remove(id: int): void
     local ids = parts_of[id] or { id }
     parts_of[id] = nil
+    local gone = {}
     for _, part_id in ipairs(ids) do
         HUD.THEFEED_REMOVE_ITEM(part_id)
+        gone[part_id] = true
+    end
+    -- Not the script's posts any more: remove_all() neither takes them away again nor counts them
+    for i = #posts, 1, -1 do
+        if gone[posts[i]] then
+            table.remove(posts, i)
+        end
     end
 end
 
@@ -143,7 +153,6 @@ end
 -- The script's own posts still known, oldest first: remove_all() takes them away. The game gives
 -- no list of its feed, so only posts made here can be removed. The oldest are forgotten past this many
 local KEEP_POSTS = 100
-local posts = {}
 
 -- @return The id, for the caller
 local function remember(id: int): int

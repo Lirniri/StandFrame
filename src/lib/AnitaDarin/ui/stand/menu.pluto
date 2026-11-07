@@ -90,7 +90,7 @@ end
 
 -- Replaces the loaded menu: adds its translations (language_dir), runs feature_files,
 -- then build(node) adds the items. kind ("builtin" or "pack") tells later whether the built-in menu is loaded;
--- menu_dir: the menu's folder, where its commands.json (custom command names) is: the pack's in store,
+-- menu_dir: the menu's folder, where its commands folder (custom command names and words) is: the pack's in store,
 -- or the built-in menu's in core; pack: the pack's folder name, so Load Menu can show which pack is loaded
 local function load_menu(kind: string, language_dir: string, feature_files: table, build: function, menu_dir: string,
         pack: ?string): void
@@ -110,7 +110,7 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
     end
 
     -- A separate node on the root ref tracks only this menu's items; their custom names apply as they're made
-    commands.begin_menu(new JsonFile($"{menu_dir}commands.json"))
+    commands.begin_menu(menu_dir)
     local node = new MenuNode(module.root.handle)
     local built, err = pcall(build, node)
     commands.end_menu()
@@ -182,7 +182,7 @@ local function remove_builtin(): void
     end
     local ok, result = builder.remove_copied_core(paths.lib)
     if ok then
-        log:notify($"removed {result} copied file(s) from core")
+        log:notify(i18n.text("menu_loader.builtin.removed"):format(result))
         -- Otherwise the copy silently comes back at the next start
         if (Atdar.profile.get("auto_copy_menu") or "") ~= "" then
             -- i18n directly: label()/text() of this file are declared further down
@@ -294,7 +294,8 @@ settings.add(function(node)
 end)
 
 -- The active profile can keep a pack copied into core (its auto_copy_menu). At every start the pack is
--- copied again, so changes made to it in store reach the copy, and then loads as the built-in menu.
+-- copied again when it changed, so changes made to it in store reach the copy (an unchanged one is
+-- left as it is: nothing to write), and then loads as the built-in menu.
 -- Built here, in the script's main body, its items get the states saved in Stand's profile,
 -- which a menu loaded later by hand doesn't
 local function auto_copy(): void
@@ -319,6 +320,10 @@ local function auto_copy(): void
         log:warn($"menu '{id}' not copied to core: the script has its own built-in menu")
         return
     end
+    if manifest and builder.core_copy_is_current(info, paths.lib) then
+        log:info($"'{info.name}' in core is the same as in store, not copied again")
+        return
+    end
     if manifest then
         builder.remove_copied_core(paths.lib)
     end
@@ -335,7 +340,8 @@ auto_copy()
 if has_builtin() then
     load_builtin()
 else
-    log:warn("built-in menu not found, a menu can be loaded from store")
+    -- The root says so itself (show_notice): in the log only, no notification on top of it
+    log:info("built-in menu not found, a menu can be loaded from store")
     show_notice()
     module.settings = settings.build(module.root)
 end

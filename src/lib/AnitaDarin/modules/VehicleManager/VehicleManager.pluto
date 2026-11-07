@@ -34,16 +34,21 @@ local class VehicleManager extends Module
         self.vehicles = {}
     end
 
-    -- The vehicle the player is in at the start is remembered too
+    -- The vehicle the player is in at the start is remembered a frame later (on_tick): the natives it needs
+    -- aren't loaded while the script starts
     function on_start()
         self.current_vehicle = 0
-        if self:is_auto_remember() then
-            self:_remember_current_vehicle()
-        end
+        self.__ticked = false
     end
 
     -- Remembers every vehicle the player gets into
     function on_tick()
+        -- Stand runs the first tick right away, while the script is still starting: skipped, so the
+        -- natives load a frame later, not in the start's time
+        if not self.__ticked then
+            self.__ticked = true
+            return
+        end
 
         -- State
         if not self:is_last_exist() then
@@ -151,15 +156,15 @@ local class VehicleManager extends Module
         end
     end
 
-    -- Repairs a vehicle (natives entity.vehicle.fix): damage and dents gone, full health, drivable
+    -- Repairs a vehicle (natives entity.vehicle.repair): damage and dents gone, full health, drivable
     -- @param dirt_level A number - the dirt it gets (0.0 - 15.0); true - washed clean; nothing - the dirt stays
     -- @return Whether it was a vehicle in the game
-    function fix(handle: int, dirt_level: float|bool): bool
+    function repair(handle: int, dirt_level: float|bool): bool
         if math.type(handle) ~= "integer" then
             return false
         end
         local n_vehicle = Atdar.natives.entity.vehicle
-        if not n_vehicle.fix(handle, dirt_level or false) then
+        if not n_vehicle.repair(handle, dirt_level or false) then
             return false
         end
         -- An exploded one stays a wreck for the game, repaired or not
@@ -172,24 +177,37 @@ local class VehicleManager extends Module
 
     -- Repairs the vehicle remembered last
     -- @return Whether there was one in the game
-    function fix_last(dirt_level: float|bool): bool
+    function repair_last(dirt_level: float|bool): bool
         local handle = self:get_handle()
         if handle == nil then
             return false
         end
-        return self:fix(handle, dirt_level)
+        return self:repair(handle, dirt_level)
     end
 
     -- Repairs every remembered vehicle still in the game
     -- @return How many were repaired
-    function fix_all(dirt_level: float|bool): int
-        local fixed = 0
+    function repair_all(dirt_level: float|bool): int
+        local repaired = 0
         for _, handle in ipairs(self:get_handles()) do
-            if self:fix(handle, dirt_level) then
-                fixed += 1
+            if self:repair(handle, dirt_level) then
+                repaired += 1
             end
         end
-        return fixed
+        return repaired
+    end
+
+    function explode(handle): bool
+        local n_vehicle = Atdar.natives.entity.vehicle
+        local handle = self:get_handle()
+        if handle == nil or not n_vehicle.is_exist(handle) then
+            return false
+        end
+        n_vehicle.explode({
+            vehicle = handle,
+            net_id = n_vehicle.get_net_id(handle)
+        })
+        return true
     end
 
     -- Explodes the vehicle remembered last

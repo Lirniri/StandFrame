@@ -319,13 +319,8 @@ function module.remove_copied_core(lib_dir: string): (bool, any)
     return true, removed
 end
 
--- Copies a pack's features and menu files into the script, where they become the built-in menu.
--- Nothing is overwritten: if any target file exists, nothing is copied
--- @return true and the number of copied files, or false and a reason
-function module.copy_pack_to_core(info: table, lib_dir: string): (bool, any)
-    if module.read_core_manifest(lib_dir) then
-        return false, "another copied menu is already in the script, remove it first"
-    end
+-- What copying a pack into the script copies: { from, to } for its features, menu files and translations
+local function copy_plan(info: table, lib_dir: string): table
     local plan = {}
     local features_dir = $"{info.dir}features\\"
     for _, path in ipairs(info.feature_files) do
@@ -344,6 +339,55 @@ function module.copy_pack_to_core(info: table, lib_dir: string): (bool, any)
             end
         end
     end
+    return plan
+end
+
+-- A file's whole content, nil if it can't be read
+local function read_bytes(path: string): ?string
+    local file = io.open(path, "rb")
+    if not file then
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    return content
+end
+
+-- Whether the copy of this pack in the script is the same as the pack: the same files, each with the
+-- same content. Then copying again would change nothing and can be skipped
+function module.core_copy_is_current(info: table, lib_dir: string): bool
+    local manifest = module.read_core_manifest(lib_dir)
+    if not manifest or manifest.pack ~= info.name then
+        return false
+    end
+    local plan = copy_plan(info, lib_dir)
+    if #plan ~= #manifest.files then
+        return false
+    end
+    local listed = {}
+    for _, relative in ipairs(manifest.files) do
+        listed[relative] = true
+    end
+    for _, step in ipairs(plan) do
+        if not listed[step.to:sub(#lib_dir + 1)] then
+            return false
+        end
+        local copied = read_bytes(step.to)
+        if copied == nil or copied ~= read_bytes(step.from) then
+            return false
+        end
+    end
+    return true
+end
+
+-- Copies a pack's features and menu files into the script, where they become the built-in menu.
+-- Nothing is overwritten: if any target file exists, nothing is copied
+-- @return true and the number of copied files, or false and a reason
+function module.copy_pack_to_core(info: table, lib_dir: string): (bool, any)
+    if module.read_core_manifest(lib_dir) then
+        return false, "another copied menu is already in the script, remove it first"
+    end
+    local plan = copy_plan(info, lib_dir)
 
     local conflicts = 0
     for _, step in ipairs(plan) do

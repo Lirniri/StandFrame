@@ -206,7 +206,8 @@ menu.set_value(add_args, '5, "a, b"')
 stand.equal(counter.count, 0, "typing the arguments calls nothing")
 stand.click(stand.child(add_node, "Call"))
 stand.equal(counter.count, 5, "the arguments are passed: a number")
-stand.check(stand.find_item(add_node, "Variable: 5, a, b") ~= nil, "Variable shows what the call gave last")
+stand.check(stand.find_item(add_node, "Variable (integer, string): 5, a, b") ~= nil,
+    "Variable shows what the call gave last, with the type of each value")
 stand.check(stand.find_log('Module 3.add(amount, note) -> 5, a, b'), "and the results are told, the quoted text whole")
 stand.click(stand.child(reset_node, "Call"))
 stand.equal(counter.count, 0, "a button calls the function")
@@ -432,7 +433,7 @@ menu.set_value(add_args, "1")
 stand.click(stand.child(add_node, "Loop"))
 stand.frame(3)
 stand.equal(counter.count, 5, "a loop passes the arguments at each call")
-stand.check(stand.find_item(add_node, "Variable: 5, nil") ~= nil, "a loop keeps Variable up to date")
+stand.check(stand.find_item(add_node, "Variable (integer, nil): 5, nil") ~= nil, "a loop keeps Variable up to date")
 stand.equal(stand.debug_texts[#stand.debug_texts], "counter.add(amount, note) -> 5, nil",
     "what the call gave is drawn on screen (debug text)")
 stand.debug_texts = {}
@@ -450,6 +451,23 @@ local value_list = stand.find_item(add_node, "Value (3)")
 stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
 stand.equal(names_in(value_list), "[1] | [2] | [3] (1)", "its entries, a table inside as a list")
 stand.equal(stand.child(value_list, "[2]").value, '"a"', "each with its value")
+stand.check(stand.find_item(add_node, "Variable (table): ") ~= nil, "a table of mixed kinds: just table")
+-- Types in words: a table by what it holds
+counter.add = function() return { 1, 2, 3 } end
+stand.frame()
+stand.check(stand.find_item(add_node, "Variable (table of integers): ") ~= nil, "a table of integers")
+counter.add = function() return { 1, 2.5 } end
+stand.frame()
+stand.check(stand.find_item(add_node, "Variable (table of numbers): ") ~= nil, "integers and floats: a table of numbers")
+counter.add = function() return { "a", "b" } end
+stand.frame()
+stand.check(stand.find_item(add_node, "Variable (table of strings): ") ~= nil, "a table of strings")
+counter.add = function() return {} end
+stand.frame()
+stand.check(stand.find_item(add_node, "Variable (empty table): {}") ~= nil, "an empty table")
+counter.add = function() return 2.5 end
+stand.frame()
+stand.check(stand.find_item(add_node, "Variable (float): 2.5") ~= nil, "a float")
 counter.add = real_add
 counter.count = 5
 stand.click(stand.child(add_node, "Loop"))
@@ -688,16 +706,16 @@ stand.click(get_cars_node)
 garage.cars = 3
 stand.clock += 300
 stand.frame()
-stand.check(stand.find_item(get_cars_node, "Variable: 3") ~= nil, "a getter's Variable follows the value while open")
+stand.check(stand.find_item(get_cars_node, "Variable (integer): 3") ~= nil, "a getter's Variable follows the value while open")
 garage.cars = 4
 stand.clock += 300
 stand.frame()
-stand.check(stand.find_item(get_cars_node, "Variable: 4") ~= nil, "and keeps following it")
+stand.check(stand.find_item(get_cars_node, "Variable (integer): 4") ~= nil, "and keeps following it")
 stand.back(get_cars_node)
 garage.cars = 5
 stand.clock += 300
 stand.frame()
-stand.check(stand.find_item(get_cars_node, "Variable: 4") ~= nil, "gone back: not called any more")
+stand.check(stand.find_item(get_cars_node, "Variable (integer): 4") ~= nil, "gone back: not called any more")
 local sell_node = stand.child(garage_fns, "sell(): void")
 local sold = 0
 garage.sell = function() sold += 1 end

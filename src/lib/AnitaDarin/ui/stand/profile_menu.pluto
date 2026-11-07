@@ -512,6 +512,9 @@ end
 
 -- ─── Profiles ────────────────────────────────────────────────────────────────
 
+-- After a profile is made, deleted or loaded (set by profiles())
+local changed
+
 local function build_entry(parent: table, name: string, refresh: function): void
     local profile = Atdar.profile
     -- Going back out of the list cancels a first click on Reset
@@ -581,10 +584,6 @@ local function build_entry(parent: table, name: string, refresh: function): void
 
     local delete_ref
     delete_ref = entry:action(label("delete.name"), function(click_type)
-        if name == "main" then
-            log:warn(text("delete.main"))
-            return
-        end
         menu.show_warning(delete_ref, click_type, text("delete.warning"):format(name), function()
             if profile.delete(name) then
                 refresh()
@@ -593,25 +592,75 @@ local function build_entry(parent: table, name: string, refresh: function): void
     end, {}, label("delete.help"))
 end
 
--- refresh() rebuilds the settings section: needed after a profile is created or deleted
+-- The Profiles list. Its entries are made again in place when it's opened and after a profile is made or
+-- deleted; the rest of the section follows the active profile's values (captions, fields). Rebuilding
+-- the whole section from inside this list would leave the user in the old, deleted one.
+-- refresh() rebuilds the section: only when the fields can't take the values in place
 function module.profiles(node: table, refresh: function): void
     local profile = Atdar.profile
-    local list = node:list(label("title"), { "profiles" }, label("help"))
+    local list = nil
+    -- Where the entries start, so they're made again without the items above
+    local first = nil
+
+    local function fill_entries(): void
+        if first == nil then
+            return
+        end
+        list:clear_from(first)
+        local names = profile.list()
+        for _, name in ipairs(names) do
+            build_entry(list, name, changed)
+        end
+        -- All deleted: the script goes on with the values it has; Create Main Profile or Save brings one back
+        if #names == 0 then
+            list:readonly_name(label("no_profiles"))
+        end
+    end
+
+    -- A profile made, deleted or loaded: the entries again, the section's captions and fields to its values
+    changed = function()
+        fill_entries()
+        update_captions()
+        if not update_fields() then
+            refresh()
+        end
+    end
+
+    list = node:list(label("title"), { "profiles" }, label("help"), nil, fill_entries)
 
     list:text_input(label("create.name"), { "newprofile" }, function(value)
         if value ~= "" and profile.create(value) then
-            refresh()
+            changed()
         end
     end, label("create.help"))
+
+    -- The main profile with the defaults; one that's there is made again only after the warning
+    local create_main_ref
+    create_main_ref = list:action(label("create_main.name"), function(click_type)
+        local main = profile.main_name()
+        local existed = profile.exists(main)
+        local function make(): void
+            if not profile.create_main() then
+                log:warn(text("create_main.failed"):format(main))
+                return
+            end
+            log:notify(text(existed and "create_main.recreated" or "create_main.done"):format(main))
+            changed()
+        end
+        if not existed then
+            make()
+            return
+        end
+        menu.show_warning(create_main_ref, click_type, text("create_main.warning"):format(main), make)
+    end, {}, label("create_main.help"))
 
     list:action(label("open_folder.name"), function()
         util.open_folder(profile.folder())
     end, {}, label("open_folder.help"))
 
     list:divider(label("list"))
-    for _, name in ipairs(profile.list()) do
-        build_entry(list, name, refresh)
-    end
+    first = #list.children + 1
+    fill_entries()
 end
 
 -- ─── Copy Menu To Core ───────────────────────────────────────────────────────

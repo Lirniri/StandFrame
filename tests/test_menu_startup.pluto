@@ -52,12 +52,31 @@ stand.check(io.exists($"{lib}features\\self\\godmode.pluto"), "its features are 
 stand.check(not io.exists($"{lib}ui\\stand\\menu\\old.pluto"), "the older copy's files are gone")
 stand.check(stand.read_file($"{lib}ui\\stand\\menu\\.copied.json"):find('"AnitaDarin"', 1, true), "the new copy has a manifest")
 
+-- The copy is the pack's now: the next start leaves it as it is; a changed file makes it copy again
+local builder = Atdar.loader.load("ui/stand/menu_builder")
+local store_packs = $"{Atdar.filesystem.paths.store}menu\\"
+local function pack_info()
+    for _, pack in ipairs(builder.find_loadable_packs(store_packs)) do
+        if pack.folder == "AnitaDarin" then
+            return pack
+        end
+    end
+    return nil
+end
+stand.check(builder.core_copy_is_current(pack_info(), lib), "right after the copy: the same as the pack")
+local godmode_path = $"{stand.store}AnitaDarin/menu/AnitaDarin/features/self/godmode.pluto"
+local godmode_text = stand.read_file(godmode_path)
+stand.write_file(godmode_path, godmode_text .. "\n-- changed\n")
+stand.check(not builder.core_copy_is_current(pack_info(), lib), "a file changed in store: not the same any more")
+stand.write_file(godmode_path, godmode_text)
+stand.check(builder.core_copy_is_current(pack_info(), lib), "back as it was: the same again")
+
 -- Loaded as the built-in menu, in the main body: the pack's lists are in the root
 stand.check(stand.find_item(stand.root, "Self"), "the pack's Self list is in the menu")
 stand.check(Atdar.features.has("self.godmode"), "its features are registered")
 stand.equal(stand.find_log("not found"), nil, "no 'menu not found' notice")
 
--- ─── Found Commands: the menu's commands get custom names, kept in its commands.json ─────
+-- ─── Found Commands: the menu's commands get custom names, kept in its commands folder ─────
 
 local function found_commands() return stand.child(stand.find_item(stand.root, "Command Box"), "Found Commands") end
 local function found_row(name)
@@ -68,14 +87,14 @@ local function found_row(name)
     end
     return nil
 end
-local core_names = $"{lib}ui\\stand\\menu\\commands.json"
+local core_names = $"{lib}ui\\stand\\menu\\commands\\godmode.json"
 local godmode = found_row("godmode")
 stand.check(godmode and godmode.kind == "list", "the menu's command is a list, shown without the prefix")
 stand.equal(stand.find_item(godmode, "Command").value, "atdargodmode", "inside: the full command")
 menu.set_value(stand.find_item(godmode, "Custom Name"), "god")
 stand.equal(stand.name_of(godmode), "god", "a custom name renames the row")
 stand.equal(stand.find_item(godmode, "Command").value, "atdargod", "and the command: the prefix stays")
-stand.check(stand.read_file(core_names) and stand.read_file(core_names):find('"godmode": "god"', 1, true),
+stand.check(stand.read_file(core_names) and stand.read_file(core_names):find('"name": "god"', 1, true),
     "the built-in menu's names are kept in core, next to its main.pluto")
 -- Stand puts fields back to their default by itself (restoring its profile's state, click type 4):
 -- that must not undo the name
@@ -87,6 +106,11 @@ stand.clear_logs()
 menu.set_value(stand.find_item(godmode, "Custom Name"), "halfgodmode")
 stand.check(stand.find_log("already a command"), "another item's command can't be taken")
 stand.equal(stand.name_of(godmode), "god", "and the name stays")
+-- Found Commands' Open Commands Folder: the loaded menu's own commands folder, in core here
+stand.toasts = {}
+stand.click(stand.child(found_commands(), "Open Commands Folder"))
+stand.check(stand.toasts[#stand.toasts]:find("ui\\stand\\menu\\commands\\", 1, true),
+    $"Found Commands opens the built-in menu's commands folder ({stand.toasts[#stand.toasts]})")
 stand.equal(found_row("debug"), nil, "the script's own commands aren't among the menu's")
 local base_commands = stand.child(stand.find_item(stand.root, "Command Box"), "Base Commands")
 stand.check(stand.find_item(base_commands, "debug"), "they're in Base Commands")
@@ -149,7 +173,7 @@ stand.check(not io.exists($"{lib}ui\\stand\\menu\\main.pluto"), "Remove from cor
 stand.equal(stand.name_of(stand.root.children[1]), "Built-in menu not found", "the notice is back at the top")
 stand.equal(stand.root.children[1].kind, "divider", "as a divider")
 stand.check(not stand.find_item(stand.root, "Self"), "the menu's items are gone")
-stand.check(stand.find_log("will be copied again at the next start"), "it says auto-copy will bring the copy back")
+stand.check(stand.find_log("the menu comes back at the next start"), "it says auto-copy will bring the copy back")
 
 -- ─── Load Menu: a pack's state, Unload ───────────────────────────────────────
 
@@ -165,10 +189,10 @@ end
 stand.click(entry("AnitaDarin"), 1)
 stand.check(stand.find_item(stand.root, "Self"), "Load on the pack loads it")
 stand.check(entry("AnitaDarin: loaded"), "Load Menu shows the pack as loaded")
--- The pack from store has its own commands.json: core's names stay with the built-in menu
+-- The pack from store has its own commands folder: core's names stay with the built-in menu
 stand.equal(stand.name_of(found_row("godmode")), "godmode", "the store pack doesn't get core's names")
 menu.set_value(stand.find_item(found_row("godmode"), "Custom Name"), "gm")
-stand.check(stand.read_file($"{stand.store}AnitaDarin/menu/AnitaDarin/commands.json"):find('"gm"', 1, true),
+stand.check(stand.read_file($"{stand.store}AnitaDarin/menu/AnitaDarin/commands/godmode.json"):find('"gm"', 1, true),
     "a store pack's names go to its folder in store")
 stand.click(entry("AnitaDarin: loaded"), 1)
 stand.check(found_row("gm") and found_row("gm").kind == "list", "loading it again gives its items the saved names")

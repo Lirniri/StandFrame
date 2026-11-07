@@ -4,10 +4,14 @@
 -- prefix and separator, so the same base name in both can't clash (atdar_settings and atdarsettings).
 --
 -- Every item can have a custom name: it takes the base name's place, the prefix stays
--- (godmode -> god gives atdargod). Custom names are kept in a commands.json of whoever made the item:
+-- (godmode -> god gives atdargod), and extra words: more commands for it with the same prefix
+-- (gm -> atdargm). Each command's are kept in a file of its own, commands/<base>.json:
+--     { "name": "god", "words": ["gm", "immortal"] }
+-- in the commands folder of whoever made the item:
 --   the loaded menu - the menu's own folder (ui/stand/menu passes it to begin_menu): the pack's in store,
 --                     or core's for the built-in menu
---   the script      - store/<script>/commands.json
+--   the script      - store/<script>/commands/
+-- An older commands.json there ({ base: name }) is still read, and goes once the folder is written.
 -- Items made between begin_menu() and end_menu() are the menu's, all others the script's
 
 local Logger = Atdar.loader.load("core/logger")
@@ -31,10 +35,12 @@ local owner = {}
 -- Set while the loaded menu builds: items made then are its own
 local building_menu = false
 
--- Custom names of each owner: base name -> custom base name (both sanitized), and the file they're kept in.
--- The script's file is read on first use: tests (and a renamed script) point store elsewhere before that
+-- Custom names and extra words of each owner: base name -> { name = custom base name or nil,
+-- words = { ... } } (all sanitized), the folder they're kept in and the older commands.json there.
+-- The script's are read on first use: tests (and a renamed script) point store elsewhere before that
 local custom = { menu = {}, script = nil }
-local files = { menu = nil, script = nil }
+local dirs = { menu = nil, script = nil }
+local legacy = { menu = nil, script = nil }
 
 -- Lowercase, keeps only a-z, 0-9 and _
 function module.sanitize(name: string): string
@@ -42,25 +48,63 @@ function module.sanitize(name: string): string
     return clean
 end
 
--- A commands.json's content -> custom names, keeping only sound ones
-local function read_custom(file: table): table
+-- One command's entry as read: { name, words }, only sound names and words kept; nil when nothing's left
+local function clean_entry(base: string, name, words): ?table
+    local entry = { name = nil, words = {} }
+    if type(name) == "string" then
+        local clean = module.sanitize(name)
+        if clean ~= "" and clean ~= base then
+            entry.name = clean
+        end
+    end
+    local seen = { [base] = true }
+    if entry.name then
+        seen[entry.name] = true
+    end
+    for _, word in ipairs(type(words) == "table" and words or {}) do
+        local clean = type(word) == "string" and module.sanitize(word) or ""
+        if clean ~= "" and not seen[clean] then
+            seen[clean] = true
+            table.insert(entry.words, clean)
+        end
+    end
+    if entry.name == nil and #entry.words == 0 then
+        return nil
+    end
+    return entry
+end
+
+-- An owner's names: the older commands.json first, then each commands/<base>.json (they win)
+local function read_names(dir: string, old_file: table): table
     local names = {}
-    for base, name in pairs(file:read() or {}) do
-        if type(base) == "string" and type(name) == "string" then
-            local clean_base, clean_name = module.sanitize(base), module.sanitize(name)
-            if clean_base ~= "" and clean_name ~= "" and clean_name ~= clean_base then
-                names[clean_base] = clean_name
+    for base, name in pairs(old_file:read() or {}) do
+        if type(base) == "string" then
+            local clean_base = module.sanitize(base)
+            if clean_base ~= "" then
+                names[clean_base] = clean_entry(clean_base, name, nil)
+            end
+        end
+    end
+    if filesystem.is_dir(dir) then
+        for _, path in ipairs(filesystem.list_files(dir)) do
+            local base = path:match("([^\\/]+)%.json$")
+            local clean_base = base and module.sanitize(base) or ""
+            if clean_base ~= "" then
+                local data = new JsonFile(path):read() or {}
+                names[clean_base] = clean_entry(clean_base, data.name, data.words)
             end
         end
     end
     return names
 end
 
--- The script's custom names, read from store/<script>/commands.json the first time they're needed
+-- The script's names, read from store/<script>/commands/ the first time they're needed
 local function script_custom(): table
     if custom.script == nil then
-        files.script = new JsonFile($"{filesystem.store_dir()}{Atdar.name}\\commands.json")
-        custom.script = read_custom(files.script)
+        local store = $"{filesystem.store_dir()}{Atdar.name}\\"
+        dirs.script = $"{store}commands\\"
+        legacy.script = new JsonFile($"{store}commands.json")
+        custom.script = read_names(dirs.script, legacy.script)
     end
     return custom.script
 end
@@ -92,7 +136,14 @@ end
 
 -- The base as the owner's custom names have it
 local function effective(clean: string, who: string): string
-    return custom_of_owner(who)[clean] or clean
+    local entry = custom_of_owner(who)[clean]
+    return entry and entry.name or clean
+end
+
+-- The base's extra words (sanitized), {} when it has none
+local function words_for(clean: string, who: string): table
+    local entry = custom_of_owner(who)[clean]
+    return entry and entry.words or {}
 end
 
 -- who: "script" or "menu", whose prefix and separator
@@ -118,6 +169,9 @@ function module.names(bases: table): table
     local who = current_owner()
     for _, clean in ipairs(clean_bases(bases, true)) do
         table.insert(names, full_name(effective(clean, who), who))
+        for _, word in ipairs(words_for(clean, who)) do
+            table.insert(names, full_name(word, who))
+        end
     end
     return names
 end
@@ -167,11 +221,15 @@ function module.names_of(ref): ?table
     local names = {}
     for _, name in ipairs(clean) do
         table.insert(names, full_name(effective(name, owner[ref]), owner[ref]))
+        for _, word in ipairs(words_for(name, owner[ref])) do
+            table.insert(names, full_name(word, owner[ref]))
+        end
     end
     return names
 end
 
--- @return An item's command names without the prefix ("godmode", or its custom name), or nil if it isn't tracked
+-- @return An item's command names without the prefix ("godmode" or its custom name, then its extra
+-- words), or nil if it isn't tracked
 function module.bases_of(ref): ?table
     local clean = tracked[ref]
     if not clean then
@@ -180,6 +238,9 @@ function module.bases_of(ref): ?table
     local names = {}
     for _, name in ipairs(clean) do
         table.insert(names, effective(name, owner[ref]))
+        for _, word in ipairs(words_for(name, owner[ref])) do
+            table.insert(names, word)
+        end
     end
     return names
 end
@@ -201,7 +262,28 @@ function module.custom_of(ref): string
     if base == nil then
         return ""
     end
-    return custom_of_owner(owner[ref])[base] or ""
+    local entry = custom_of_owner(owner[ref])[base]
+    return entry and entry.name or ""
+end
+
+-- @return The item's extra words ("gm", "immortal"), a copy; {} when it has none
+function module.words_of(ref): table
+    local base = module.base_of(ref)
+    local words = {}
+    if base ~= nil then
+        for _, word in ipairs(words_for(base, owner[ref])) do
+            table.insert(words, word)
+        end
+    end
+    return words
+end
+
+-- @return The commands folder of "script" or "menu" (the loaded menu's), nil while no menu was loaded
+function module.folder_of(who: string): ?string
+    if who == "script" then
+        script_custom()
+    end
+    return dirs[who]
 end
 
 -- @return "menu" or "script": whose item it is (where its custom name is kept), or nil if it isn't tracked
@@ -209,11 +291,12 @@ function module.owner_of(ref): ?string
     return owner[ref]
 end
 
--- The loaded menu starts building. Its custom names are in file (a JsonFile: its commands.json)
--- and apply to everything it makes until end_menu()
-function module.begin_menu(file: table): void
-    files.menu = file
-    custom.menu = read_custom(file)
+-- The loaded menu starts building. Its names are in menu_dir's commands folder (and an older
+-- commands.json there) and apply to everything it makes until end_menu()
+function module.begin_menu(menu_dir: string): void
+    dirs.menu = $"{menu_dir}commands\\"
+    legacy.menu = new JsonFile($"{menu_dir}commands.json")
+    custom.menu = read_names(dirs.menu, legacy.menu)
     building_menu = true
 end
 
@@ -221,19 +304,74 @@ function module.end_menu(): void
     building_menu = false
 end
 
--- Writes an owner's custom names into its commands.json; with none left the file goes
+-- Writes one command's file: its name and words; with neither left the file goes
+local function write_entry(dir: string, base: string, entry): bool
+    local file = new JsonFile($"{dir}{base}.json")
+    if entry == nil then
+        if file:exists() then
+            file:remove()
+        end
+        return true
+    end
+    local data = { words = entry.words }
+    if entry.name then
+        data.name = entry.name
+    end
+    return file:write(data)
+end
+
+-- Saves one of an owner's commands into its commands folder. An older commands.json still there is
+-- moved over first (every name in it gets its own file), then removed
 -- @return Whether it was written
-local function save(who: string): bool
-    local file = files[who]
-    if file == nil then
+local function save(who: string, base: string): bool
+    local dir = dirs[who]
+    if dir == nil then
         return false
     end
     local names = custom_of_owner(who)
-    if next(names) == nil then
-        file:remove()
-        return true
+    local old_file = legacy[who]
+    if old_file ~= nil and old_file:exists() then
+        for other, entry in pairs(names) do
+            if not write_entry(dir, other, entry) then
+                return false
+            end
+        end
+        old_file:remove()
     end
-    return file:write(names)
+    return write_entry(dir, base, names[base])
+end
+
+-- Whether another item already answers to name (its own, custom name or a word)
+local function taken_by_other(ref, name: string): bool
+    prune()
+    for other in pairs(tracked) do
+        if other ~= ref then
+            for _, other_name in ipairs(module.bases_of(other)) do
+                if other_name == name then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- The entry of an item's first base, made when it has none yet
+local function entry_of(ref): table
+    local names = custom_of_owner(owner[ref])
+    local base = tracked[ref][1]
+    names[base] ??= { name = nil, words = {} }
+    return names[base]
+end
+
+-- Drops an entry left with no name and no words, so its file goes
+local function tidy(ref): void
+    local names = custom_of_owner(owner[ref])
+    local base = tracked[ref][1]
+    local entry = names[base]
+    if entry ~= nil and entry.name == nil and #entry.words == 0 then
+        names[base] = nil
+    end
 end
 
 -- Gives an item's first command a custom base name and saves it; "" (or its own base) goes back to its own.
@@ -243,27 +381,87 @@ function module.set_custom(ref, name: string): (bool, ?string)
     if not clean then
         return false, "unknown"
     end
-    local names = custom_of_owner(owner[ref])
     local base = clean[1]
     local new_name = module.sanitize(name)
+    local entry = entry_of(ref)
     if new_name == "" or new_name == base then
-        names[base] = nil
+        entry.name = nil
     else
         -- Two items with one command: Stand would only find one of them
-        prune()
-        for other in pairs(tracked) do
-            if other ~= ref then
-                for _, other_name in ipairs(module.bases_of(other)) do
-                    if other_name == new_name then
-                        return false, "taken"
-                    end
-                end
+        if taken_by_other(ref, new_name) then
+            tidy(ref)
+            return false, "taken"
+        end
+        -- One of its own words becomes its name: not twice
+        for i, word in ipairs(entry.words) do
+            if word == new_name then
+                table.remove(entry.words, i)
+                break
             end
         end
-        names[base] = new_name
+        entry.name = new_name
     end
+    tidy(ref)
     pcall(menu.set_command_names, ref, module.names_of(ref))
-    if not save(owner[ref]) then
+    if not save(owner[ref], base) then
+        return false, "not_saved"
+    end
+    return true, nil
+end
+
+-- Adds an extra word to an item: one more command for it, with the same prefix ("gm" -> atdargm).
+-- @return true, or false and why: "invalid" (nothing usable in it), "own" (the item has it already),
+-- "taken" (another item's command), "not_saved"
+function module.add_word(ref, word: string): (bool, ?string)
+    local clean = tracked[ref]
+    if not clean then
+        return false, "unknown"
+    end
+    local new_word = module.sanitize(word)
+    if new_word == "" then
+        return false, "invalid"
+    end
+    for _, name in ipairs(module.bases_of(ref)) do
+        if name == new_word then
+            return false, "own"
+        end
+    end
+    if new_word == clean[1] then
+        return false, "own"
+    end
+    if taken_by_other(ref, new_word) then
+        return false, "taken"
+    end
+    table.insert(entry_of(ref).words, new_word)
+    pcall(menu.set_command_names, ref, module.names_of(ref))
+    if not save(owner[ref], clean[1]) then
+        return false, "not_saved"
+    end
+    return true, nil
+end
+
+-- Takes an extra word off an item
+-- @return true, or false and why: "unknown" (it has no such word), "not_saved"
+function module.remove_word(ref, word: string): (bool, ?string)
+    local clean = tracked[ref]
+    if not clean then
+        return false, "unknown"
+    end
+    local entry = custom_of_owner(owner[ref])[clean[1]]
+    local found = false
+    for i, own in ipairs(entry and entry.words or {}) do
+        if own == word then
+            table.remove(entry.words, i)
+            found = true
+            break
+        end
+    end
+    if not found then
+        return false, "unknown"
+    end
+    tidy(ref)
+    pcall(menu.set_command_names, ref, module.names_of(ref))
+    if not save(owner[ref], clean[1]) then
         return false, "not_saved"
     end
     return true, nil

@@ -136,8 +136,8 @@ end
 local stopping = false
 util.on_stop(function() stopping = true end)
 
--- A command: a list with its full command, its custom name and a reset. The name is kept by
--- ui/stand/commands: the menu's in its folder, the script's in store/<script>/commands.json
+-- A command: a list with its full command, its custom name and a reset, then its extra words. They're
+-- kept by ui/stand/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
 local function command_entry(list: table, ref): table
     local entry = list:list(short_names(ref), {}, item_name(ref))
     local found = { ref = ref, row = entry.handle }
@@ -155,12 +155,13 @@ local function command_entry(list: table, ref): table
         pcall(menu.set_value, found.command, full_names(ref))
     end
 
-    -- A text field takes its text through the command box, so it needs a command: rename<base>.
+    -- A text field takes its text through the command box, so it needs a command: cbrename<base> (cb: the
+    -- Command Box section, like its cbprefix and cbseparator).
     -- Made without commands.track, so it isn't one of the found commands itself.
     -- Its default is the custom name now: when Stand puts a field back to its default (restoring its
     -- profile's state), that's no change. Only the user's own entries rename
     local base = commands.base_of(ref) or ""
-    menu.text_input(entry.handle, label("found_commands.rename.name"), commands.names({ $"rename{base}" }),
+    menu.text_input(entry.handle, label("found_commands.rename.name"), commands.names({ $"cbrename{base}" }),
         label("found_commands.rename.help"), function(value, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
@@ -191,6 +192,52 @@ local function command_entry(list: table, ref): table
         renamed()
         log:notify(text("found_commands.reset.done"):format(short_names(ref)))
     end, {}, label("found_commands.reset.help"))
+
+    -- Extra words: more commands for the item, the same prefix. Each a button that takes it off;
+    -- made again (at the end of the list) when one is added or taken off
+    entry:divider(label("found_commands.words.divider"))
+    local word_items = {}
+    local function show_words(): void
+        for _, item in ipairs(word_items) do
+            pcall(menu.delete, item)
+        end
+        word_items = {}
+        for _, word in ipairs(commands.words_of(ref)) do
+            table.insert(word_items, menu.action(entry.handle, word, {}, label("found_commands.words.remove_help"), function()
+                local _, reason = commands.remove_word(ref, word)
+                if reason == "not_saved" then
+                    log:warn(text("found_commands.not_saved"))
+                end
+                renamed()
+                show_words()
+                log:notify(text("found_commands.words.removed"):format(word))
+            end))
+        end
+    end
+    -- A text field needs a command: cbaddword<base>, made without commands.track like cbrename
+    menu.text_input(entry.handle, label("found_commands.words.add.name"), commands.names({ $"cbaddword{base}" }),
+        label("found_commands.words.add.help"), function(value, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] or value == "" then
+            return
+        end
+        local ok, reason = commands.add_word(ref, value)
+        if reason == "not_saved" then
+            renamed()
+            show_words()
+            log:warn(text("found_commands.not_saved"))
+            return
+        end
+        if not ok then
+            local key = ({ own = "found_commands.words.own", taken = "found_commands.rename.taken" })[reason]
+                or "found_commands.rename.failed"
+            log:warn(text(key):format(value))
+            return
+        end
+        renamed()
+        show_words()
+        log:notify(text("found_commands.words.added"):format(commands.sanitize(value)))
+    end, "")
+    show_words()
     return found
 end
 
@@ -285,6 +332,20 @@ function module.build(section: table, opts: table): void
     command_box:divider(label("commands_divider"))
     local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
     local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
+    -- The folder each list's names and words are kept in; made when it isn't there yet
+    for _, part in ipairs({ { list = base_commands, who = "script" }, { list = found, who = "menu" } }) do
+        part.list:action(label("commands_folder.name"), function()
+            local dir = commands.folder_of(part.who)
+            if dir == nil then
+                log:warn(text("commands_folder.no_menu"))
+                return
+            end
+            if not filesystem.exists(dir) then
+                filesystem.mkdirs(dir)
+            end
+            util.open_folder(dir)
+        end, {}, label($"commands_folder.{part.who}_help"))
+    end
 
     local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
     local paths = Atdar.filesystem.paths
@@ -302,6 +363,13 @@ function module.build(section: table, opts: table): void
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_menu.build(debug)
     modules_menu.debug_only(delete_script(debug))
+
+    -- The script's cards and posts in the game's feed, all taken away (other scripts' and the game's stay).
+    -- Told in Stand: a notice in the feed would be one more to take away
+    section:action(label("clear_feed.name"), function()
+        local removed = Atdar.natives.visual.hud.thefeed.remove_all()
+        Atdar.util.toast(text("clear_feed.done"):format(removed), { target = "stand" })
+    end, { "notifyclearfeed" }, label("clear_feed.help"))
 
     -- Last, once every item of the section has its commands
     fill_command_lists(base_commands, found)

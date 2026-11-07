@@ -56,7 +56,8 @@ local function entry(name) return stand.find_item(profiles(), name) end
 -- ─── Layout ──────────────────────────────────────────────────────────────────
 
 stand.equal(names_in(stand.root),
-    "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug",
+    "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug"
+    .. " | Remove Game Notifications",
     "the section's layout")
 stand.equal(names_in(settings()), "Appearance | Language: Auto (Stand) | Script | Rename Script", "Settings")
 local appearance = stand.find_item(settings(), "Appearance")
@@ -118,6 +119,12 @@ notifications.on_back()
 stand.check(#removed_items == 6, "going back out of Notifications takes every example away")
 notifications.on_back()
 stand.equal(#removed_items, 6, "and only once")
+-- Remove Game Notifications: the script's posts out of the feed, told in Stand
+stand.click(stand.child(examples, "Notification"))
+stand.toasts = {}
+stand.click(find("Remove Game Notifications"))
+stand.equal(#removed_items, 7, "Remove Game Notifications takes the script's posts out of the feed")
+stand.check(stand.toasts[#stand.toasts]:find("taken out of the feed: 1", 1, true), "and tells how many, in Stand")
 profile.set("notify_errors_in_stand", true)
 stand.click(stand.find_item(notifications, "Type"), 1)
 local flash_toggle = stand.find_item(notifications, "Flash Notifications")
@@ -228,7 +235,7 @@ stand.equal(names_in(find("Debug")),
     "Debug Mode | Load Timing | Logs | Name In Logs: "
     .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
     .. " | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
-stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
+stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
 -- Unload runs menu.pluto's unload (tested in test_menu_startup)
@@ -238,8 +245,8 @@ stand.check(UNLOADED, "Unload calls the menu's unload")
 -- Base Commands: the script's own, one list per item with commands, built after the whole section.
 -- Found Commands is the loaded menu's: none here
 local found = stand.child(find("Command Box"), "Base Commands")
-stand.equal(names_in(stand.child(find("Command Box"), "Found Commands")), "No menu is loaded or it has no commands",
-    "Found Commands: no menu, no commands")
+stand.equal(names_in(stand.child(find("Command Box"), "Found Commands")),
+    "Open Commands Folder | No menu is loaded or it has no commands", "Found Commands: its folder, no menu, no commands")
 local function row(command)
     for _, child in found.children do
         if stand.name_of(child) == command then
@@ -253,16 +260,28 @@ local debug_row = row("debug")
 stand.equal(debug_row and debug_row.kind, "list", "a row is a list named by the command without the prefix")
 stand.equal(debug_row.help, "Debug Mode", "its help is the item's name")
 stand.check(row("settings"), "lists also show their command")
--- The script's own commands get custom names too, kept in store/<script>/commands.json
+-- The script's own commands get custom names too, kept in store/<script>/commands/<base>.json
 -- Go To Item takes the cursor to the item itself
 stand.click(stand.find_item(debug_row, "Go To Item"))
 stand.check(stand.focused and stand.name_of(stand.focused) == "Debug Mode", "Go To Item focuses the item")
-local script_names = $"{stand.store}AnitaDarin/commands.json"
+local script_names = $"{stand.store}AnitaDarin/commands/debug.json"
 menu.set_value(stand.find_item(debug_row, "Custom Name"), "dbg")
 stand.equal(stand.name_of(debug_row), "dbg", "a script command renamed: the row follows")
 stand.equal(stand.find_item(debug_row, "Command").value, "atdardbg", "and the command, with the prefix")
-stand.check(stand.read_file(script_names) and stand.read_file(script_names):find('"debug": "dbg"', 1, true),
-    "kept in store/AnitaDarin/commands.json")
+stand.check(stand.read_file(script_names) and stand.read_file(script_names):find('"name": "dbg"', 1, true),
+    "kept in store/AnitaDarin/commands/debug.json")
+-- Open Commands Folder: Base Commands' opens the script's commands folder
+stand.toasts = {}
+stand.click(stand.child(found, "Open Commands Folder"))
+stand.check(stand.toasts[#stand.toasts]:find("AnitaDarin\\commands\\", 1, true), "Base Commands: store/AnitaDarin/commands")
+-- Extra words through the menu: Add Word makes one more command, its button takes it off
+menu.set_value(stand.find_item(debug_row, "Add Word"), "dbgmode")
+stand.equal(stand.find_item(debug_row, "Command").value, "atdardbg, atdardbgmode", "Add Word: one more command")
+stand.equal(stand.name_of(debug_row), "dbg, dbgmode", "the row shows it too")
+stand.check(stand.read_file(script_names):find('"dbgmode"', 1, true), "kept in the command's file")
+stand.click(stand.child(debug_row, "dbgmode"))
+stand.equal(stand.find_item(debug_row, "Command").value, "atdardbg", "its button takes it off")
+stand.equal(stand.child(debug_row, "dbgmode"), nil, "and the button goes")
 -- Made again (a rebuild, the next start), the item gets its custom name right away
 rebuild()
 found = stand.child(find("Command Box"), "Base Commands")
@@ -398,12 +417,48 @@ stand.equal(find("Short Name").value, "Auto", "main's values are back in the fie
 stand.click(stand.find_item(entry("second"), "Save"))
 stand.check(stand.read_file($"{profiles_dir}second.json"):find('"Auto"', 1, true), "Save on another profile overwrites it")
 
-stand.clear_logs()
+-- main can be deleted like any other; Create Main Profile makes it again
 stand.click(stand.find_item(entry("main (active)"), "Delete"))
-stand.check(stand.find_log("can't be deleted"), "main can't be deleted")
+stand.equal(profile.active_name(), "second", "main deleted while active: another profile is loaded")
+stand.check(not io.exists($"{profiles_dir}main.json"), "main's file is gone")
+stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | second (active)",
+    "only second is left")
+-- The last one too, like Stand: the script goes on with its values, nothing listed
+stand.click(stand.find_item(entry("second (active)"), "Delete"))
+stand.check(not io.exists($"{profiles_dir}second.json"), "the only profile can be deleted too")
+stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles"
+    .. " | No profiles: Create Main Profile or Save brings one back", "none listed, and how to get one back")
+stand.equal(profile.active_name(), "second", "the script goes on with the values it has")
+stand.clear_logs()
+stand.click(stand.find_item(profiles(), "Create Main Profile"))
+stand.check(io.exists($"{profiles_dir}main.json") and stand.find_log("Main profile main made"), "Create Main Profile makes main")
+stand.check(entry("main") ~= nil, "it's listed")
+profile.save()
+stand.check(io.exists($"{profiles_dir}second.json"), "Save writes the deleted one back")
+-- There already: the warning (the stand-in proceeds), then made again with the defaults
+stand.write_file($"{profiles_dir}main.json", '{"short_name": "Changed"}')
+stand.clear_logs()
+stand.click(stand.find_item(profiles(), "Create Main Profile"))
+stand.check(stand.find_log("made again with the defaults"), "main there: made again after the warning")
+stand.check(not stand.read_file($"{profiles_dir}main.json"):find('"Changed"', 1, true), "its old values are gone")
+stand.click(stand.find_item(entry("main"), "Load"))
 stand.click(stand.find_item(entry("second"), "Delete"))
-stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "second is deleted")
+stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)",
+    "second is deleted")
 stand.check(not io.exists($"{profiles_dir}second.json"), "with its file")
+-- Opening Profiles reads the list again: a profile file put there meanwhile is listed
+stand.write_file($"{profiles_dir}dropped.json", "{}")
+stand.click(profiles())
+stand.check(entry("dropped") ~= nil, "opening Profiles lists a profile added meanwhile")
+os.remove($"{profiles_dir}dropped.json")
+stand.click(profiles())
+stand.equal(entry("dropped"), nil, "and drops one that's gone")
+-- The active main deleted as the only profile, then Create Main Profile: its file is written again
+stand.click(stand.find_item(entry("main (active)"), "Delete"))
+stand.check(not io.exists($"{profiles_dir}main.json") and profile.active_name() == "main", "main deleted, still active")
+stand.click(stand.find_item(profiles(), "Create Main Profile"))
+stand.check(io.exists($"{profiles_dir}main.json"), "Create Main Profile writes the active main's file")
+stand.check(entry("main (active)") ~= nil, "and it's listed")
 
 -- Copy Menu To Core and Command Box work from their new places
 stand.click(stand.find_item(find("Load Menu"), "Copy Menu To Core"), 2)

@@ -139,7 +139,7 @@ local FIRE_RADIUS = 5.0
 -- A vehicle that exploded is a wreck for the game: it looks repaired, but is_driveable stays false and it
 -- can't be driven again (no native undoes that), only replaced
 -- @return Whether it was a vehicle (nothing is done otherwise)
-function module.fix(vehicle: int, dirt_level: float|bool = false): bool
+function module.repair(vehicle: int, dirt_level: float|bool = false): bool
     if not module.is_exist(vehicle) then
         return false
     end

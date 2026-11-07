@@ -21,7 +21,8 @@
             "name": "%s (built-in)",
             "help": "The menu that ships with the script",
             "copied_help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded.",
-            "auto_copy_again": "Copy Menu To Core is on in the profile: the menu will be copied again at the next start. To stop it: Load Menu > Copy Menu To Core > Off"
+            "auto_copy_again": "Copying to core is on: the menu comes back at the next start",
+            "removed": "Removed from core: %d file(s)"
         },
         "pack": {
             "help": "v%s by %s\nRuns the pack's own code with full script access. Only load packs you trust.",
@@ -48,6 +49,14 @@
         "create": {
             "name": "Create Profile",
             "help": "Saves the current values as a new profile and loads it. Name: a-z, 0-9, _ and -"
+        },
+        "create_main": {
+            "name": "Create Main Profile",
+            "help": "Makes the main profile with the defaults; when it's there, makes it again after a warning",
+            "warning": "The %s profile is already there. Make it again with the defaults? Its settings will be lost",
+            "done": "Main profile %s made",
+            "recreated": "Profile %s made again with the defaults",
+            "failed": "Couldn't write the %s profile"
         },
         "open_folder": {
             "name": "Open Folder",
@@ -84,9 +93,8 @@
         },
         "delete": {
             "name": "Delete",
-            "help": "Deletes this profile; deleting the active one loads main",
-            "warning": "Delete profile '%s'?",
-            "main": "The main profile can't be deleted"
+            "help": "Deletes this profile, main and the last one too; deleting the active one loads another, with none left the script goes on with its values",
+            "warning": "Delete profile '%s'?"
         },
         "settings": {
             "name": "Settings",
@@ -278,8 +286,8 @@
             "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
             "off": "Off",
             "missing": "%s (not in store)",
-            "later": "'%s' will be copied to core at the next start. Save the profile to keep it",
-            "disabled": "Copying a menu to core is off from the next start; the copy already in core stays until you remove it in Load Menu"
+            "later": "'%s' will be copied to core at the next start",
+            "disabled": "Copying to core is off; the copy in core stays"
         },
         "script": "Script",
         "rename": {
@@ -313,7 +321,8 @@
         "notify_emoticon_success": {
             "name": "Success",
             "help": "The emoticon of a success (copied, saved...); empty - none"
-        }
+        },
+        "no_profiles": "No profiles: Create Main Profile or Save brings one back"
     },
     "modules": {
         "divider": "Debug",
@@ -424,6 +433,7 @@
             },
             "status_line": "Loop Status: %s",
             "result_line": "Variable: %s",
+            "result_line_typed": "Variable (%s): %s",
             "result_list": "Value (%d)",
             "no_result": "—"
         },
@@ -450,6 +460,28 @@
                 "failed": "error"
             },
             "module_stopped": "%s stopped: the loop runs by hand"
+        },
+        "types": {
+            "nil": "nil",
+            "boolean": "boolean",
+            "integer": "integer",
+            "float": "float",
+            "string": "string",
+            "function": "function",
+            "userdata": "Stand object",
+            "thread": "thread",
+            "table": "table",
+            "table_empty": "empty table",
+            "table_of_integer": "table of integers",
+            "table_of_float": "table of floats",
+            "table_of_number": "table of numbers",
+            "table_of_string": "table of strings",
+            "table_of_boolean": "table of booleans",
+            "table_of_table": "table of tables",
+            "table_of_function": "table of functions",
+            "table_of_userdata": "table of Stand objects",
+            "table_of_thread": "table of threads",
+            "table_of_nil": "table"
         }
     },
     "script_menu": {
@@ -468,12 +500,12 @@
         "commands_divider": "Commands",
         "base_commands": {
             "name": "Base Commands",
-            "help": "The script's own commands, without the prefix. Each opens a list where it can be renamed; the names are kept in store/AnitaDarin/commands.json",
+            "help": "The script's own commands, without the prefix. Each opens a list where it can be renamed and given extra words; kept in store/AnitaDarin/commands",
             "none": "No commands"
         },
         "found_commands": {
             "name": "Found Commands",
-            "help": "The loaded menu's commands, without the prefix. Each opens a list where it can be renamed; the names are kept in the menu's commands.json (the pack's folder in store, or core)",
+            "help": "The loaded menu's commands, without the prefix. Each opens a list where it can be renamed and given extra words; kept in the menu's commands folder (the pack's in store, or core)",
             "none": "No menu is loaded or it has no commands",
             "command": "Command",
             "focus": {
@@ -493,7 +525,24 @@
                 "help": "Gives the command back its own name",
                 "done": "The command is '%s' again"
             },
+            "words": {
+                "divider": "Extra Words",
+                "add": {
+                    "name": "Add Word",
+                    "help": "One more command for this item, with the same prefix; it can have several"
+                },
+                "remove_help": "Click to take this word off",
+                "added": "Command '%s' added",
+                "removed": "Word '%s' taken off",
+                "own": "'%s' is this command's already"
+            },
             "not_saved": "The custom command names couldn't be saved"
+        },
+        "commands_folder": {
+            "name": "Open Commands Folder",
+            "script_help": "Opens the folder with the script's commands' custom names and words: store/AnitaDarin/commands",
+            "menu_help": "Opens the loaded menu's commands folder: its commands' custom names and words",
+            "no_menu": "No menu is loaded: there's no commands folder"
         },
         "open_folder": {
             "name": "Open Folder",
@@ -544,6 +593,11 @@
                 "again_notice": "Click it again within %d seconds to delete"
             },
             "warning_keep": "Delete the script '%s' (launcher, lib, store and resources folders)? Profiles and settings are kept.\nThis can't be undone."
+        },
+        "clear_feed": {
+            "name": "Remove Game Notifications",
+            "help": "Takes every notification of the script out of the game's feed; the game's and other scripts' stay",
+            "done": "Notifications taken out of the feed: %d"
         }
     }
 }
