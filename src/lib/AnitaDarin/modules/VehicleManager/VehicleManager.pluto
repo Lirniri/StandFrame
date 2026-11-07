@@ -192,16 +192,19 @@ local class VehicleManager extends Module
         return fixed
     end
 
-    function explode_last(): int
+    -- Explodes the vehicle remembered last
+    -- @return Whether there was one in the game
+    function explode_last(): bool
         local n_vehicle = Atdar.natives.entity.vehicle
         local handle = self:get_handle()
-        if handle == nil then
+        if handle == nil or not n_vehicle.is_exist(handle) then
             return false
         end
         n_vehicle.explode({
             vehicle = handle,
             net_id = n_vehicle.get_net_id(handle)
         })
+        return true
     end
 
     function explode_all(): int

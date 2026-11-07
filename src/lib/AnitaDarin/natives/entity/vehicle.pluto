@@ -223,10 +223,4 @@ function module.explode(opts: table): void
     end
 end
 
-function module.detele(vehicle: int): void
-    if module.is_exist(vehicle) then
-        Atdar.natives.entity.detele(vehicle)
-    end
-end
-
 return module
