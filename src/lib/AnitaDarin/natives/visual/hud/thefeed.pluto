@@ -28,8 +28,8 @@ module.ICON = {
 function module.begin.post(text: string)
     HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
     if text ~= nil then
-        local text = Atdar.natives.visual.hud.text
-        text.add_string(text)  
+        local hud_text = Atdar.natives.visual.hud.text
+        hud_text.add_string(text)  
     end
 end
 

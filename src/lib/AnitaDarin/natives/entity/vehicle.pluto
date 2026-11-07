@@ -24,11 +24,17 @@ end
 
 -- Get
 
+function module.get_heading(vehicle: int, from_eulers: bool = false): float
+    if module.is_vehicle(vehicle) then
+        Atdar.natives.entity.get_heading(vehicle, from_eulers)
+    end
+end
+
 -- vehicle_or_model: vehicle handle (number) or model name (string, e.g. "adder")
 function module.get_class(vehicle_or_model: int|string): int
     local target = vehicle_or_model
     if type(target) == "string" then
-        return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(util.joaat(target))
+        return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(Atdar.util.hash(target))
     end
     if module.is_exist(target) then
         return VEHICLE.GET_VEHICLE_CLASS(target)
@@ -58,6 +64,36 @@ end
 
 -- Actions
 
+-- Spawns a vehicle of a model (name or hash) at x, y, z facing heading.
+-- isNetwork given (and the flags after it) - the game's VEHICLE.CREATE_VEHICLE with exactly those flags;
+-- without it - Stand's entities.create_vehicle, which picks them itself.
+-- The game's native needs the model loaded first (STREAMING.REQUEST_MODEL / HAS_MODEL_LOADED)
+-- @param allow_low_z The native's p7: true lets the vehicle spawn below z -100 (the game refuses that otherwise)
+-- @return The vehicle's handle
+function module.create(
+    hash: int|string,
+    x: float, y: float, z: float,
+    heading: float,
+    isNetwork: bool,
+    bScriptHostVeh: bool,
+    allow_low_z: bool
+): int
+    local model = Atdar.util.hash(hash)
+    if isNetwork ~= nil then
+        return VEHICLE.CREATE_VEHICLE(
+            model, x, y, z, heading,
+            isNetwork,
+            bScriptHostVeh == true,
+            allow_low_z == true
+        )
+    end
+    return entities.create_vehicle(
+        model,
+        v3.new(x, y, z),
+        heading
+    )
+end
+
 -- opts: { vehicle, is_audible = true, is_invisible = false, net_id = nil }
 -- net_id given: networked explosion (NETWORK_EXPLODE_VEHICLE), otherwise a local one
 function module.explode(opts: table): void
@@ -65,9 +101,17 @@ function module.explode(opts: table): void
     local is_audible = opts.is_audible ~= false
     local is_invisible = opts.is_invisible == true
     if opts.net_id ~= nil then
-        NETWORK.NETWORK_EXPLODE_VEHICLE(vehicle, is_audible, is_invisible, opts.net_id)
+        NETWORK.NETWORK_EXPLODE_VEHICLE(
+            vehicle,
+            is_audible, is_invisible,
+            opts.net_id
+        )
     else
-        VEHICLE.EXPLODE_VEHICLE(vehicle, is_audible, is_invisible)
+        VEHICLE.EXPLODE_VEHICLE(
+            vehicle,
+            is_audible,
+            is_invisible
+        )
     end
 end
 

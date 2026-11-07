@@ -30,16 +30,18 @@ local REQUEST = {
     ptfx = |opts| -> module.ptfx.asset.request(opts.name, opts.timeout),
     vehicle = |opts| -> module.vehicle.asset.request(opts.model, opts.asset, opts.timeout),
     texture_dict = |opts| -> module.texture_dict.asset.request(opts.name, opts.timeout),
+    model = |opts| -> module.model.asset.request(opts.model, opts.timeout),
 }
 
 -- One entry point for all asset types; opts.what picks the type, the rest are its arguments:
 --   { what = "action_mode" | "stealth_mode" | "ptfx" | "texture_dict", name = "...", timeout = 2000 }
 --   { what = "vehicle", model = "adder", asset = 0, timeout = 2000 }
+--   { what = "model", model = "adder", timeout = 2000 }
 -- @return Whether the asset loaded
 function module.request(opts: table): bool
     local request = REQUEST[opts.what]
     if not request then
-        log:error($"unknown asset type '{tostring(opts.what)}', expected action_mode, stealth_mode, ptfx, texture_dict or vehicle")
+        log:error($"unknown asset type '{tostring(opts.what)}', expected action_mode, stealth_mode, ptfx, texture_dict, model or vehicle")
         return false
     end
     return request(opts)

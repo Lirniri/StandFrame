@@ -75,6 +75,24 @@ game.in_vehicle[100] = nil
 -- ─── vehicle ─────────────────────────────────────────────────────────────────
 
 stand.check(vehicle.is_exist(501) and not vehicle.is_exist(100), "vehicle.is_exist: an existing entity that's a vehicle")
+-- create: with isNetwork the game's native and its flags, without it Stand's entities.create_vehicle
+VEHICLE.CREATE_VEHICLE = function(model, x, y, z, heading, network, host, p7)
+    call("CREATE_VEHICLE", model, x, y, z, heading, tostring(network), tostring(host), tostring(p7))
+    return 600
+end
+_G.entities = _G.entities or {}
+entities.create_vehicle = function(model, pos, heading)
+    call("create_vehicle", model, pos.x, pos.y, pos.z, heading)
+    return 601
+end
+_G.v3 = { new = function(x, y, z) if type(x) == "table" then return x end return { x = x, y = y, z = z } end }
+stand.equal(vehicle.create("adder", 1, 2, 3, 90), 601, "create without isNetwork: Stand's entities.create_vehicle")
+stand.equal(last_call(), $"create_vehicle {util.joaat('adder')} 1 2 3 90", "with the model's hash and the position")
+stand.equal(vehicle.create(12345, 1, 2, 3, 90, true), 600, "create with isNetwork: the game's CREATE_VEHICLE")
+stand.equal(last_call(), "CREATE_VEHICLE 12345 1 2 3 90 true false false", "the flags not given are false")
+stand.equal(vehicle.create("adder", 1, 2, 3, 90, false, true, true), 600, "every flag given")
+stand.equal(last_call(), $"CREATE_VEHICLE {util.joaat('adder')} 1 2 3 90 false true true", "passed as they are")
+
 vehicle.explode({ vehicle = 501, net_id = 9 })
 stand.equal(last_call(), "NETWORK_EXPLODE_VEHICLE 501 9", "explode with a net id is networked")
 vehicle.explode({ vehicle = 501 })

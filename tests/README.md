@@ -32,7 +32,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_json_file` | JsonFile: безопасную запись, испорченные файлы, `.bak`; профили поверх него |
 | `test_commands` | имена команд с префиксом профиля и переименование на лету |
 | `test_i18n` | строки из языковых файлов через метки Stand, слои источников |
-| `test_streaming` | загрузку ассетов каждого типа (и `texture_dict`), `request(false)`, таймауты |
+| `test_streaming` | загрузку ассетов каждого типа (и `texture_dict`, `model`), `request(false)`, таймауты |
 | `test_examples` | примеры из `examples/modules` работают как написаны |
 
 ## Как написать тест

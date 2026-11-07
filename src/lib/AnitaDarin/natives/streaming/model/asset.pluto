@@ -1,0 +1,31 @@
+local module = {}
+
+-- Models (vehicles, peds, objects) are requested by name ("adder") or hash. The game makes an entity
+-- only of a loaded model
+
+-- State
+
+function module.is_loaded(model: int|string): bool
+    return STREAMING.HAS_MODEL_LOADED(Atdar.util.hash(model))
+end
+
+-- Actions
+
+-- Requests the model and waits until it loads (yields, see streaming.wait_loaded).
+-- timeout false -> only request, don't wait; returns whether it's already loaded
+-- @return Whether it loaded before the timeout (ms)
+function module.request(model: int|string, timeout: int|bool = 2000): bool
+    local hash = Atdar.util.hash(model)
+    STREAMING.REQUEST_MODEL(hash)
+    if timeout == false then
+        return module.is_loaded(hash)
+    end
+    return Atdar.natives.streaming.wait_loaded($"model '{tostring(model)}'", || -> module.is_loaded(hash), timeout)
+end
+
+-- Lets the game free the model once it's no longer needed (e.g. right after making an entity of it)
+function module.remove(model: int|string): void
+    STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Atdar.util.hash(model))
+end
+
+return module

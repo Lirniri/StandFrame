@@ -1,0 +1,39 @@
+-- The game's cameras (CAM natives). Not entities: a camera has a handle of its own that ENTITY
+-- natives don't take. Where other players look is natives.player.camera (Stand's players API)
+
+local module = {}
+
+-- Names of scripted camera kinds, for CAM.CREATE_CAM / CREATE_CAM_WITH_PARAMS
+module.types = {
+    scripted = "DEFAULT_SCRIPTED_CAMERA",
+    scripted_fly = "DEFAULT_SCRIPTED_FLY_CAMERA",
+    animated = "DEFAULT_ANIMATED_CAMERA",
+    spline = "DEFAULT_SPLINE_CAMERA",
+    timed_spline = "TIMED_SPLINE_CAMERA",
+}
+
+-- State
+
+-- Get
+
+-- @return The context the view mode is chosen for now (on foot, in a vehicle, ...)
+function module.get_active_view_mode_context(): int
+    return CAM.GET_CAM_ACTIVE_VIEW_MODE_CONTEXT()
+end
+
+-- @return The view mode (first person, third person near / mid / far, ...) set for a context
+function module.get_view_mode_for_context(context: int): int
+    return CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(context)
+end
+
+-- @param rotation_order The order the axes are turned in, 0 - 5; 2 is what scripts mostly use
+-- @return Where the camera that's drawn now looks
+function module.get_final_rotation(rotation_order: int = 2): vector3
+    return CAM.GET_FINAL_RENDERED_CAM_ROT(rotation_order)
+end
+
+-- Set
+
+-- Actions
+
+return module
