@@ -263,6 +263,7 @@ function module.build(section: table, opts: table): void
         i18n.label("profile.settings.help"))
     profile_menu.appearance(settings)
     profile_menu.language(settings)
+    settings:divider(i18n.label("profile.script"))
     profile_menu.rename(settings)
 
     profile_menu.profiles(section, opts.refresh)

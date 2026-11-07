@@ -58,7 +58,7 @@ local function entry(name) return stand.find_item(profiles(), name) end
 stand.equal(names_in(stand.root),
     "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug",
     "the section's layout")
-stand.equal(names_in(settings()), "Appearance | Language: Auto (Stand) | Rename Script", "Settings")
+stand.equal(names_in(settings()), "Appearance | Language: Auto (Stand) | Script | Rename Script", "Settings")
 local appearance = stand.find_item(settings(), "Appearance")
 stand.equal(names_in(appearance), "Notifications", "Appearance")
 local notifications = stand.find_item(appearance, "Notifications")
