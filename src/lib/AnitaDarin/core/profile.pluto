@@ -21,7 +21,7 @@ local DEFAULTS = {
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
     auto_copy_menu = "AnitaDarin",        -- folder of a menu pack in store, copied to core at every start; "" = off
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
-    notify = "stand",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
+    notify = "game",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
     notify_errors_in_stand = true, -- errors show in Stand whatever notify says, so none goes unseen
     notify_flash = true,       -- notifications in the game's feed flash
     notify_feed_style = "message", -- how a notification looks in the game's feed: "ticker" (a post) | "message" (a card)
