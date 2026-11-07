@@ -58,7 +58,7 @@ local function entry(name) return stand.find_item(profiles(), name) end
 stand.equal(names_in(stand.root),
     "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug",
     "the section's layout")
-stand.equal(names_in(settings()), "Language: Auto (Stand) | Name In Logs: Short Name | Appearance | Rename Script", "Settings")
+stand.equal(names_in(settings()), "Appearance | Language: Auto (Stand) | Rename Script", "Settings")
 local appearance = stand.find_item(settings(), "Appearance")
 stand.equal(names_in(appearance), "Notifications", "Appearance")
 local notifications = stand.find_item(appearance, "Notifications")
@@ -209,7 +209,9 @@ stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin d
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
-    "Debug Mode | Load Timing | Logs | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
+    "Debug Mode | Load Timing | Logs | Name In Logs: "
+    .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
+    .. " | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
@@ -256,7 +258,7 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8] }
+local debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
@@ -412,7 +414,7 @@ stand.click(reset)
 stand.equal(profile.get("log_name"), profile.default("log_name"), "the second click resets the active profile")
 stand.equal(profile.get("command_separator"), profile.default("command_separator"), "every value")
 local log_name_shown = profile.default("log_name") == "display" and "Display Name" or "Short Name"
-stand.equal(stand.name_of(stand.find_item(settings(), "Name In Logs")), $"Name In Logs: {log_name_shown}", "and the menu shows it")
+stand.equal(stand.name_of(stand.find_item(find("Debug"), "Name In Logs")), $"Name In Logs: {log_name_shown}", "and the menu shows it")
 stand.check(profile.is_dirty(), "kept on Save, like any change")
 
 -- ─── Rename Script: no warning while the script stops ────────────────────────

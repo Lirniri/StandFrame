@@ -44,10 +44,13 @@ code, _ = run("sync", "--target", str(target))
 check(code == 0, "sync into an empty Lua Scripts")
 check((target / "AnitaDarin.pluto").exists(), "the launcher is installed")
 check((target / "lib" / "AnitaDarin" / "bootstrap.pluto").exists(), "lib is installed")
-check((target / "store" / "AnitaDarin" / "profiles" / "main.json").exists(), "default profile on a first install")
+# No profile ships with the project: the script makes it from the defaults in core/profile.pluto at its
+# first start. A shipped one would override those defaults with its own values
+check(not (target / "store" / "AnitaDarin" / "profiles" / "main.json").exists(), "no profile is installed: the code's defaults apply")
 
 profile = target / "store" / "AnitaDarin" / "profiles" / "main.json"
 config = target / "store" / "AnitaDarin" / "config.json"
+profile.parent.mkdir(parents=True, exist_ok=True)
 profile.write_text('{"short_name": "Mine"}', encoding="utf-8")
 config.write_text('{"profile": "mine"}', encoding="utf-8")
 (target / "store" / "AnitaDarin" / "profiles" / "mine.json").write_text("{}", encoding="utf-8")

@@ -47,7 +47,7 @@ local POST = {
         return thefeed.post_ticker(message, flash)
     end,
     message = function(thefeed, message: string, opts: table, flash: bool, period: string)
-        local picture = opts.picture or setting("notify_feed_picture") or "CHAR_SOCIAL_CLUB"
+        local picture = opts.picture or setting("notify_feed_picture") or "CHAR_ACTING_UP"
         -- Asked without waiting: toast can't wait here. The menu asks for the profile's picture
         -- at the start and when it's picked, so it's loaded by the time a card shows
         pcall(|| -> (new TextureDictAsset(picture)):request(false))
@@ -129,6 +129,13 @@ function module.toast(message: string, opts: table = {}): ?table
     if target == "stand" then
         util.toast(message)
     elseif target == "game" then
+        -- A paused feed (cutscenes, the pause menu, loading, a script that paused it) shows nothing:
+        -- the notification goes to Stand then, so it isn't lost
+        local paused_ok, paused = pcall(Atdar.natives.visual.hud.thefeed.is_paused)
+        if paused_ok and paused then
+            util.toast(message)
+            return nil
+        end
         return post_to_feed(message, opts)
     end
     return nil

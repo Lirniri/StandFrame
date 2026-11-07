@@ -261,9 +261,8 @@ function module.build(section: table, opts: table): void
 
     local settings = section:list(i18n.label("profile.settings.name"), { "settings" },
         i18n.label("profile.settings.help"))
-    profile_menu.language(settings)
-    profile_menu.log_name(settings)
     profile_menu.appearance(settings)
+    profile_menu.language(settings)
     profile_menu.rename(settings)
 
     profile_menu.profiles(section, opts.refresh)
@@ -290,6 +289,7 @@ function module.build(section: table, opts: table): void
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)
     debug:divider(label("logs"))
+    profile_menu.log_name(debug)
     profile_menu.log_keep_days(debug)
     clear_logs(debug)
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script

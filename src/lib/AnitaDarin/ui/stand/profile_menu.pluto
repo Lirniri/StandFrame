@@ -539,7 +539,7 @@ function module.profiles(node: table, refresh: function): void
     local profile = Atdar.profile
     local list = node:list(label("title"), { "profiles" }, label("help"))
 
-    list:text_input(label("create.name"), { "profilenew" }, function(value)
+    list:text_input(label("create.name"), { "newprofile" }, function(value)
         if value ~= "" and profile.create(value) then
             refresh()
         end
