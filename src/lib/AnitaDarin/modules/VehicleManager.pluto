@@ -1,0 +1,49 @@
+local Module = Atdar.loader.load("core/module")
+
+local class VehicleManager extends Module
+    
+    function __construct()
+        parent:__construct({
+            name = "VehicleManager"
+        })
+        -- State lives in fields; set defaults here
+        self.vehicles = {}
+    end
+
+    function on_start()
+        self:add_vehicle_when_seat_into_him
+    end
+
+    function on_tick()
+        -- body
+    end
+
+    function on_stop()
+        -- body
+    end
+
+    -- Remembers a vehicle the script made
+    function add_vehicle(handle: int): void
+        self.vehicles[handle] = true
+    end
+
+    -- Forgets a vehicle
+    function remove_vehicle(handle: int): void
+        self.vehicles[handle] = nil
+    end
+    -- Forgets a all vehicles
+    function remove_all_vehicles(handle: int): void
+        for _, vehicle in self.vehicles do
+            self.vehicles[handle] = nil
+        end
+    end
+
+    -- Get
+    function get_handle(): int
+        return self.handle
+    end
+
+
+end
+
+return Atdar.modules.add(new VehicleManager())

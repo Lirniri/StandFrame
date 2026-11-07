@@ -9,7 +9,7 @@
 
 local hud_color = Atdar.loader.load("natives/visual/hud_color")
 
-local module = {}
+local module = { begin = {}, end = {} }
 
 -- Message icons (post_message's opts.icon): the small sign at the card's top right. 4 - 6 show none
 module.ICON = {
@@ -22,10 +22,15 @@ module.ICON = {
     MONEY = 9,
 }
 
+-- Begin
+
 -- Starts a post with this text; an END_TEXT_COMMAND_THEFEED_POST_* native finishes it
-local function begin_post(text: string): void
+function module.begin.post(text: string)
     HUD.BEGIN_TEXT_COMMAND_THEFEED_POST("STRING")
-    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(text)
+    if text ~= nil then
+        local text = Atdar.natives.visual.hud.text
+        text.add_string(text)  
+    end
 end
 
 -- State
@@ -108,7 +113,7 @@ util.on_stop(|| -> module.remove_all())
 -- @param is_mp The online style
 -- @return The post's id (remove(id) takes it away)
 function module.post_ticker(text: string, important: bool = false, is_mp: bool = false): int
-    begin_post(text)
+    module.begin.post(text)
     if is_mp then
         return remember(HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true))
     end
@@ -120,7 +125,7 @@ end
 --       icon (module.ICON, default CHAT_BOX), important (flashes)
 -- @return The post's id (remove(id) takes it away)
 function module.post_message(text: string, opts: table = {}): int
-    begin_post(text)
+    module.begin.post(text)
     local picture = opts.picture or "CHAR_SOCIAL_CLUB"
     local id = HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(picture, picture, opts.important == true,
         opts.icon or module.ICON.CHAT_BOX, opts.sender or "", opts.subject or "")
