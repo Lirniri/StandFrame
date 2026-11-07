@@ -36,7 +36,7 @@ local class VehicleManager extends Module
         self.vehicles = {}
     end
 
-    -- Action > Add
+    -- Action
 
     -- Spawns a vehicle and remembers it. By default 5 m in front of the player, facing where the player faces.
     -- Yields while the model loads: call it from a feature's action or a tick, not the script's main body
