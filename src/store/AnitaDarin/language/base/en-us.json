@@ -434,6 +434,7 @@
             "status_line": "Loop Status: %s",
             "result_line": "Variable: %s",
             "result_line_typed": "Variable (%s): %s",
+            "result_line_table": "Variable (%s)",
             "result_list": "Value (%d)",
             "no_result": "—"
         },
@@ -597,7 +598,8 @@
         "clear_feed": {
             "name": "Remove Game Notifications",
             "help": "Takes every notification of the script out of the game's feed; the game's and other scripts' stay",
-            "done": "Notifications taken out of the feed: %d"
+            "done": "Notifications taken out of the feed: %d",
+            "none": "No notifications of the script in the feed"
         }
     }
 }

@@ -451,20 +451,21 @@ local value_list = stand.find_item(add_node, "Value (3)")
 stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
 stand.equal(names_in(value_list), "[1] | [2] | [3] (1)", "its entries, a table inside as a list")
 stand.equal(stand.child(value_list, "[2]").value, '"a"', "each with its value")
-stand.check(stand.find_item(add_node, "Variable (table): ") ~= nil, "a table of mixed kinds: just table")
+stand.check(stand.find_item(add_node, "Variable (table)") ~= nil, "a table of mixed kinds: just table")
 -- Types in words: a table by what it holds
 counter.add = function() return { 1, 2, 3 } end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (table of integers): ") ~= nil, "a table of integers")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable (")), "Variable (table of integers)",
+    "a table of integers: the type only, what it holds is in the Value list")
 counter.add = function() return { 1, 2.5 } end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (table of numbers): ") ~= nil, "integers and floats: a table of numbers")
+stand.check(stand.find_item(add_node, "Variable (table of numbers)") ~= nil, "integers and floats: a table of numbers")
 counter.add = function() return { "a", "b" } end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (table of strings): ") ~= nil, "a table of strings")
+stand.check(stand.find_item(add_node, "Variable (table of strings)") ~= nil, "a table of strings")
 counter.add = function() return {} end
 stand.frame()
-stand.check(stand.find_item(add_node, "Variable (empty table): {}") ~= nil, "an empty table")
+stand.check(stand.find_item(add_node, "Variable (empty table)") ~= nil, "an empty table")
 counter.add = function() return 2.5 end
 stand.frame()
 stand.check(stand.find_item(add_node, "Variable (float): 2.5") ~= nil, "a float")

@@ -124,7 +124,11 @@ stand.click(stand.child(examples, "Notification"))
 stand.toasts = {}
 stand.click(find("Remove Game Notifications"))
 stand.equal(#removed_items, 7, "Remove Game Notifications takes the script's posts out of the feed")
-stand.check(stand.toasts[#stand.toasts]:find("taken out of the feed: 1", 1, true), "and tells how many, in Stand")
+stand.check(stand.toasts[#stand.toasts]:find("Success: Notifications taken out of the feed: 1", 1, true),
+    "and tells how many, in Stand, as a success through the logger")
+stand.toasts = {}
+stand.click(find("Remove Game Notifications"))
+stand.check(stand.toasts[#stand.toasts]:find("No notifications of the script in the feed", 1, true), "none there: says so")
 profile.set("notify_errors_in_stand", true)
 stand.click(stand.find_item(notifications, "Type"), 1)
 local flash_toggle = stand.find_item(notifications, "Flash Notifications")

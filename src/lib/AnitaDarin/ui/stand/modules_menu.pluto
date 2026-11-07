@@ -522,6 +522,8 @@ local MAX_RESULT_CHARS = 60
 
 -- The same key -> the type(s) of what it gave last: "integer", "table of integers", "integer, string"
 local last_types = {}
+-- The same key -> the table it gave last (when it gave one table), for the Value list under Variable
+local last_tables = {}
 
 -- A value's kind for the types' strings: integer and float apart, the rest as type() says
 local function kind_of(value): string
@@ -566,6 +568,10 @@ local function result_line(key: string): string
     if value == nil then
         return text("loop.result_line"):format(text("loop.no_result"))
     end
+    -- A table: its type only, what it holds is in the Value list right under
+    if last_tables[key] ~= nil then
+        return text("loop.result_line_table"):format(last_types[key] or "")
+    end
     if #value > MAX_RESULT_CHARS then
         value = value:sub(1, MAX_RESULT_CHARS) .. "..."
     end
@@ -573,8 +579,6 @@ local function result_line(key: string): string
 end
 
 -- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
--- The same key -> the table it gave last (when it gave one table), for the Value list under Variable
-local last_tables = {}
 -- The same key -> the Value list in the function's list: { list, shape, texts, lines }
 local result_tables = {}
 -- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like

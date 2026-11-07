@@ -368,7 +368,11 @@ function module.build(section: table, opts: table): void
     -- Told in Stand: a notice in the feed would be one more to take away
     section:action(label("clear_feed.name"), function()
         local removed = Atdar.natives.visual.hud.thefeed.remove_all()
-        Atdar.util.toast(text("clear_feed.done"):format(removed), { target = "stand" })
+        if removed == 0 then
+            log:notify(text("clear_feed.none"), "stand")
+            return
+        end
+        log:success(text("clear_feed.done"):format(removed), "stand")
     end, { "notifyclearfeed" }, label("clear_feed.help"))
 
     -- Last, once every item of the section has its commands

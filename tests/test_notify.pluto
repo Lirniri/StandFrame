@@ -324,6 +324,24 @@ profile.set("notify_errors_in_stand", false)
 toasts, posts = shown(|| -> log:error("silent"))
 stand.check(toasts == 0 and posts == 0, "with errors-in-Stand off, errors follow the choice too")
 
+-- target: where one notice shows, whatever the profile says
+profile.set("notify", "game")
+stand.toasts = {}
+local posts_before = #feed
+log:notify("to Stand anyway", "stand")
+stand.check(#stand.toasts == 1 and stand.toasts[1]:find("to Stand anyway", 1, true) and #feed == posts_before,
+    "target stand: in Stand though the profile says the game")
+profile.set("notify", "stand")
+stand.toasts = {}
+log:success("to the feed anyway", "game")
+stand.check(#stand.toasts == 0 and feed[#feed]:find("to the feed anyway", 1, true), "target game: in the feed though the profile says Stand")
+profile.set("notify_errors_in_stand", true)
+profile.set("notify", "game")
+stand.toasts = {}
+log:error("an error to the feed", "game")
+stand.check(#stand.toasts == 0, "an error with target game goes to the feed, Errors Always In Stand or not")
+profile.set("notify_errors_in_stand", false)
+
 -- The feed failing (its natives missing) doesn't swallow the notification: it shows in Stand
 profile.set("notify", "game")
 _G.HUD = {}

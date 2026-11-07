@@ -187,8 +187,9 @@ local class Logger
         return $"[{self:name()}] {level_title(level)}:"
     end
 
+    -- @param target Where it shows, whatever the profile says: "stand" or "game"; nil - as the profile says
     -- @return The post's id when the toast went to the game's feed (thefeed.remove(id) takes it away), otherwise nil
-    function write(level: string, msg: string, toast: bool): ?int
+    function write(level: string, msg: string, toast: bool, target: ?string): ?int
         local line = self:full_line(level, msg)
         util.log(line)
         if not file_broken then
@@ -211,8 +212,8 @@ local class Logger
             local shown = $"{head} {msg}"
             -- Where it shows is the profile's notify; errors go to Stand unless the profile says otherwise
             local profile = Atdar.profile
-            local target = nil
-            if level == "ERROR" and profile and profile.get and profile.get("notify_errors_in_stand") ~= false then
+            if target == nil and level == "ERROR" and profile and profile.get
+                and profile.get("notify_errors_in_stand") ~= false then
                 target = "stand"
             end
             -- utils/util loads after the logger, so errors during early loading use Stand's toast.
@@ -242,25 +243,28 @@ local class Logger
         self:write("INFO", msg, false)
     end
 
+    -- notify / warn / error / success show where the profile says; target "stand" or "game" puts one
+    -- there whatever it says, for special cases (e.g. "stand" when a post in the feed would be in the way)
+
     -- Info the user should see, e.g. the result of something they clicked
     -- @return The post's id when it went to the game's feed, otherwise nil
-    function notify(msg: string): ?int
-        return self:write("INFO", msg, true)
+    function notify(msg: string, target: ?string): ?int
+        return self:write("INFO", msg, true, target)
     end
 
     -- Something the user should know about, but the script keeps working
-    function warn(msg: string): ?int
-        return self:write("WARN", msg, true)
+    function warn(msg: string, target: ?string): ?int
+        return self:write("WARN", msg, true, target)
     end
 
-    function error(msg: string): ?int
-        return self:write("ERROR", msg, true)
+    function error(msg: string, target: ?string): ?int
+        return self:write("ERROR", msg, true, target)
     end
 
     -- Something done that the user asked for and might wonder about: copied, saved, created
     -- @return The post's id when it went to the game's feed, otherwise nil
-    function success(msg: string): ?int
-        return self:write("SUCCESS", msg, true)
+    function success(msg: string, target: ?string): ?int
+        return self:write("SUCCESS", msg, true, target)
     end
 
 end
