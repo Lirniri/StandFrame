@@ -287,6 +287,12 @@
             "help": "Stops every module and every loop started by hand",
             "done": "All modules stopped"
         },
+        "reload_changed": {
+            "name": "Reload Changed",
+            "help": "Reloads the modules whose files changed since they were loaded (marked \"file changed\")",
+            "done": "Modules reloaded: %d",
+            "none": "No changed modules"
+        },
         "list": "Modules",
         "empty": "No modules registered",
         "start": "Start",
@@ -301,7 +307,8 @@
             "ticks": "Has on_tick",
             "no_tick": "No on_tick",
             "error": "Error: %s",
-            "status_line": "Status: %s"
+            "status_line": "Status: %s",
+            "changed": "· file changed"
         },
         "status": {
             "registered": "registered",

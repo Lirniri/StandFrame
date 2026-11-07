@@ -1,0 +1,35 @@
+-- EXAMPLE: the log and notifications.
+--
+-- A Logger writes to Stand's log and to the script's day files (store/AnitaDarin/logs/).
+-- notify / warn / error also show a notification where the profile says (Stand, the game's feed or none);
+-- errors go to Stand when "Errors Always In Stand" is on
+
+local Logger = Atdar.loader.load("core/logger")
+
+-- The name is the source in the log: "[AnitaDarin | Garage | INFO] ..."
+local log = new Logger("Garage")
+
+log:debug("only with Debug Mode on, only in the log")
+log:info("in the log, nothing on screen")
+log:notify("in the log and on screen")
+log:warn("something is off, the script goes on")
+log:error("something failed")
+
+-- notify / warn / error give the post's id when it went to the game's feed: it can be taken away again
+local id = log:notify("a card to take away later")
+if id ~= nil then
+    Atdar.natives.visual.hud.thefeed.remove(id)
+end
+
+-- util.toast: a notification without a log line, the look the profile has unless opts say otherwise
+local toast = Atdar.util.toast
+toast("Saved")                                   -- where the profile's Type says
+toast("Only in Stand", { target = "stand" })
+toast("In the game's feed", { target = "game" })
+toast("A card", {
+    target = "game",
+    style = "message",                           -- "ticker" (a line) or "message" (a card)
+    subject = "Garage",                          -- the card's second line
+    picture = "CHAR_LESTER",                     -- natives/visual/feed_picture has the names
+    important = true,                            -- flashes
+})

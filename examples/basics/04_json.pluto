@@ -1,0 +1,20 @@
+-- EXAMPLE: JSON files, read and written safely.
+--
+-- File writes through a .tmp and keeps a .bak, so a crash mid-write never leaves a broken file;
+-- read() of a damaged file falls back to the .bak. Folders are made as needed
+
+local paths = Atdar.filesystem.paths
+local JsonFile = Atdar.filesystem.json.File
+
+-- Data of your own goes to store/AnitaDarin/: build.py never overwrites or removes it there
+local file = new JsonFile($"{paths.store}garage\\vehicles.json")
+
+local data = file:read() or { vehicles = {} }    -- nil when there's no file yet
+table.insert(data.vehicles, { name = "adder", x = 1.0, y = 2.0, z = 3.0 })
+if not file:write(data) then
+    util.log("couldn't write the file")
+end
+
+util.log($"exists: {tostring(file:exists())}, at {file.path}")
+
+-- A module keeps files in its own folder: self:json_file("name") (see modules/05_menu_functions.pluto)

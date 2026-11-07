@@ -1,0 +1,32 @@
+-- EXAMPLE: features in the menu (menu/stand/features.pluto of a pack).
+--
+-- add_feature makes the item the feature's kind needs: a button for "action", a switch for "toggle",
+-- a switch that ticks for "loop". Names come from the pack's language files (Atdar.lang.translate)
+
+local features = Atdar.features
+local lang = Atdar.lang
+
+return {
+    build = function(node, ctx)
+        local self_menu = node:list(lang.translate("menu.self.menu_name", "Self"), { "self" })
+
+        self_menu:add_feature(features.get("example.heal"),
+            lang.translate("menu.self.heal.menu_name", "Heal"), { "heal" })
+
+        -- A feature that isn't loaded (its file failed, another pack) would stop the build: check first
+        if features.has("example.infinite_stamina") then
+            self_menu:add_feature(features.get("example.infinite_stamina"), "Infinite Stamina", { "infstamina" })
+        end
+
+        -- A feature with settings of its own: its item, then sliders that change its fields
+        local regen = features.get("example.regeneration")
+        local regen_menu = self_menu:list("Regeneration")
+        regen_menu:add_feature(regen, "Regenerate")
+        regen_menu:slider("Amount", 1, 100, regen.amount, 1, function(value)
+            regen.amount = value
+        end)
+        regen_menu:slider("Interval (ms)", 10, 1000, regen.interval, 10, function(value)
+            regen.interval = value
+        end)
+    end,
+}

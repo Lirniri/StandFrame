@@ -1,0 +1,20 @@
+-- A switch: no wanted level while it's on; the old maximum comes back when it's off
+
+local Feature = Atdar.loader.load("features/feature")
+
+return Atdar.features.add(new Feature({
+    id = "examplepack.self.no_wanted",
+    kind = "toggle",
+
+    on_save_state = function(self)
+        self.saved_max = PLAYER.GET_MAX_WANTED_LEVEL()
+    end,
+
+    on_enable = function(self)
+        PLAYER.SET_MAX_WANTED_LEVEL(0)
+    end,
+
+    on_load_state = function(self)
+        PLAYER.SET_MAX_WANTED_LEVEL(self.saved_max or 5)
+    end,
+}))

@@ -423,6 +423,21 @@ stand.frame(2)
 stand.equal(ticks, 2, "once a frame, by the manager only")
 stand.click(stand.child(entry_ticker, "Stop"))
 
+-- A changed file is marked; Reload Changed reloads only those modules
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function one() return 1 end\n    function old_field(x) return x end") .. "-- edited\n")
+stand.click(stand.child(list, "Refresh"))
+local marked = stand.find_item(list, "5: reloader: ")
+stand.equal(stand.name_of(marked), "5: reloader: running · file changed", "a changed file is marked (Refresh, opening)")
+stand.equal(stand.name_of(stand.find_item(list, "2: b: ")), "2: b: running", "a module made in code isn't")
+stand.clear_logs()
+stand.click(stand.child(list, "Reload Changed"))
+stand.check(stand.find_log("Modules reloaded: 1"), "Reload Changed reloads the changed one")
+stand.equal(stand.name_of(marked), "5: reloader: running", "and the mark goes")
+stand.clear_logs()
+stand.click(stand.child(list, "Reload Changed"))
+stand.check(stand.find_log("No changed modules"), "nothing changed: says so")
+
 -- Reload: the code is read again, its functions in the menu are made again
 local entry_reloader = stand.find_item(list, "5: reloader: ")
 stand.check(stand.child(entry_reloader, "one()") ~= nil and stand.child(entry_reloader, "old_field(x)") ~= nil,

@@ -1,0 +1,30 @@
+-- EXAMPLE 2: a toggle, on until it's switched off. kind = "toggle": on_enable once on, on_disable once off.
+--
+-- For something the game keeps by itself once set (a flag, a setting). If the game resets it
+-- (on death, in a cutscene), use a loop instead (03_loop.pluto).
+--
+-- on_save_state runs before on_enable and on_load_state after on_disable: remember what was there
+-- before, put it back after, so switching off leaves the game as it was
+
+local Feature = Atdar.loader.load("features/feature")
+
+return Atdar.features.add(new Feature({
+    id = "example.no_wanted",
+    kind = "toggle",
+
+    on_save_state = function(self)
+        self.saved_max = PLAYER.GET_MAX_WANTED_LEVEL()
+    end,
+
+    on_enable = function(self)
+        PLAYER.SET_MAX_WANTED_LEVEL(0)
+    end,
+
+    on_disable = function(self)
+        -- nothing extra: on_load_state puts the old level back
+    end,
+
+    on_load_state = function(self)
+        PLAYER.SET_MAX_WANTED_LEVEL(self.saved_max or 5)
+    end,
+}))

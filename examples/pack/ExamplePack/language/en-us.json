@@ -1,0 +1,17 @@
+{
+    "examplepack": {
+        "self": {
+            "menu_name": "Self",
+            "heal": {
+                "menu_name": "Heal",
+                "help": "Restores your health to the maximum"
+            },
+            "no_wanted": {
+                "menu_name": "No Wanted Level"
+            }
+        },
+        "settings": {
+            "menu_name": "Settings"
+        }
+    }
+}

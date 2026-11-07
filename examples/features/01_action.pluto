@@ -1,0 +1,17 @@
+-- EXAMPLE 1: an action, a button in the menu. kind = "action" needs on_trigger.
+--
+-- on_trigger may wait (util.yield): a click while it still runs is ignored, so a long action
+-- can't run twice at once. In the menu: node:add_feature(Atdar.features.get("example.heal"), "Heal")
+
+local Feature = Atdar.loader.load("features/feature")
+
+return Atdar.features.add(new Feature({
+    -- The id the menu finds it by: Atdar.features.get("example.heal"). Unique, "section.name" by habit
+    id = "example.heal",
+    kind = "action",
+
+    on_trigger = function(self)
+        local entity = Atdar.natives.entity
+        entity.set_health(Atdar.natives.player.get_ped_id())   -- no value: the maximum
+    end,
+}))

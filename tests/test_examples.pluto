@@ -1,13 +1,22 @@
--- examples/modules: the examples run as written, so they stay correct when the code changes
+-- examples/: the examples run as written, so they stay correct when the code changes
 local stand = require("stand")
 stand.boot()
+for _, name in { "util", "filesystem", "lang", "color" } do
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
+end
+-- A stand-in profile: the real one would save a profile file into src/store
+Atdar.profile = { get = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
+Atdar.natives = Atdar.loader.auto({}, "natives")
 Atdar.modules = Atdar.loader.load("core/module_manager")
+Atdar.features = Atdar.loader.load("features/registry")
 local modules = Atdar.modules
 Atdar.debug = true
 
-stand.equal(modules.load_dir($"{stand.ROOT}/examples/modules/"), 4, "all four examples load")
+-- ─── modules/ ────────────────────────────────────────────────────────────────
+
+stand.equal(modules.load_dir($"{stand.ROOT}/examples/modules/"), 5, "all five module examples load")
 modules.start()
-for _, name in { "example.basic", "example.clock", "example.session_watch", "example.reporter" } do
+for _, name in { "example.basic", "example.clock", "example.session_watch", "example.reporter", "example.counter" } do
     stand.equal(modules.has(name) and modules.get(name).status, "running", $"{name} runs")
 end
 
@@ -29,5 +38,65 @@ stand.clear_logs()
 stand.clock += 6000
 stand.frame()
 stand.check(stand.find_log("clock has been running for"), "reporter uses the clock module")
+
+-- 05_menu_functions: its functions for the menu, the _helper left out
+local Module = Atdar.loader.load("core/module")
+local counter = modules.get("example.counter")
+local names = {}
+for _, fn in ipairs(Module.functions_of(counter)) do
+    table.insert(names, fn.name)
+end
+stand.equal(table.concat(names, ", "), "add, save, value", "counter's functions for the menu, _reset_quietly hidden")
+stand.equal(counter:add(3), 3, "add(amount) works")
+
+-- ─── features/ ───────────────────────────────────────────────────────────────
+
+local function run_files(dir: string): int
+    local ran = 0
+    for _, path in io.listdir(dir, true) do
+        if path:sub(-6) == ".pluto" then
+            local chunk = assert(loadfile(path))
+            chunk()
+            ran += 1
+        end
+    end
+    return ran
+end
+
+local wanted_max = 5
+_G.PLAYER = {
+    GET_MAX_WANTED_LEVEL = || -> wanted_max,
+    SET_MAX_WANTED_LEVEL = function(level) wanted_max = level end,
+    RESET_PLAYER_STAMINA = || -> nil,
+    PLAYER_ID = || -> 0,
+    PLAYER_PED_ID = || -> 1,
+}
+stand.equal(run_files($"{stand.ROOT}/examples/features/"), 4, "all four feature examples load")
+local features = Atdar.features
+local kinds = {}
+for _, id in { "example.heal", "example.no_wanted", "example.infinite_stamina", "example.regeneration" } do
+    table.insert(kinds, features.has(id) and features.get(id).kind or "missing")
+end
+stand.equal(table.concat(kinds, ", "), "action, toggle, loop, action", "registered with their kinds")
+local no_wanted = features.get("example.no_wanted")
+no_wanted:enable()
+stand.equal(wanted_max, 0, "02_toggle: on, no wanted level")
+no_wanted:disable()
+stand.equal(wanted_max, 5, "off, the old maximum is back")
+
+-- ─── pack/ExamplePack ────────────────────────────────────────────────────────
+
+local pack_dir = $"{stand.ROOT}/examples/pack/ExamplePack/"
+stand.equal(run_files($"{pack_dir}features/"), 2, "the pack's features load")
+Atdar.loader.load("core/i18n").add_source($"{pack_dir}language/")
+local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+local builder = Atdar.loader.load("ui/stand/menu_builder")
+local pack_root = new MenuNode(stand.root):list("Pack")
+stand.check(builder.build_menu(pack_root, $"{pack_dir}menu/stand/"), "the pack's menu builds")
+local self_list = stand.find_item(pack_root.handle, "Self")
+stand.check(self_list ~= nil, "its Self list, named from the pack's language file")
+stand.check(stand.find_item(self_list, "Heal") and stand.find_item(self_list, "No Wanted Level"),
+    "with the pack's features")
+stand.check(stand.find_item(pack_root.handle, "Settings") ~= nil, "and its Settings list")
 
 stand.finish()

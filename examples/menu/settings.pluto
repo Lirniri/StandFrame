@@ -1,0 +1,23 @@
+-- EXAMPLE: the script's settings section in a pack's menu (menu/stand/settings.pluto).
+--
+-- The section (Profile, Load Menu, Debug, ...) is the script's own and shows with any menu. By default
+-- it's at the bottom of the root; a pack can put it into a list of its own and add items to it
+
+local settings = Atdar.loader.load("ui/stand/settings")
+
+return {
+    build = function(node, ctx)
+        local settings_menu = node:list("Settings", { "settings" })
+
+        settings.set_parent(settings_menu)               -- the section goes inside this list
+        settings.set_divider(settings.DISPLAY_NAME)      -- a divider with the script's display name
+        settings.set_name("Script")                      -- the section's own list
+
+        -- Items of your own in the section, made again each time the section is built
+        settings.add(function(section)
+            section:action("About", function()
+                util.toast("ExamplePack 1.0")
+            end)
+        end)
+    end,
+}

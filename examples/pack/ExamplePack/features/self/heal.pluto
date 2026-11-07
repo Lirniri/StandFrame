@@ -1,0 +1,12 @@
+-- A button: restores the player's health
+
+local Feature = Atdar.loader.load("features/feature")
+
+return Atdar.features.add(new Feature({
+    id = "examplepack.self.heal",
+    kind = "action",
+
+    on_trigger = function(self)
+        Atdar.natives.entity.set_health(Atdar.natives.player.get_ped_id())   -- no value: the maximum
+    end,
+}))

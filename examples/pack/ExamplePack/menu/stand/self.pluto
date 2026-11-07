@@ -1,0 +1,17 @@
+-- Self: the pack's features, named from its language files
+
+local features = Atdar.features
+local lang = Atdar.lang
+
+return {
+    build = function(node, ctx)
+        local self_menu = node:list(lang.translate("examplepack.self.menu_name"), { "epself" })
+
+        self_menu:add_feature(features.get("examplepack.self.heal"),
+            lang.translate("examplepack.self.heal.menu_name"), { "epheal" },
+            lang.translate("examplepack.self.heal.help"))
+
+        self_menu:add_feature(features.get("examplepack.self.no_wanted"),
+            lang.translate("examplepack.self.no_wanted.menu_name"), { "epnowanted" })
+    end,
+}

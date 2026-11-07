@@ -1,0 +1,55 @@
+-- EXAMPLE 5: a module's functions in the debug menu, and files in the module's own folder.
+--
+-- Settings > Debug > Modules lists each module's functions (the ones its class adds) to call by hand:
+-- Call, Call When Opened / Hovered, Loop, Loop With Interval, and an Arguments field for parameters.
+-- The menu shows the return type written in the code: "add(amount): int". Names starting with _
+-- are left out, so helpers stay hidden; so are Module's own (get, start, stop, folder, json_file...),
+-- don't give a function one of those names.
+--
+-- self:folder() is the folder of the module's file, self:json_file(name) a JSON file there.
+-- Put the module in a folder of its own: modules/Counter/Counter.pluto -> modules/Counter/counter.json.
+-- That folder is the copy Stand runs: build.py rebuild and clean remove it, store/ is safer for keeps
+
+local Module = Atdar.loader.load("core/module")
+
+local class Counter extends Module
+    function __construct()
+        parent:__construct({ name = "example.counter" })
+        self.count = 0
+    end
+
+    function on_start(): void
+        -- The count saved last time, if there's one
+        local file = self:json_file("counter")
+        local data = file and file:read()
+        if data ~= nil then
+            self.count = data.count or 0
+        end
+    end
+
+    -- In the menu: "add(amount): int", a list with Arguments. Arguments are Lua: 5, or
+    -- math.random(1, 10), worked out again at each call (so a loop gets a new number each time)
+    function add(amount: int): int
+        self.count += amount
+        return self.count
+    end
+
+    -- In the menu: "value(): int". Loop shows what it gives on screen every frame.
+    -- Not "get": Module has get(name) (another module), a function of that name would hide it
+    function value(): int
+        return self.count
+    end
+
+    -- In the menu: "save(): bool"
+    function save(): bool
+        local file = self:json_file("counter")
+        return file ~= nil and file:write({ count = self.count })
+    end
+
+    -- Not in the menu: starts with _
+    function _reset_quietly(): void
+        self.count = 0
+    end
+end
+
+return Atdar.modules.add(new Counter())

@@ -24,6 +24,7 @@ local class VehicleManager extends Module
             name = "VehicleManager"
         })
         -- State lives in fields; set defaults here
+        self.remember_vehicle = true
         self.vehicles = {}
     end
 
@@ -70,6 +71,14 @@ local class VehicleManager extends Module
         self.last_handle = handle
     end
 
+    function is_remembered_current_vehicle(): bool
+        return self.remember_vehicle
+    end
+    
+    function can_remember_current_vehicle(toggle: bool): void
+        self.remember_vehicle = toggle
+    end
+
     -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
     -- self.current_vehicle: the one they were in last time, 0 - none
     function _remember_current_vehicle(): void
@@ -79,7 +88,7 @@ local class VehicleManager extends Module
             return
         end
         self.current_vehicle = vehicle
-        if vehicle ~= 0 and self.vehicles[vehicle] == nil then
+        if vehicle ~= -1 and self.vehicles[vehicle] == nil then
             self:add_vehicle(vehicle)
             self.log:debug($"remembered the vehicle the player got into: {vehicle}")
         end

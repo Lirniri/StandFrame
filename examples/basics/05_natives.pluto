@@ -1,0 +1,30 @@
+-- EXAMPLE: the game's natives through Atdar.natives.
+--
+-- Atdar.natives.<section> are plain functions, the handle first, loaded on first use from
+-- lib/AnitaDarin/natives/<section>.pluto (a folder is a section too: entity/vehicle.pluto ->
+-- Atdar.natives.entity.vehicle). The game's own natives (ENTITY.*, VEHICLE.*, ...) work as well;
+-- a wrapper is there for what needs more than one call or a check
+
+local natives = Atdar.natives
+
+local ped = natives.player.get_ped_id()                 -- the player's character
+local heading = natives.entity.get_heading(ped)
+local coords = natives.entity.get_coords(ped)           -- a vector3, snapped to the ground
+util.log($"at {coords.x}, {coords.y}, {coords.z}, facing {heading}")
+
+-- The vehicle the player sits in (0 - none)
+local vehicle = natives.entity.ped.vehicle.get(ped)
+if vehicle ~= 0 then
+    util.log($"model {natives.entity.get_model(vehicle)}, class {natives.entity.vehicle.get_class(vehicle)}")
+end
+
+-- Spawning needs the model loaded: request() waits for it (call it from a thread, an action or a tick)
+util.create_thread(function()
+    local hash = Atdar.util.hash("adder")
+    if not natives.streaming.model.asset.request(hash) then
+        return
+    end
+    local car = natives.entity.vehicle.create(hash, coords.x, coords.y + 5.0, coords.z, heading)
+    natives.streaming.model.asset.remove(hash)   -- the game may let the model go now
+    util.log($"spawned {car}")
+end)

@@ -1,0 +1,26 @@
+-- EXAMPLE: translations.
+--
+-- Strings live in JSON files by language: language/en-us.json, language/ru-ru.json, keys nested:
+--     { "menu": { "garage": { "menu_name": "Garage", "saved": "Saved %d vehicle(s)" } } }
+-- A pack's language/ folder is read when the pack loads; the script's own strings are in
+-- store/AnitaDarin/language/base/.
+--
+-- translate(): a Stand label for item names and help texts. Stand shows it in its own language and
+--              switches it when the language changes, nothing to do for that
+-- text():      a ready string in Stand's language now, for strings filled with format()
+
+local lang = Atdar.lang
+
+-- For menu items
+local name_label = lang.translate("menu.garage.menu_name")
+-- With a fallback, for a key that may be missing
+local help_label = lang.translate("menu.garage.help", "Your saved vehicles")
+
+-- For notifications and other text built from parts
+local saved = lang.text("menu.garage.saved", "Saved %d vehicle(s)"):format(3)
+util.log(saved)
+
+-- Stand's language code now: "en", "ru", ...
+util.log(lang.get_language())
+
+-- In a menu file: node:list(name_label, { "garage" }, help_label)

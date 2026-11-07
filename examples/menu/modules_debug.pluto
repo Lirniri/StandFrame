@@ -1,0 +1,20 @@
+-- EXAMPLE: the modules' debug menu in a pack's own lists (menu/stand/modules_debug.pluto).
+--
+-- In the script's settings it shows in Debug Mode only; put into a menu like this it always shows.
+-- Its items are made only while it's open, so it costs nothing in the menu otherwise
+
+local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
+
+return {
+    build = function(node, ctx)
+        local dev = node:list("Developer")
+
+        -- The whole Modules list: every module, Refresh, Stop All, Reload Changed
+        modules_menu.list_in(dev)
+
+        -- One module's list: status, Start / Restart / Stop / Reload, its functions with loops.
+        -- nil (and a warning in the log) when there's no such module
+        local vehicle_menu = node:list("Vehicle")
+        modules_menu.module_in(vehicle_menu, "VehicleManager")
+    end,
+}

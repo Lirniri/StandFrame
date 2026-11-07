@@ -1,0 +1,20 @@
+-- EXAMPLE 3: a loop, on_tick every frame while it's on. kind = "loop" needs on_tick.
+--
+-- For what the game undoes by itself: set it again every frame. Keep on_tick cheap and act only when
+-- needed. An error in on_tick switches the feature off and is shown once (not every frame)
+
+local Feature = Atdar.loader.load("features/feature")
+
+return Atdar.features.add(new Feature({
+    id = "example.infinite_stamina",
+    kind = "loop",
+
+    on_tick = function(self)
+        PLAYER.RESET_PLAYER_STAMINA(Atdar.natives.player.get_id())
+    end,
+
+    -- Optional: once when switched off
+    on_disable = function(self)
+        util.log($"'{self.id}' is off")
+    end,
+}))

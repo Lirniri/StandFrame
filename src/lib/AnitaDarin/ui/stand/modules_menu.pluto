@@ -60,9 +60,13 @@ local function short_name(name: string): string
     return text("entry.short"):format(number_of(name))
 end
 
--- "1: VehicleManager: running"
+-- "1: VehicleManager: running", and "· file changed" when its file differs from the code running
 local function caption(mod: table): string
-    return text("entry.name"):format(number_of(mod.name), mod.name, text($"status.{mod.status}"))
+    local name = text("entry.name"):format(number_of(mod.name), mod.name, text($"status.{mod.status}"))
+    if Atdar.modules.file_changed(mod.name) then
+        return $"{name} {text("entry.changed")}"
+    end
+    return name
 end
 
 -- "Status: running", the divider on top of a module's list
@@ -141,6 +145,12 @@ local ACTIONS = {
         Atdar.modules.reload_module(name)
     end },
 }
+
+-- The same, by key
+local ACTIONS_BY_KEY = {}
+for _, action in ipairs(ACTIONS) do
+    ACTIONS_BY_KEY[action.key] = action
+end
 
 -- ─── Calling a module's functions ────────────────────────────────────────────
 
@@ -997,6 +1007,22 @@ local function fill(node: table): void
         refresh()
         log:notify(text("stop_all.done"))
     end, {}, label("stop_all.help"))
+    node:action(label("reload_changed.name"), function()
+        local reloaded = 0
+        for _, name in ipairs(modules.names()) do
+            if modules.file_changed(name) then
+                ACTIONS_BY_KEY.reload.run(name)
+                rebuild_functions(name)
+                reloaded += 1
+            end
+        end
+        refresh()
+        if reloaded == 0 then
+            log:notify(text("reload_changed.none"))
+        else
+            log:notify(text("reload_changed.done"):format(reloaded))
+        end
+    end, {}, label("reload_changed.help"))
     node:divider(label("list"))
 
     local names = modules.names()

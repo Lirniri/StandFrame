@@ -1,0 +1,17 @@
+{
+    "examplepack": {
+        "self": {
+            "menu_name": "Игрок",
+            "heal": {
+                "menu_name": "Вылечить",
+                "help": "Восстанавливает здоровье до максимума"
+            },
+            "no_wanted": {
+                "menu_name": "Без розыска"
+            }
+        },
+        "settings": {
+            "menu_name": "Настройки"
+        }
+    }
+}

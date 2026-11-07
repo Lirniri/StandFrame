@@ -1,0 +1,31 @@
+-- EXAMPLE 4: a feature as a class, for one with settings of its own the menu changes (sliders, ...).
+--
+-- Override only the on_* hooks: enable / disable / trigger / tick / save_state / load_state belong
+-- to Feature and can't be overridden. In the menu file:
+--     local regen = Atdar.features.get("example.regeneration")
+--     node:add_feature(regen, "Regenerate")
+--     node:slider("Amount", 1, 100, regen.amount, 1, function(value) regen.amount = value end)
+
+local Feature = Atdar.loader.load("features/feature")
+
+local class Regeneration extends Feature
+    function __construct()
+        parent:__construct({
+            id = "example.regeneration",
+            kind = "action",
+        })
+        self.amount = 10    -- health per step
+        self.interval = 100 -- ms between steps
+    end
+
+    function on_trigger()
+        local entity = Atdar.natives.entity
+        local ped = Atdar.natives.player.get_ped_id()
+        while entity.get_health(ped) < entity.get_max_health(ped) and not entity.is_dead(ped) do
+            entity.set_health(ped, math.min(entity.get_health(ped) + self.amount, entity.get_max_health(ped)))
+            util.yield(self.interval)   -- clicks meanwhile are ignored
+        end
+    end
+end
+
+return Atdar.features.add(new Regeneration())

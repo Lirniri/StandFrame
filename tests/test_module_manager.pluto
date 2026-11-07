@@ -27,6 +27,15 @@ _G.FAIL_C = true
 stand.equal(modules.load_dir(dir), 5, "all five files ran")
 modules.start()
 
+-- file_changed: whether the file differs from the code running
+stand.equal(modules.file_changed("a"), false, "a file as it was loaded: not changed")
+stand.write_file($"{dir}a.pluto", module_file("a", "", 1) .. "-- edited\n")
+stand.equal(modules.file_changed("a"), true, "edited after loading: changed")
+stand.write_file($"{dir}a.pluto", module_file("a", "", 1))
+stand.equal(modules.file_changed("a"), false, "the same text again: not changed")
+stand.equal(new Module({ name = "made_in_code" }) and modules.file_changed("made_in_code"), false,
+    "a module made in code has no file to change")
+
 -- A module loaded from a file knows its folder and keeps JSON files there; one made in code has none
 stand.equal(modules.file_of("a"), $"{dir}a.pluto", "file_of: the file a module came from")
 stand.equal(modules.get("a"):folder(), dir, "folder(): the folder of the module's file")

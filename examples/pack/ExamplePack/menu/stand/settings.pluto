@@ -1,0 +1,12 @@
+-- Settings: the script's section (Profile, Load Menu, Debug, ...) inside the pack's own list
+
+local settings = Atdar.loader.load("ui/stand/settings")
+local lang = Atdar.lang
+
+return {
+    build = function(node, ctx)
+        local settings_menu = node:list(lang.translate("examplepack.settings.menu_name"), { "epsettings" })
+        settings.set_parent(settings_menu)
+        settings.set_divider(settings.DISPLAY_NAME)
+    end,
+}

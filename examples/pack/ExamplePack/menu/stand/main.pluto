@@ -1,0 +1,9 @@
+-- The pack's menu starts here: the other files are built from it, in this order
+
+return {
+    build = function(node, ctx)
+        node:divider("ExamplePack")
+        ctx.load("self").build(node, ctx)
+        ctx.load("settings").build(node, ctx)
+    end,
+}

@@ -1,0 +1,59 @@
+-- EXAMPLE: every kind of menu item (MenuNode), as a menu file of a pack (menu/stand/items.pluto).
+-- main.pluto calls it: ctx.load("items").build(node, ctx)
+--
+-- Every method takes the item's name (a text or a label from Atdar.lang.translate) and, where it
+-- has them, commands: base command names, the script's prefix is added ({ "garage" } -> "atdargarage").
+-- Methods return the item's ref; list() returns a MenuNode to add items into
+
+local Logger = Atdar.loader.load("core/logger")
+local log = new Logger("Items")
+
+return {
+    build = function(node, ctx)
+        local list = node:list("Items", { "items" }, "Every kind of item")
+
+        list:divider("Plain")
+        list:readonly("Version", "1.0")                       -- "Name: value"
+        list:readonly_name("Just a line of text")
+        list:hyperlink("Open the site", "https://stand.sh")
+
+        list:divider("Clickable")
+        list:action("Say hello", function()
+            log:notify("hello")
+        end, { "hello" }, "Shows a notification")
+
+        list:toggle("A switch", function(on)
+            log:info($"switched {on ? 'on' : 'off'}")
+        end, {}, "", false)
+
+        list:slider("Amount", 0, 100, 50, 5, function(value)
+            log:info($"amount {value}")
+        end)
+
+        list:text_slider("Mode", { "Slow", "Fast" }, function(index, option_name)
+            log:info($"mode {index}: {option_name}")
+        end)
+
+        list:list_action("Pick one", { "Red", "Green", "Blue" }, function(index, option_name)
+            log:info($"picked {option_name}")
+        end)
+
+        -- A text field needs command names: Stand takes the text through its command box
+        list:text_input("Name", { "itemsname" }, function(value)
+            log:info($"name '{value}'")
+        end, "Type a name", "")
+
+        -- Colour: { r, g, b, a } 0.0 - 1.0; the last argument adds an Opacity slider
+        list:color("Colour", { r = 1.0, g = 0.5, b = 0.0, a = 1.0 }, function(colour)
+            log:info($"colour {Atdar.color.to_hex(colour)}")
+        end, {}, "", true)
+
+        -- A sublist; on_back runs when the user goes back out of it, on_open when they open it
+        local sub = list:list("More", {}, "", function()
+            log:debug("left More")
+        end, function()
+            log:debug("opened More")
+        end)
+        sub:readonly_name("Inside More")
+    end,
+}

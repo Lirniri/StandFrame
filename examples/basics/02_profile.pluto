@@ -1,0 +1,24 @@
+-- EXAMPLE: the profile, the script's settings (store/AnitaDarin/profiles/<name>.json).
+--
+-- Keys and their defaults are in lib/AnitaDarin/core/profile.pluto (DEFAULTS); set() of a key that
+-- isn't there only warns. Profiles are switched, created and reset in Settings > Profile
+
+local profile = Atdar.profile
+
+-- Reading
+local where = profile.get("notify")              -- "stand" | "game" | "none"
+local default_where = profile.default("notify")  -- what a new profile has
+local active = profile.active_name()             -- "main", ...
+
+-- Writing: saved when the profile autosaves, otherwise with Save
+profile.set("notify_flash", false)
+
+-- Following changes, also when another profile is loaded
+profile.on_change(function(key: string, value)
+    if key == "debug" then
+        -- Atdar.debug follows "debug" by itself; this is for your own reaction
+        util.log($"debug mode is now {tostring(value)}")
+    end
+end)
+
+util.log($"notifications go to {where} (new profiles: {default_where}), profile '{active}'")

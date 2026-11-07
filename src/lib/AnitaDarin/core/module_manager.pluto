@@ -22,6 +22,19 @@ local tick_handler_created = false
 local files = {}
 -- The file run_file() is running right now; add() records it for the modules the file registers
 local loading_file = nil
+-- Module file -> its text as it was when the code running now was read from it (file_changed)
+local loaded_text = {}
+
+-- The file's whole text, nil if it can't be read
+local function read_text(path: string): ?string
+    local file = io.open(path, "r")
+    if file == nil then
+        return nil
+    end
+    local text = file:read("*a")
+    file:close()
+    return text
+end
 
 function module.add(mod: table): table
     local name = mod.name
@@ -221,6 +234,7 @@ end
 -- Runs one module file; the modules it registers remember it for reload_module()
 -- @return Whether it ran without errors
 local function run_file(path: string): bool
+    local text = read_text(path)
     -- Timed (loader.report): compiling and running the file, with the lib files it loads
     local ok, err = Atdar.loader.measure(path, function()
         local chunk, load_err = loadfile(path)
@@ -234,8 +248,22 @@ local function run_file(path: string): bool
     end)
     if not ok then
         log:error($"module file failed: {path}\n{err}")
+        return false
     end
-    return ok
+    -- Only code that ran: after a failed reload the old code runs, and the file still differs from it
+    loaded_text[path] = text
+    return true
+end
+
+-- Whether the module's file differs from what its running code was read from (edited or synced since,
+-- so Reload would run something new). Reads the file: meant for the menu, not for every frame
+-- @return false for a module made in code (no file)
+function module.file_changed(name: string): bool
+    local path = files[name]
+    if path == nil then
+        return false
+    end
+    return read_text(path) ~= loaded_text[path]
 end
 
 -- Runs every module file in dir and its subfolders; a broken file skips only itself
