@@ -27,12 +27,15 @@ local class VehicleManager extends Module
         self.vehicles = {}
     end
 
+    -- The vehicle the player is in at the start is remembered too
     function on_start()
-        -- TODO: add_vehicle_when_seat_into_him - remember the vehicle the player gets into
+        self.current_vehicle = 0
+        self:_remember_current_vehicle()
     end
 
+    -- Remembers every vehicle the player gets into
     function on_tick()
-        -- body
+        self:_remember_current_vehicle()
     end
 
     function on_stop()
@@ -67,6 +70,21 @@ local class VehicleManager extends Module
         self.last_handle = handle
     end
 
+    -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
+    -- self.current_vehicle: the one they were in last time, 0 - none
+    function _remember_current_vehicle(): void
+        local ped = Atdar.natives.player.get_ped_id()
+        local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
+        if vehicle == self.current_vehicle then
+            return
+        end
+        self.current_vehicle = vehicle
+        if vehicle ~= 0 and self.vehicles[vehicle] == nil then
+            self:add_vehicle(vehicle)
+            self.log:debug($"remembered the vehicle the player got into: {vehicle}")
+        end
+    end
+
     -- Forgets a vehicle
     function remove_vehicle(handle: int): void
         self.vehicles[handle] = nil
@@ -81,6 +99,16 @@ local class VehicleManager extends Module
     end
 
     -- Action
+
+    -- function explode_all(): void
+    --     local n_vehicle = Atdar.natives.entity.vehicle
+    --     for _, handle in pairs(self:get_handles()) do
+    --         n_vehicle.explode({
+    --             vehicle = handle,
+    --             net_id = n_vehicle.get_net_id(handle)
+    --         })
+    --     end
+    -- end
 
     -- Spawns a vehicle and remembers it. By default 5 m in front of the player, facing where the player faces.
     -- Yields while the model loads: call it from a feature's action or a tick, not the script's main body
@@ -119,6 +147,20 @@ local class VehicleManager extends Module
         end
         self:add_vehicle(handle)
         return handle
+    end
+
+    -- Deletes every remembered vehicle from the game and forgets them
+    -- @return How many were deleted (ones already gone are only forgotten)
+    function delete_all(): int
+        local n_vehicle = Atdar.natives.entity.vehicle
+        local deleted = 0
+        for _, handle in ipairs(self:get_handles()) do
+            if math.type(handle) == "integer" and n_vehicle.is_exist(handle) and n_vehicle.delete(handle) then
+                deleted += 1
+            end
+            self:remove_vehicle(handle)
+        end
+        return deleted
     end
 
     -- Saving

@@ -31,6 +31,8 @@ local view = {}
 local manual_ticks = {}
 -- Stops the module's on_tick run by hand; set below, with the runs
 local stop_manual_tick
+-- Ends the loops of the module's functions (nil: of every module); set below, with the loops
+local stop_function_loops
 
 -- The module's number: its place in the registration order, from 1 (0 if it's gone)
 local function number_of(name: string): int
@@ -114,14 +116,20 @@ local ACTIONS = {
     { key = "start", run = |name| -> Atdar.modules.start_module(name) },
     { key = "restart", run = function(name)
         stop_manual_tick(name)
+        stop_function_loops(name)
         Atdar.modules.stop_module(name)
         Atdar.modules.start_module(name)
     end },
     { key = "stop", run = function(name)
         stop_manual_tick(name)
+        stop_function_loops(name)
         Atdar.modules.stop_module(name)
     end },
-    { key = "reload", run = |name| -> Atdar.modules.reload_module(name) },
+    { key = "reload", run = function(name)
+        stop_manual_tick(name)
+        stop_function_loops(name)
+        Atdar.modules.reload_module(name)
+    end },
 }
 
 -- ─── Calling a module's functions ────────────────────────────────────────────
@@ -689,6 +697,124 @@ local function tick_list(entry: table, mod: table): void
     tick_statuses[name] = node:divider(text("entry.status_line"):format(text("tick.state.stopped")))
 end
 
+-- ─── Functions without parameters: Call, Loop, Loop With Interval ────────────
+-- A loop calls the function every frame, or once every so many ms, until Stop; an error ends it
+
+-- "<module>.<function>" -> its loop going on: { module = name, every = ms or nil, next = ms }
+local function_loops = {}
+-- The same key -> the Status divider in the function's list
+local loop_statuses = {}
+
+local function loop_key(module_name: string, fn_name: string): string
+    return $"{module_name}.{fn_name}"
+end
+
+-- state: "running" / "every" (ms) / "stopped" / "failed"
+local function show_loop_status(key: string, state: string, every: ?int): void
+    local ref = loop_statuses[key]
+    if ref == nil then
+        return
+    end
+    local value = text($"loop.state.{state}")
+    if every ~= nil then
+        value = value:format(every)
+    end
+    pcall(menu.set_menu_name, ref, text("entry.status_line"):format(value))
+end
+
+-- Calls the function every frame (every: nil) or once every `every` ms. A newer loop replaces the old one
+local function start_loop(module_name: string, fn: table, every: ?int): void
+    local key = loop_key(module_name, fn.name)
+    local name = $"{short_name(module_name)}.{signature(fn)}"
+    local run = { module = module_name, every = every, next = 0 }
+    function_loops[key] = run
+    if every == nil then
+        show_loop_status(key, "running")
+        log:notify(text("loop.started"):format(name))
+    else
+        show_loop_status(key, "every", every)
+        log:notify(text("loop.started_every"):format(name, every))
+    end
+
+    util.create_tick_handler(function()
+        -- Stopped, or replaced by a newer loop
+        if stopping or function_loops[key] ~= run then
+            return false
+        end
+        if run.every ~= nil then
+            local now = util.current_time_millis()
+            if now < run.next then
+                return true
+            end
+            run.next = now + run.every
+        end
+        -- The module as it is now (Reload makes a new one)
+        local modules = Atdar.modules
+        if not modules.has(module_name) then
+            function_loops[key] = nil
+            show_loop_status(key, "stopped")
+            return false
+        end
+        local mod = modules.get(module_name)
+        local ok, err = true, nil
+        local function call_once()
+            ok, err = pcall(mod[fn.name], mod)
+        end
+        -- How long a call takes, on screen (info text)
+        if profiling ~= nil then
+            profiling.tick($"{module_name}.{fn.name}()", call_once)
+        else
+            call_once()
+        end
+        if not ok then
+            function_loops[key] = nil
+            show_loop_status(key, "failed")
+            log:error(text("call.failed"):format(name, tostring(err)))
+            return false
+        end
+        return true
+    end)
+end
+
+local function stop_loop(module_name: string, fn: table): void
+    local key = loop_key(module_name, fn.name)
+    local name = $"{short_name(module_name)}.{signature(fn)}"
+    if function_loops[key] == nil then
+        log:notify(text("loop.not_running"):format(name))
+        return
+    end
+    function_loops[key] = nil
+    show_loop_status(key, "stopped")
+    log:notify(text("loop.stopped"):format(name))
+end
+
+stop_function_loops = function(module_name)
+    for key, run in pairs(function_loops) do
+        if module_name == nil or run.module == module_name then
+            function_loops[key] = nil
+            show_loop_status(key, "stopped")
+        end
+    end
+end
+
+-- A function without parameters: a list of Call, Loop, Loop With Interval (ms), Stop, then its Status
+local function function_list(entry: table, mod: table, fn: table): void
+    local module_name = mod.name
+    local node = entry:list(signature(fn), {}, label("loop.help"))
+    node:action(label("loop.call"), || -> call(module_name, fn, {}, 0), {}, label("call.button_help"))
+    node:action(label("loop.loop"), || -> start_loop(module_name, fn, nil), {}, label("loop.loop_help"))
+    node:track(menu.click_slider(node.handle, label("loop.every"), {}, label("loop.every_help"),
+        100, 60000, 1000, 100, function(ms, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        start_loop(module_name, fn, ms)
+    end))
+    node:action(label("loop.stop"), || -> stop_loop(module_name, fn), {}, label("loop.stop_help"))
+    loop_statuses[loop_key(module_name, fn.name)] = node:divider(
+        text("entry.status_line"):format(text("loop.state.stopped")))
+end
+
 -- The hooks the manager calls, to call by hand too (they don't change the module's status)
 local HOOKS = {
     { name = "on_start", params = {}, vararg = false },
@@ -717,11 +843,11 @@ local function functions_of(entry: table, mod: table): void
     end
     for _, fn in ipairs(functions) do
         if #fn.params == 0 and not fn.vararg then
-            entry:action(signature(fn), || -> call(mod.name, fn, {}, 0), {}, label("call.button_help"))
+            function_list(entry, mod, fn)
         else
             -- A text field takes its text through the command box, so it needs a command; not one of the
-            -- found commands (made without commands.track)
-            menu.text_input(entry.handle, signature(fn), commands.names({ $"call{mod.name}{fn.name}" }),
+            -- found commands (tracked without its command). Tracked as the list's item, so Reload removes it
+            entry:track(menu.text_input(entry.handle, signature(fn), commands.names({ $"call{mod.name}{fn.name}" }),
                 label("call.help"), function(value, click_type)
                 if stopping or NOT_USER_CLICKS[click_type] then
                     return
@@ -732,9 +858,21 @@ local function functions_of(entry: table, mod: table): void
                     return
                 end
                 call(mod.name, fn, args, count)
-            end, "")
+            end, ""))
         end
     end
+end
+
+-- After Reload: the module's code is new, so its Base Functions and Module Functions are made again.
+-- Its loops by hand end first (they belonged to the old code and their Status lines go with the items)
+local function rebuild_functions(name: string): void
+    local section = (view.sections or {})[name]
+    local modules = Atdar.modules
+    if section == nil or not modules.has(name) then
+        return
+    end
+    section.entry:clear_from(section.first)
+    functions_of(section.entry, modules.get(name))
 end
 
 function module.build(parent: table): void
@@ -746,7 +884,7 @@ function module.build(parent: table): void
 
     local divider = parent:divider(label("divider"))
     local node = parent:list(label("title"), {}, label("help"))
-    view = { divider = divider, list = node, entries = {}, statuses = {} }
+    view = { divider = divider, list = node, entries = {}, statuses = {}, sections = {} }
 
     -- The copy Stand runs, which Reload reads, not the project's src
     node:action(label("open_folder.name"), function()
@@ -756,6 +894,7 @@ function module.build(parent: table): void
     node:action(label("stop_all.name"), function()
         -- On_tick run by hand stops too: nothing of the modules keeps running
         stop_all_ticks()
+        stop_function_loops(nil)
         modules.stop()
         refresh()
         log:notify(text("stop_all.done"))
@@ -771,9 +910,14 @@ function module.build(parent: table): void
         for _, action in ipairs(ACTIONS) do
             entry:action(label(action.key), function()
                 action.run(name)
+                if action.key == "reload" then
+                    rebuild_functions(name)
+                end
                 refresh()
             end)
         end
+        -- Where the functions start, so Reload can make them again
+        view.sections[name] = { entry = entry, first = #entry.children + 1 }
         functions_of(entry, mod)
     end
     if #names == 0 then

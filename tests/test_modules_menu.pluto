@@ -33,6 +33,17 @@ end
 local counter = Atdar.modules.add(new Counter())
 local ticks = 0
 Atdar.modules.add(new Module({ name = "ticker", on_tick = function() ticks += 1 end }))
+-- A module from a file, so Reload can read it again
+local reload_dir = stand.tmpdir("modules_menu_reload")
+local function reloader_file(functions: string): string
+    return "local Module = Atdar.loader.load('core/module')\n"
+        .. "local class Reloader extends Module\n"
+        .. "    function __construct() parent:__construct({ name = 'reloader' }) end\n"
+        .. functions .. "\nend\nreturn Atdar.modules.add(new Reloader())\n"
+end
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function one() return 1 end\n    function old_field(x) return x end"))
+Atdar.modules.load_dir(reload_dir)
 Atdar.modules.start()
 
 local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
@@ -79,19 +90,69 @@ stand.equal(names_in(entry_counter), "Status: running | Start | Restart | Stop |
     .. " | on_stop() | Module Functions | add(amount, note) | broken() | reset()",
     "its own functions by name with their parameters; hooks, Module's own and _names left out")
 stand.equal(stand.child(entry_counter, "add(amount, note)").kind, "text_input", "with parameters: a text field")
-stand.equal(stand.child(entry_counter, "reset()").kind, "action", "without: a button")
+local reset_node = stand.child(entry_counter, "reset()")
+stand.equal(reset_node.kind, "list", "without: a list")
+stand.equal(names_in(reset_node), "Call | Loop | Loop With Interval | Stop | Status: stopped",
+    "of Call, Loop, Loop With Interval, Stop and its Status")
 
 stand.clear_logs()
 menu.set_value(stand.child(entry_counter, "add(amount, note)"), '5, "a, b"')
 stand.equal(counter.count, 5, "the arguments are passed: a number")
 stand.check(stand.find_log('Module 3.add(amount, note) -> 5, a, b'), "and the results are told, the quoted text whole")
-stand.click(stand.child(entry_counter, "reset()"))
+stand.click(stand.child(reset_node, "Call"))
 stand.equal(counter.count, 0, "a button calls the function")
 stand.check(stand.find_log("Module 3.reset(): done"), "a call without results says it's done")
 stand.clear_logs()
-stand.click(stand.child(entry_counter, "broken()"))
+stand.click(stand.child(stand.child(entry_counter, "broken()"), "Call"))
 stand.check(stand.find_log("Module 3.broken() failed: it broke"), "an error in the function is told, not thrown")
 stand.check(stand.find_log("| ERROR] Module 3.broken() failed"), "as an error: Errors Always In Stand applies to it")
+-- Loops of a function without parameters
+local reset_status = reset_node.children[#reset_node.children]
+counter.count = 5
+stand.clear_logs()
+stand.click(stand.child(reset_node, "Loop"))
+stand.check(stand.find_log("Module 3.reset(): loop started"), "Loop is told")
+stand.equal(stand.name_of(reset_status), "Status: running", "Status: running")
+counter.count = 5
+stand.frame()
+stand.equal(counter.count, 0, "Loop calls the function every frame")
+stand.click(stand.child(reset_node, "Stop"))
+stand.check(stand.find_log("Module 3.reset(): loop stopped"), "Stop is told")
+stand.equal(stand.name_of(reset_status), "Status: stopped", "Status: stopped")
+counter.count = 5
+stand.frame()
+stand.equal(counter.count, 5, "Stop ends the loop")
+stand.click(stand.child(reset_node, "Stop"))
+stand.check(stand.find_log("Module 3.reset(): no loop running"), "Stop with no loop says so")
+-- With an interval: once every so many ms (a frame is stand.FRAME_MS here)
+local adds = 0
+local real_reset = counter.reset
+counter.reset = function() adds += 1 end
+stand.click(stand.child(reset_node, "Loop With Interval"), 300)
+stand.check(stand.find_log("Module 3.reset(): loop every 300 ms"), "Loop With Interval tells its interval")
+stand.equal(stand.name_of(reset_status), "Status: every 300 ms", "Status: every 300 ms")
+for _ = 1, 9 do
+    stand.frame()
+    stand.clock += stand.FRAME_MS
+end
+stand.check(adds >= 3 and adds <= 4, $"called once every 300 ms ({adds} calls in 900 ms)")
+-- The module's Stop ends its functions' loops
+stand.click(stand.child(entry_counter, "Stop"))
+stand.equal(stand.name_of(reset_status), "Status: stopped", "the module's Stop ends its functions' loops")
+adds = 0
+stand.frame(3)
+stand.equal(adds, 0, "nothing is called any more")
+stand.click(stand.child(entry_counter, "Start"))
+-- An error ends the loop, told as an error
+counter.reset = function() error("loop broke", 0) end
+stand.clear_logs()
+stand.click(stand.child(reset_node, "Loop"))
+stand.frame()
+stand.check(stand.find_log("| ERROR] Module 3.reset() failed: loop broke"), "an error in a loop is told as an error")
+stand.equal(stand.name_of(reset_status), "Status: error", "Status: error, the loop ended")
+counter.reset = real_reset
+counter.count = 0
+
 -- The hooks by hand: on_stop runs, the status stays
 stops = 0
 stand.click(stand.child(entry_b, "on_stop()"))
@@ -281,13 +342,27 @@ stand.frame(2)
 stand.equal(ticks, 2, "once a frame, by the manager only")
 stand.click(stand.child(entry_ticker, "Stop"))
 
+-- Reload: the code is read again, its functions in the menu are made again
+local entry_reloader = stand.find_item(list, "5: reloader: ")
+stand.check(stand.child(entry_reloader, "one()") ~= nil and stand.child(entry_reloader, "old_field(x)") ~= nil,
+    "a module from a file: its functions one() and old_field(x)")
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function two() return 2 end\n    function three(x) return x end"))
+stand.click(stand.child(entry_reloader, "Reload"))
+stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Base Functions"
+    .. " | on_start() | on_tick() | on_stop() | Module Functions | three(x) | two()",
+    "after Reload the functions are the new code's: one() and the field old_field(x) gone, nothing twice")
+stand.clear_logs()
+stand.click(stand.child(stand.child(entry_reloader, "two()"), "Call"))
+stand.check(stand.find_log("Module 5.two() -> 2"), "and they call the new code")
+
 -- Stop All, under Refresh: every module stops, on_tick run by hand too
 stand.check(names_in(list):find("Refresh | Stop All", 1, true), "Stop All comes right under Refresh")
 ticks = 0
 stand.click(stand.child(tick_node, "Start Loop Only"))
 stand.clear_logs()
 stand.click(stand.child(list, "Stop All"))
-for number, name in { "a", "b", "counter", "ticker" } do
+for number, name in { "a", "b", "counter", "ticker", "reloader" } do
     local caption = $"{number}: {name}: "
     stand.equal(stand.name_of(stand.find_item(list, caption)), $"{caption}stopped", $"Stop All stops {name}")
 end

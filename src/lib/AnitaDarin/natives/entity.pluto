@@ -140,8 +140,8 @@ end
 
 -- Actions
 
-function module.delete(handle_or_ptr): void
-    entities.delete(handle_or_ptr)
+function module.delete(entity): void
+    entities.delete(entity)
 end
 
 return Atdar.loader.auto(module, "natives/entity")

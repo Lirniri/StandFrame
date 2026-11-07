@@ -136,6 +136,37 @@ MenuNode = class
         menu.delete(self.handle)
     end
 
+    -- Removes the items from the index-th on (in the order they were made), leaving the ones before:
+    -- a part of a list made again (e.g. a module's functions after its code is reloaded)
+    function clear_from(index: int): void
+        local removed = {}
+        for i = #self.children, index, -1 do
+            removed[self.children[i]] = true
+        end
+        -- Toggles switched off first: one deleted while on keeps ticking in Stand
+        for i = #self.toggles, 1, -1 do
+            local ref = self.toggles[i]
+            if removed[ref] then
+                if menu.get_value(ref) then
+                    menu.set_value(ref, false)
+                end
+                table.remove(self.toggles, i)
+            end
+        end
+        for i = #self.sublists, 1, -1 do
+            local sublist = self.sublists[i]
+            if removed[sublist.handle] then
+                sublist:untrack_commands()
+                table.remove(self.sublists, i)
+            end
+        end
+        for i = #self.children, index, -1 do
+            local child_handle = table.remove(self.children, i)
+            Commands.untrack(child_handle)
+            menu.delete(child_handle)
+        end
+    end
+
     -- Removes every item created through this node, leaving the node itself
     function clear(): void
         self:stop_toggles()

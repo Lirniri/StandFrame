@@ -66,6 +66,16 @@ end
 
 -- Actions
 
+-- Deletes the vehicle from the game
+-- @return Whether it was a vehicle (nothing is deleted otherwise)
+function module.delete(vehicle: int): bool
+    if not module.is_vehicle(vehicle) then
+        return false
+    end
+    Atdar.natives.entity.delete(vehicle)
+    return true
+end
+
 -- Spawns a vehicle of a model (name or hash) at x, y, z facing heading.
 -- isNetwork given (and the flags after it) - the game's VEHICLE.CREATE_VEHICLE with exactly those flags;
 -- without it - Stand's entities.create_vehicle, which picks them itself.
@@ -114,6 +124,12 @@ function module.explode(opts: table): void
             is_audible,
             is_invisible
         )
+    end
+end
+
+function module.detele(vehicle: int): void
+    if module.is_exist(vehicle) then
+        Atdar.natives.entity.detele(vehicle)
     end
 end
 
