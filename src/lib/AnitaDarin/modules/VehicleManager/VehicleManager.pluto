@@ -1,0 +1,183 @@
+local Module = Atdar.loader.load("core/module")
+
+-- The folder saved vehicles go to, inside the module's
+local SAVE_FOLDER = "vehicles"
+
+-- What's saved of a vehicle: { handle, model, name (when Stand knows it), x, y, z, heading }.
+-- The handle is the one the game gave it this session: the game gives a new one when it's spawned again
+local function vehicle_data(handle: int): table
+    local n_entity = Atdar.natives.entity
+    local model = n_entity.get_model(handle)
+    local coords = ENTITY.GET_ENTITY_COORDS(handle, true)
+    local data = { handle = handle, model = model, x = coords.x, y = coords.y, z = coords.z, heading = n_entity.get_heading(handle) }
+    local name = util.reverse_joaat(model)
+    if name ~= nil and name ~= "" then
+        data.name = name
+    end
+    return data
+end
+
+local class VehicleManager extends Module
+    
+    function __construct()
+        parent:__construct({
+            name = "VehicleManager"
+        })
+        -- State lives in fields; set defaults here
+        self.vehicles = {}
+    end
+
+    function on_start()
+        -- TODO: add_vehicle_when_seat_into_him - remember the vehicle the player gets into
+    end
+
+    function on_tick()
+        -- body
+    end
+
+    function on_stop()
+        -- body
+    end
+
+    -- Get
+
+    -- The last vehicle remembered (add_vehicle), or nil if there's none
+    function get_handle(): ?int
+        if self.last_handle == -1 then
+            return nil
+        end
+        return self.last_handle
+    end
+
+    -- Every vehicle remembered, as a list of handles
+    function get_handles(): table
+        local handles = {}
+        for handle in pairs(self.vehicles) do
+            table.insert(handles, handle)
+        end
+        return handles
+    end
+
+    -- Remembers a vehicle the script made
+    function add_vehicle(handle: int): void
+        if handle == -1 then
+            return nil
+        end
+        self.vehicles[handle] = true
+        self.last_handle = handle
+    end
+
+    -- Forgets a vehicle
+    function remove_vehicle(handle: int): void
+        self.vehicles[handle] = nil
+        if self.last_handle == handle then
+            self.last_handle = nil
+        end
+    end
+    -- Forgets all vehicles
+    function remove_all_vehicles(): void
+        self.vehicles = {}
+        self.last_handle = nil
+    end
+
+    -- Action
+
+    -- Spawns a vehicle and remembers it. By default 5 m in front of the player, facing where the player faces.
+    -- Yields while the model loads: call it from a feature's action or a tick, not the script's main body
+    -- @param model A model name ("adder") or hash
+    -- @param coords Where (a vector3); nil - in front of the player
+    -- @param heading Which way it faces; nil - the player's way
+    -- @return The vehicle's handle, or nil if the model isn't a vehicle, didn't load or the game made none
+    function create(model: int|string, coords: ?vector3, heading: ?float): ?int
+        local n_vehicle = Atdar.natives.entity.vehicle
+        local hash = Atdar.util.hash(model)
+        if not n_vehicle.is_model(hash) then
+            self.log:warn($"'{tostring(model)}' isn't a vehicle model")
+            return nil
+        end
+
+        -- The game makes a vehicle only of a loaded model (a timeout is logged by streaming)
+        local model_asset = Atdar.natives.streaming.model.asset
+        if not model_asset.request(hash) then
+            return nil
+        end
+
+        local ped = Atdar.natives.player.get_ped_id()
+        if coords == nil then
+            coords = v3.new(ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ped, 0.0, 5.0, 0.0))
+        end
+        if heading == nil then
+            heading = Atdar.natives.entity.get_heading(ped)
+        end
+
+        local handle = n_vehicle.create(hash, coords.x, coords.y, coords.z, heading)
+        -- Made: the game may let the model go from memory now
+        model_asset.remove(hash)
+        if handle == nil or handle == -1 then
+            self.log:warn($"the game made no '{tostring(model)}'")
+            return nil
+        end
+        self:add_vehicle(handle)
+        return handle
+    end
+
+    -- Saving
+
+    -- Saves one vehicle to its own file in the module's vehicles folder (modules/VehicleManager/vehicles/):
+    -- the model, where it stands and which way it faces, enough to spawn it again with create().
+    -- @param name The file's name; nil - the model's name, with _2, _3... when that one is taken
+    -- @return The file's name (without .json), nil if the vehicle doesn't exist or the file couldn't be written
+    function save_vehicle(handle: int, name: ?string): ?string
+        if math.type(handle) ~= "integer" or not Atdar.natives.entity.is_exist(handle) then
+            self.log:warn($"{tostring(handle)} isn't a vehicle in the game")
+            return nil
+        end
+        local data = vehicle_data(handle)
+
+        local file_name = name
+        if file_name == nil or file_name == "" then
+            file_name = self:_free_name(data.name or $"vehicle_{data.model}")
+        end
+        -- Characters Windows doesn't allow in a file's name
+        file_name = file_name:gsub('[<>:"/\\|?*]', "_")
+
+        local file = self:json_file($"{SAVE_FOLDER}/{file_name}")
+        if file == nil then
+            self.log:warn("the module isn't loaded from a file: there's no folder to save to")
+            return nil
+        end
+        if not file:write(data) then
+            self.log:warn($"couldn't write {file.path}")
+            return nil
+        end
+        self.log:info($"saved to {file.path}")
+        return file_name
+    end
+
+    -- Saves every remembered vehicle that still exists, each to its own file (save_vehicle)
+    -- @return How many were saved
+    function save_vehicles(): int
+        local saved = 0
+        for handle in pairs(self.vehicles) do
+            if math.type(handle) == "integer" and Atdar.natives.entity.is_exist(handle)
+                and self:save_vehicle(handle) ~= nil then
+                saved += 1
+            end
+        end
+        return saved
+    end
+
+    -- "adder", or "adder_2", "adder_3"... when the file is there already
+    function _free_name(base: string): string
+        local name = base
+        local number = 1
+        while self:json_file($"{SAVE_FOLDER}/{name}"):exists() do
+            number += 1
+            name = $"{base}_{number}"
+        end
+        return name
+    end
+
+end
+
+return Atdar.modules.add(new VehicleManager())

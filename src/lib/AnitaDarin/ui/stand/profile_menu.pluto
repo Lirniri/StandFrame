@@ -235,6 +235,10 @@ local function update_fields(): bool
         and not pcall(menu.set_value, view.notify_errors, Atdar.profile.get("notify_errors_in_stand") == true) then
         ok = false
     end
+    if view.notify_newline
+        and not pcall(menu.set_value, view.notify_newline, Atdar.profile.get("notify_stand_newline") == true) then
+        ok = false
+    end
     if view.notify_flash and not pcall(menu.set_value, view.notify_flash, Atdar.profile.get("notify_flash") == true) then
         ok = false
     end
@@ -357,6 +361,17 @@ local function notifications(list: table): void
     end, {}, label("notify.test.help"))
 end
 
+-- The Stand divider: how Stand's notifications look
+local function stand_notifications(list: table): void
+    local profile = Atdar.profile
+    list:divider(label("notify.stand.divider"))
+    view.notify_newline = list:toggle(label("notify.stand.newline.name"), function(on)
+        if not updating then
+            profile.set("notify_stand_newline", on)
+        end
+    end, {}, label("notify.stand.newline.help"), profile.get("notify_stand_newline") == true)
+end
+
 -- A colour item with opacity for a profile key kept as hex RRGGBBAA
 local function color_item(node: table, key: string, name: string, commands: table): void
     view.colors[key] = node:color(label($"feed.{name}.name"), default_color(key), function(colour, click_type)
@@ -452,6 +467,7 @@ function module.appearance(node: table): void
     -- Going back out of Notifications takes the test card away too: it was only there to look at
     local list = appearance:list(label("notify.name"), { "notify" }, label("notify.help"), remove_test_post)
     notifications(list)
+    stand_notifications(list)
     feed(list)
 end
 

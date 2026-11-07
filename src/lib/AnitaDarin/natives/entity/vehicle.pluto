@@ -24,10 +24,12 @@ end
 
 -- Get
 
-function module.get_heading(vehicle: int, from_eulers: bool = false): float
+-- @return The heading, nil if it isn't a vehicle
+function module.get_heading(vehicle: int, from_eulers: bool = false): ?float
     if module.is_vehicle(vehicle) then
-        Atdar.natives.entity.get_heading(vehicle, from_eulers)
+        return Atdar.natives.entity.get_heading(vehicle, from_eulers)
     end
+    return nil
 end
 
 -- vehicle_or_model: vehicle handle (number) or model name (string, e.g. "adder")

@@ -34,7 +34,7 @@ log:warn("careful")
 local lines = lines_of(today)
 stand.equal(#lines, 2, "lines go to today's file")
 stand.check(io.exists($"{dir}AnitaDarin_2026-11-06.log"), "named <script>_<date>.log")
-stand.check(lines[1]:match("^%[%d%d:%d%d:%d%d%] %[AnitaDarin | Test%] INFO: first line$") ~= nil,
+stand.check(lines[1]:match("^%[%d%d:%d%d:%d%d%] %[AnitaDarin | Test | INFO%] first line$") ~= nil,
     "with the time and the same text as Stand's log")
 stand.check(stand.find_log("first line"), "and to Stand's log too")
 stand.equal(Logger.folder(), dir, "Logger.folder() is where the files are")
@@ -43,7 +43,7 @@ stand.equal(Logger.folder(), dir, "Logger.folder() is where the files are")
 today = "2026-11-07"
 log:info("next day")
 stand.equal(#lines_of("2026-11-06"), 2, "yesterday's file keeps its lines")
-stand.equal(lines_of("2026-11-07")[1]:match("INFO: next day$") ~= nil, true, "a new day writes a new file")
+stand.equal(lines_of("2026-11-07")[1]:match("INFO%] next day$") ~= nil, true, "a new day writes a new file")
 
 -- Another logger appends to the same file
 new Logger("Other"):info("from another source")

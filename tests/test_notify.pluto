@@ -35,7 +35,10 @@ _G.CLOCK = { GET_CLOCK_HOURS = || -> clock, GET_CLOCK_MINUTES = || -> 0 }
 _G.HUD = {
     BEGIN_TEXT_COMMAND_THEFEED_POST = function() text = nil end,
     ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME = function(value) text = value end,
-    SET_SCRIPT_VARIABLE_HUD_COLOUR = function(r, g, b, a) script_color = $"{r},{g},{b},{a}" end,
+    SET_SCRIPT_VARIABLE_HUD_COLOUR = function(r, g, b, a)
+        script_color = $"{r},{g},{b},{a}"
+        look.color_sets = (look.color_sets or 0) + 1
+    end,
     THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST = function(index) look.background = index end,
     THEFEED_SET_RGBA_PARAMETER_FOR_NEXT_MESSAGE = function(r, g, b, a) look.flash_color = $"{r},{g},{b},{a}" end,
     END_TEXT_COMMAND_THEFEED_POST_TICKER = function(blink)
@@ -192,8 +195,37 @@ package.loaded[i18n_name] = real_i18n
 Atdar.util.toast("own subject", { target = "game", style = "message", subject = "Profiles", level = "WARN" })
 stand.check(feed[#feed]:find("|Profiles|own subject", 1, true) ~= nil, "opts.subject wins over the level")
 profile.set("notify_feed_style", "ticker")
+-- The name in lines is the profile's Name In Logs, whatever its default
+local log_name = profile.log_name()
+Atdar.debug = false
 log:notify("a post")
-stand.check(feed[#feed]:find("| Test] INFO: a post", 1, true) ~= nil, "a post keeps the whole log line")
+stand.equal(feed[#feed], $"[{log_name}] Information: a post", "a post: the short line, the level in words, no source")
+Atdar.debug = true
+log:notify("a debug post")
+stand.equal(feed[#feed], $"[{log_name} | Test | INFO] a debug post", "in debug mode the whole line")
+Atdar.debug = false
+stand.clear_logs()
+profile.set("notify", "stand")
+stand.toasts = {}
+log:warn("careful in Stand")
+stand.equal(stand.toasts[1], $"[{log_name}] Warning: careful in Stand", "Stand's notification: the short line too")
+stand.check(stand.find_log($"[{log_name} | Test | WARN] careful in Stand"), "the log keeps the whole line")
+-- Text On A New Line: the text under the head in Stand's notification
+profile.set("notify_stand_newline", true)
+stand.toasts = {}
+log:warn("on its own line")
+stand.equal(stand.toasts[1], $"[{log_name}] Warning:\non its own line", "Text On A New Line: the text under the head")
+Atdar.debug = true
+stand.toasts = {}
+log:notify("debug on its own line")
+stand.equal(stand.toasts[1], $"[{log_name} | Test | INFO]\ndebug on its own line", "in debug mode under the whole head")
+Atdar.debug = false
+stand.toasts = {}
+Atdar.util.toast("not from the logger", { target = "stand" })
+stand.equal(stand.toasts[1], "not from the logger", "a message without a head shows as it is")
+stand.check(stand.find_log($"[{log_name} | Test | INFO] debug on its own line"), "the log stays one line")
+profile.set("notify_stand_newline", false)
+profile.set("notify", "game")
 
 -- remove_all(): every post the script made goes from the feed
 local thefeed = Atdar.natives.visual.hud.thefeed
@@ -207,6 +239,39 @@ stand.equal(thefeed.remove_all(), 0, "and forgets them")
 for i = 1, 105 do log:notify($"many {i}") end
 stand.equal(thefeed.remove_all(), 100, "only the last 100 are kept")
 feed = {}
+
+-- A text longer than the game shows (99 bytes) goes out as more posts, cut at spaces, never inside a letter
+local split = thefeed.split_text
+local words = string.rep("word ", 30)
+local parts = split(words)
+stand.check(#parts == 2 and #parts[1] <= 99 and not parts[1]:find(" $") and parts[1]:sub(-4) == "word",
+    $"split at a space, words whole ({#parts} parts, {#parts[1]} bytes)")
+stand.equal(table.concat(parts, " "), words, "nothing lost but the spaces at the cuts")
+local cyrillic = split(string.rep("я", 80))
+stand.check(#cyrillic == 2 and #cyrillic[1] == 98 and #cyrillic[2] == 62, "Cyrillic: cut between letters (2 bytes each)")
+stand.equal(#split("short"), 1, "a short text is one part")
+stand.equal(#split(""), 1, "an empty text is one part")
+
+thefeed.remove_all()
+feed = {}
+profile.set("notify_feed_style", "message")
+local long_text = "Модуль 1 остановлен: цикл идёт вручную, а это ещё много текста сверху, чтобы точно не влезло"
+profile.set("notify_background_day", "FF800080")
+profile.set("notify_background_night", "FF800080")
+look.color_sets = 0
+local long_id = log:notify(long_text)
+stand.equal(#feed, 2, "a long card goes on as a second card")
+stand.check(feed[1]:find("|Модуль 1 остановлен", 1, true) ~= nil and feed[1]:find("влезло", 1, true) == nil
+    and feed[2]:find("влезло$") ~= nil, "the first card has the start, the second the rest of the text")
+stand.check(feed[1]:find("|Information|", 1, true) and feed[2]:find("|Information|", 1, true),
+    "both cards look the same: sender, subject")
+stand.equal(look.color_sets, 2, "the background colour is set for each card (the game takes it for one post)")
+thefeed.remove(long_id)
+stand.check(feed[1] == "removed" and feed[2] == "removed", "remove(id) of the first takes away every card")
+feed = {}
+profile.set("notify_feed_style", "ticker")
+profile.set("notify_background_day", "")
+profile.set("notify_background_night", "")
 
 -- The card's icon: the profile's, opts.icon overrides it
 profile.set("notify_feed_style", "message")

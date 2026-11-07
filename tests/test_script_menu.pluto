@@ -73,7 +73,7 @@ profile.set("found_command_separator", "")
 profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
 local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
-stand.equal(names_in(notifications), "Type: Stand | Errors Always In Stand | Test Notification"
+stand.equal(names_in(notifications), "Type: Stand | Errors Always In Stand | Test Notification | Stand | Text On A New Line"
     .. " | Game | Notification Type: Post | Picture: " .. default_picture_title .. " | Icon: Chat | Flash Notifications | Day Starts At | Night Starts At"
     .. " | Day Background Color | Day Flash Color | Day Subject Color: White"
     .. " | Night Background Color | Night Flash Color | Night Subject Color: White",

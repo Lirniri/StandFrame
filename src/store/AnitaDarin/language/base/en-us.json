@@ -150,6 +150,13 @@
                 "name": "Test Notification",
                 "help": "Shows a notification where notifications show now",
                 "text": "This is how the script's notifications look"
+            },
+            "stand": {
+                "divider": "Stand",
+                "newline": {
+                    "name": "Text On A New Line",
+                    "help": "Stand's notifications show the text on a line of its own, under [AnitaDarin | ... ]"
+                }
             }
         },
         "feed": {
@@ -269,15 +276,15 @@
         "help": "The script's internal modules. Shown in debug mode only",
         "open_folder": {
             "name": "Open Folder",
-            "help": "Opens the modules folder in Stand's Lua Scripts. Reload reads modules from there, so copy your changes there first (build.py)"
+            "help": "Opens the modules folder in Lua Scripts. Reload reads the files from there"
         },
         "refresh": {
             "name": "Refresh",
-            "help": "Re-read every module's status"
+            "help": "Updates every module's status"
         },
         "stop_all": {
             "name": "Stop All",
-            "help": "Stops every running module, the last started first, and on_tick run by hand",
+            "help": "Stops every module and every loop started by hand",
             "done": "All modules stopped"
         },
         "list": "Modules",
@@ -290,9 +297,9 @@
             "name": "%d: %s: %s",
             "short": "Module %d",
             "deps": "Needs: %s",
-            "no_deps": "nothing",
-            "ticks": "Ticks every frame",
-            "no_tick": "Doesn't tick",
+            "no_deps": "none",
+            "ticks": "Has on_tick",
+            "no_tick": "No on_tick",
             "error": "Error: %s",
             "status_line": "Status: %s"
         },
@@ -300,40 +307,44 @@
             "registered": "registered",
             "running": "running",
             "stopped": "stopped",
-            "failed": "failed"
+            "failed": "failed",
+            "manual": "running by hand"
         },
         "base_functions": "Base Functions",
         "functions": "Module Functions",
         "no_functions": "No functions",
         "call": {
-            "help": "Arguments separated by commas, as in Lua: numbers, true, false, nil, \"text\", calls and natives (entities.get_user_vehicle_as_handle(), PLAYER.PLAYER_PED_ID()), v3.new(1, 2, 3). A bare word is text: adder. Called right away",
+            "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text",
             "button_help": "Calls the function",
             "done": "%s: done",
             "result": "%s -> %s",
             "failed": "%s failed: %s",
-            "hook_help": "Calls the module's hook itself; its status doesn't change (Start and Stop do that)",
-            "bad_args": "%s: the arguments couldn't be worked out: %s"
+            "hook_help": "Calls the module's hook; its status doesn't change",
+            "bad_args": "%s: bad arguments: %s"
         },
         "tick": {
-            "help": "Runs the module's on_tick every frame by hand. A running module is stopped first, so on_tick runs once a frame",
-            "start": "Start",
-            "start_help": "Runs on_tick every frame until Stop",
-            "start_for": "Start For A While",
-            "start_for_help": "Runs on_tick every frame for the seconds picked, then stops by itself",
+            "help": "Runs on_tick by hand every frame; the time it takes shows on screen. A running module is stopped first",
+            "start_init": "Start With Init",
+            "start_init_help": "on_start, then on_tick every frame until stopped; on_stop at the end",
+            "start": "Start Loop Only",
+            "start_help": "Only on_tick every frame until stopped, without on_start and on_stop",
+            "start_for": "Start Loop For A While",
+            "start_for_help": "Only on_tick every frame for the seconds picked",
             "stop": "Stop",
-            "stop_help": "Stops running on_tick by hand; the module's own ticking isn't touched",
-            "started": "%s: running every frame",
-            "started_for": "%s: running for %d s",
-            "stopped": "%s: stopped",
-            "finished": "%s: time's up, stopped",
-            "not_running": "%s isn't running by hand",
+            "stop_help": "Stops the loop started by hand; after Start With Init calls on_stop",
+            "started": "%s: loop started",
+            "started_init": "%s: initialised, loop started",
+            "started_for": "%s: loop started for %d s",
+            "stopped": "%s: loop stopped",
+            "finished": "%s: time's up, loop stopped",
+            "not_running": "%s: no loop started by hand",
             "state": {
                 "running": "running",
                 "running_for": "running, %d s left",
                 "stopped": "stopped",
                 "failed": "error"
             },
-            "module_stopped": "%s was running: stopped, on_tick runs by hand now"
+            "module_stopped": "%s stopped: the loop runs by hand"
         }
     },
     "script_menu": {

@@ -54,6 +54,11 @@ function module.get_heading(
     return ENTITY.GET_ENTITY_HEADING(entity)
 end
 
+-- The model's hash
+function module.get_model(entity: int): int
+    return ENTITY.GET_ENTITY_MODEL(entity)
+end
+
 function module.get_net_id(entity): int
     return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(entity)
 end

@@ -150,27 +150,49 @@ local class Logger
         self.source = source
     end
 
-    -- Built per line: the profile's name can change while the script runs.
+    -- The name lines start with. Built per line: the profile's name can change while the script runs.
     -- The logger loads before the profile, so early lines use the script's name
-    function tag(): string
+    function name(): string
         local profile = Atdar.profile
-        local name = profile and profile.log_name and profile.log_name() or Atdar.name
-        return self.source ? $"[{name} | {self.source}]" : $"[{name}]"
+        return profile and profile.log_name and profile.log_name() or Atdar.name
+    end
+
+    -- The head of the whole line, for the log and in debug mode: "[AnitaDarin | Modules | INFO]"
+    function full_head(level: string): string
+        if self.source then
+            return $"[{self:name()} | {self.source} | {level}]"
+        end
+        return $"[{self:name()} | {level}]"
+    end
+
+    -- "[AnitaDarin | Modules | INFO] text"
+    function full_line(level: string, msg: string): string
+        return $"{self:full_head(level)} {msg}"
+    end
+
+    -- The head shown to the user outside debug mode: "[AnitaDarin] Information:", the level in the
+    -- script's language and no source
+    function short_head(level: string): string
+        return $"[{self:name()}] {level_title(level)}:"
     end
 
     -- @return The post's id when the toast went to the game's feed (thefeed.remove(id) takes it away), otherwise nil
     function write(level: string, msg: string, toast: bool): ?int
-        local line = $"{self:tag()} {level}: {msg}"
+        local line = self:full_line(level, msg)
         util.log(line)
         if not file_broken then
             local ok, err = pcall(write_to_file, line)
             if not ok then
                 file_broken = true
                 pcall(close_file)
-                util.log($"{self:tag()} WARN: the log file can't be written ({err}), lines go to Stand's log only")
+                util.log(self:full_line("WARN", $"the log file can't be written ({err}), lines go to Stand's log only"))
             end
         end
         if toast then
+            -- On screen: the whole line in debug mode, otherwise the short one. The head apart too:
+            -- Stand's notification may put the text on a line of its own (opts.head)
+            local head = Atdar.debug ? self:full_head(level) : self:short_head(level)
+            local shown = $"{head} {msg}"
             -- Where it shows is the profile's notify; errors go to Stand unless the profile says otherwise
             local profile = Atdar.profile
             local target = nil
@@ -183,12 +205,12 @@ local class Logger
             -- and the text alone (opts.level, opts.text)
             local utils = Atdar.util
             if utils and utils.toast then
-                local ok, post = pcall(utils.toast, line, { target = target, level = level, text = msg })
+                local ok, post = pcall(utils.toast, shown, { target = target, level = level, text = msg, head = head })
                 if ok then
                     return post
                 end
             end
-            util.toast(line)
+            util.toast(shown)
         end
         return nil
     end

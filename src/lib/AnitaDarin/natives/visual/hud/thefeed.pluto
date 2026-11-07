@@ -6,6 +6,9 @@
 --     thefeed.post_message("Text", { sender = "AnitaDarin", subject = "Profiles", picture = "CHAR_SOCIAL_CLUB" })
 --     thefeed.remove(id)
 --     thefeed.remove_all()               -- every post the script made (also when the script stops)
+--
+-- The game shows at most MAX_TEXT_BYTES of a post's text (bytes: a Cyrillic letter takes 2), so a longer
+-- text goes out as several posts with the same look, and remove(id) of the first takes them all away
 
 local hud_color = Atdar.loader.load("natives/visual/hud_color")
 
@@ -21,6 +24,33 @@ module.ICON = {
     RP = 8,
     MONEY = 9,
 }
+
+-- How much of a post's text the game shows: bytes of UTF-8, the rest is cut off
+module.MAX_TEXT_BYTES = 99
+
+-- A text cut into parts the game shows whole: at most max_bytes each, cut at a space when there's one
+-- (words stay whole) and never inside a letter
+-- @return The parts, in order; one for a text that fits
+function module.split_text(text: string, max_bytes: int = module.MAX_TEXT_BYTES): table
+    local parts = {}
+    local rest = text
+    while #rest > max_bytes do
+        -- Where the next part starts: not on a UTF-8 continuation byte (10xxxxxx), that's inside a letter
+        local cut = max_bytes + 1
+        while cut > 1 and (rest:byte(cut) & 0xC0) == 0x80 do
+            cut -= 1
+        end
+        -- At the last space before that
+        local space = rest:sub(1, cut - 1):match(".*()%s")
+        if space ~= nil and space > 1 then
+            cut = space
+        end
+        table.insert(parts, rest:sub(1, cut - 1))
+        rest = rest:sub(cut):match("^%s*(.*)$")
+    end
+    table.insert(parts, rest)
+    return parts
+end
 
 -- Begin
 
@@ -41,8 +71,14 @@ end
 
 -- Set
 
+-- The look set for the next post: the game applies it to one post only, so it's set again for each
+-- part of a long text. { background = index, color = { r, g, b, a }, flash = { r, g, b, a } }
+local next_look = {}
+
 -- The background colour of the next post (a HUD colour index, natives/visual/hud_color)
 function module.set_next_background(hud_color: int): void
+    next_look.background = hud_color
+    next_look.color = nil
     HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color)
 end
 
@@ -50,6 +86,8 @@ end
 -- The background of the next post in any colour (0 - 255). The background takes only a HUD colour
 -- index, so the script slot is filled with this colour and its index is used
 function module.set_next_background_color(r: int, g: int, b: int, a: int = 255): void
+    next_look.color = { r, g, b, a }
+    next_look.background = nil
     HUD.SET_SCRIPT_VARIABLE_HUD_COLOUR(r, g, b, a)
     -- HUD_COLOUR_SCRIPT_VARIABLE: the slot left for scripts to fill with their own colour
     HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color.SCRIPT_VARIABLE)
@@ -57,14 +95,36 @@ end
 
 -- The colour the next post flashes in, when it flashes (0 - 255)
 function module.set_next_flash_color(r: int, g: int, b: int, a: int = 255): void
+    next_look.flash = { r, g, b, a }
     HUD.THEFEED_SET_RGBA_PARAMETER_FOR_NEXT_MESSAGE(r, g, b, a)
+end
+
+-- Sets a look again, for the next part of a long text
+local function apply_look(look: table): void
+    if look.background ~= nil then
+        HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(look.background)
+    end
+    if look.color ~= nil then
+        HUD.SET_SCRIPT_VARIABLE_HUD_COLOUR(table.unpack(look.color))
+        HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color.SCRIPT_VARIABLE)
+    end
+    if look.flash ~= nil then
+        HUD.THEFEED_SET_RGBA_PARAMETER_FOR_NEXT_MESSAGE(table.unpack(look.flash))
+    end
 end
 
 -- Actions
 
--- Takes a post away from the feed
+-- The first post of a long text -> the ids of all its parts
+local parts_of = {}
+
+-- Takes a post away from the feed; the first post of a long text takes all its parts
 function module.remove(id: int): void
-    HUD.THEFEED_REMOVE_ITEM(id)
+    local ids = parts_of[id] or { id }
+    parts_of[id] = nil
+    for _, part_id in ipairs(ids) do
+        HUD.THEFEED_REMOVE_ITEM(part_id)
+    end
 end
 
 function module.pause(): void
@@ -99,37 +159,56 @@ end
 function module.remove_all(): int
     local count = #posts
     for _, id in ipairs(posts) do
-        pcall(module.remove, id)
+        pcall(HUD.THEFEED_REMOVE_ITEM, id)
     end
     posts = {}
+    parts_of = {}
     return count
+end
+
+-- Posts the text, as several posts if it's longer than the game shows, each with the look set for it.
+-- finish(part): ends a started post, returns its id
+-- @return The first post's id (remove(id) takes away all the parts)
+local function post_parts(text: string, finish): int
+    local look = next_look
+    next_look = {}
+    local ids = {}
+    for i, part in ipairs(module.split_text(text or "")) do
+        if i > 1 then
+            apply_look(look)
+        end
+        module.begin.post(part)
+        table.insert(ids, remember(finish()))
+    end
+    if #ids > 1 then
+        parts_of[ids[1]] = ids
+    end
+    return ids[1]
 end
 
 -- The script's posts go with it
 util.on_stop(|| -> module.remove_all())
 
--- Plain text.
+-- Plain text; a long one as several posts (MAX_TEXT_BYTES).
 -- @param important Blinks
 -- @param is_mp The online style
--- @return The post's id (remove(id) takes it away)
+-- @return The (first) post's id (remove(id) takes it away, with the other parts)
 function module.post_ticker(text: string, important: bool = false, is_mp: bool = false): int
-    module.begin.post(text)
     if is_mp then
-        return remember(HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true))
+        return post_parts(text, || -> HUD.END_TEXT_COMMAND_THEFEED_POST_MPTICKER(important, true))
     end
-    return remember(HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(important, true))
+    return post_parts(text, || -> HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(important, true))
 end
 
--- A message card: picture, sender (the top line), subject (under it), the text below.
+-- A message card: picture, sender (the top line), subject (under it), the text below. A long text goes
+-- on as more cards like it (MAX_TEXT_BYTES).
 -- opts: sender, subject, picture (a texture dictionary that's also the texture name, e.g. "CHAR_SOCIAL_CLUB"),
 --       icon (module.ICON, default CHAT_BOX), important (flashes)
--- @return The post's id (remove(id) takes it away)
+-- @return The (first) post's id (remove(id) takes it away, with the other cards)
 function module.post_message(text: string, opts: table = {}): int
-    module.begin.post(text)
     local picture = opts.picture or "CHAR_SOCIAL_CLUB"
-    local id = HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(picture, picture, opts.important == true,
-        opts.icon or module.ICON.CHAT_BOX, opts.sender or "", opts.subject or "")
-    return remember(id)
+    return post_parts(text, || -> HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(picture, picture,
+        opts.important == true, opts.icon or module.ICON.CHAT_BOX, opts.sender or "", opts.subject or ""))
 end
 
 return module

@@ -37,6 +37,11 @@ function module.add(mod: table): table
     return mod
 end
 
+-- The file the module was registered from, nil for one made in code (not by load_dir)
+function module.file_of(name: string): ?string
+    return files[name]
+end
+
 function module.get(name: string): table
     local mod = by_name[name]
     if not mod then

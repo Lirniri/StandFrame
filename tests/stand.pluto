@@ -96,6 +96,8 @@ end
 -- Lines written with util.log and util.toast, oldest first; clear with stand.clear_logs()
 stand.logs = {}
 stand.toasts = {}
+-- Names profiling.once / profiling.tick timed, in order
+stand.profiled = {}
 
 function stand.clear_logs(): void
     stand.logs = {}
@@ -137,6 +139,17 @@ local function joaat(text: string): int
     hash = (hash + (hash << 15)) & 0xFFFFFFFF
     return hash >= 0x80000000 ? hash - 0x100000000 : hash
 end
+
+_G.profiling = {
+    once = function(name, fn)
+        table.insert(stand.profiled, name)
+        fn()
+    end,
+    tick = function(name, fn)
+        table.insert(stand.profiled, name)
+        fn()
+    end,
+}
 
 _G.util = {
     log = |line| -> table.insert(stand.logs, line),

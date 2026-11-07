@@ -23,6 +23,7 @@ local DEFAULTS = {
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
     notify = "game",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
     notify_errors_in_stand = true, -- errors show in Stand whatever notify says, so none goes unseen
+    notify_stand_newline = false, -- Stand's notifications: the text on its own line under [name | source | level]
     notify_flash = true,       -- notifications in the game's feed flash
     notify_feed_style = "message", -- how a notification looks in the game's feed: "ticker" (a post) | "message" (a card)
     notify_feed_picture = "CHAR_ACTING_UP", -- the message card's picture (natives/visual/feed_picture)

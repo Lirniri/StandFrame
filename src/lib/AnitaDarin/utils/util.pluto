@@ -119,13 +119,24 @@ local function post_to_feed(message: string, opts: table): int
     return post(thefeed, message, opts, flash, period)
 end
 
+-- Stand's notification: "head text", or the text on a line of its own under the head (notify_stand_newline).
+-- Only a message from the logger has a head (opts.head, opts.text); others show as they are
+local function stand_toast(message: string, opts: table): void
+    if setting("notify_stand_newline") == true and opts.head ~= nil and opts.text ~= nil then
+        util.toast($"{opts.head}\n{opts.text}")
+        return
+    end
+    util.toast(message)
+end
+
 -- Shows a message to the user in the configured way.
 -- opts.target: "stand" | "game" (the game's feed) | "none" (default: the profile's notify, then "stand")
 -- For "game" the profile's look is used (notify_feed_style, notify_flash, day/night colours); opts can override:
 --   opts.style "ticker" | "message" with opts.sender, opts.subject, opts.picture (default the profile's
 --   notify_feed_picture), opts.icon; opts.important (flash).
 --   From the logger: opts.level ("INFO", "WARN", "ERROR") - a card's subject, its name in the script's
---   language; opts.text - the card's text instead of the whole log line
+--   language; opts.text - the card's text instead of the whole log line; opts.head - the line's head,
+--   for Stand's notification with the text on a line of its own (notify_stand_newline)
 -- @return The post's id for "game" (thefeed.remove(id) takes it away), otherwise nil
 function module.toast(message: string, opts: table = {}): ?int
     local target = opts.target or setting("notify") or "stand"
@@ -136,13 +147,13 @@ function module.toast(message: string, opts: table = {}): ?int
         target = "stand"
     end
     if target == "stand" then
-        util.toast(message)
+        stand_toast(message, opts)
     elseif target == "game" then
         -- A paused feed (cutscenes, the pause menu, loading, a script that paused it) shows nothing:
         -- the notification goes to Stand then, so it isn't lost
         local paused_ok, paused = pcall(Atdar.natives.visual.hud.thefeed.is_paused)
         if paused_ok and paused then
-            util.toast(message)
+            stand_toast(message, opts)
             return nil
         end
         return post_to_feed(message, opts)
