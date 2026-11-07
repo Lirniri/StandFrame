@@ -320,21 +320,26 @@ stand.check(all_visible(false), "turning debug mode off hides them again")
 -- ─── Language ────────────────────────────────────────────────────────────────
 
 local language = stand.find_item(settings(), "Language")
-stand.equal(names_in(language), "Auto (Stand) | English | Русский", "languages: Auto, English first, then the others")
+-- The names are the files' language_name, whatever they're set to
+local function language_name(file)
+    return stand.read_file($"{base}{file}"):match('"language_name"%s*:%s*"([^"]+)"')
+end
+local english_name, russian_name = language_name("en-us.json"), language_name("ru-ru.json")
+stand.equal(names_in(language), $"Auto (Stand) | {english_name} | {russian_name}", "languages: Auto, English first, then the others")
 
 -- Stand in English takes no translations: the choice is kept but the script follows Stand, without errors
 stand.clear_logs()
-stand.click(stand.find_item(language, "Русский"))
+stand.click(stand.find_item(language, russian_name))
 stand.equal(profile.get("language"), "ru-ru", "the choice is kept in the profile")
 stand.check(stand.find_log("Stand is in English"), "with Stand in English it says why it can't")
-stand.equal(stand.name_of(language), "Language: Русский (not with Stand in English)", "the caption shows it's unavailable")
+stand.equal(stand.name_of(language), $"Language: {russian_name} (not with Stand in English)", "the caption shows it's unavailable")
 stand.check(find("Settings"), "items stay in English")
 
 -- Stand switched to another language while the script runs: the chosen language is shown by itself,
 -- item names keep their English labels
 stand.language = "de"
 stand.frame()
-stand.equal(stand.name_of(language), "Язык: Русский", "with Stand in German the script shows in Russian")
+stand.equal(stand.name_of(language), $"Язык: {russian_name}", "with Stand in German the script shows in Russian")
 stand.check(find("Настройки") and type(find("Настройки").name) == "number", "names follow, the label stays English")
 stand.click(stand.find_item(language, "Авто"))
 stand.equal(stand.name_of(language), "Language: Auto (Stand)", "Auto follows Stand again (German has no file: English)")

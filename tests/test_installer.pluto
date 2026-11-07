@@ -1,0 +1,51 @@
+-- core/installer: renaming the script while its log file is open (Windows can't rename a folder with an
+-- open file in it), and a failed rename leaves the log writing as before
+local stand = require("stand")
+stand.boot()
+
+-- An install of its own in temp folders: the launcher, lib, store with the open log file, resources
+local scripts = stand.tmpdir("installer_scripts")
+filesystem.scripts_dir = || -> scripts
+stand.store = stand.tmpdir("installer_store")
+local resources = stand.tmpdir("installer_resources")
+filesystem.resources_dir = || -> resources
+stand.write_file($"{scripts}AnitaDarin.pluto", "-- launcher")
+io.makedirs($"{scripts}lib/AnitaDarin")
+stand.write_file($"{scripts}lib/AnitaDarin/bootstrap.pluto", "-- code")
+io.makedirs($"{resources}AnitaDarin")
+
+-- The logger writes into store/AnitaDarin/logs: its file is open from the first line on
+Atdar.log_dir = $"{stand.store}AnitaDarin\\logs\\"
+local Logger = Atdar.loader.load("core/logger")
+local log = new Logger("Test")
+log:info("the log file is open now")
+stand.check(#filesystem.list_files(Atdar.log_dir) == 1, "the log file is there")
+
+local installer = Atdar.loader.load("core/installer")
+
+-- A rename that can't go through (the target is taken): nothing changes, the log goes on
+io.makedirs($"{stand.store}Taken")
+stand.write_file($"{scripts}Taken.pluto", "-- someone else")
+local ok = installer.rename("Taken")
+stand.check(not ok, "a taken name isn't used")
+local ok_rename, err = installer.rename("Renamed")
+stand.check(ok_rename, $"the rename goes through with the log file open ({tostring(err)})")
+stand.check(io.exists($"{scripts}Renamed.pluto") and io.exists($"{scripts}lib/Renamed/bootstrap.pluto"),
+    "the launcher and lib are renamed")
+stand.check(io.exists($"{stand.store}Renamed/logs") and not io.exists($"{stand.store}AnitaDarin"),
+    "store is renamed, logs with it")
+stand.check(io.exists($"{resources}Renamed"), "and resources")
+
+-- After a rename the old folder's log file isn't made again by later lines
+log:info("after the rename")
+stand.check(not io.exists($"{stand.store}AnitaDarin"), "lines after a rename don't make the old folder again")
+
+-- resume_file(): writing again, e.g. after a rename that failed
+Atdar.log_dir = $"{stand.store}Renamed\\logs\\"
+Logger.resume_file()
+local before = #filesystem.list_files(Atdar.log_dir)
+log:info("written again")
+stand.check(#filesystem.list_files(Atdar.log_dir) >= before and stand.read_file(filesystem.list_files(Atdar.log_dir)[1]):find("written again", 1, true),
+    "resume_file() writes the file again")
+
+stand.finish()

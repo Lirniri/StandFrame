@@ -12,7 +12,8 @@ return {
         )
 
         settings.set_parent(settings_menu)
-        settings.set_divider($"{Atdar.name}")
+        -- The script's display name (Settings > Display Name), following its changes
+        settings.set_divider(settings.DISPLAY_NAME)
         settings.set_name(lang.translate("menu.settings.anidar.settings.menu_name"))
 
         -- Items for the section go here:

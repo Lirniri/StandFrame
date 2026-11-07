@@ -45,6 +45,10 @@ function module.rename(new_name: string): (bool, string)
         end
     end
 
+    -- Windows can't rename a folder with an open file in it: the log file in store/<name>/logs.
+    -- Closed first; if the rename fails it's written again (it stays closed after a rename: the script
+    -- restarts under the new name)
+    Logger.stop_file()
     local done = {}
     for _, step in ipairs(plan) do
         local ok, err = os.rename(step.from, step.to)
@@ -52,6 +56,7 @@ function module.rename(new_name: string): (bool, string)
             for i = #done, 1, -1 do
                 os.rename(done[i].to, done[i].from)
             end
+            Logger.resume_file()
             log:error($"rename failed at {step.from}: {err}; undone")
             return false, $"couldn't rename {step.from}"
         end

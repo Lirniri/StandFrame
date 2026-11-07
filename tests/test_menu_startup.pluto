@@ -97,6 +97,19 @@ stand.equal(stand.name_of(found_row("godmode")), "godmode", "Reset Name gives th
 stand.check(not io.exists(core_names), "with no custom names left the file goes")
 menu.set_value(stand.find_item(found_row("godmode"), "Custom Name"), "god")
 
+-- The pack's Settings: the divider above the script's section is the display name, not the file name
+local pack_settings = nil
+for _, child in stand.root.children do
+    if child.kind == "list" and stand.name_of(child) == "Settings" then
+        pack_settings = child
+    end
+end
+local divider = pack_settings and pack_settings.children[1]
+stand.check(divider and divider.kind == "divider", "the pack's Settings starts with a divider")
+Atdar.profile.set("display_name", "StandPro")
+stand.equal(stand.name_of(divider), "StandPro", "it shows the display name and follows it")
+Atdar.profile.set("display_name", "AnitaDarin")
+
 -- Disable Sprint: the native is called every frame, but the debug log only shows changes
 local running = true
 _G.PLAYER = { PLAYER_ID = || -> 0, PLAYER_PED_ID = || -> 1, SET_PLAYER_SPRINT = || -> nil }

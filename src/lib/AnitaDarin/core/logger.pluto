@@ -251,6 +251,11 @@ function Logger.stop_file(): void
     file_broken = true
 end
 
+-- Writes files again after stop_file() (e.g. a rename that failed): the next line opens today's file
+function Logger.resume_file(): void
+    file_broken = false
+end
+
 -- Removes the files older than the profile's log_keep_days now (also done when a day's file opens)
 function Logger.remove_old(): void
     pcall(remove_old_files, log_dir(), os.date("%Y-%m-%d"))
