@@ -60,11 +60,26 @@ local function lookup(data: table, key: string)
     return value
 end
 
+-- The key as a source holds it: a source with a prefix ("module.VehicleManager") has only the keys under
+-- it, with the prefix taken off ("module.VehicleManager.wreck" -> "wreck"); nil when the key isn't its
+local function key_in(source: table, key: string): ?string
+    local prefix = source.prefix
+    if prefix == nil then
+        return key
+    end
+    if key:sub(1, #prefix + 1) == $"{prefix}." then
+        return key:sub(#prefix + 2)
+    end
+    return nil
+end
+
 -- @return The string at key in language, newest source first
 local function find(code: string, key: string): ?string
     for i = #sources, 1, -1 do
-        local strings = sources[i].languages[code]
-        local text = strings and lookup(strings, key)
+        local source = sources[i]
+        local strings = source.languages[code]
+        local own_key = key_in(source, key)
+        local text = strings and own_key and lookup(strings, own_key)
         if type(text) == "string" then
             return text
         end
@@ -121,10 +136,12 @@ function module.can_choose_language(): bool
     return pcall(lang.set_translate, lang.get_current())
 end
 
--- Adds a folder with <language>.json files; its strings win over the ones added before it
+-- Adds a folder with <language>.json files; its strings win over the ones added before it.
+-- prefix: the folder's keys are under it and it only answers for those ("module.VehicleManager":
+-- its "wreck" is "module.VehicleManager.wreck"), so a module's strings never mix with anyone else's
 -- @return Handle for remove_source
-function module.add_source(dir: string, required: bool = false): table
-    local source = { dir = dir, languages = read_languages(dir) }
+function module.add_source(dir: string, required: bool = false, prefix: ?string): table
+    local source = { dir = dir, languages = read_languages(dir), prefix = prefix }
     if required and not source.languages[ENGLISH] then
         log:warn($"language file not found: {dir}{ENGLISH}.json")
     end
@@ -277,7 +294,8 @@ end
 function module.get(key: string)
     for i = #sources, 1, -1 do
         local strings = sources[i].languages[ENGLISH]
-        local value = strings and lookup(strings, key)
+        local own_key = key_in(sources[i], key)
+        local value = strings and own_key and lookup(strings, own_key)
         if value ~= nil then
             return value
         end

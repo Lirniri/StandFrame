@@ -1,3 +1,21 @@
 local module = {}
--- body
+
+-- State
+
+function module.is_entity_on(entity: int): bool
+    return FIRE.IS_ENTITY_ON_FIRE(entity)
+end
+
+-- Actions
+
+-- Puts out the fire on the entity itself (not the fires on the ground around it)
+function module.stop_entity(entity: int): void
+    FIRE.STOP_ENTITY_FIRE(entity)
+end
+
+-- Puts out every fire within radius metres of x, y, z (burning fuel on the ground too)
+function module.stop_in_range(x: float, y: float, z: float, radius: float): void
+    FIRE.STOP_FIRE_IN_RANGE(x, y, z, radius)
+end
+
 return module

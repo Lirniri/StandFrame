@@ -379,6 +379,7 @@
             },
             "status_line": "Статус цикла: %s",
             "result_line": "Переменная: %s",
+            "result_list": "Значение (%d)",
             "no_result": "—"
         },
         "tick": {

@@ -24,3 +24,6 @@ util.log(saved)
 util.log(lang.get_language())
 
 -- In a menu file: node:list(name_label, { "garage" }, help_label)
+
+-- A module keeps its strings in its own folder instead: self:text("key", "English") and self:label(...)
+-- (see modules/07_translations)

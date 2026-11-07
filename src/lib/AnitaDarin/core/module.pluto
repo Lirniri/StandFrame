@@ -22,6 +22,10 @@ local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 
+-- Module name -> its language source in core/i18n (language/ in its folder), replaced when a new instance
+-- (Reload) reads them again
+local language_sources = {}
+
 -- Declared first and assigned explicitly so methods can reference Module
 local Module
 
@@ -209,6 +213,39 @@ Module = class
             return nil
         end
         return path:match("^(.*[/\\])")
+    end
+
+    -- The module's own translations: <its folder>/language/<code>.json (en-us.json, ru-ru.json...), read the
+    -- first time a text is asked for. Its keys are its own: they never mix with the script's or another module's
+    function _language_prefix(): string
+        if self._language_loaded ~= true then
+            self._language_loaded = true
+            local i18n = Atdar.loader.load("core/i18n")
+            local old = language_sources[self.name]
+            if old ~= nil then
+                i18n.remove_source(old)
+                language_sources[self.name] = nil
+            end
+            local dir = self:folder()
+            if dir ~= nil then
+                language_sources[self.name] = i18n.add_source($"{dir}language\\", false, $"module.{self.name}")
+            end
+        end
+        return $"module.{self.name}"
+    end
+
+    -- A text from the module's language files in the script's language, for notices and anything built
+    -- with format(); english shows while there's no file or key for it
+    --     self.log:warn(self:text("wreck", "Vehicle %s can't be driven"):format(handle))
+    function text(key: string, english: ?string): string
+        local prefix = self:_language_prefix()
+        return Atdar.loader.load("core/i18n").text($"{prefix}.{key}", english)
+    end
+
+    -- The same as a Stand label, for menu items (Stand shows it in its language)
+    function label(key: string, english: ?string): int
+        local prefix = self:_language_prefix()
+        return Atdar.loader.load("core/i18n").label($"{prefix}.{key}", english)
     end
 
     -- A JSON file in the module's folder: module:json_file("vehicles"):write({ ... }), :read()

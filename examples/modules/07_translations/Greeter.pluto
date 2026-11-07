@@ -1,0 +1,38 @@
+-- EXAMPLE 7: a module's own translations, in language/ next to its file:
+--
+--     07_translations/
+--     ├── Greeter.pluto
+--     └── language/
+--         ├── en-us.json      { "hello": "Hello, %s!" }
+--         └── ru-ru.json      { "hello": "Привет, %s!" }
+--
+-- self:text(key, english) gives the text in the script's language (for notices and format());
+-- self:label(key, english) the same as a Stand label for menu items. The keys are the module's own:
+-- they never mix with the script's strings or another module's. english shows while there's no file or key.
+-- Keep each module in a folder of its own, so its language/ is its alone
+
+local Module = Atdar.loader.load("core/module")
+
+local class Greeter extends Module
+    function __construct()
+        parent:__construct({
+            name = "example.greeter",
+            debug = {
+                functions = {
+                    greet = { help = "Greets someone", params = { name = "who" }, args = '"Michael"' },
+                },
+            },
+        })
+    end
+
+    function on_start(): void
+        self.log:info(self:text("started", "Greeter is ready"))
+    end
+
+    -- In the debug menu: Call shows "Hello, Michael!" (or "Привет, Michael!")
+    function greet(name: string): string
+        return self:text("hello", "Hello, %s!"):format(name or "player")
+    end
+end
+
+return Atdar.modules.add(new Greeter())

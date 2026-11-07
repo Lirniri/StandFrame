@@ -530,12 +530,21 @@ local function result_line(key: string): string
 end
 
 -- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
+-- The same key -> the table it gave last (when it gave one table), for the Value list under Variable
+local last_tables = {}
+-- The same key -> the Value list in the function's list: { list, shape, texts, lines }
+local result_tables = {}
+-- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like
+local update_result_list
+
 local function show_result(key: string, results: table): void
     local value = results.n > 1 and results_text(results) or nil
     if value == last_results[key] then
         return
     end
     last_results[key] = value
+    last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
+    update_result_list(key)
     local ref = result_lines[key]
     if ref ~= nil then
         local ok, err = pcall(menu.set_menu_name, ref, result_line(key))
@@ -1079,6 +1088,9 @@ local function function_list(entry: table, mod: table, fn: table): void
     end)
     -- What it gave last, then how its loop is, above the loop's items
     result_lines[key] = node:divider(result_line(key))
+    -- A table it gave: its entries in a list right under (hidden while it gave none)
+    result_tables[key] = { list = node:list(text("loop.result_list"):format(0)), shape = nil, texts = {}, lines = {} }
+    update_result_list(key)
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
     if run ~= nil and run.every ~= nil then
@@ -1114,7 +1126,8 @@ end
 -- ─── Variables: the module's fields and their values now ─────────────────────
 
 -- Fields every module has (Module's own): not the module's variables
-local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true, debug = true }
+local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true, debug = true,
+    _language_loaded = true }
 
 
 -- The module's own fields (set in its __construct or later), sorted by name: { name, value }.
@@ -1237,6 +1250,52 @@ local function build_variables(list: table, items: table): table
         end
     end
     return lines
+end
+
+-- The Value list under a function's Variable line: what a table it gave holds, a line or list per entry
+-- like Variables. Hidden when it gave no table; changed values change in place, entries that came or
+-- went make the list again
+update_result_list = function(key)
+    local ui = result_tables[key]
+    if ui == nil then
+        return
+    end
+    local tbl = last_tables[key]
+    if tbl == nil then
+        pcall(menu.set_visible, ui.list.handle, false)
+        return
+    end
+    local entries = table_entries(tbl)
+    local items = {}
+    if #entries == 0 then
+        table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
+    end
+    for i, entry in ipairs(entries) do
+        if i > MAX_TABLE_ENTRIES then
+            table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
+            break
+        end
+        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true })
+    end
+    pcall(menu.set_visible, ui.list.handle, true)
+    pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
+    local shape = shape_of(items)
+    if shape ~= ui.shape then
+        ui.list:clear()
+        ui.shape = shape
+        ui.lines = build_variables(ui.list, items)
+        ui.texts = {}
+        for _, item in ipairs(items) do
+            ui.texts[item.path] = item.text
+        end
+        return
+    end
+    for _, item in ipairs(items) do
+        if item.kind == "line" and ui.texts[item.path] ~= item.text then
+            ui.texts[item.path] = item.text
+            pcall(menu.set_value, ui.lines[item.path], item.text)
+        end
+    end
 end
 
 -- The Variables list: a line per field, "count: 0" (texts in quotes), a list per table field.
@@ -1617,6 +1676,7 @@ local function empty(node: table): void
         loop_statuses = {}
         loop_toggles = {}
         result_lines = {}
+        result_tables = {}
     end
 end
 

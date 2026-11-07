@@ -30,27 +30,49 @@ local class VehicleManager extends Module
             }
         })
         -- State lives in fields; set defaults here
-        self.remember_vehicle = true
+        self.auto_remember = true
         self.vehicles = {}
     end
 
     -- The vehicle the player is in at the start is remembered too
     function on_start()
         self.current_vehicle = 0
-        if self:is_remembered_current_vehicle() then
+        if self:is_auto_remember() then
             self:_remember_current_vehicle()
         end
     end
 
     -- Remembers every vehicle the player gets into
     function on_tick()
-        if self:is_remembered_current_vehicle() then
+
+        -- State
+        if not self:is_last_exist() then
+            self:remove_last_vehicle()
+        end
+
+        if self:is_auto_remember() then
             self:_remember_current_vehicle()
         end
+
     end
 
     function on_stop()
         -- body
+    end
+
+    -- Is
+
+    -- Whether the vehicle remembered last is still in the game
+    function is_last_exist(): bool
+        local handle = self:get_handle()
+        if handle == nil then
+            return false
+        end
+        return Atdar.natives.entity.vehicle.is_exist(handle)
+    end
+
+    function is_auto_remember(): bool
+        return self.auto_remember
     end
 
     -- Get
@@ -72,39 +94,25 @@ local class VehicleManager extends Module
         return handles
     end
 
-    -- Remembers a vehicle the script made
+    -- Set
+
+    function set_auto_remember(toggle: bool): void
+        self.auto_remember = toggle
+    end
+
+    -- Remembers a vehicle the script made or the player got into
     function add_vehicle(handle: int): void
-        if handle == -1 then
-            return nil
+    -- Only a real handle: a whole number, not -1 / 0 ("none" from Stand and from the game's natives).
+    -- Anything else (a function, a text typed in the menu) would break every function reading the table
+        if math.type(handle) ~= "integer" or handle == -1 or handle == 0 then
+            self.log:warn(self:text("not_handle", "'%s' isn't a vehicle's handle, not remembered"):format(tostring(handle)))
+            return
         end
         self.vehicles[handle] = true
         self.last_handle = handle
     end
 
-    function is_remembered_current_vehicle(): bool
-        return self.remember_vehicle
-    end
-    
-    function can_remember_current_vehicle(toggle: bool): void
-        self.remember_vehicle = toggle
-    end
-
-    -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
-    -- self.current_vehicle: the one they were in last time, 0 - none
-    function _remember_current_vehicle(): void
-        local ped = Atdar.natives.player.get_ped_id()
-        local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
-        if vehicle == self.current_vehicle then
-            return
-        end
-        self.current_vehicle = vehicle
-        if vehicle ~= -1 and self.vehicles[vehicle] == nil then
-            self:add_vehicle(vehicle)
-            self.log:debug($"remembered the vehicle the player got into: {vehicle}")
-        end
-    end
-
-    -- Forgets a vehicle
+        -- Forgets a vehicle
     function remove_vehicle(handle: int): void
         self.vehicles[handle] = nil
         if self.last_handle == handle then
@@ -124,15 +132,93 @@ local class VehicleManager extends Module
         self.last_handle = nil
     end
 
-    -- Action
-    function explode_all(): void
+
+
+    -- Actions
+
+    -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
+    -- self.current_vehicle: the one they were in last time, 0 - none
+    function _remember_current_vehicle(): void
+        local ped = Atdar.natives.player.get_ped_id()
+        local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
+        if vehicle == self.current_vehicle then
+            return
+        end
+        self.current_vehicle = vehicle
+        if vehicle ~= 0 and self.vehicles[vehicle] == nil then
+            self:add_vehicle(vehicle)
+            self.log:debug($"remembered the vehicle the player got into: {vehicle}")
+        end
+    end
+
+    -- Repairs a vehicle (natives entity.vehicle.fix): damage and dents gone, full health, drivable
+    -- @param dirt_level A number - the dirt it gets (0.0 - 15.0); true - washed clean; nothing - the dirt stays
+    -- @return Whether it was a vehicle in the game
+    function fix(handle: int, dirt_level: float|bool): bool
+        if math.type(handle) ~= "integer" then
+            return false
+        end
         local n_vehicle = Atdar.natives.entity.vehicle
-        for _, handle in pairs(self:get_handles()) do
+        if not n_vehicle.fix(handle, dirt_level or false) then
+            return false
+        end
+        -- An exploded one stays a wreck for the game, repaired or not
+        if not n_vehicle.is_driveable(handle) then
+            self.log:warn(self:text("wreck", "Vehicle %s is repaired but can't be driven: it exploded, the game keeps it a wreck")
+                :format(tostring(handle)))
+        end
+        return true
+    end
+
+    -- Repairs the vehicle remembered last
+    -- @return Whether there was one in the game
+    function fix_last(dirt_level: float|bool): bool
+        local handle = self:get_handle()
+        if handle == nil then
+            return false
+        end
+        return self:fix(handle, dirt_level)
+    end
+
+    -- Repairs every remembered vehicle still in the game
+    -- @return How many were repaired
+    function fix_all(dirt_level: float|bool): int
+        local fixed = 0
+        for _, handle in ipairs(self:get_handles()) do
+            if self:fix(handle, dirt_level) then
+                fixed += 1
+            end
+        end
+        return fixed
+    end
+
+    function explode_last(): int
+        local n_vehicle = Atdar.natives.entity.vehicle
+        if math.type(handle) == "integer"
+            and n_vehicle.is_exist(handle)
+            then
             n_vehicle.explode({
                 vehicle = handle,
-                net_id = n_vehicle.get_net_id(handle)
+                net_id = n_vehicle.get_net_id(self:get_last_handle())
             })
         end
+    end
+
+    function explode_all(): int
+        local n_vehicle = Atdar.natives.entity.vehicle
+        local exploded = 0
+        for _, handle in pairs(self:get_handles()) do
+            if math.type(handle) == "integer"
+                and n_vehicle.is_exist(handle)
+                then
+                n_vehicle.explode({
+                    vehicle = handle,
+                    net_id = n_vehicle.get_net_id(handle)
+                })
+                exploded += 1
+            end
+        end
+        return exploded
     end
 
     -- Spawns a vehicle and remembers it. By default 5 m in front of the player, facing where the player faces.
@@ -145,7 +231,7 @@ local class VehicleManager extends Module
         local n_vehicle = Atdar.natives.entity.vehicle
         local hash = Atdar.util.hash(model)
         if not n_vehicle.is_model(hash) then
-            self.log:warn($"'{tostring(model)}' isn't a vehicle model")
+            self.log:warn(self:text("not_model", "'%s' isn't a vehicle model"):format(tostring(model)))
             return nil
         end
 
@@ -167,7 +253,7 @@ local class VehicleManager extends Module
         -- Made: the game may let the model go from memory now
         model_asset.remove(hash)
         if handle == nil or handle == -1 then
-            self.log:warn($"the game made no '{tostring(model)}'")
+            self.log:warn(self:text("not_made", "The game made no '%s'"):format(tostring(model)))
             return nil
         end
         self:add_vehicle(handle)
@@ -180,7 +266,10 @@ local class VehicleManager extends Module
         local n_vehicle = Atdar.natives.entity.vehicle
         local deleted = 0
         for _, handle in ipairs(self:get_handles()) do
-            if math.type(handle) == "integer" and n_vehicle.is_exist(handle) and n_vehicle.delete(handle) then
+            if math.type(handle) == "integer"
+                and n_vehicle.is_exist(handle)
+                and n_vehicle.delete(handle)
+                then
                 deleted += 1
             end
             self:remove_vehicle(handle)
@@ -196,7 +285,7 @@ local class VehicleManager extends Module
     -- @return The file's name (without .json), nil if the vehicle doesn't exist or the file couldn't be written
     function save_vehicle(handle: int, name: ?string): ?string
         if math.type(handle) ~= "integer" or not Atdar.natives.entity.is_exist(handle) then
-            self.log:warn($"{tostring(handle)} isn't a vehicle in the game")
+            self.log:warn(self:text("not_in_game", "%s isn't a vehicle in the game"):format(tostring(handle)))
             return nil
         end
         local data = vehicle_data(handle)
@@ -210,14 +299,14 @@ local class VehicleManager extends Module
 
         local file = self:json_file($"{SAVE_FOLDER}/{file_name}")
         if file == nil then
-            self.log:warn("the module isn't loaded from a file: there's no folder to save to")
+            self.log:warn(self:text("no_folder", "The module isn't loaded from a file: there's no folder to save to"))
             return nil
         end
         if not file:write(data) then
-            self.log:warn($"couldn't write {file.path}")
+            self.log:warn(self:text("not_written", "Couldn't write %s"):format(file.path))
             return nil
         end
-        self.log:info($"saved to {file.path}")
+        self.log:info(self:text("saved", "Saved to %s"):format(file.path))
         return file_name
     end
 
@@ -226,7 +315,8 @@ local class VehicleManager extends Module
     function save_vehicles(): int
         local saved = 0
         for handle in pairs(self.vehicles) do
-            if math.type(handle) == "integer" and Atdar.natives.entity.is_exist(handle)
+            if math.type(handle) == "integer"
+                and Atdar.natives.entity.is_exist(handle)
                 and self:save_vehicle(handle) ~= nil then
                 saved += 1
             end

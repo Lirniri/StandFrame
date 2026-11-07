@@ -92,10 +92,13 @@ stand.equal(stand.name_of(entry_b), "2: b: running", "an entry shows the module'
 stand.check(entry_b.help:find("Needs: a", 1, true), "its help shows the deps")
 
 -- Each module is a list: its actions in the menu's order, then its functions
+-- The names of the items the user sees (hidden ones left out)
 local function names_in(node)
     local names = {}
     for _, child in node.children do
-        table.insert(names, stand.name_of(child))
+        if child.visible ~= false then
+            table.insert(names, stand.name_of(child))
+        end
     end
     return table.concat(names, " | ")
 end
@@ -442,6 +445,11 @@ counter.add = function() return { 1, "a", { x = 2 } } end
 stand.click(stand.child(add_node, "Loop"))
 stand.frame()
 stand.equal(stand.debug_texts[#stand.debug_texts], 'counter.add(amount, note) -> {1, "a", {x = 2}}', "a table unpacked")
+-- A table it gave: its entries in the Value list under Variable
+local value_list = stand.find_item(add_node, "Value (3)")
+stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
+stand.equal(names_in(value_list), "[1] | [2] | [3] (1)", "its entries, a table inside as a list")
+stand.equal(stand.child(value_list, "[2]").value, '"a"', "each with its value")
 counter.add = real_add
 counter.count = 5
 stand.click(stand.child(add_node, "Loop"))
@@ -701,5 +709,25 @@ stand.click(stand.child(garage_entry, "Reload"))
 stand.equal(stand.child(garage_entry, "Disable Function Categories").value, true, "kept through Reload")
 stand.click(stand.child(garage_entry, "Disable Function Categories"))
 stand.check(stand.child(stand.child(garage_entry, "Module Functions"), "Getters") ~= nil, "off again: the categories are back")
+
+-- ─── A module's own translations: language/ in its folder, its keys its own ──────
+
+local talker_dir = stand.tmpdir("modules_menu_talker")
+stand.write_file($"{talker_dir}talker.pluto", "local Module = Atdar.loader.load('core/module')\n"
+    .. "return Atdar.modules.add(new Module({ name = 'talker' }))\n")
+io.makedirs($"{talker_dir}language")
+stand.write_file($"{talker_dir}language/en-us.json", '{"hello": "Hello", "refresh": {"name": "Not the script\'s"}}')
+stand.write_file($"{talker_dir}language/ru-ru.json", '{"hello": "Привет"}')
+Atdar.modules.load_dir(talker_dir)
+local talker = Atdar.modules.get("talker")
+stand.equal(talker:text("hello", "Hi"), "Hello", "self:text: the module's own string")
+stand.equal(talker:text("missing", "Fallback"), "Fallback", "a key it doesn't have: the English given")
+stand.language = "ru"
+stand.equal(talker:text("hello", "Hi"), "Привет", "in the script's language")
+stand.language = "en"
+local i18n = Atdar.loader.load("core/i18n")
+stand.equal(i18n.text("modules.refresh.name"), "Refresh", "its keys don't reach the script's strings")
+stand.equal(i18n.text("hello", "none"), "none", "nor are they there without its prefix")
+stand.equal(new Module({ name = "talker_in_code" }):text("hello", "Hi"), "Hi", "a module made in code: the English given")
 
 stand.finish()

@@ -379,6 +379,7 @@
             },
             "status_line": "Loop Status: %s",
             "result_line": "Variable: %s",
+            "result_list": "Value (%d)",
             "no_result": "—"
         },
         "tick": {

@@ -1,3 +1,17 @@
 local module = {}
--- body
+
+-- State
+
+-- Whether this game controls the entity: online only one player's game does, offline always
+function module.has_entity(entity: int): bool
+    return NETWORK.NETWORK_HAS_CONTROL_OF_ENTITY(entity)
+end
+
+-- Actions
+
+-- Asks the session for control of the entity; it comes later, or not at all
+function module.request_entity(entity: int): bool
+    return NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(entity)
+end
+
 return module
