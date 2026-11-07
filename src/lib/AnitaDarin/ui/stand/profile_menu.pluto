@@ -54,7 +54,8 @@ local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "blac
 local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
 
 -- Profile keys edited through text fields
-local INPUT_KEYS = { "display_name", "short_name", "command_prefix", "found_command_prefix" }
+local INPUT_KEYS = { "display_name", "short_name", "command_prefix", "found_command_prefix",
+    "notify_emoticon_info", "notify_emoticon_warn", "notify_emoticon_error", "notify_emoticon_success" }
 
 -- Items of the latest build, updated in place when profile values change. Reset by begin()
 local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {}, subject_colors = {} }
@@ -235,6 +236,10 @@ local function update_fields(): bool
         and not pcall(menu.set_value, view.notify_errors, Atdar.profile.get("notify_errors_in_stand") == true) then
         ok = false
     end
+    if view.notify_emoticons
+        and not pcall(menu.set_value, view.notify_emoticons, Atdar.profile.get("notify_emoticons") == true) then
+        ok = false
+    end
     if view.notify_newline
         and not pcall(menu.set_value, view.notify_newline, Atdar.profile.get("notify_stand_newline") == true) then
         ok = false
@@ -327,14 +332,34 @@ end
 
 -- ─── Appearance ──────────────────────────────────────────────────────────────
 
--- The card Test Notification put in the game's feed last, or nil
-local test_post = nil
+-- The cards Notification Examples put in the game's feed, taken away again (going back out of
+-- Notifications, or before new ones): Stand's own notifications can't be taken away
+local test_posts = {}
 
--- Takes the test card away from the game's feed (Stand's own notifications can't be taken away)
 local function remove_test_post(): void
-    if test_post then
-        pcall(thefeed.remove, test_post)
-        test_post = nil
+    for _, id in ipairs(test_posts) do
+        pcall(thefeed.remove, id)
+    end
+    test_posts = {}
+end
+
+-- The kinds of notification an example shows, in order: the logger's method and the strings' key
+local EXAMPLE_KINDS = {
+    { method = "notify", key = "info" },
+    { method = "warn", key = "warn" },
+    { method = "error", key = "error" },
+    { method = "success", key = "success" },
+}
+
+-- Shows an example of each kind given, the way it really looks (where it shows, subject, colours,
+-- emoticon); the examples before are taken away first, so clicking again doesn't pile them up
+local function show_examples(kinds: table): void
+    remove_test_post()
+    for _, kind in ipairs(kinds) do
+        local id = log[kind.method](log, text($"notify.examples.{kind.key}.text"))
+        if id ~= nil then
+            table.insert(test_posts, id)
+        end
     end
 end
 
@@ -347,6 +372,17 @@ local function notifications(list: table): void
         profile.set("notify", NOTIFY_TARGETS[index])
     end, { "" }, label("notify.target.help"))
 
+    -- Emoticons: on, and the one for each kind of notification
+    local emoticons = list:list(label("notify.emoticons.name"), {}, label("notify.emoticons.help"))
+    view.notify_emoticons = emoticons:toggle(label("notify.emoticons.on.name"), function(on)
+        if not updating then
+            profile.set("notify_emoticons", on)
+        end
+    end, {}, label("notify.emoticons.on.help"), profile.get("notify_emoticons") == true)
+    for _, kind in ipairs({ "info", "warn", "error", "success" }) do
+        input(emoticons, $"notify_emoticon_{kind}", true, $"notifyemoticon{kind}")
+    end
+
     view.notify_errors = list:toggle(label("notify.errors.name"), function(on)
         if not updating then
             profile.set("notify_errors_in_stand", on)
@@ -355,10 +391,13 @@ local function notifications(list: table): void
 
     -- The previous test card is taken away from the game's feed first, so clicking again doesn't pile them up
     -- (Stand's own notifications can't be taken away)
-    list:action(label("notify.test.name"), function()
-        remove_test_post()
-        test_post = log:notify(text("notify.test.text"))
-    end, {}, label("notify.test.help"))
+    local examples = list:list(label("notify.examples.name"), {}, label("notify.examples.help"))
+    for _, kind in ipairs(EXAMPLE_KINDS) do
+        examples:action(label($"notify.examples.{kind.key}.name"), || -> show_examples({ kind }), {},
+            label("notify.examples.one_help"))
+    end
+    examples:action(label("notify.examples.all.name"), || -> show_examples(EXAMPLE_KINDS), {},
+        label("notify.examples.all.help"))
 end
 
 -- The Stand divider: how Stand's notifications look

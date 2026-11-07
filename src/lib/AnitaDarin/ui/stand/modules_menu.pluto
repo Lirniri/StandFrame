@@ -1658,7 +1658,9 @@ local function fill(node: table): void
     local names = modules.names()
     for _, name in ipairs(names) do
         local mod = modules.get(name)
-        local entry = node:list(caption(mod), {}, help(mod))
+        -- Opening it and going back out look at the statuses and files again: they change while one is
+        -- inside (a module failing, a file synced), and a name left behind would say what was
+        local entry = node:list(caption(mod), {}, help(mod), refresh, refresh)
         view.entries[name] = entry.handle
         fill_module(entry, name)
     end
@@ -1698,7 +1700,14 @@ function module.module_in(node: table, name: string): ?table
         return nil
     end
     local entry = nil
-    entry = node:list(caption(modules.get(name)), {}, help(modules.get(name)), || -> empty(entry), function()
+    entry = node:list(caption(modules.get(name)), {}, help(modules.get(name)), function()
+        empty(entry)
+        -- Its name is out of the list it's in: made again here, with the status and file now
+        if modules.has(name) then
+            pcall(menu.set_menu_name, entry.handle, caption(modules.get(name)))
+            pcall(menu.set_help_text, entry.handle, help(modules.get(name)))
+        end
+    end, function()
         entry:clear()
         view = { list = entry, entries = { [name] = entry.handle }, statuses = {}, sections = {} }
         fill_module(entry, name)

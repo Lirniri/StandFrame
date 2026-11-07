@@ -73,7 +73,7 @@ profile.set("found_command_separator", "")
 profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
 local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
-stand.equal(names_in(notifications), "Type: Stand | Errors Always In Stand | Test Notification | Stand | Text On A New Line"
+stand.equal(names_in(notifications), "Type: Stand | Emoticons | Errors Always In Stand | Notification Examples | Stand | Text On A New Line"
     .. " | Game | Notification Type: Post | Picture: " .. default_picture_title .. " | Icon: Chat | Flash Notifications | Day Starts At | Night Starts At"
     .. " | Day Background Color | Day Flash Color | Day Subject Color: White"
     .. " | Night Background Color | Night Flash Color | Night Subject Color: White",
@@ -83,7 +83,7 @@ stand.click(stand.find_item(notifications, "Type"), 2)
 stand.equal(profile.get("notify"), "game", "Type picks the game's feed")
 stand.equal(stand.name_of(stand.find_item(notifications, "Type")), "Type: Game", "and the caption follows")
 
--- Test Notification takes its previous card away from the game's feed before posting a new one
+-- Notification Examples take their previous cards away from the game's feed before posting new ones
 Atdar.util = Atdar.loader.load("utils/util")
 Atdar.natives = Atdar.loader.auto({}, "natives")
 local feed_items, removed_items = 0, {}
@@ -96,15 +96,29 @@ _G.HUD = {
     THEFEED_REMOVE_ITEM = |id| -> table.insert(removed_items, id),
 }
 _G.CLOCK = { GET_CLOCK_HOURS = || -> 12, GET_CLOCK_MINUTES = || -> 0 }
-local test_button = stand.find_item(notifications, "Test Notification")
+local examples = stand.find_item(notifications, "Notification Examples")
+local function names_of(node)
+    local names = {}
+    for _, child in node.children do
+        table.insert(names, stand.name_of(child))
+    end
+    return table.concat(names, " | ")
+end
+stand.equal(names_of(examples), "Notification | Warning | Error | Success | All At Once",
+    "Notification Examples: one of each kind, and all at once")
+profile.set("notify_errors_in_stand", false)
+local test_button = stand.child(examples, "Notification")
 stand.click(test_button)
-stand.check(feed_items == 1 and #removed_items == 0, "the first test card is posted, nothing to take away")
+stand.check(feed_items == 1 and #removed_items == 0, "the first example is posted, nothing to take away")
 stand.click(test_button)
-stand.check(feed_items == 2 and #removed_items == 1 and removed_items[1] == 1, "the next click takes the previous card away first")
+stand.check(feed_items == 2 and #removed_items == 1 and removed_items[1] == 1, "the next click takes the previous one away first")
+stand.click(stand.child(examples, "All At Once"))
+stand.check(feed_items == 6 and #removed_items == 2, "All At Once: one of each of the four kinds")
 notifications.on_back()
-stand.check(#removed_items == 2 and removed_items[2] == 2, "going back out of Notifications takes the test card away")
+stand.check(#removed_items == 6, "going back out of Notifications takes every example away")
 notifications.on_back()
-stand.equal(#removed_items, 2, "and only once")
+stand.equal(#removed_items, 6, "and only once")
+profile.set("notify_errors_in_stand", true)
 stand.click(stand.find_item(notifications, "Type"), 1)
 local flash_toggle = stand.find_item(notifications, "Flash Notifications")
 stand.click(flash_toggle)

@@ -5,7 +5,8 @@
             "debug": "Debug",
             "info": "Information",
             "warn": "Warning",
-            "error": "Error"
+            "error": "Error",
+            "success": "Success"
         }
     },
     "menu_loader": {
@@ -142,14 +143,42 @@
                 "game": "Game",
                 "none": "No Notifications"
             },
+            "emoticons": {
+                "name": "Emoticons",
+                "help": "An emoticon at the end of a notification, by its kind",
+                "on": {
+                    "name": "Emoticons In Notifications",
+                    "help": "Adds the emoticon of its kind at the end of each notification; the log stays as it is"
+                }
+            },
             "errors": {
                 "name": "Errors Always In Stand",
                 "help": "Errors show in Stand's notifications whatever is chosen above, so none goes unseen"
             },
-            "test": {
-                "name": "Test Notification",
-                "help": "Shows a notification where notifications show now",
-                "text": "This is how the script's notifications look"
+            "examples": {
+                "name": "Notification Examples",
+                "help": "How each kind of notification looks now, where notifications show",
+                "one_help": "Shows an example of this kind; the examples are taken away from the game's feed on going back out of Notifications",
+                "info": {
+                    "name": "Notification",
+                    "text": "This is how a notification looks"
+                },
+                "warn": {
+                    "name": "Warning",
+                    "text": "This is how a warning looks"
+                },
+                "error": {
+                    "name": "Error",
+                    "text": "This is how an error looks"
+                },
+                "success": {
+                    "name": "Success",
+                    "text": "This is how a success looks"
+                },
+                "all": {
+                    "name": "All At Once",
+                    "help": "Shows an example of every kind"
+                }
             },
             "stand": {
                 "divider": "Stand",
@@ -268,6 +297,22 @@
             "auto_help": "Show the script in Stand's language",
             "unavailable": "Stand is in English, so the script can't be shown in another language: it follows Stand. The choice is kept and works while Stand is in another language",
             "unavailable_mark": "%s (not with Stand in English)"
+        },
+        "notify_emoticon_info": {
+            "name": "Notification",
+            "help": "The emoticon of a notification; empty - none"
+        },
+        "notify_emoticon_warn": {
+            "name": "Warning",
+            "help": "The emoticon of a warning; empty - none"
+        },
+        "notify_emoticon_error": {
+            "name": "Error",
+            "help": "The emoticon of an error; empty - none"
+        },
+        "notify_emoticon_success": {
+            "name": "Success",
+            "help": "The emoticon of a success (copied, saved...); empty - none"
         }
     },
     "modules": {

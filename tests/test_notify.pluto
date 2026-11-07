@@ -24,6 +24,8 @@ profile.set("notify_subject_color_day", "white")
 profile.set("notify_subject_color_night", "white")
 profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
+-- Emoticons are checked on their own at the end
+profile.set("notify_emoticons", false)
 
 -- The game's feed: what was posted, and how the last post looked
 local feed = {}
@@ -327,5 +329,31 @@ profile.set("notify", "game")
 _G.HUD = {}
 toasts, posts = shown(|| -> log:notify("feed is down"))
 stand.check(toasts == 1 and stand.toasts[1]:find("feed is down", 1, true), "a failing feed falls back to Stand")
+
+-- Emoticons: at the end of the sentence by the kind of notification, on screen only
+profile.set("notify", "stand")
+profile.set("notify_emoticons", true)
+for _, case in { { "notify", "notify_emoticon_info" }, { "warn", "notify_emoticon_warn" },
+        { "error", "notify_emoticon_error" }, { "success", "notify_emoticon_success" } } do
+    profile.set(case[2], profile.default(case[2]))
+    stand.toasts = {}
+    stand.clear_logs()
+    log[case[1]](log, "done")
+    local emoticon = profile.get(case[2])
+    stand.check(stand.toasts[1]:sub(-#emoticon - 5) == $"done {emoticon}", $"{case[1]}: '{emoticon}' at the end")
+    stand.check(stand.find_log("] done") and not stand.find_log($"done {emoticon}"), $"{case[1]}: the log without it")
+end
+profile.set("notify_emoticon_info", "")
+stand.toasts = {}
+log:notify("plain")
+stand.check(stand.toasts[1]:sub(-5) == "plain", "an empty emoticon: none")
+profile.set("notify_emoticons", false)
+stand.toasts = {}
+log:warn("off")
+stand.check(stand.toasts[1]:sub(-3) == "off", "emoticons off: none")
+stand.toasts = {}
+profile.set("notify_emoticons", true)
+log:success("copied")
+stand.check(stand.toasts[1]:find("Success: copied", 1, true), "success: its own kind, in words")
 
 stand.finish()

@@ -3,7 +3,7 @@ local Logger = Atdar.loader.load("core/logger")
 local hud_text = Atdar.loader.load("natives/visual/hud/text")
 
 -- The subject colour "level": by the notification's type
-local LEVEL_COLORS = { INFO = "blue", WARN = "yellow", ERROR = "red" }
+local LEVEL_COLORS = { INFO = "blue", WARN = "yellow", ERROR = "red", SUCCESS = "green" }
 
 -- The subject with the profile's colour code for the time of day in front ("~y~Warning")
 -- @param period "day" or "night"

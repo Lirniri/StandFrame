@@ -527,6 +527,18 @@ stand.equal(stand.name_of(marked), "5: reloader: running", "and the mark goes")
 stand.clear_logs()
 stand.click(stand.child(list, "Reload Changed"))
 stand.check(stand.find_log("No changed modules"), "nothing changed: says so")
+-- A file changed while one is inside a module: going back out shows it, no Refresh needed
+local reloader_entry = stand.find_item(list, "5: reloader: ")
+stand.click(reloader_entry)
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function one() return 1 end\n    function old_field(x) return x end") .. "-- edited again\n")
+stand.back(reloader_entry)
+stand.equal(stand.name_of(reloader_entry), "5: reloader: running · file changed", "going back out of a module shows a file changed meanwhile")
+stand.write_file($"{reload_dir}reloader.pluto",
+    reloader_file("    function one() return 1 end\n    function old_field(x) return x end") .. "-- edited\n")
+stand.click(reloader_entry)
+stand.back(reloader_entry)
+stand.equal(stand.name_of(reloader_entry), "5: reloader: running", "and the mark goes when it's as loaded again")
 
 -- Reload: the code is read again, its functions in the menu are made again
 local entry_reloader = stand.find_item(list, "5: reloader: ")

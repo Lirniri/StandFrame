@@ -124,7 +124,18 @@ util.on_stop(close_file)
 -- ─── Level names for the user ────────────────────────────────────────────────
 
 -- Shown on screen (a message card's subject); the log keeps INFO / WARN / ERROR
-local LEVEL_ENGLISH = { DEBUG = "Debug", INFO = "Information", WARN = "Warning", ERROR = "Error" }
+local LEVEL_ENGLISH = { DEBUG = "Debug", INFO = "Information", WARN = "Warning", ERROR = "Error", SUCCESS = "Success" }
+
+-- The profile's emoticon for a level's notification (notify_emoticon_info / _warn / _error / _success),
+-- "" while they're off or before the profile has loaded. On screen only: the log keeps the text as it is
+local function emoticon_of(level: string): string
+    local profile = Atdar.profile
+    if not (profile and profile.get) or profile.get("notify_emoticons") ~= true then
+        return ""
+    end
+    local emoticon = profile.get($"notify_emoticon_{level:lower()}")
+    return type(emoticon) == "string" and emoticon or ""
+end
 
 -- @return The level's name in the script's language ("Предупреждение"); English until core/i18n has
 -- loaded (it loads after the logger, and lines can come before it)
@@ -192,6 +203,11 @@ local class Logger
             -- On screen: the whole line in debug mode, otherwise the short one. The head apart too:
             -- Stand's notification may put the text on a line of its own (opts.head)
             local head = Atdar.debug ? self:full_head(level) : self:short_head(level)
+            -- The emoticon at the end of the sentence: "Saved :D"
+            local emoticon = emoticon_of(level)
+            if emoticon ~= "" then
+                msg = $"{msg} {emoticon}"
+            end
             local shown = $"{head} {msg}"
             -- Where it shows is the profile's notify; errors go to Stand unless the profile says otherwise
             local profile = Atdar.profile
@@ -239,6 +255,12 @@ local class Logger
 
     function error(msg: string): ?int
         return self:write("ERROR", msg, true)
+    end
+
+    -- Something done that the user asked for and might wonder about: copied, saved, created
+    -- @return The post's id when it went to the game's feed, otherwise nil
+    function success(msg: string): ?int
+        return self:write("SUCCESS", msg, true)
     end
 
 end
