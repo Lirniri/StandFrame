@@ -11,7 +11,11 @@ local FIRE_RADIUS = 5.0
 -- @param start_engine A repaired engine may stay off (after it died or burned): true starts it
 -- An exploded vehicle can be driven again too: set_undriveable(false) undoes what the explosion set
 -- @return Whether it was repaired (false if it isn't a vehicle in the game)
-function module.repair(vehicle: int, dirt_level: float|bool = false, start_engine: bool = false): bool
+function module.repair(vehicle: int,
+    dirt_level: float|bool = false, start_engine: bool = false,
+    start_engine_instantly: bool = false
+): bool
+    -- body
     local n_vehicle = Atdar.natives.entity.vehicle
 
     if not n_vehicle.does_exist(vehicle) then
@@ -42,7 +46,7 @@ function module.repair(vehicle: int, dirt_level: float|bool = false, start_engin
     fire.stop_in_range(coords.x, coords.y, coords.z, FIRE_RADIUS)
 
     if start_engine then
-        n_vehicle.set_engine_on(vehicle, true, true)
+        n_vehicle.set_engine_on(vehicle, true, start_engine_instantly)
     end
 
     if dirt_level == true then

@@ -1,0 +1,14 @@
+local module = {}
+
+function module.pointer_to_handle(pointer: int): int?
+    if Atdar.memory.has_handle(pointer) then
+        local handle = entities.pointer_to_handle(pointer)
+        if handle ~= 0 then
+            return handle
+        end
+    end
+
+    return nil
+end
+
+return module

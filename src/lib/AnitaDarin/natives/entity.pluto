@@ -9,31 +9,6 @@ local module = {}
 
 -- State
 
-function module.has_handle(pointer: int): bool
-    return entities.has_handle(pointer)
-end
-
-function module.handle_to_pointer(handle: int): int?
-    local pointer = entities.handle_to_pointer(handle)
-    
-    if pointer ~= nil and pointer ~= 0 then
-        return pointer
-    end
-
-    return nil
-end
-
-function module.pointer_to_handle(pointer: int): int?
-    if module.has_handle(pointer) then
-        local handle = entities.pointer_to_handle(pointer)
-        if handle ~= 0 then
-            return handle
-        end
-    end
-
-    return nil
-end
-
 function module.does_exist(entity: int): bool
     return ENTITY.DOES_ENTITY_EXIST(entity)
 end

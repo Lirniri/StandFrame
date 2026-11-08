@@ -1,5 +1,6 @@
 local module = {
     -- Variables
+    gearbox = {},
     engine = {
         max_health = 1000
     }
@@ -89,7 +90,7 @@ function module.get_net_id(vehicle): int
 end
 
 function module.from_net_id(net_id): ?int
-    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    local is_net_id_exist = Atdar.natives.network.does_net_id_exist(net_id)
     if not is_net_id_exist then
         return nil
     end
@@ -97,7 +98,93 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_VEH(net_id)
 end
 
+-- Get>Gearbox
+
+function module.gearbox.get_current(vehicle: int): int
+    if not module.does_exist(vehicle) then
+        return 0
+    end
+
+    local addr = Atdar.memory.handle_to_pointer(vehicle)
+    if addr then
+        return entities.get_current_gear(addr)
+    end
+
+    return 0
+end
+
+function module.gearbox.get_next(vehicle: int): int
+    if not module.does_exist(vehicle) then
+        return 0
+    end
+
+    local addr = Atdar.memory.handle_to_pointer(vehicle)
+    if addr then
+        return entities.get_next_gear(addr)
+    end
+
+    return 0
+end
+
+-- Get>Engine
+
+function module.engine.get_rpm(vehicle: int): int
+    if not module.does_exist(vehicle) then
+        return 0
+    end
+
+    local addr = Atdar.memory.handle_to_pointer(vehicle)
+    if addr then
+        return entities.get_rpm(addr)
+    end
+
+    return 0
+end
+
 -- Set
+
+-- Set>Gearbox
+
+function module.gearbox.set_current(vehicle: int, current_gearbox: int): void
+    if not module.does_exist(vehicle) then
+        return
+    end
+
+    local addr = Atdar.memory.handle_to_pointer(vehicle)
+    if addr then
+        entities.set_current_gear(addr, current_gearbox)
+    end
+
+    return
+end
+
+function module.gearbox.set_next(vehicle: int, next_gearbox: int): void
+    if not module.does_exist(vehicle) then
+        return
+    end
+
+    local addr = Atdar.memory.handle_to_pointer(vehicle)
+    if addr then
+        entities.set_next_gear(addr, next_gearbox)
+    end
+
+    return
+end
+
+-- Set>Engine
+
+function module.engine.set_rpm(vehicle: int, rpm: float): void
+    if not module.does_exist(vehicle) then
+        return
+    end
+
+    local addr = Atdar.memory.handle_to_pointer(vehicle)
+    if addr then
+        entities.set_rpm(addr, rpm)
+    end
+
+    return
+end
 
 -- Repairs what's broken (doors, windows, lights, wheels), not the dents
 function module.set_fixed(vehicle: int): void

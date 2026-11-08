@@ -15,6 +15,7 @@ local UTILS = {
     "lang", -- after filesystem: reads language files from store
     "color", -- Atdar.color: hex <-> Stand (0.0 - 1.0) <-> game (0 - 255) colours
     "menu", -- Atdar.menu: menu items Stand doesn't have ready-made (color without opacity, spoiler)
+    "memory", -- Atdar.memory: entity handle <-> pointer
     "game", -- Atdar.game: things built on natives (game.entity.vehicle.repair, game.players.user.restore_health)
 }
 for _, name in UTILS do

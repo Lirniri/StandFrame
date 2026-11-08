@@ -1,0 +1,21 @@
+local module = {}
+
+-- State
+
+function module.has_handle(pointer: int): bool
+    return entities.has_handle(pointer)
+end
+
+-- Get
+
+function module.handle_to_pointer(handle: int): int?
+    local pointer = entities.handle_to_pointer(handle)
+    
+    if pointer and pointer ~= 0 then
+        return pointer
+    end
+
+    return nil
+end
+
+return Atdar.loader.auto(module, "utils/memory")
