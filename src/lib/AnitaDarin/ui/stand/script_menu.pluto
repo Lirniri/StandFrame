@@ -298,12 +298,21 @@ end
 
 -- Removes every log file, after a warning
 local function clear_logs(node: table): void
+    -- Today's file only, at once: the lines from before a test, without losing the other days
+    node:action(label("clear_log.name"), function()
+        if Logger.clear_today() then
+            log:notify(text("clear_log.done"))
+            return
+        end
+        log:notify(text("clear_log.none"))
+    end, { "clearlog" }, label("clear_log.help"))
+
     local ref
     ref = node:action(label("clear_logs.name"), function(click_type)
         menu.show_warning(ref, click_type, text("clear_logs.warning"):format(from_scripts_dir(Logger.folder())), function()
             log:notify(text("clear_logs.done"):format(Logger.clear()))
         end)
-    end, {}, label("clear_logs.help"))
+    end, { "clearlogs" }, label("clear_logs.help"))
 end
 
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)

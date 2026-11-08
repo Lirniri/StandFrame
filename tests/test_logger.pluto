@@ -83,6 +83,14 @@ stand.equal(Logger.clear(), 4, "clear() removes every day file and says how many
 stand.check(io.exists($"{dir}notes.txt"), "but not other files")
 log:info("after clearing")
 stand.equal(#lines_of("2026-11-08"), 1, "the next line starts a fresh file")
+
+-- Clear today: only today's file goes, the other days stay
+stand.write_file(file_of("2026-11-07"), "yesterday")
+stand.check(Logger.clear_today(), "clear_today() removes today's file")
+stand.check(not io.exists(file_of("2026-11-08")) and io.exists(file_of("2026-11-07")), "yesterday's stays")
+stand.check(not Logger.clear_today(), "none for today: says so")
+log:info("after clearing today")
+stand.equal(#lines_of("2026-11-08"), 1, "the next line starts today's file again")
 Atdar.profile = nil
 
 -- A file that can't be opened: one warning in Stand's log, then lines go there only

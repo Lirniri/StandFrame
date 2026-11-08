@@ -249,7 +249,7 @@ stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before ope
 stand.equal(names_in(find("Debug")),
     "Debug Mode | Load Timing | Reload Natives | Logs | Name In Logs: "
     .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
-    .. " | Keep Logs (Days) | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
+    .. " | Keep Logs (Days) | Clear Current Log File | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
@@ -274,7 +274,7 @@ local function row(command)
 end
 stand.check(#found.children > 5, $"Base Commands lists the section's commands ({#found.children})")
 -- Load Menu and what's in it: all start with menuloader
-for _, command in { "menuloader", "menuloaderunload", "menuloaderautocopy" } do
+for _, command in { "menuloader", "menuloaderunload", "menuloaderautocopy", "clearlog", "clearlogs" } do
     stand.check(row(command) ~= nil, $"Load Menu's command {command}")
 end
 local debug_row = row("debug")
@@ -314,7 +314,7 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[8], debug_list.children[9], debug_list.children[10] }
+local debug_only = { debug_list.children[9], debug_list.children[10], debug_list.children[11] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end

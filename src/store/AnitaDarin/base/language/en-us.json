@@ -617,6 +617,12 @@
             "help": "Debug mode, the script's modules and the script itself"
         },
         "logs": "Logs",
+        "clear_log": {
+            "name": "Clear Current Log File",
+            "help": "Removes today's log file only; the other days stay. The next line starts it again",
+            "done": "Today's log file removed",
+            "none": "There's no log file for today yet"
+        },
         "clear_logs": {
             "name": "Clear All Log Files",
             "help": "Removes every log file of the script. Opens a confirmation first",

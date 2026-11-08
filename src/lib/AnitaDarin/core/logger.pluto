@@ -292,6 +292,20 @@ function Logger.clear(): int
     return removed
 end
 
+-- Removes today's file only; the next line starts it again
+-- @return Whether there was one to remove
+function Logger.clear_today(): bool
+    close_file()
+    local today = os.date("%Y-%m-%d")
+    local path = $"{log_dir()}{Atdar.name}_{today}.log"
+    -- Pluto's os.remove says true for a file that isn't there too
+    if not filesystem.exists(path) then
+        return false
+    end
+    os.remove(path)
+    return not filesystem.exists(path)
+end
+
 -- Closes the log file and writes no more files until the script starts again (Stand's log goes on).
 -- For deleting the script: an open file can't be removed, and a later line would make it again
 function Logger.stop_file(): void
