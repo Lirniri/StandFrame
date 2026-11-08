@@ -284,7 +284,7 @@ end
 
 -- Where a copied pack's translations are, in the script's store
 function module.core_language_dir(store_dir: string): string
-    return $"{store_dir}in_core\\menu\\languages\\"
+    return $"{store_dir}for_core\\menu\\languages\\"
 end
 
 -- @return { pack = name, files = { paths relative to lib }, store_files = { paths relative to store } }
