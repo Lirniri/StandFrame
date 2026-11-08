@@ -14,7 +14,7 @@ local log = new Logger("Menu")
 
 local PACKS_DIR = $"{paths.store}menu\\"
 -- Built-in menu has the same shape as a pack: main.pluto here, features in lib features/
-local BUILTIN_MENU_DIR = $"{paths.lib}ui\\stand\\menu\\"
+local BUILTIN_MENU_DIR = $"{paths.lib}ui\\stand\\menu_from_store\\"
 
 local module = {}
 
@@ -131,7 +131,7 @@ local function load_menu(kind: string, language_dir: string, feature_files: tabl
 end
 
 local function load_builtin(): void
-    load_menu("builtin", $"{paths.lib}language\\", find_builtin_features(),
+    load_menu("builtin", builder.core_language_dir(paths.store), find_builtin_features(),
         |node| -> builder.build_menu(node, BUILTIN_MENU_DIR), BUILTIN_MENU_DIR)
 end
 
@@ -156,7 +156,7 @@ local function unload_menu(): void
 end
 
 local function copy_pack(info: table): void
-    local ok, result = builder.copy_pack_to_core(info, paths.lib)
+    local ok, result = builder.copy_pack_to_core(info, paths.lib, paths.store)
     if not ok then
         log:warn($"'{info.name}' not copied: {result}")
         return
@@ -180,7 +180,7 @@ local function remove_builtin(): void
     if current and current.kind == "builtin" then
         unload_current()
     end
-    local ok, result = builder.remove_copied_core(paths.lib)
+    local ok, result = builder.remove_copied_core(paths.lib, paths.store)
     if ok then
         log:notify(i18n.text("menu_loader.builtin.removed"):format(result))
         -- Otherwise the copy silently comes back at the next start
@@ -322,14 +322,14 @@ local function auto_copy(): void
         log:warn($"menu '{id}' not copied to core: the script has its own built-in menu")
         return
     end
-    if manifest and builder.core_copy_is_current(info, paths.lib) then
+    if manifest and builder.core_copy_is_current(info, paths.lib, paths.store) then
         log:info($"'{info.name}' in core is the same as in store, not copied again")
         return
     end
     if manifest then
-        builder.remove_copied_core(paths.lib)
+        builder.remove_copied_core(paths.lib, paths.store)
     end
-    local ok, result = builder.copy_pack_to_core(info, paths.lib)
+    local ok, result = builder.copy_pack_to_core(info, paths.lib, paths.store)
     if ok then
         log:info($"'{info.name}' copied to core ({result} file(s))")
     else

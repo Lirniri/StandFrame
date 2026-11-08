@@ -30,9 +30,11 @@ io.makedirs($"{stand.store}AnitaDarin/profiles")
 stand.write_file($"{stand.store}AnitaDarin/profiles/main.json", '{"auto_copy_menu": "AnitaDarin", "language": "ru-ru"}')
 
 -- An older copy in core: its manifest lists a file the pack no longer has
-io.makedirs($"{lib}ui\\stand\\menu")
-stand.write_file($"{lib}ui\\stand\\menu\\old.pluto", "return {}")
-stand.write_file($"{lib}ui\\stand\\menu\\.copied.json", '{"pack": "AnitaDarin", "files": ["ui\\\\stand\\\\menu\\\\old.pluto"]}')
+io.makedirs($"{lib}ui\\stand\\menu_from_store")
+stand.write_file($"{lib}ui\\stand\\menu_from_store\\old.pluto", "return {}")
+io.makedirs($"{lib}language")
+stand.write_file($"{lib}language\\en-us.json", "{}")
+stand.write_file($"{lib}ui\\stand\\menu_from_store\\.copied.json", '{"pack": "AnitaDarin", "files": ["ui\\\\stand\\\\menu_from_store\\\\old.pluto", "language\\\\en-us.json"]}')
 
 -- bootstrap.pluto, from the utilities on
 for _, name in { "util", "filesystem", "lang" } do
@@ -47,10 +49,13 @@ Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
 
 stand.check(stand.find_log("'AnitaDarin' copied to core"), "the pack was copied at start")
 stand.check(stand.find_log("Stand is in English"), "a saved language Stand can't show is reported, not a crash")
-stand.check(io.exists($"{lib}ui\\stand\\menu\\main.pluto"), "its menu is in core")
+stand.check(io.exists($"{lib}ui\\stand\\menu_from_store\\main.pluto"), "its menu is in core")
 stand.check(io.exists($"{lib}features\\self\\godmode.pluto"), "its features are in core")
-stand.check(not io.exists($"{lib}ui\\stand\\menu\\old.pluto"), "the older copy's files are gone")
-stand.check(stand.read_file($"{lib}ui\\stand\\menu\\.copied.json"):find('"AnitaDarin"', 1, true), "the new copy has a manifest")
+stand.check(not io.exists($"{lib}ui\\stand\\menu_from_store\\old.pluto"), "the older copy's files are gone")
+stand.check(not io.exists($"{lib}language\\en-us.json"), "its translations in lib too")
+local core_languages = $"{Atdar.filesystem.paths.store}in_core\\menu\\languages\\"
+stand.check(io.exists($"{core_languages}en-us.json") and io.exists($"{core_languages}ru-ru.json"), "the translations are in store")
+stand.check(stand.read_file($"{lib}ui\\stand\\menu_from_store\\.copied.json"):find('"AnitaDarin"', 1, true), "the new copy has a manifest")
 
 -- The copy is the pack's now: the next start leaves it as it is; a changed file makes it copy again
 local builder = Atdar.loader.load("ui/stand/core/menu_builder")
@@ -63,13 +68,13 @@ local function pack_info()
     end
     return nil
 end
-stand.check(builder.core_copy_is_current(pack_info(), lib), "right after the copy: the same as the pack")
+stand.check(builder.core_copy_is_current(pack_info(), lib, Atdar.filesystem.paths.store), "right after the copy: the same as the pack")
 local godmode_path = $"{stand.store}AnitaDarin/menu/AnitaDarin/features/self/godmode.pluto"
 local godmode_text = stand.read_file(godmode_path)
 stand.write_file(godmode_path, godmode_text .. "\n-- changed\n")
-stand.check(not builder.core_copy_is_current(pack_info(), lib), "a file changed in store: not the same any more")
+stand.check(not builder.core_copy_is_current(pack_info(), lib, Atdar.filesystem.paths.store), "a file changed in store: not the same any more")
 stand.write_file(godmode_path, godmode_text)
-stand.check(builder.core_copy_is_current(pack_info(), lib), "back as it was: the same again")
+stand.check(builder.core_copy_is_current(pack_info(), lib, Atdar.filesystem.paths.store), "back as it was: the same again")
 
 -- Loaded as the built-in menu, in the main body: the pack's lists are in the root
 stand.check(stand.find_item(stand.root, "Self"), "the pack's Self list is in the menu")
@@ -87,7 +92,7 @@ local function found_row(name)
     end
     return nil
 end
-local core_names = $"{lib}ui\\stand\\menu\\commands\\godmode.json"
+local core_names = $"{lib}ui\\stand\\menu_from_store\\commands\\godmode.json"
 local godmode = found_row("godmode")
 stand.check(godmode and godmode.kind == "list", "the menu's command is a list, shown without the prefix")
 stand.equal(stand.find_item(godmode, "Command").value, "atdargodmode", "inside: the full command")
@@ -109,7 +114,7 @@ stand.equal(stand.name_of(godmode), "god", "and the name stays")
 -- Found Commands' Open Commands Folder: the loaded menu's own commands folder, in core here
 stand.toasts = {}
 stand.click(stand.child(found_commands(), "Open Commands Folder"))
-stand.check(stand.toasts[#stand.toasts]:find("ui\\stand\\menu\\commands\\", 1, true),
+stand.check(stand.toasts[#stand.toasts]:find("ui\\stand\\menu_from_store\\commands\\", 1, true),
     $"Found Commands opens the built-in menu's commands folder ({stand.toasts[#stand.toasts]})")
 stand.equal(found_row("debug"), nil, "the script's own commands aren't among the menu's")
 local base_commands = stand.child(stand.find_item(stand.root, "Command Box"), "Base Commands")
@@ -169,7 +174,8 @@ stand.check(builtin, "Load Menu lists the copied built-in menu")
 stand.click(builtin, 1)
 stand.clear_logs()
 stand.click(stand.find_item(stand.find_item(stand.root, "Load Menu"), "(built-in)"), 2)
-stand.check(not io.exists($"{lib}ui\\stand\\menu\\main.pluto"), "Remove from core deletes the copy")
+stand.check(not io.exists($"{lib}ui\\stand\\menu_from_store\\main.pluto"), "Remove from core deletes the copy")
+stand.check(not io.exists($"{core_languages}en-us.json"), "and its translations in store")
 stand.equal(stand.name_of(stand.root.children[1]), "Built-in menu not found", "the notice is back at the top")
 stand.equal(stand.root.children[1].kind, "divider", "as a divider")
 stand.check(not stand.find_item(stand.root, "Self"), "the menu's items are gone")
