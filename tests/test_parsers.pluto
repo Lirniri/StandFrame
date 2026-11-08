@@ -1,0 +1,64 @@
+-- parsers/: text into values - color, json, proglang.pluto (args, name, source) - and the facades
+local stand = require("stand")
+stand.boot()
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
+local parsers = Atdar.parsers
+
+-- ─── Facade ──────────────────────────────────────────────────────────────────
+
+local pluto = parsers.proglang.pluto
+stand.check(rawequal(pluto.args, Atdar.loader.load("parsers/proglang/pluto/args")),
+    "Atdar.parsers.proglang.pluto.args is parsers/proglang/pluto/args, loaded on first use")
+stand.equal(type(rawget(parsers, "proglang")), "table", "proglang is kept in Atdar.parsers once loaded")
+stand.equal(parsers.proglang.cobol, nil, "a language that isn't there is nil")
+stand.equal(parsers.nonexistent, nil, "a parser that isn't there is nil")
+
+-- ─── args ────────────────────────────────────────────────────────────────────
+
+local args, count = pluto.args.parse('adder, 5, true, nil, "x, y"')
+stand.check(count == 5 and args[1] == "adder" and args[2] == 5 and args[3] == true and args[4] == nil
+    and args[5] == "x, y", "args.parse: a bare word, number, true, nil, a quoted text with a comma")
+_G.FAKE = { add = |a, b| -> a + b }
+args, count = pluto.args.parse("FAKE.add(2, 3), math.max(1, 7)")
+stand.check(count == 2 and args[1] == 5 and args[2] == 7, "args.parse: calls are made, commas inside don't split")
+args, count = pluto.args.parse("hello world, again")
+stand.check(count == 2 and args[1] == "hello world", "args.parse: not an expression - texts split by commas")
+local _, _, err = pluto.args.parse("missing.call()")
+stand.check(err ~= nil, "args.parse: a call to something unknown gives an error")
+stand.equal(table.concat(pluto.args.split('f(1, 2), "a, b", {3, 4}'), " | "), 'f(1, 2) | "a, b" | {3, 4}',
+    "args.split: commas inside brackets and quotes don't split, nothing worked out")
+stand.equal(#pluto.args.split("  "), 0, "args.split: nothing typed - nothing")
+
+-- ─── color ───────────────────────────────────────────────────────────────────
+
+local orange = parsers.color.hex("FF8000")
+stand.check(orange.r == 1 and orange.b == 0 and orange.a == 1, "color.hex: RRGGBB")
+stand.equal(parsers.color.hex("#ff800080").a, 128 / 255, "color.hex: #, lower case and alpha")
+stand.equal(parsers.color.hex("FF80"), nil, "color.hex: too short is nil")
+stand.check(Atdar.loader.load("utils/color").from_hex("FF8000").g == orange.g, "utils/color.from_hex reads hex through it")
+
+-- ─── json ────────────────────────────────────────────────────────────────────
+
+stand.equal(parsers.json.decode('{"a": 1}').a, 1, "json.decode: an object")
+stand.equal(parsers.json.decode('[1, 2]')[2], 2, "json.decode: an array")
+stand.equal(parsers.json.decode('{"a": 1, "b":'), nil, "json.decode: cut off is nil, not the part that parsed")
+stand.equal(parsers.json.decode("{bad}"), nil, "json.decode: not JSON is nil")
+stand.equal(next(parsers.json.decode("{}")), nil, "json.decode: {} is an empty table")
+
+-- ─── name ────────────────────────────────────────────────────────────────────
+
+local words = pluto.name.words("get_handle")
+stand.check(words.get and words.handle, "name.words: snake_case")
+words = pluto.name.words("isLastExist")
+stand.check(words.is and words.last and words.exist, "name.words: camelCase, lower case")
+
+-- ─── source ──────────────────────────────────────────────────────────────────
+
+local dir = stand.tmpdir("parsers_source")
+stand.write_file($"{dir}typed.pluto", "local m = {}\nfunction m.count(a,\n    b): int\n    return a + b\nend\nfunction m.plain() end\nreturn m\n")
+local typed = dofile($"{dir}typed.pluto")
+stand.equal(pluto.source.return_type(typed.count), "int", "source.return_type: written after parameters on another line")
+stand.equal(pluto.source.return_type(typed.plain), nil, "source.return_type: none written - nil")
+stand.equal(pluto.source.return_type(print), nil, "source.return_type: a C function - nil")
+
+stand.finish()

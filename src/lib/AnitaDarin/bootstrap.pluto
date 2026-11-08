@@ -27,6 +27,10 @@ Atdar.profile = Atdar.loader.load("core/profile")
 -- An error in one file doesn't crash the script, that file stays empty
 Atdar.natives = Atdar.loader.auto({}, "natives")
 
+-- Parsers: Atdar.parsers.<kind>, each loaded from parsers/<kind>.pluto on first use. Text into values:
+-- color (hex), json, proglang (programming languages: proglang.pluto.args / name / source)
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
+
 -- Modules: internal parts the script starts by itself, in dependency order (core/module).
 -- Before features and the menu, so those can use them
 Atdar.modules = Atdar.loader.load("core/module_manager")

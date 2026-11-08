@@ -7,6 +7,8 @@
 --     local r, g, b, a = Atdar.color.to_game(colour)  -- 255, 128, 0, 255
 --     Atdar.color.to_hex(colour)                      -- "FF8000"
 
+local color_parser = Atdar.loader.load("parsers/color")
+
 local module = {}
 
 -- 0.0 - 1.0 -> 0 - 255, out-of-range values clamped
@@ -21,22 +23,10 @@ local function to_byte(value: number): int
     return byte
 end
 
+-- The hex is read by parsers/color
 -- @return The Stand colour, or nil if the text isn't 6 or 8 hex digits ("" too). A leading # is allowed
 function module.from_hex(hex: string): ?table
-    local digits = hex:gsub("^#", "")
-    if not (#digits == 6 or #digits == 8) or digits:find("[^%x]") then
-        return nil
-    end
-    local alpha = 1.0
-    if #digits == 8 then
-        alpha = tonumber(digits:sub(7, 8), 16) / 255
-    end
-    return {
-        r = tonumber(digits:sub(1, 2), 16) / 255,
-        g = tonumber(digits:sub(3, 4), 16) / 255,
-        b = tonumber(digits:sub(5, 6), 16) / 255,
-        a = alpha,
-    }
+    return color_parser.hex(hex)
 end
 
 -- @param with_alpha Adds AA at the end

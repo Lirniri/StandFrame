@@ -1,0 +1,68 @@
+-- lib/AnitaDarin/parsers/proglang/pluto/source.pluto
+--
+-- What the running code doesn't keep but its source file says: a function's return type.
+-- Type hints are gone once Pluto compiles the code, so they're read from the file, at the line
+-- debug.getinfo gives for the function.
+--
+--     Atdar.parsers.proglang.pluto.source.return_type(Atdar.natives.entity.vehicle.repair)  -- "bool"
+
+local module = {}
+
+-- File path -> { text = the text, lines = its lines }; split again only when the text is another
+local source_lines = {}
+
+-- The lines a function's line numbers belong to. A module file: the text its running code was read
+-- from (core/module_manager), so an edit or a Reload never leaves them pointing at other lines. Any
+-- other file (the lib's, not changed while the script runs): read from disk once
+-- @return The lines, or false if there's no text
+local function lines_of(path: string)
+    local text = Atdar.modules ~= nil and Atdar.modules.loaded_text_of(path) or nil
+    local cached = source_lines[path]
+    if text == nil and cached ~= nil then
+        return cached.lines
+    end
+    if cached ~= nil and cached.text == text then
+        return cached.lines
+    end
+    if text == nil then
+        local file = io.open(path, "r")
+        if file ~= nil then
+            text = file:read("*a")
+            file:close()
+        end
+    end
+    local lines = false
+    if text ~= nil then
+        lines = {}
+        for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+            table.insert(lines, (line:gsub("\r$", "")))
+        end
+    end
+    source_lines[path] = { text = text, lines = lines }
+    return lines
+end
+
+-- The return type written after a function's parameters ("function name(a, b): bool" -> "bool"),
+-- the parameters may take a few lines
+-- @return The type, or nil if none is written or the file can't be read (lambdas have none)
+function module.return_type(fn): ?string
+    local info = debug.getinfo(fn, "S")
+    if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
+        return nil
+    end
+    local lines = lines_of(info.source:sub(2))
+    if not lines then
+        return nil
+    end
+    local joined = ""
+    for i = info.linedefined, math.min(info.linedefined + 5, #lines) do
+        joined ..= lines[i] .. " "
+        local after = joined:match("function[^(]*%b()(.*)")
+        if after ~= nil then
+            return after:match("^%s*:%s*([%w_?|%.]+)")
+        end
+    end
+    return nil
+end
+
+return module

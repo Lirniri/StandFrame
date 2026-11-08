@@ -1,0 +1,246 @@
+-- lib/AnitaDarin/parsers/proglang/pluto/args.pluto
+--
+-- Arguments typed as text, as in a call in Lua: '5, true, "text", v3.new(1, 2, 3)'.
+--   parse(input) - worked out into values: numbers, true, false, nil, "text", names the script sees
+--                  (natives, entities, Atdar, v3, ...) with .field, :method(...) and calls (...)
+--   split(input) - only cut into the texts of the arguments, nothing worked out
+--
+--     local args = Atdar.parsers.proglang.pluto.args
+--     args.parse('adder, 5, PLAYER.PLAYER_PED_ID()')  -- { "adder", 5, 1234 }, 3
+--     args.split('f(1, 2), "a, b"')                   -- { "f(1, 2)", '"a, b"' }
+
+local module = {}
+
+-- ─── Texts, when it isn't an expression ──────────────────────────────────────
+
+-- One argument as typed: nil, true, false, a number, otherwise the text itself
+local function value_of(raw: string)
+    if raw == "nil" then
+        return nil
+    end
+    if raw == "true" then
+        return true
+    end
+    if raw == "false" then
+        return false
+    end
+    local number = tonumber(raw)
+    if number ~= nil then
+        return number
+    end
+    return raw
+end
+
+-- 'adder, 5, true, "a, b"' -> "adder", 5, true, "a, b": split by commas, a quoted text kept whole
+-- (quotes "" or ''), spaces around each argument dropped. For what isn't a Lua expression (see parse)
+-- @return The arguments and how many there are (nil ones count too)
+local function split_texts(input: string)
+    local args, count = {}, 0
+    local i, len = 1, #input
+    while i <= len do
+        local c = input:sub(i, i)
+        if c:match("%s") then
+            i += 1
+        elseif c == '"' or c == "'" then
+            local close = input:find(c, i + 1, true) or (len + 1)
+            count += 1
+            args[count] = input:sub(i + 1, close - 1)
+            local comma = input:find(",", close + 1, true)
+            i = comma ~= nil ? comma + 1 : len + 1
+        else
+            local comma = input:find(",", i, true)
+            local stop = comma ~= nil ? comma - 1 : len
+            count += 1
+            args[count] = value_of(input:sub(i, stop):match("^%s*(.-)%s*$"))
+            i = stop + 2
+        end
+    end
+    return args, count
+end
+
+-- ─── Reading the arguments as expressions ────────────────────────────────────
+-- Stand's Lua has no load, so the expressions are read here. Understood: nil, true, false, numbers
+-- (5, -2.5, 0x1F), "text" / 'text', names the script sees (natives, entities, Atdar, v3, ...) with .field,
+-- :method(...) and calls (...) after them. A bare word that names nothing is its own text: adder -> "adder".
+-- The reader is a table { src, pos }; what isn't an expression is thrown as { unreadable = why }
+
+local KEYWORDS = { ["nil"] = { n = 1 }, ["true"] = { n = 1, true }, ["false"] = { n = 1, false } }
+
+local function unreadable(reader: table, why: string): void
+    error({ unreadable = $"{why} at {reader.pos}" }, 0)
+end
+
+-- The next character that isn't a space ("" at the end), without taking it
+local function peek(reader: table): string
+    reader.pos = reader.src:find("%S", reader.pos) or (#reader.src + 1)
+    return reader.src:sub(reader.pos, reader.pos)
+end
+
+-- Takes a name (letters, digits, _) if one is next
+local function take_name(reader: table): ?string
+    peek(reader)
+    local name = reader.src:match("^[%a_][%w_]*", reader.pos)
+    if name ~= nil then
+        reader.pos += #name
+    end
+    return name
+end
+
+-- Takes the name after '.' or ':'
+local function need_name(reader: table, after: string): string
+    local name = take_name(reader)
+    if name == nil then
+        unreadable(reader, $"a name expected after '{after}'")
+    end
+    return name
+end
+
+local read_list
+
+-- One expression; its values packed (a call may give several, nil ones too)
+local function read_expr(reader: table): table
+    local c = peek(reader)
+    if c == '"' or c == "'" then
+        local close = reader.src:find(c, reader.pos + 1, true)
+        if close == nil then
+            unreadable(reader, "unclosed text")
+        end
+        local value = reader.src:sub(reader.pos + 1, close - 1)
+        reader.pos = close + 1
+        return { n = 1, value }
+    end
+
+    local number_text = reader.src:match("^%-?%.?%d[%w%.]*", reader.pos)
+    if number_text ~= nil then
+        local number = tonumber(number_text)
+        if number == nil then
+            unreadable(reader, $"'{number_text}' isn't a number")
+        end
+        reader.pos += #number_text
+        return { n = 1, number }
+    end
+
+    local name = take_name(reader)
+    if name == nil then
+        unreadable(reader, $"unexpected '{c}'")
+    end
+    if KEYWORDS[name] ~= nil then
+        return KEYWORDS[name]
+    end
+    local values = { n = 1, _G[name] }
+    local next_c = peek(reader)
+    if values[1] == nil then
+        if next_c ~= "." and next_c ~= ":" and next_c ~= "(" then
+            return { n = 1, name }
+        end
+        error($"'{name}' isn't known", 0)
+    end
+
+    -- .field, :method(...), (...)
+    while true do
+        next_c = peek(reader)
+        if next_c == "." then
+            reader.pos += 1
+            local field = need_name(reader, ".")
+            values = { n = 1, values[1][field] }
+        elseif next_c == ":" then
+            reader.pos += 1
+            local method = need_name(reader, ":")
+            if peek(reader) ~= "(" then
+                unreadable(reader, "'(' expected after a method")
+            end
+            reader.pos += 1
+            local target = values[1]
+            local args, count = read_list(reader, ")")
+            values = table.pack(target[method](target, table.unpack(args, 1, count)))
+        elseif next_c == "(" then
+            reader.pos += 1
+            local args, count = read_list(reader, ")")
+            values = table.pack(values[1](table.unpack(args, 1, count)))
+        else
+            return values
+        end
+    end
+end
+
+-- Expressions separated by commas up to close (")", or "" for the end of the text), close taken too.
+-- As in Lua, only the last one gives all its values, the others their first
+-- @return The values and how many there are
+read_list = function(reader, close)
+    local args, count = {}, 0
+    if peek(reader) == close then
+        reader.pos += 1
+        return args, count
+    end
+    while true do
+        local values = read_expr(reader)
+        local c = peek(reader)
+        if c == "," then
+            count += 1
+            args[count] = values[1]
+            reader.pos += 1
+        elseif c == close then
+            for i = 1, values.n do
+                args[count + i] = values[i]
+            end
+            reader.pos += 1
+            return args, count + values.n
+        else
+            unreadable(reader, close == "" ? "',' expected" : $"',' or '{close}' expected")
+        end
+    end
+end
+
+-- ─── Public ──────────────────────────────────────────────────────────────────
+
+-- The arguments as typed, read as expressions separated by commas: numbers, true, false, nil, "text",
+-- calls (entities.get_user_vehicle_as_handle(), PLAYER.PLAYER_PED_ID()), vectors (v3.new(1, 2, 3)).
+-- A bare word is its own text: adder -> "adder". What isn't an expression at all (hello world) is split
+-- by commas into texts instead
+-- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
+function module.parse(input: string)
+    local ok, args, count = pcall(read_list, { src = input, pos = 1 }, "")
+    if ok then
+        return args, count, nil
+    end
+    if type(args) == "table" and args.unreadable ~= nil then
+        local texts, texts_count = split_texts(input)
+        return texts, texts_count, nil
+    end
+    return {}, 0, tostring(args)
+end
+
+-- The arguments as typed, split at the commas between them, not those inside brackets or quotes, and
+-- trimmed; nothing is worked out: 'FAKE.add(1, 2), "a, b"' -> { "FAKE.add(1, 2)", '"a, b"' }
+function module.split(input: string): table
+    local pieces = {}
+    local depth, quote, start = 0, nil, 1
+    for i = 1, #input do
+        local c = input:sub(i, i)
+        if quote ~= nil then
+            if c == quote then
+                quote = nil
+            end
+        elseif c == '"' or c == "'" then
+            quote = c
+        elseif c == "(" or c == "{" or c == "[" then
+            depth += 1
+        elseif c == ")" or c == "}" or c == "]" then
+            depth -= 1
+        elseif c == "," and depth == 0 then
+            table.insert(pieces, input:sub(start, i - 1))
+            start = i + 1
+        end
+    end
+    table.insert(pieces, input:sub(start))
+    local trimmed = {}
+    for _, piece in ipairs(pieces) do
+        local clean = piece:match("^%s*(.-)%s*$")
+        if clean ~= "" then
+            table.insert(trimmed, clean)
+        end
+    end
+    return trimmed
+end
+
+return module

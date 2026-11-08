@@ -20,6 +20,10 @@ local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local Module = Atdar.loader.load("core/module")
 local commands = Atdar.loader.load("ui/stand/commands")
+-- The arguments typed in the menu, the return types from the source, the words of a function's name
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
+local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
+local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
 
 local log = new Logger("Modules")
 
@@ -171,201 +175,6 @@ end
 
 -- ─── Calling a module's functions ────────────────────────────────────────────
 
--- One argument as typed: nil, true, false, a number, otherwise the text itself
-local function value_of(raw: string)
-    if raw == "nil" then
-        return nil
-    end
-    if raw == "true" then
-        return true
-    end
-    if raw == "false" then
-        return false
-    end
-    local number = tonumber(raw)
-    if number ~= nil then
-        return number
-    end
-    return raw
-end
-
--- 'adder, 5, true, "a, b"' -> "adder", 5, true, "a, b": split by commas, a quoted text kept whole
--- (quotes "" or ''), spaces around each argument dropped. For what isn't a Lua expression (see parse_args)
--- @return The arguments and how many there are (nil ones count too)
-local function split_args(input: string)
-    local args, count = {}, 0
-    local i, len = 1, #input
-    while i <= len do
-        local c = input:sub(i, i)
-        if c:match("%s") then
-            i += 1
-        elseif c == '"' or c == "'" then
-            local close = input:find(c, i + 1, true) or (len + 1)
-            count += 1
-            args[count] = input:sub(i + 1, close - 1)
-            local comma = input:find(",", close + 1, true)
-            i = comma ~= nil ? comma + 1 : len + 1
-        else
-            local comma = input:find(",", i, true)
-            local stop = comma ~= nil ? comma - 1 : len
-            count += 1
-            args[count] = value_of(input:sub(i, stop):match("^%s*(.-)%s*$"))
-            i = stop + 2
-        end
-    end
-    return args, count
-end
-
--- ─── Reading the arguments as expressions ────────────────────────────────────
--- Stand's Lua has no load, so the expressions are read here. Understood: nil, true, false, numbers
--- (5, -2.5, 0x1F), "text" / 'text', names the script sees (natives, entities, Atdar, v3, ...) with .field,
--- :method(...) and calls (...) after them. A bare word that names nothing is its own text: adder -> "adder".
--- The reader is a table { src, pos }; what isn't an expression is thrown as { unreadable = why }
-
-local KEYWORDS = { ["nil"] = { n = 1 }, ["true"] = { n = 1, true }, ["false"] = { n = 1, false } }
-
-local function unreadable(reader: table, why: string): void
-    error({ unreadable = $"{why} at {reader.pos}" }, 0)
-end
-
--- The next character that isn't a space ("" at the end), without taking it
-local function peek(reader: table): string
-    reader.pos = reader.src:find("%S", reader.pos) or (#reader.src + 1)
-    return reader.src:sub(reader.pos, reader.pos)
-end
-
--- Takes a name (letters, digits, _) if one is next
-local function take_name(reader: table): ?string
-    peek(reader)
-    local name = reader.src:match("^[%a_][%w_]*", reader.pos)
-    if name ~= nil then
-        reader.pos += #name
-    end
-    return name
-end
-
--- Takes the name after '.' or ':'
-local function need_name(reader: table, after: string): string
-    local name = take_name(reader)
-    if name == nil then
-        unreadable(reader, $"a name expected after '{after}'")
-    end
-    return name
-end
-
-local read_list
-
--- One expression; its values packed (a call may give several, nil ones too)
-local function read_expr(reader: table): table
-    local c = peek(reader)
-    if c == '"' or c == "'" then
-        local close = reader.src:find(c, reader.pos + 1, true)
-        if close == nil then
-            unreadable(reader, "unclosed text")
-        end
-        local value = reader.src:sub(reader.pos + 1, close - 1)
-        reader.pos = close + 1
-        return { n = 1, value }
-    end
-
-    local number_text = reader.src:match("^%-?%.?%d[%w%.]*", reader.pos)
-    if number_text ~= nil then
-        local number = tonumber(number_text)
-        if number == nil then
-            unreadable(reader, $"'{number_text}' isn't a number")
-        end
-        reader.pos += #number_text
-        return { n = 1, number }
-    end
-
-    local name = take_name(reader)
-    if name == nil then
-        unreadable(reader, $"unexpected '{c}'")
-    end
-    if KEYWORDS[name] ~= nil then
-        return KEYWORDS[name]
-    end
-    local values = { n = 1, _G[name] }
-    local next_c = peek(reader)
-    if values[1] == nil then
-        if next_c ~= "." and next_c ~= ":" and next_c ~= "(" then
-            return { n = 1, name }
-        end
-        error($"'{name}' isn't known", 0)
-    end
-
-    -- .field, :method(...), (...)
-    while true do
-        next_c = peek(reader)
-        if next_c == "." then
-            reader.pos += 1
-            local field = need_name(reader, ".")
-            values = { n = 1, values[1][field] }
-        elseif next_c == ":" then
-            reader.pos += 1
-            local method = need_name(reader, ":")
-            if peek(reader) ~= "(" then
-                unreadable(reader, "'(' expected after a method")
-            end
-            reader.pos += 1
-            local target = values[1]
-            local args, count = read_list(reader, ")")
-            values = table.pack(target[method](target, table.unpack(args, 1, count)))
-        elseif next_c == "(" then
-            reader.pos += 1
-            local args, count = read_list(reader, ")")
-            values = table.pack(values[1](table.unpack(args, 1, count)))
-        else
-            return values
-        end
-    end
-end
-
--- Expressions separated by commas up to close (")", or "" for the end of the text), close taken too.
--- As in Lua, only the last one gives all its values, the others their first
--- @return The values and how many there are
-read_list = function(reader, close)
-    local args, count = {}, 0
-    if peek(reader) == close then
-        reader.pos += 1
-        return args, count
-    end
-    while true do
-        local values = read_expr(reader)
-        local c = peek(reader)
-        if c == "," then
-            count += 1
-            args[count] = values[1]
-            reader.pos += 1
-        elseif c == close then
-            for i = 1, values.n do
-                args[count + i] = values[i]
-            end
-            reader.pos += 1
-            return args, count + values.n
-        else
-            unreadable(reader, close == "" ? "',' expected" : $"',' or '{close}' expected")
-        end
-    end
-end
-
--- The arguments as typed, read as expressions separated by commas: numbers, true, false, nil, "text",
--- calls (entities.get_user_vehicle_as_handle(), PLAYER.PLAYER_PED_ID()), vectors (v3.new(1, 2, 3)).
--- A bare word is its own text: adder -> "adder". What isn't an expression at all (hello world) is split
--- by commas into texts instead
--- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
-function module.parse_args(input: string)
-    local ok, args, count = pcall(read_list, { src = input, pos = 1 }, "")
-    if ok then
-        return args, count, nil
-    end
-    if type(args) == "table" and args.unreadable ~= nil then
-        local texts, texts_count = split_args(input)
-        return texts, texts_count, nil
-    end
-    return {}, 0, tostring(args)
-end
-
 -- "create(model, coords, heading)"
 local function signature(fn: table): string
     local params = table.concat(fn.params, ", ")
@@ -376,64 +185,6 @@ local function signature(fn: table): string
 end
 
 -- ─── Showing what a call gave ────────────────────────────────────────────────
-
--- File path -> { text = the text, lines = its lines }; split again only when the text is another
-local source_lines = {}
-
--- The lines a function's line numbers belong to. A module file: the text its running code was read
--- from, so an edit or a Reload never leaves them pointing at other lines. Any other file (the lib's,
--- not changed while the script runs): read from disk once
--- @return The lines, or false if there's no text
-local function lines_of(path: string)
-    local text = Atdar.modules.loaded_text_of(path)
-    local cached = source_lines[path]
-    if text == nil and cached ~= nil then
-        return cached.lines
-    end
-    if cached ~= nil and cached.text == text then
-        return cached.lines
-    end
-    if text == nil then
-        local file = io.open(path, "r")
-        if file ~= nil then
-            text = file:read("*a")
-            file:close()
-        end
-    end
-    local lines = false
-    if text ~= nil then
-        lines = {}
-        for line in (text .. "\n"):gmatch("([^\n]*)\n") do
-            table.insert(lines, (line:gsub("\r$", "")))
-        end
-    end
-    source_lines[path] = { text = text, lines = lines }
-    return lines
-end
-
--- The return type written after a function's parameters ("function name(a, b): bool" -> "bool").
--- Type hints are gone once the code runs, so it's read from the file at the line the function starts;
--- the parameters may take a few lines
--- @return The type, or nil if none is written or the file can't be read (lambdas have none)
-local function return_type(fn): ?string
-    local info = debug.getinfo(fn, "S")
-    if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
-        return nil
-    end
-    local lines = lines_of(info.source:sub(2))
-    if not lines then
-        return nil
-    end
-    local joined = ""
-    for i = info.linedefined, math.min(info.linedefined + 5, #lines) do
-        joined ..= lines[i] .. " "
-        local after = joined:match("function[^(]*%b()(.*)")
-        if after ~= nil then
-            return after:match("^%s*:%s*([%w_?|%.]+)")
-        end
-    end
-    return nil
-end
 
 -- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known
 local function function_text(fn): string
@@ -449,7 +200,7 @@ local function function_text(fn): string
         table.insert(params, "...")
     end
     local params_text = table.concat(params, ", ")
-    local returns = return_type(fn)
+    local returns = source_parser.return_type(fn)
     if returns == nil then
         return $"function({params_text})"
     end
@@ -891,7 +642,7 @@ end
 
 -- The function with the Arguments typed for it; arguments that can't be worked out are told, nothing is called
 local function call_with_args(module_name: string, fn: table, key: string): void
-    local args, count, err = module.parse_args(call_args[key] or "")
+    local args, count, err = args_parser.parse(call_args[key] or "")
     if err ~= nil then
         log:error(text("call.bad_args"):format($"{short_name(module_name)}.{signature(fn)}", err))
         return
@@ -963,7 +714,7 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
             return false
         end
         local mod = modules.get(module_name)
-        local args, count, args_err = module.parse_args(call_args[key] or "")
+        local args, count, args_err = args_parser.parse(call_args[key] or "")
         if args_err ~= nil then
             function_loops[key] = nil
             show_loop_status(key, "failed")
@@ -1021,16 +772,6 @@ end
 
 -- A function of the module: a list of Arguments (when it has parameters), Call, Call When Opened / Hovered,
 -- Loop, Loop With Interval (ms), Stop, then its Status
--- The words of a name, lower case: "get_handle" / "getHandle" -> { get = true, handle = true }
-local function words_of(name: string): table
-    local words = {}
-    local spaced = name:gsub("(%l)(%u)", "%1_%2")
-    for word in spaced:gmatch("[^_]+") do
-        words[word:lower()] = true
-    end
-    return words
-end
-
 -- Functions read again on their own while their list is open (the Variable line kept up to date): ones that
 -- only look, by a word in the name. debug.functions.<name>.live = true / false says it for one function
 local LIVE_WORDS = { get = true, is = true, has = true, can = true }
@@ -1041,7 +782,7 @@ local function is_live(fn: table, fn_opts: table): bool
     if fn_opts.live ~= nil then
         return fn_opts.live == true
     end
-    for word in pairs(words_of(fn.name)) do
+    for word in pairs(name_parser.words(fn.name)) do
         if LIVE_WORDS[word] then
             return true
         end
@@ -1066,7 +807,7 @@ local function keep_live(module_name: string, fn: table, key: string, opened): v
         if not modules.has(module_name) then
             return false
         end
-        local args, count, err = module.parse_args(call_args[key] or "")
+        local args, count, err = args_parser.parse(call_args[key] or "")
         if err ~= nil then
             return true
         end
@@ -1077,39 +818,6 @@ local function keep_live(module_name: string, fn: table, key: string, opened): v
         end
         return true
     end)
-end
-
--- The arguments as typed, split at the commas between them, not those inside brackets or quotes, and
--- trimmed; nothing is worked out: 'FAKE.add(1, 2), "a, b"' -> { "FAKE.add(1, 2)", '"a, b"' }
-local function split_top(input: string): table
-    local pieces = {}
-    local depth, quote, start = 0, nil, 1
-    for i = 1, #input do
-        local c = input:sub(i, i)
-        if quote ~= nil then
-            if c == quote then
-                quote = nil
-            end
-        elseif c == '"' or c == "'" then
-            quote = c
-        elseif c == "(" or c == "{" or c == "[" then
-            depth += 1
-        elseif c == ")" or c == "}" or c == "]" then
-            depth -= 1
-        elseif c == "," and depth == 0 then
-            table.insert(pieces, input:sub(start, i - 1))
-            start = i + 1
-        end
-    end
-    table.insert(pieces, input:sub(start))
-    local trimmed = {}
-    for _, piece in ipairs(pieces) do
-        local clean = piece:match("^%s*(.-)%s*$")
-        if clean ~= "" then
-            table.insert(trimmed, clean)
-        end
-    end
-    return trimmed
 end
 
 local function function_list(entry: table, mod: table, fn: table): void
@@ -1155,7 +863,7 @@ local function function_list(entry: table, mod: table, fn: table): void
         -- Its help: each parameter with the argument typed for it ("dirt_level: true", "-" for none) and what
         -- the module says of it. How to write them is in the module's Arguments Guide
         local function args_help(): string
-            local pieces = split_top(call_args[key] or "")
+            local pieces = args_parser.split(call_args[key] or "")
             local lines = {}
             for i, param in ipairs(fn.params) do
                 local value = pieces[i] or text("loop.no_result")
@@ -1561,7 +1269,7 @@ end
 
 -- The first category with a word of the name, nil if none has one
 local function category_of(categories_list: table, name: string)
-    local words = words_of(name)
+    local words = name_parser.words(name)
     for _, category in ipairs(categories_list) do
         for word in pairs(category.words) do
             if words[word] then
@@ -1591,7 +1299,7 @@ local function functions_of(entry: table, mod: table): void
         local out = {}
         for _, fn in ipairs(list) do
             if not hidden[fn.name] then
-                fn.returns = return_type(mod[fn.name])
+                fn.returns = source_parser.return_type(mod[fn.name])
                 table.insert(out, fn)
             end
         end
@@ -1701,7 +1409,7 @@ local function functions_of(entry: table, mod: table): void
     end
     for _, hook in ipairs(HOOKS) do
         -- The module's own type, or the one Module declares the hook with (a module's override may leave it out)
-        local returns = return_type(mod[hook.name]) or return_type(Module[hook.name])
+        local returns = source_parser.return_type(mod[hook.name]) or source_parser.return_type(Module[hook.name])
         local named = { name = hook.name, params = hook.params, vararg = hook.vararg, returns = returns }
         -- on_tick runs every frame, so it's a list to start and stop, not a button
         if hook.name == "on_tick" then

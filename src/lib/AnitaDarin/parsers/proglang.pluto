@@ -1,0 +1,10 @@
+-- lib/AnitaDarin/parsers/proglang.pluto
+--
+-- Parsers of programming languages, one facade per language in parsers/proglang/, loaded on first use:
+--   pluto - the script's own language (args, name, source)
+--
+--     Atdar.parsers.proglang.pluto.args.parse("5, true")
+
+local module = {}
+
+return Atdar.loader.auto(module, "parsers/proglang")

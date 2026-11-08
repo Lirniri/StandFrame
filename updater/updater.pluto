@@ -29,8 +29,8 @@
 --         end
 --     end)
 
--- json: only for the manifest downloaded (a text, not a file); installed.json goes through JsonFile
-local json = require "pluto:json"
+-- The manifest downloaded is read strictly (a cut-off one is no manifest); installed.json goes through JsonFile
+local json_parser = Atdar.loader.load("parsers/json")
 local crypto = require "pluto:crypto"
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 
@@ -276,7 +276,7 @@ function module.check(opts: ?table)
     if body == nil then
         return nil, $"manifest: {err}"
     end
-    local manifest = json.decode(body)
+    local manifest = json_parser.decode(body)
     if type(manifest) ~= "table" or type(manifest.files) ~= "table" then
         return nil, "manifest: not a manifest"
     end

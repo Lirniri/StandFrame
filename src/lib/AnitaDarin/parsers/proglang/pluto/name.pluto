@@ -1,0 +1,20 @@
+-- lib/AnitaDarin/parsers/proglang/pluto/name.pluto
+--
+-- Names in code read as words, snake_case or camelCase alike.
+--
+--     Atdar.parsers.proglang.pluto.name.words("get_handle")  -- { get = true, handle = true }
+--     Atdar.parsers.proglang.pluto.name.words("getHandle")   -- the same
+
+local module = {}
+
+-- The words of a name, lower case, as a set: "get_handle" / "getHandle" -> { get = true, handle = true }
+function module.words(name: string): table
+    local words = {}
+    local spaced = name:gsub("(%l)(%u)", "%1_%2")
+    for word in spaced:gmatch("[^_]+") do
+        words[word:lower()] = true
+    end
+    return words
+end
+
+return module

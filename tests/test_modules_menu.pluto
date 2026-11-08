@@ -406,9 +406,9 @@ stand.equal(counter.count, 4, "off again: typing only keeps the arguments")
 counter.count = 0
 
 -- The arguments as typed
-local modules_menu_args = modules_menu.parse_args
+local modules_menu_args = Atdar.loader.load("parsers/proglang/pluto/args").parse
 local args, count = modules_menu_args('adder, 5, true, false, nil, "x, y", 2.5')
-stand.equal(count, 7, "parse_args counts every argument, nil too")
+stand.equal(count, 7, "pluto args counts every argument, nil too")
 stand.check(args[1] == "adder" and args[2] == 5 and args[3] == true and args[4] == false and args[5] == nil
     and args[6] == "x, y" and args[7] == 2.5, "text, numbers, true, false, nil, a quoted text with a comma")
 local _, none = modules_menu_args("")
