@@ -9,18 +9,24 @@ Atdar.loader.measure("natives-3407a (util.require_natives)", util.require_native
 Atdar.globals = Atdar.loader.load("globals")
 
 -- Libraries
+Atdar.util = {}
 local UTILS = {
-    "util",
+    "util", -- Atdar.util
     "filesystem",
     "lang", -- after filesystem: reads language files from store
     "color", -- Atdar.color: hex <-> Stand (0.0 - 1.0) <-> game (0 - 255) colours
     "menu", -- Atdar.menu: menu items Stand doesn't have ready-made (color without opacity, spoiler)
     "memory", -- Atdar.memory: entity handle <-> pointer
-    "game", -- Atdar.game: things built on natives (game.entity.vehicle.repair, game.players.user.restore_health)
+    "game", -- Atdar.util.game: things built on natives (game.entity.vehicle.repair, game.players.user.restore_health)
 }
 for _, name in UTILS do
+    if name == "game" then
+        util.toast(name)
+        Atdar.util[name] = Atdar.loader.load($"utils/{name}")
+    end
     Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
+
 
 -- Script profile: display/short name, command prefix. Needs filesystem paths, used by the logger and menu
 Atdar.profile = Atdar.loader.load("core/profile")
