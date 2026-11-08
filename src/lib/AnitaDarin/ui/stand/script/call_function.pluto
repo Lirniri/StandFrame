@@ -3,15 +3,21 @@
 -- Debug > Call Function: calls any function of the script by its name, with typed arguments, or reads
 -- a table or a variable by its name.
 --
---   Call Function >   Function Name, Argument, ── Call ──, Call After Typing Function / Arguments,
---                     Notice In Stand, Call, Call After (ms), Call When Opened, Loop, Loop With Interval,
---                     ── Tables ──, Table Depth, then the Variable line and, for a table, the Value list
---                     (Call After, Call When Opened and the loops work as in the Modules list's functions)
+--   Call Function >   Function Name, then the panel (below)
+--
+-- The panel (module.panel) is the same in every list that calls a function: this one, and the functions
+-- found in a table of a Value list (Call Functions In Tables, ui/stand/modules/values):
+--
+--   Argument, ── Call ──, Call After Typing Function (this list only), Call After Typing Arguments,
+--   Notice In Stand (this list only), Call, Call After (ms), Call When Opened, Call When Hovered, Loop,
+--   Loop With Interval,
+--   ── Tables ──, Table Depth, Call Functions In Tables (these three while the result is a table),
+--   then the Variable line and, for a table, the Value list
 --
 -- The name is a path from Atdar with dots (game.repair_vehicle, game.some_table). A module's name may come
 -- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get).
 -- The arguments are read like the Arguments of a module function (parsers/proglang/pluto/args).
--- Strings: base/language "script_menu.call_function"
+-- Strings: base/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
@@ -52,7 +58,7 @@ local function step(current, key: string)
     return value
 end
 
--- The key its result is kept under (the Variable line and the Value list of the list)
+-- The key the result of this list is kept under (its Variable line and Value list)
 local RESULT_KEY = "debug.call_function"
 -- Longer notices are cut to this many characters
 local MAX_NOTICE_CHARS = 200
@@ -97,11 +103,21 @@ local function resolve(path: string)
     return true, fn, current
 end
 
+-- Runs a function with the arguments (the owner first when it's a method), the results packed
+local function run(fn, owner, args: table, count: int): table
+    if owner == nil then
+        return table.pack(pcall(fn, table.unpack(args, 1, count)))
+    end
+    return table.pack(pcall(fn, owner, table.unpack(args, 1, count)))
+end
+
+-- ─── The panel ───────────────────────────────────────────────────────────────
+
 -- Gives the results out: the Variable line (and the Value list of a table) and the notice
--- stand: the notice goes to Stand (not the game's feed)
-local function deliver(name: string, results: table, stand: bool, was_call: bool): void
+local function deliver(spec: table, results: table, was_call: bool): void
     local values = Atdar.loader.load("ui/stand/modules/values")
-    values.show_result(RESULT_KEY, results)
+    values.show_result(spec.key, results)
+    local name = spec.name()
     local message = text("done"):format(name)
     if results.n > 1 then
         message = text("result"):format(name, values.results_text(results))
@@ -113,7 +129,8 @@ local function deliver(name: string, results: table, stand: bool, was_call: bool
     if cut ~= nil then
         message = message:sub(1, cut - 1) .. "..."
     end
-    if stand then
+    -- In Stand (not the game's feed) when its toggle is on
+    if spec.state.stand then
         log:notify(message, "stand")
         return
     end
@@ -122,78 +139,68 @@ end
 
 -- A function is called with the arguments, in a thread of its own (it may wait); anything else
 -- (a table, a variable) is read. Either way the value is what comes out
-local function call(name: string, args_text: string, stand: bool): void
+local function call(spec: table): void
+    local name = spec.name()
     if name == "" then
         log:warn(text("no_name"))
         return
     end
-    local found, value, owner = resolve(name)
+    local found, value, owner = spec.target()
     if not found then
         log:warn(text("not_found"):format(name))
         return
     end
     if type(value) ~= "function" then
-        deliver(name, table.pack(true, value), stand, false)
+        deliver(spec, table.pack(true, value), false)
         return
     end
-    local args, count, err = args_parser.parse(args_text)
+    local args, count, err = args_parser.parse(spec.state.args or "")
     if err ~= nil then
         log:error(text("bad_args"):format(name, err))
         return
     end
     util.create_thread(function()
-        local results
-        if owner == nil then
-            results = table.pack(pcall(value, table.unpack(args, 1, count)))
-        else
-            results = table.pack(pcall(value, owner, table.unpack(args, 1, count)))
-        end
+        local results = run(value, owner, args, count)
         if not results[1] then
             log:error(text("failed"):format(name, tostring(results[2])))
             return
         end
-        deliver(name, results, stand, true)
+        deliver(spec, results, true)
     end)
 end
 
--- ─── Loop ────────────────────────────────────────────────────────────────────
-
--- The loop going on: { every = ms or nil, next = ms }; nil - none
-local loop = nil
--- The Loop toggle, and whether the script itself is switching it (that isn't the user's click)
-local loop_toggle = nil
-local syncing = false
-
 -- Switches the Loop toggle to how the loop is, without starting or stopping anything
-local function sync_toggle(on: bool): void
-    if loop_toggle == nil then
+local function sync_toggle(state: table, on: bool): void
+    if state.loop_toggle == nil then
         return
     end
-    syncing = true
-    pcall(menu.set_value, loop_toggle, on)
-    syncing = false
+    state.syncing = true
+    pcall(menu.set_value, state.loop_toggle, on)
+    state.syncing = false
 end
 
 -- The loop ended by itself or was stopped
-local function end_loop(run: table): void
-    if loop ~= run then
+local function end_loop(state: table, loop_run: table): void
+    if state.loop ~= loop_run then
         return
     end
-    loop = nil
-    sync_toggle(false)
+    state.loop = nil
+    sync_toggle(state, false)
 end
 
 -- Calls the function every frame (every: nil) or once every `every` ms, until stopped; an error ends it.
 -- It works like the loop of a module's function: a table or a variable is read, the Variable line follows
-local function start_loop(name: string, get_args, every: ?int): void
+local function start_loop(spec: table, every: ?int): void
+    local state = spec.state
+    local name = spec.name()
     if name == "" then
         log:warn(text("no_name"))
-        sync_toggle(false)
+        sync_toggle(state, false)
         return
     end
-    local run = { every = every, next = 0 }
-    loop = run
-    sync_toggle(true)
+    local loop_run = { every = every, next = 0 }
+    state.loop = loop_run
+    sync_toggle(state, true)
     if every == nil then
         log:notify(mtext("loop.started"):format(name))
     else
@@ -202,69 +209,198 @@ local function start_loop(name: string, get_args, every: ?int): void
     local values = Atdar.loader.load("ui/stand/modules/values")
     util.create_tick_handler(function()
         -- Stopped, or replaced by a newer loop
-        if stopping or loop ~= run then
+        if stopping or state.loop ~= loop_run then
             return false
         end
-        if run.every ~= nil then
+        if loop_run.every ~= nil then
             local now = util.current_time_millis()
-            if now < run.next then
+            if now < loop_run.next then
                 return true
             end
-            run.next = now + run.every
+            loop_run.next = now + loop_run.every
         end
-        local found, value, owner = resolve(name)
+        local found, value, owner = spec.target()
         if not found then
-            end_loop(run)
+            end_loop(state, loop_run)
             log:warn(text("not_found"):format(name))
             return false
         end
         if type(value) ~= "function" then
-            values.show_result(RESULT_KEY, table.pack(true, value))
+            values.show_result(spec.key, table.pack(true, value))
             return true
         end
-        local args, count, err = args_parser.parse(get_args())
+        local args, count, err = args_parser.parse(state.args or "")
         if err ~= nil then
-            end_loop(run)
+            end_loop(state, loop_run)
             log:error(text("bad_args"):format(name, err))
             return false
         end
-        local results
-        if owner == nil then
-            results = table.pack(pcall(value, table.unpack(args, 1, count)))
-        else
-            results = table.pack(pcall(value, owner, table.unpack(args, 1, count)))
-        end
+        local results = run(value, owner, args, count)
         if not results[1] then
-            end_loop(run)
+            end_loop(state, loop_run)
             log:error(text("failed"):format(name, tostring(results[2])))
             return false
         end
-        values.show_result(RESULT_KEY, results)
+        values.show_result(spec.key, results)
         return true
     end)
 end
 
-local function stop_loop(name: string): void
-    if loop == nil then
-        log:notify(mtext("loop.not_running"):format(name))
+local function stop_loop(spec: table): void
+    local state = spec.state
+    if state.loop == nil then
+        log:notify(mtext("loop.not_running"):format(spec.name()))
         return
     end
-    end_loop(loop)
-    log:notify(mtext("loop.stopped"):format(name))
+    end_loop(state, state.loop)
+    log:notify(mtext("loop.stopped"):format(spec.name()))
 end
+
+-- Makes the panel in list, from the Argument on.
+-- spec.key:             the key the result is kept under (values.show_result)
+-- spec.state:           a table kept by the caller between buildings: args, on_enter, on_enter_name, on_open,
+--                       on_focus, stand, and the loop; it starts as {} (stand: true for a Notice In Stand default)
+-- spec.name:            function() -> the function's name for the notices
+-- spec.target:          function() -> found, value, owner: what to call or read (owner: the self of a method)
+-- spec.args_command:    the command of the Argument field (Stand's text fields need one)
+-- spec.with_name:       Call After Typing Function is there (a list with a Function Name field)
+-- spec.with_stand:      Notice In Stand is there
+-- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
+-- @return { call = function(), opened = function(), name_typed = function() }: Call, what the list does when
+--         opened, and what a Function Name field does when typed
+function module.panel(list: table, spec: table): table
+    local state = spec.state
+    local values = Atdar.loader.load("ui/stand/modules/values")
+
+    list:text_input(label("args.name"), { spec.args_command }, function(value, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        state.args = value
+        if state.on_enter then
+            call(spec)
+        end
+    end, label("args.help"), state.args or "")
+
+    list:divider(label("call.divider"))
+
+    if spec.with_name then
+        list:toggle(label("on_enter_name.name"), function(on)
+            state.on_enter_name = on
+        end, {}, label("on_enter_name.help"), state.on_enter_name == true)
+    end
+
+    list:toggle(label("on_enter.name"), function(on)
+        state.on_enter = on
+    end, {}, label("on_enter.help"), state.on_enter == true)
+
+    if spec.with_stand then
+        list:toggle(label("stand.name"), function(on)
+            state.stand = on
+        end, {}, label("stand.help"), state.stand == true)
+    end
+
+    list:action(label("call.name"), function()
+        call(spec)
+    end, {}, label("call.help"))
+
+    -- Once, after the ms picked; the arguments are worked out then, not at the click
+    list:click_slider(mlabel("loop.call_after"), 100, 60000, 1000, 100, function(ms, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        log:notify(mtext("loop.call_scheduled"):format(spec.name(), ms))
+        util.create_thread(function()
+            util.yield(ms)
+            if not stopping then
+                call(spec)
+            end
+        end)
+    end, {}, mlabel("loop.call_after_help"))
+
+    list:toggle(mlabel("loop.call_on_open"), function(on)
+        state.on_open = on
+    end, {}, mlabel("loop.call_on_open_help"), state.on_open == true)
+
+    list:toggle(mlabel("loop.call_on_focus"), function(on)
+        state.on_focus = on
+    end, {}, mlabel("loop.call_on_focus_help"), state.on_focus == true)
+    -- The cursor on this list (not inside it)
+    menu.on_focus(list.handle, function()
+        if state.on_focus and not stopping then
+            call(spec)
+        end
+    end)
+
+    state.loop_toggle = list:toggle(mlabel("loop.loop"), function(on)
+        if stopping or state.syncing then
+            return
+        end
+        if on and state.loop == nil then
+            start_loop(spec, nil)
+            return
+        end
+        if not on and state.loop ~= nil then
+            stop_loop(spec)
+        end
+    end, {}, mlabel("loop.loop_help"), state.loop ~= nil)
+
+    list:click_slider(mlabel("loop.every"), 100, 60000, 1000, 100, function(ms, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        start_loop(spec, ms)
+    end, {}, mlabel("loop.every_help"))
+
+    -- The Tables divider, Table Depth and Call Functions In Tables: shown only while the result is a table
+    local table_divider = list:divider(label("table.divider"))
+    -- Stand puts the saved state of these back while the script starts, where the Value list can't be made
+    -- again: then it's only remembered (quiet)
+    local depth_ref = list:slider(label("depth.name"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
+        if stopping then
+            return
+        end
+        values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
+    end, {}, label("depth.help"))
+    -- The functions in the table become lists with the same panel
+    local call_ref = list:toggle(mlabel("loop.call_in_tables"), function(on, click_type)
+        if stopping then
+            return
+        end
+        values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+    end, {}, mlabel("loop.call_in_tables_help"), values.call_in_tables(spec.key))
+    values.bind_depth_items(spec.key, { table_divider, depth_ref, call_ref })
+
+    -- What came out: the Variable line, and for a table the Value list under it
+    values.add_result_lines(list, spec.key, spec.kept)
+
+    return {
+        call = function() call(spec) end,
+        opened = function()
+            if state.on_open then
+                call(spec)
+            end
+        end,
+        name_typed = function()
+            if state.on_enter_name then
+                call(spec)
+            end
+        end,
+    }
+end
+
+-- ─── The list ────────────────────────────────────────────────────────────────
+
+-- What is typed in the list, kept while the script runs (the menu being built again keeps it)
+local main_state = { stand = true }
 
 -- Makes the list in node
 -- @return The list's handle
 function module.build(node: table): any
-    local function_name = ""
-    local args_text = ""
-    local on_enter = false
-    local on_enter_name = false
-    local on_open = false
-    local stand = true
+    local panel = nil
     local list = node:list(label("name"), {}, label("help"), nil, function()
-        if on_open then
-            call(function_name, args_text, stand)
+        if panel ~= nil then
+            panel.opened()
         end
     end)
 
@@ -273,91 +409,22 @@ function module.build(node: table): any
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end
-        function_name = value
-        if on_enter_name then
-            call(function_name, args_text, stand)
+        main_state.name = value
+        if panel ~= nil then
+            panel.name_typed()
         end
-    end, label("function.help"), function_name)
+    end, label("function.help"), main_state.name or "")
 
-    list:text_input(label("args.name"), { "debugcallfuncargs" }, function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
-            return
-        end
-        args_text = value
-        if on_enter then
-            call(function_name, args_text, stand)
-        end
-    end, label("args.help"), args_text)
-
-    list:divider(label("call.divider"))
-
-    list:toggle(label("on_enter_name.name"), function(on)
-        on_enter_name = on
-    end, {}, label("on_enter_name.help"), false)
-
-    list:toggle(label("on_enter.name"), function(on)
-        on_enter = on
-    end, {}, label("on_enter.help"), false)
-
-    list:toggle(label("stand.name"), function(on)
-        stand = on
-    end, {}, label("stand.help"), true)
-
-    list:action(label("call.name"), function()
-        call(function_name, args_text, stand)
-    end, {}, label("call.help"))
-
-    -- Once, after the ms picked; the arguments are worked out then, not at the click
-    list:click_slider(mlabel("loop.call_after"), 100, 60000, 1000, 100, function(ms, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
-            return
-        end
-        log:notify(mtext("loop.call_scheduled"):format(function_name, ms))
-        util.create_thread(function()
-            util.yield(ms)
-            if not stopping then
-                call(function_name, args_text, stand)
-            end
-        end)
-    end, {}, mlabel("loop.call_after_help"))
-
-    list:toggle(mlabel("loop.call_on_open"), function(on)
-        on_open = on
-    end, {}, mlabel("loop.call_on_open_help"), false)
-
-    loop_toggle = list:toggle(mlabel("loop.loop"), function(on)
-        if stopping or syncing then
-            return
-        end
-        if on and loop == nil then
-            start_loop(function_name, || -> args_text, nil)
-            return
-        end
-        if not on and loop ~= nil then
-            stop_loop(function_name)
-        end
-    end, {}, mlabel("loop.loop_help"), false)
-
-    list:click_slider(mlabel("loop.every"), 100, 60000, 1000, 100, function(ms, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
-            return
-        end
-        start_loop(function_name, || -> args_text, ms)
-    end, {}, mlabel("loop.every_help"))
-
-    -- The Tables divider and Table Depth: shown only while the last result is a table
-    local values = Atdar.loader.load("ui/stand/modules/values")
-    local table_divider = list:divider(label("table.divider"))
-    local depth_ref = list:slider(label("depth.name"), 1, 8, values.result_depth(RESULT_KEY), 1, function(depth)
-        if stopping then
-            return
-        end
-        values.set_result_depth(RESULT_KEY, depth)
-    end, {}, label("depth.help"))
-    values.bind_depth_items(RESULT_KEY, { table_divider, depth_ref })
-
-    -- What came out: the Variable line, and for a table the Value list under it
-    values.add_result_lines(list, RESULT_KEY, true)
+    panel = module.panel(list, {
+        key = RESULT_KEY,
+        state = main_state,
+        name = function() return main_state.name or "" end,
+        target = function() return resolve(main_state.name or "") end,
+        args_command = "debugcallfuncargs",
+        with_name = true,
+        with_stand = true,
+        kept = true,
+    })
 
     return list.handle
 end

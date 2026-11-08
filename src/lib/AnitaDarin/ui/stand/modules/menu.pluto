@@ -543,13 +543,22 @@ local function function_list(entry: table, mod: table, fn: table): void
     -- How deep a table it gave opens in the Value list (kept by key)
     -- Shown only while the last result is a table
     local depth_ref = node:track(menu.slider(node.handle, label("loop.table_depth"), {}, label("loop.table_depth_help"),
-        1, 8, values.result_depth(key), 1, function(depth)
+        1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
         if stopping then
             return
         end
-        values.set_result_depth(key, depth)
+        -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
+        values.set_result_depth(key, depth, NOT_USER_CLICKS[click_type])
     end))
-    values.bind_depth_items(key, { depth_ref })
+    -- The functions in the table become lists with their own Arguments and Call
+    local call_ref = node:toggle(label("loop.call_in_tables"), function(on, click_type)
+        if stopping then
+            return
+        end
+        values.set_call_in_tables(key, on, NOT_USER_CLICKS[click_type])
+    end, {}, label("loop.call_in_tables_help"), values.call_in_tables(key))
+    values.bind_depth_items(key, { depth_ref, call_ref })
+    -- (the functions of a table it gave get the same panel as Debug > Call Function: Argument, Call, Loop...)
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
     if run ~= nil and run.every ~= nil then

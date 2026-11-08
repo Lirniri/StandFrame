@@ -11,7 +11,6 @@ local i18n = Atdar.loader.load("core/i18n")
 local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
-
 local log = new Logger("Modules")
 
 local module = {}
@@ -202,6 +201,25 @@ local function show_depth_items(key: string): void
     end
 end
 
+-- The same key -> true when the functions in its Value list are buttons that call them
+local call_in_tables = {}
+-- What is typed for the functions in the Value lists, by "<key><path>": the panel's state (Arguments, toggles,
+-- its loop; see call_function.panel). Kept, so it stays when the list is made again
+local table_fn_states = {}
+-- The same key -> a number for the commands of its function lists ("tablefnargs3_1"): unique across lists
+local scope_numbers = {}
+
+local function scope_number(key: string): int
+    if scope_numbers[key] == nil then
+        local count = 0
+        for _ in pairs(scope_numbers) do
+            count += 1
+        end
+        scope_numbers[key] = count + 1
+    end
+    return scope_numbers[key]
+end
+
 local function show_result(key: string, results: table): void
     local value = results.n > 1 and results_text(results) or nil
     if value == last_results[key] then
@@ -240,15 +258,41 @@ end
 -- A function's Variable line and its Value list, made in its list (node) for key ("<module>.<function>")
 -- How deep tables inside tables open as lists in the Value list of key; the list is made again.
 -- Kept by key, so it stays when the Modules list is made again
-function module.set_result_depth(key: string, depth: int): void
+-- quiet: only remembered, the list isn't made again (Stand puts a saved state back while the script starts,
+-- where items can't be made); it's made again with the next result
+function module.set_result_depth(key: string, depth: int, quiet: ?bool): void
     result_depths[key] = depth
-    update_result_list(key)
+    if quiet then
+        return
+    end
+    -- In a thread of its own: items can't be made inside the callback of a setting Stand puts back
+    util.create_thread(function()
+        update_result_list(key)
+    end)
 end
 
 -- The items of the Table Depth setting of key's list (refs): shown only while the last result is a table
 function module.bind_depth_items(key: string, refs: table): void
     depth_items[key] = refs
     show_depth_items(key)
+end
+
+-- Call Functions In Tables for key's Value list: the functions in it become lists to open, with Arguments
+-- and Call. Kept by key, like the depth
+-- quiet: as in set_result_depth
+function module.set_call_in_tables(key: string, on: bool, quiet: ?bool): void
+    call_in_tables[key] = on or nil
+    if quiet then
+        return
+    end
+    util.create_thread(function()
+        update_result_list(key)
+    end)
+end
+
+-- @return Whether Call Functions In Tables is on for key
+function module.call_in_tables(key: string): bool
+    return call_in_tables[key] == true
 end
 
 -- @return The depth set for key (the default one when none is)
@@ -311,7 +355,7 @@ local function table_entries(tbl: table): table
     local entries = {}
     local length = #tbl
     for i = 1, length do
-        table.insert(entries, { key_text = $"[{i}]", value = tbl[i] })
+        table.insert(entries, { key_text = $"[{i}]", value = tbl[i], raw_key = i })
     end
     local keys = {}
     for key in pairs(tbl) do
@@ -327,7 +371,7 @@ local function table_entries(tbl: table): table
             local shown = describe_item(key, 0, {})
             key_text = $"[{shown}]"
         end
-        table.insert(entries, { key_text = key_text, value = tbl[key] })
+        table.insert(entries, { key_text = key_text, value = tbl[key], raw_key = key })
     end
     return entries
 end
@@ -343,12 +387,18 @@ local VARIABLES_REFRESH_MS = 250
 -- a path (where it is, unique) and parent (the path of the list it's in, "" - the Variables list).
 -- seen: the tables on the way here, so one inside itself is a line, not lists without end
 -- limit: how deep tables are made lists (MAX_VARIABLE_DEPTH when nil)
-local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table, limit: ?int): void
+-- holder, raw_key: the table the value is in and its key there; a function line keeps them to be called
+local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table, limit: ?int, holder: ?table, raw_key): void
     limit = limit or MAX_VARIABLE_DEPTH
     local path = $"{parent}/{name}"
     if type(value) ~= "table" or seen[value] or depth >= limit then
-        table.insert(out, { kind = "line", path = path, parent = parent, name = name,
-            text = describe_item(value, depth, seen) })
+        local item = { kind = "line", path = path, parent = parent, name = name,
+            text = describe_item(value, depth, seen) }
+        if type(value) == "function" and holder ~= nil then
+            item.holder = holder
+            item.raw_key = raw_key
+        end
+        table.insert(out, item)
         return
     end
     local entries = table_entries(value)
@@ -363,7 +413,7 @@ local function collect_variable(out: table, parent: string, name: string, value,
             table.insert(out, { kind = "note", path = $"{path}/...", parent = path, name = "..." })
             break
         end
-        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen, limit)
+        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen, limit, value, entry.raw_key)
     end
     seen[value] = nil
 end
@@ -391,18 +441,48 @@ local function shape_of(items: table): string
 end
 
 -- Makes the items in list
+-- scope: the key of the Value list when its functions are lists to call (Call Functions In Tables); nil -
+-- they are lines like the rest
 -- @return path -> the ref of each line, to change its value later
-local function build_variables(list: table, items: table): table
+local function build_variables(list: table, items: table, scope: ?string): table
     local lines = {}
     if #items == 0 then
         list:readonly_name(label("no_variables"))
         return lines
     end
     local nodes = { [""] = list }
+    local number = 0
     for _, item in ipairs(items) do
         local parent = nodes[item.parent]
         if item.kind == "list" then
             nodes[item.path] = parent:list(item.name)
+        elseif item.kind == "line" and item.holder ~= nil and scope ~= nil then
+            -- A function: a list with the panel of Debug > Call Function (Argument, Call, Call After, Loop, ...),
+            -- without the name and the notice in Stand
+            number += 1
+            local id = $"{scope}{item.path}"
+            table_fn_states[id] ??= {}
+            local panel = nil
+            local entry = parent:list($"{item.name}: {item.text}", {}, label("loop.help"), nil, function()
+                if panel ~= nil then
+                    panel.opened()
+                end
+            end)
+            lines[item.path] = entry.handle
+            panel = Atdar.loader.load("ui/stand/script/call_function").panel(entry, {
+                key = id,
+                state = table_fn_states[id],
+                name = || -> item.name,
+                -- The function as it is in its table now; a plain call, without self
+                target = function()
+                    local fn = item.holder[item.raw_key]
+                    if type(fn) ~= "function" then
+                        return false
+                    end
+                    return true, fn
+                end,
+                args_command = $"tablefnargs{scope_number(scope)}_{number}",
+            })
         elseif item.kind == "line" then
             lines[item.path] = parent:readonly(item.name, item.text)
         else
@@ -435,15 +515,21 @@ update_result_list = function(key)
             table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
             break
         end
-        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, result_depths[key])
+        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, result_depths[key], tbl, entry.raw_key)
     end
     pcall(menu.set_visible, ui.list.handle, true)
     pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
+    -- With Call Functions In Tables on, the function lines are buttons: the other shape
+    local scope = nil
     local shape = shape_of(items)
+    if call_in_tables[key] then
+        scope = key
+        shape = shape .. "\ncall"
+    end
     if shape ~= ui.shape then
         ui.list:clear()
         ui.shape = shape
-        ui.lines = build_variables(ui.list, items)
+        ui.lines = build_variables(ui.list, items, scope)
         ui.texts = {}
         for _, item in ipairs(items) do
             ui.texts[item.path] = item.text
