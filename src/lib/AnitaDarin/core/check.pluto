@@ -1,0 +1,26 @@
+-- lib/AnitaDarin/core/check.pluto
+--
+-- Checks of what a function is given. A value of the wrong kind is the caller's mistake: an error
+-- naming the file, the function and what was wrong, pointing at the call - not a quiet wrong result.
+--
+--     local expect = Atdar.loader.load("core/check").expecter("parsers/proglang/pluto/args")
+--
+--     function module.parse(input: string)
+--         expect("parse", "input", input, "string")
+--         -- input: nil -> "caller.pluto:12: [parsers/proglang/pluto/args] parse: input must be a string, got nil"
+
+local module = {}
+
+-- An expect(fn_name, what, value, kind) for one file, its label in every error it gives.
+-- Call the expect right in the function being checked: the error then points at that function's caller
+-- @param label Who checks, shown in brackets: usually the file's path in lib, "parsers/stand/command_box"
+function module.expecter(label: string): function
+    return function(fn_name: string, what: string, value, kind: string): void
+        if type(value) ~= kind then
+            -- 1 - here, 2 - the function checked, 3 - its caller
+            error($"[{label}] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
+        end
+    end
+end
+
+return module

@@ -10,15 +10,11 @@
 --     command_box.sanitize("God Mode!")                  -- "godmode"
 --     command_box.entry("godmode", "God", { "gm", "" })  -- { name = "god", words = { "gm" } }
 
-local module = {}
+-- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
+-- that's what a parser is for
+local expect = Atdar.loader.load("core/check").expecter("parsers/stand/command_box")
 
--- A value of the wrong kind is the caller's mistake: an error pointing at the call, not a quiet
--- wrong result. Text that can't be read isn't one - that's what a parser is for
-local function expect(fn_name: string, what: string, value, kind: string): void
-    if type(value) ~= kind then
-        error($"[parsers/stand/command_box] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
-    end
-end
+local module = {}
 
 -- Lowercase, keeps only a-z, 0-9 and _
 function module.sanitize(text: string): string

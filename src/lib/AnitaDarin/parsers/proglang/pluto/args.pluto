@@ -9,15 +9,11 @@
 --     args.parse('adder, 5, PLAYER.PLAYER_PED_ID()')  -- { "adder", 5, 1234 }, 3
 --     args.split('f(1, 2), "a, b"')                   -- { "f(1, 2)", '"a, b"' }
 
-local module = {}
+-- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
+-- that's what a parser is for
+local expect = Atdar.loader.load("core/check").expecter("parsers/proglang/pluto/args")
 
--- A value of the wrong kind is the caller's mistake: an error pointing at the call, not a quiet
--- wrong result. Text that can't be read isn't one - that's what a parser is for
-local function expect(fn_name: string, what: string, value, kind: string): void
-    if type(value) ~= kind then
-        error($"[parsers/proglang/pluto/args] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
-    end
-end
+local module = {}
 
 -- ─── Texts, when it isn't an expression ──────────────────────────────────────
 
