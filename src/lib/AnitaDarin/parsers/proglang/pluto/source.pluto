@@ -8,6 +8,14 @@
 
 local module = {}
 
+-- A value of the wrong kind is the caller's mistake: an error pointing at the call, not a quiet
+-- wrong result. Text that can't be read isn't one - that's what a parser is for
+local function expect(fn_name: string, what: string, value, kind: string): void
+    if type(value) ~= kind then
+        error($"[parsers/proglang/pluto/source] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
+    end
+end
+
 -- File path -> { text = the text, lines = its lines }; split again only when the text is another
 local source_lines = {}
 
@@ -44,8 +52,9 @@ end
 
 -- The return type written after a function's parameters ("function name(a, b): bool" -> "bool"),
 -- the parameters may take a few lines
--- @return The type, or nil if none is written or the file can't be read (lambdas have none)
+-- @return The type, or nil if none is written or the file can't be read (lambdas and C functions have none)
 function module.return_type(fn): ?string
+    expect("return_type", "fn", fn, "function")
     local info = debug.getinfo(fn, "S")
     if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
         return nil

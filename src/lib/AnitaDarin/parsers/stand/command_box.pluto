@@ -12,8 +12,17 @@
 
 local module = {}
 
+-- A value of the wrong kind is the caller's mistake: an error pointing at the call, not a quiet
+-- wrong result. Text that can't be read isn't one - that's what a parser is for
+local function expect(fn_name: string, what: string, value, kind: string): void
+    if type(value) ~= kind then
+        error($"[parsers/stand/command_box] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
+    end
+end
+
 -- Lowercase, keeps only a-z, 0-9 and _
 function module.sanitize(text: string): string
+    expect("sanitize", "text", text, "string")
     local clean = text:lower():gsub("[^%w_]", "")
     return clean
 end
@@ -22,8 +31,10 @@ end
 -- has none") and is left out quietly
 -- @return The clean names, and the names given that had nothing usable in them (to warn about)
 function module.bases(names: table)
+    expect("bases", "names", names, "table")
     local clean, seen, skipped = {}, {}, {}
-    for _, base in ipairs(names) do
+    for i, base in ipairs(names) do
+        expect("bases", $"names[{i}]", base, "string")
         local name = module.sanitize(base)
         if name == "" then
             if base ~= "" then
@@ -39,11 +50,15 @@ end
 
 -- One command's entry as read: { name, words }, only sound names and words kept - a custom name that's
 -- the base itself, words repeating the base, the name or each other are dropped
--- @param base The command's base name, already sanitized
+-- @param base The command's base name, already sanitized (a string, not "")
 -- @param name The custom name as written (anything: a file may hold any value)
 -- @param words The extra words as written
 -- @return The entry, or nil when nothing's left
 function module.entry(base: string, name, words): ?table
+    expect("entry", "base", base, "string")
+    if base == "" then
+        error("[parsers/stand/command_box] entry: base must be a command's base name, got \"\"", 2)
+    end
     local entry = { name = nil, words = {} }
     if type(name) == "string" then
         local clean = module.sanitize(name)

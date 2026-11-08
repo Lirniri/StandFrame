@@ -7,8 +7,17 @@
 
 local module = {}
 
+-- A value of the wrong kind is the caller's mistake: an error pointing at the call, not a quiet
+-- wrong result. Text that can't be read isn't one - that's what a parser is for
+local function expect(fn_name: string, what: string, value, kind: string): void
+    if type(value) ~= kind then
+        error($"[parsers/proglang/pluto/name] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
+    end
+end
+
 -- The words of a name, lower case, as a set: "get_handle" / "getHandle" -> { get = true, handle = true }
 function module.words(name: string): table
+    expect("words", "name", name, "string")
     local words = {}
     local spaced = name:gsub("(%l)(%u)", "%1_%2")
     for word in spaced:gmatch("[^_]+") do

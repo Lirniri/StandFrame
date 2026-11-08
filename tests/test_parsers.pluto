@@ -76,4 +76,45 @@ stand.check(entry.name == "god" and table.concat(entry.words, " ") == "gm",
 stand.equal(command_box.entry("godmode", "GodMode", {}), nil, "command_box.entry: the base itself as the name - nothing left")
 stand.equal(command_box.entry("godmode", 42, "gm"), nil, "command_box.entry: values of the wrong kind are ignored")
 
+-- ─── Errors: a value of the wrong kind is the caller's mistake ───────────────
+-- An error naming the parser, the function and what was wrong, pointing at the call (this file),
+-- not inside the parser. Text that can't be read is no error: that's covered above
+
+-- @param call A function of this file making the call, so the error has a line here to point at
+-- @return The error of call(), or nil if it didn't fail
+local function error_of(call): ?string
+    local ok, err = pcall(call)
+    if ok then
+        return nil
+    end
+    return tostring(err)
+end
+
+local function check_error(err: ?string, expected: string, name: string): void
+    stand.check(err ~= nil and err:find(expected, 1, true) ~= nil, $"{name}: says what was wrong ({tostring(err)})")
+    stand.check(err ~= nil and err:find("test_parsers.pluto:", 1, true) ~= nil, $"{name}: points at the call")
+end
+
+check_error(error_of(|| -> pluto.args.parse(nil)), "[parsers/proglang/pluto/args] parse: input must be a string, got nil",
+    "args.parse(nil)")
+check_error(error_of(|| -> pluto.args.split(5)), "[parsers/proglang/pluto/args] split: input must be a string, got number",
+    "args.split(5)")
+check_error(error_of(|| -> pluto.name.words({})), "[parsers/proglang/pluto/name] words: name must be a string, got table",
+    "name.words({})")
+check_error(error_of(|| -> pluto.source.return_type("count")),
+    "[parsers/proglang/pluto/source] return_type: fn must be a function, got string", "source.return_type(\"count\")")
+check_error(error_of(|| -> command_box.sanitize(nil)), "[parsers/stand/command_box] sanitize: text must be a string, got nil",
+    "command_box.sanitize(nil)")
+check_error(error_of(|| -> command_box.bases("godmode")),
+    "[parsers/stand/command_box] bases: names must be a table, got string", "command_box.bases(\"godmode\")")
+check_error(error_of(|| -> command_box.bases({ "fly", 5 })),
+    "[parsers/stand/command_box] bases: names[2] must be a string, got number", "command_box.bases({ \"fly\", 5 })")
+check_error(error_of(|| -> command_box.entry(nil, "god")),
+    "[parsers/stand/command_box] entry: base must be a string, got nil", "command_box.entry(nil)")
+check_error(error_of(|| -> command_box.entry("", "god")),
+    "[parsers/stand/command_box] entry: base must be a command's base name", "command_box.entry(\"\")")
+-- A call that fails inside the arguments isn't a wrong kind: parse gives it back as its error, no throw
+local _, _, call_err = pluto.args.parse("missing.call()")
+stand.check(type(call_err) == "string", "args.parse: a failing call in the text is returned as an error, not thrown")
+
 stand.finish()

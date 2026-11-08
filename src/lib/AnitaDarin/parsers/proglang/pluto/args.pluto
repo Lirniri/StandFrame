@@ -11,6 +11,14 @@
 
 local module = {}
 
+-- A value of the wrong kind is the caller's mistake: an error pointing at the call, not a quiet
+-- wrong result. Text that can't be read isn't one - that's what a parser is for
+local function expect(fn_name: string, what: string, value, kind: string): void
+    if type(value) ~= kind then
+        error($"[parsers/proglang/pluto/args] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
+    end
+end
+
 -- ─── Texts, when it isn't an expression ──────────────────────────────────────
 
 -- One argument as typed: nil, true, false, a number, otherwise the text itself
@@ -199,6 +207,7 @@ end
 -- by commas into texts instead
 -- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
 function module.parse(input: string)
+    expect("parse", "input", input, "string")
     local ok, args, count = pcall(read_list, { src = input, pos = 1 }, "")
     if ok then
         return args, count, nil
@@ -213,6 +222,7 @@ end
 -- The arguments as typed, split at the commas between them, not those inside brackets or quotes, and
 -- trimmed; nothing is worked out: 'FAKE.add(1, 2), "a, b"' -> { "FAKE.add(1, 2)", '"a, b"' }
 function module.split(input: string): table
+    expect("split", "input", input, "string")
     local pieces = {}
     local depth, quote, start = 0, nil, 1
     for i = 1, #input do
