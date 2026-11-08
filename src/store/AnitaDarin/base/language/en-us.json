@@ -408,6 +408,12 @@
             "done": "Modules reloaded: %d",
             "none": "No changed modules"
         },
+        "reload_all": {
+            "name": "Reload All",
+            "help": "Reloads every module loaded from a file, even if the file didn't change, and starts it",
+            "done": "Modules reloaded: %d",
+            "none": "No modules loaded from files"
+        },
         "list": "Modules",
         "empty": "No modules registered",
         "start": "Start",

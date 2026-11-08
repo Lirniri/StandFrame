@@ -836,6 +836,24 @@ local function fill_module(entry: table, name: string): void
     functions_of(entry, mod)
 end
 
+-- Reloads the modules wanted(name) picks and tells how many; the notices are <strings>.done and <strings>.none
+local function reload_modules(wanted, strings: string): void
+    local reloaded = 0
+    for _, name in ipairs(Atdar.modules.names()) do
+        if wanted(name) then
+            ACTIONS_BY_KEY.reload.run(name)
+            rebuild_functions(name)
+            reloaded += 1
+        end
+    end
+    refresh()
+    if reloaded == 0 then
+        log:notify(text($"{strings}.none"))
+        return
+    end
+    log:notify(text($"{strings}.done"):format(reloaded))
+end
+
 -- The open list's items: actions, then a list per module
 local function fill(node: table): void
     local modules = Atdar.modules
@@ -856,22 +874,11 @@ local function fill(node: table): void
         refresh()
         log:notify(text("stop_all.done"))
     end, {}, label("stop_all.help"))
-    node:action(label("reload_changed.name"), function()
-        local reloaded = 0
-        for _, name in ipairs(modules.names()) do
-            if modules.file_changed(name) then
-                ACTIONS_BY_KEY.reload.run(name)
-                rebuild_functions(name)
-                reloaded += 1
-            end
-        end
-        refresh()
-        if reloaded == 0 then
-            log:notify(text("reload_changed.none"))
-        else
-            log:notify(text("reload_changed.done"):format(reloaded))
-        end
-    end, {}, label("reload_changed.help"))
+    node:action(label("reload_changed.name"), || -> reload_modules(modules.file_changed, "reload_changed"),
+        {}, label("reload_changed.help"))
+    -- A module made in code has no file to read again
+    node:action(label("reload_all.name"), || -> reload_modules(|name| -> modules.file_of(name) ~= nil, "reload_all"),
+        {}, label("reload_all.help"))
     node:divider(label("list"))
 
     local names = modules.names()

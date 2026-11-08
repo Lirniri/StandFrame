@@ -19,7 +19,7 @@ end
 
 local class VehicleManager extends Module
     
-    function __construct(ped: int)
+    function __construct(ped: int = 0)
         parent:__construct({
             name = "VehicleManager",
             -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
@@ -30,7 +30,7 @@ local class VehicleManager extends Module
             }
         })
         -- State lives in fields; set defaults here
-        self.ped_id = ped
+        self.ped_id = ped 
 
         self.last_handle = -1
         self.auto_remember = false
@@ -170,9 +170,11 @@ local class VehicleManager extends Module
     function _remember_current_vehicle(): void
         local ped = self:get_ped_id()
         local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
+        
         if vehicle == self.current_vehicle then
             return
         end
+
         self.current_vehicle = vehicle
         if vehicle ~= 0 and self.vehicles[vehicle] == nil then
             self:add_vehicle(vehicle)
@@ -187,6 +189,7 @@ local class VehicleManager extends Module
         if math.type(handle) ~= "integer" then
             return false
         end
+
         return Atdar.natives.entity.vehicle.repair(handle, dirt_level or false, start_engine)
     end
 
@@ -200,11 +203,13 @@ local class VehicleManager extends Module
     -- @return How many were repaired
     function repair_all(dirt_level: float|bool, start_engine: bool): int
         local repaired = 0
+
         for _, handle in ipairs(self:get_handles()) do
             if self:repair(handle, dirt_level, start_engine) then
                 repaired += 1
             end
         end
+
         return repaired
     end
 
@@ -219,9 +224,11 @@ local class VehicleManager extends Module
         if not n_vehicle.is_exist(handle) then
             return false
         end
-        -- if n_vehicle.is_dead(handle) then
-        --     return false
-        -- end
+
+        if n_vehicle.is_dead(handle) then
+            return false
+        end
+
         n_vehicle.explode({
             vehicle = handle,
             net_id = n_vehicle.get_net_id(handle)
@@ -239,11 +246,13 @@ local class VehicleManager extends Module
     -- @return How many were exploded
     function explode_all(): int
         local exploded = 0
+
         for _, handle in ipairs(self:get_handles()) do
             if self:explode(handle) then
                 exploded += 1
             end
         end
+
         return exploded
     end
 
@@ -282,6 +291,7 @@ local class VehicleManager extends Module
             self.log:warn(self:text("not_made", "The game made no '%s'"):format(tostring(model)))
             return nil
         end
+
         self:add_vehicle(handle)
         return handle
     end
@@ -292,9 +302,11 @@ local class VehicleManager extends Module
         if math.type(handle) ~= "integer" then
             return false
         end
+
         self:remove_vehicle(handle)
 
         local n_vehicle = Atdar.natives.entity.vehicle
+
         if not n_vehicle.is_exist(handle) then
             return false
         end
@@ -309,11 +321,13 @@ local class VehicleManager extends Module
     -- @return How many were deleted (ones already gone are only forgotten)
     function delete_all(): int
         local deleted = 0
+
         for _, handle in ipairs(self:get_handles()) do
             if self:delete(handle) then
                 deleted += 1
             end
         end
+
         return deleted
     end
 
@@ -328,12 +342,14 @@ local class VehicleManager extends Module
             self.log:warn(self:text("not_in_game", "%s isn't a vehicle in the game"):format(tostring(handle)))
             return nil
         end
+
         local data = vehicle_data(handle)
 
         local file_name = name
         if file_name == nil or file_name == "" then
             file_name = self:_free_name(data.name or $"vehicle_{data.model}")
         end
+
         -- Characters Windows doesn't allow in a file's name
         file_name = file_name:gsub('[<>:"/\\|?*]', "_")
 
@@ -342,10 +358,12 @@ local class VehicleManager extends Module
             self.log:warn(self:text("no_folder", "The module isn't loaded from a file: there's no folder to save to"))
             return nil
         end
+
         if not file:write(data) then
             self.log:warn(self:text("not_written", "Couldn't write %s"):format(file.path))
             return nil
         end
+
         self.log:info(self:text("saved", "Saved to %s"):format(file.path))
         return file_name
     end
@@ -354,6 +372,7 @@ local class VehicleManager extends Module
     -- @return How many were saved
     function save_vehicles(): int
         local saved = 0
+
         for handle in pairs(self.vehicles) do
             if math.type(handle) == "integer"
                 and Atdar.natives.entity.is_exist(handle)
@@ -361,6 +380,7 @@ local class VehicleManager extends Module
                 saved += 1
             end
         end
+
         return saved
     end
 
@@ -368,10 +388,12 @@ local class VehicleManager extends Module
     function _free_name(base: string): string
         local name = base
         local number = 1
+
         while self:json_file($"{SAVE_FOLDER}/{name}"):exists() do
             number += 1
             name = $"{base}_{number}"
         end
+
         return name
     end
 

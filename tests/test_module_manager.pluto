@@ -70,6 +70,14 @@ stand.equal(status("c"), "failed", "c failed in on_start")
 stand.equal(status("e"), "failed", "e needs a module that isn't registered")
 stand.check(modules.get("e").error:find("isn't registered", 1, true), "e's error says why")
 
+-- A path Lua cut in an error shows from Stand's folder on
+local cut_path = new Module({ name = "cut_path" })
+cut_path:fail("on_tick failed\n...ata\\Roaming\\Stand\\Lua Scripts\\lib\\natives-3407a\\init.lua:8919: bad argument")
+stand.equal(cut_path.error, "on_tick failed\nStand\\Lua Scripts\\lib\\natives-3407a\\init.lua:8919: bad argument",
+    "the cut beginning of the path is gone")
+cut_path:fail("...Scripts\\lib\\x.lua:1: no Stand folder in it")
+stand.equal(cut_path.error, "...Scripts\\lib\\x.lua:1: no Stand folder in it", "cut after Stand's folder: left as it is")
+
 -- One shared tick: each running module ticks once per frame
 stand.frame()
 stand.equal(TICKS.a, 1, "a ticks once per frame")

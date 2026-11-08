@@ -9,7 +9,7 @@ return {
     build = function(node, ctx)
         local dev = node:list("Developer")
 
-        -- The whole Modules list: every module, Refresh, Stop All, Reload Changed
+        -- The whole Modules list: every module, Refresh, Stop All, Reload Changed, Reload All
         modules_menu.list_in(dev)
 
         -- One module's list: status, Start / Restart / Stop / Reload, its functions with loops.

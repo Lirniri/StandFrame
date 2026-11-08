@@ -555,6 +555,12 @@ stand.equal(stand.name_of(marked), "5: reloader: running", "and the mark goes")
 stand.clear_logs()
 stand.click(stand.child(list, "Reload Changed"))
 stand.check(stand.find_log("No changed modules"), "nothing changed: says so")
+-- Reload All: right under Reload Changed; reads every module's file again, changed or not
+stand.check(names_in(list):find("Reload Changed | Reload All | ", 1, true), "Reload All is right under Reload Changed")
+stand.clear_logs()
+stand.click(stand.child(list, "Reload All"))
+stand.check(stand.find_log("'reloader' reloaded from"), "an unchanged file is read again")
+stand.check(stand.find_log("Modules reloaded: 1"), "only the modules from files count: the ones made in code are left")
 -- A file changed while one is inside a module: going back out shows it, no Refresh needed
 local reloader_entry = stand.find_item(list, "5: reloader: ")
 stand.click(reloader_entry)

@@ -185,6 +185,9 @@ Module = class
 
     -- Marks the module failed; it isn't started or ticked again
     function fail(reason: string): void
+        -- Lua cuts a long file's path in its errors ("...ata\Roaming\Stand\Lua Scripts\lib\x.lua:1: ..."):
+        -- shown from Stand's folder on
+        reason = reason:gsub("%.%.%.[^\n:]-(Stand[/\\]Lua Scripts[/\\])", "%1")
         self.status = "failed"
         self.error = reason
         self.log:error(reason)
