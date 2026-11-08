@@ -80,4 +80,15 @@ profile.delete("secondprofile")
 stand.equal(profile.active_name(), "main", "deleting the active profile switches to main")
 stand.check(not io.exists($"{profiles}secondprofile.json"), "the deleted profile's file is gone")
 
+-- Old defaults a profile never chose give way to the new ones when it loads; a value chosen stays
+stand.write_file($"{profiles}old.json", '{"user_command_prefix": "atdar", "user_command_separator": "_"}')
+profile.switch("old")
+stand.check(profile.get("user_command_prefix") == "" and profile.get("user_command_separator") == "",
+    "the old user command prefix and separator (atdar_) are replaced by the new defaults")
+stand.check(read($"{profiles}old.json"):find('"user_command_prefix": ""', 1, true), "and written back")
+stand.write_file($"{profiles}chosen.json", '{"user_command_prefix": "atdar", "user_command_separator": ""}')
+profile.switch("chosen")
+stand.equal(profile.get("user_command_prefix"), "atdar", "a prefix with another separator was chosen: it stays")
+profile.switch("main")
+
 stand.finish()

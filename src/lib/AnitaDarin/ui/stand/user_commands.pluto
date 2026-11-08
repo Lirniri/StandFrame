@@ -11,6 +11,7 @@
 --              Commands           - what it runs, separated by ;
 --              Description        - Run's help
 --
+-- The first time there's one, as an example: settingsatdar, opening the script's settings.
 -- Each is kept in store/<script>/commands/user/<name>.json { "commands": [...], "help": "..." }, shared by
 -- every profile; the commands folder is the user's (build.py and the updater leave it).
 -- Strings: base/language "script_menu.user_commands"
@@ -96,6 +97,22 @@ function module.remove(name: string): void
     new JsonFile($"{module.folder()}{name}.json"):remove()
 end
 
+-- The example, made the first time only (no folder yet): settingsatdar opens the script's settings
+-- through their command (atdar_settings, or as the Base Commands prefix and a custom name have it).
+-- Removed, it stays removed: the folder is there from then on
+local EXAMPLE = "settingsatdar"
+
+local function make_example(): void
+    if filesystem.exists(module.folder()) then
+        return
+    end
+    local settings = commands.names_as({ "settings" }, "script")[1]
+    if settings == nil then
+        return
+    end
+    module.save(EXAMPLE, { commands = { settings }, help = text("example") })
+end
+
 -- ─── Running ─────────────────────────────────────────────────────────────────
 
 -- Commands running now: one that runs itself, straight or through others, is stopped there
@@ -140,10 +157,49 @@ local view = {}
 
 -- "ready" -> the names it has in Stand now ("atdar_ready"), with the user's prefix
 local function full_name(name: string): string
-    commands.begin_user()
-    local names = commands.names({ name })
-    commands.end_user()
-    return names[1] or name
+    return commands.names_as({ name }, "user")[1] or name
+end
+
+-- The name of the item a command line runs ("godmode on" -> the godmode item's "God Mode"): a label
+-- as Stand gives it, so it follows Stand's language; nil when no item has that command (yet)
+local function item_name(line: string)
+    local word = line:match("^%S+")
+    if word == nil or type(menu.ref_by_command_name) ~= "function" then
+        return nil
+    end
+    local ok, ref = pcall(menu.ref_by_command_name, word)
+    if not ok or ref == nil or not menu.is_ref_valid(ref) then
+        return nil
+    end
+    local named, name = pcall(menu.get_menu_name, ref)
+    return named and name or nil
+end
+
+-- What a user command's Run is called: the names of the items it runs, "Settings" or "God Mode, Never
+-- Wanted"; a line no item answers to (yet: a pack's items come later) as it's written; nothing to run -
+-- the command's own name
+function module.caption(name: string, entry: table)
+    if #entry.commands == 0 then
+        return full_name(name)
+    end
+    local names = {}
+    for _, line in ipairs(entry.commands) do
+        local item = item_name(line)
+        if item == nil then
+            item = line
+        end
+        table.insert(names, item)
+    end
+    if #names == 1 then
+        return names[1]
+    end
+    -- Several: as text, labels in Stand's language
+    for i, item in ipairs(names) do
+        if type(item) == "number" then
+            names[i] = lang.get_localised(item)
+        end
+    end
+    return table.concat(names, ", ")
 end
 
 -- Whether Stand already has a command of that name (Stand's own, the script's, another user one)
@@ -164,13 +220,25 @@ local function entry_list(node: table, name: string, entry: table): void
         local runs = text("runs"):format(table.concat(entry.commands, "; "))
         return $"{help}\n{runs}"
     end
-    local list = node:list(name, {}, entry.help)
+    -- Run is named after what it runs: the items its commands are ("atdar_settings" -> "Settings"), so
+    -- the command box and Stand's lists say what it does; with the cursor on it, it reads "Run", a button.
+    -- Its name comes back when the cursor leaves or the list is gone back out of
+    local run_ref = nil
+    local function show_command(): void
+        pcall(menu.set_menu_name, run_ref, module.caption(name, entry))
+    end
+    local list = node:list(name, {}, entry.help, show_command)
     commands.begin_user()
-    local run_ref = list:action(label("run.name"), || -> module.run(name, entry), { name }, run_help())
+    run_ref = list:action(module.caption(name, entry), || -> module.run(name, entry), { name }, run_help())
+    view.runs[name] = run_ref
+    pcall(menu.on_focus, run_ref, || -> pcall(menu.set_menu_name, run_ref, label("run.name")))
+    pcall(menu.on_blur, run_ref, show_command)
     list:text_input(label("commands.name"), { $"cbuser{name}" }, function(value)
         entry.commands = module.split(value)
         module.save(name, entry)
         pcall(menu.set_help_text, run_ref, run_help())
+        -- Named after what it runs now
+        show_command()
     end, label("commands.help"), table.concat(entry.commands, "; "))
     list:text_input(label("description.name"), { $"cbuser{name}help" }, function(value)
         entry.help = value
@@ -194,6 +262,7 @@ refresh = function()
     local node = view.node
     node:clear_from(view.first)
     view.entries = module.read()
+    view.runs = {}
     local names = {}
     for name in pairs(view.entries) do
         table.insert(names, name)
@@ -248,8 +317,22 @@ function module.build(node: table): table
 
     list:divider(i18n.label("script_menu.commands_divider"))
     view = { node = list, first = #list.children + 1, entries = {}, remove_ref = remove_ref }
+    make_example()
     refresh()
     return list
 end
+
+-- A new prefix or separator: a Run with nothing to run is named after its command, called anew now
+Atdar.profile.on_change(function(key: string)
+    if key ~= "user_command_prefix" and key ~= "user_command_separator" then
+        return
+    end
+    for name, ref in pairs(view.runs or {}) do
+        local entry = (view.entries or {})[name]
+        if entry ~= nil then
+            pcall(menu.set_menu_name, ref, module.caption(name, entry))
+        end
+    end
+end)
 
 return module

@@ -332,6 +332,10 @@ _G.menu = {
         it.on_focus_handlers ??= {}
         table.insert(it.on_focus_handlers, fn)
     end,
+    on_blur = function(it, fn)
+        it.on_blur_handlers ??= {}
+        table.insert(it.on_blur_handlers, fn)
+    end,
     -- Proceeds right away, as if the user confirmed
     show_warning = |_, _, _, proceed| -> proceed(),
 }
@@ -359,6 +363,13 @@ end
 -- Acts like the user moving the cursor onto an item: its menu.on_focus handlers run
 function stand.hover(it): void
     for _, fn in it.on_focus_handlers or {} do
+        fn()
+    end
+end
+
+-- Acts like the user moving the cursor off an item: its menu.on_blur handlers run
+function stand.leave(it): void
+    for _, fn in it.on_blur_handlers or {} do
         fn()
     end
 end

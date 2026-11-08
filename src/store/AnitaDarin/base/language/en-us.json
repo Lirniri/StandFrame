@@ -626,7 +626,8 @@
             "removed": "Command %s removed",
             "nothing": "%s runs nothing yet: write its Commands",
             "loop": "%s runs itself over and over: stopped",
-            "failed": "%s failed: %s"
+            "failed": "%s failed: %s",
+            "example": "Example: opens the script's settings. Its Commands show how: a command of Stand or the script, more separated by ;"
         },
         "commands_folder": {
             "name": "Open Commands Folder",

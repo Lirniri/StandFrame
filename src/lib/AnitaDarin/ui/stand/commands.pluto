@@ -31,7 +31,7 @@ local config = {
     use_prefix = true,
     script = { prefix = "atdar", separator = "" }, -- separator "" -> atdargodmode, "_" -> atdar_godmode
     menu = { prefix = "atdar", separator = "" },
-    user = { prefix = "atdar", separator = "" },
+    user = { prefix = "", separator = "" },
 }
 
 -- ref -> base names it was created with
@@ -140,8 +140,13 @@ end
 
 -- @return Full command names for a list of base names, with the custom names of whoever makes the item now
 function module.names(bases: table): table
+    return module.names_as(bases, current_owner())
+end
+
+-- The same for an owner given ("script", "menu", "user"), whoever makes items now: a name worked out
+-- without changing whose items are being made
+function module.names_as(bases: table, who: string): table
     local names = {}
-    local who = current_owner()
     for _, clean in ipairs(clean_bases(bases, true)) do
         table.insert(names, full_name(effective(clean, who), who))
         for _, word in ipairs(words_for(clean, who)) do

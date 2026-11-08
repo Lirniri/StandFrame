@@ -15,9 +15,10 @@ local DEFAULTS = {
     -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
     found_command_prefix = "atdar",
     found_command_separator = "",
-    -- The same for the user's own commands (User Commands: a name running other commands)
-    user_command_prefix = "atdar",
-    user_command_separator = "_",
+    -- The same for the user's own commands (User Commands: a name running other commands). None: a command
+    -- is called exactly what the user named it ("settingsatdar")
+    user_command_prefix = "",
+    user_command_separator = "",
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
@@ -93,6 +94,34 @@ local function notify_all(): void
     end
 end
 
+-- Defaults that were changed: a profile still holding all of the old ones together gets the new ones
+-- when it loads (it never chose them, they were only what the script gave it)
+local OLD_DEFAULTS = {
+    -- 2026-11-08: user commands were prefixed atdar_ for a day; now they're named exactly as typed
+    { user_command_prefix = "atdar", user_command_separator = "_" },
+}
+
+-- Puts the new defaults over old ones the profile never chose
+-- @return Whether anything was replaced
+local function replace_old_defaults(): bool
+    local replaced = false
+    for _, old in ipairs(OLD_DEFAULTS) do
+        local all_old = true
+        for key, value in pairs(old) do
+            if values[key] ~= value then
+                all_old = false
+            end
+        end
+        if all_old then
+            for key in pairs(old) do
+                values[key] = DEFAULTS[key]
+            end
+            replaced = true
+        end
+    end
+    return replaced
+end
+
 -- Reads the profile, fills in keys it lacks from the defaults and writes it back if anything was missing
 local function load_profile(name: string): void
     local file = profile_file(name)
@@ -106,6 +135,9 @@ local function load_profile(name: string): void
         else
             values[key] = data[key]
         end
+    end
+    if replace_old_defaults() then
+        changed = true
     end
     active = name
     dirty = false

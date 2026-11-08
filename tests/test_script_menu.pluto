@@ -644,15 +644,32 @@ stand.equal(profile.get("update_branch"), "main", "main back")
 
 local user_dir = $"{stand.store}AnitaDarin\\commands\\user\\"
 local user_list = stand.child(find("Command Box"), "User Commands")
-stand.equal(names_in(user_list), "Prefix | Separator: _ (underscore) | Create | Remove | Commands"
-    .. " | No commands yet: Create one above", "User Commands: prefix, separator, Create, Remove, then the commands")
+stand.equal(names_in(user_list), "Prefix | Separator: None | Create | Remove | Commands | settingsatdar",
+    "User Commands: prefix, separator, Create, Remove, then the commands - the example made the first time")
+-- The example: settingsatdar opens the script's settings through their command
+local example = stand.child(user_list, "settingsatdar")
+stand.equal(stand.child(example, "Commands").value, "atdar_settings", "the example runs the settings' command")
+stand.check(stand.read_file($"{user_dir}settingsatdar.json"), "and is kept in a file like any other")
+stand.triggered = {}
+stand.click(example.children[1])
+stand.equal(stand.triggered[1], "atdar_settings", "running it gives the settings' command to the command box")
+stand.equal(stand.name_of(example.children[1]), "Settings", "its Run is named after what it runs: the Settings item")
 -- Create: the name typed, cleaned; an empty command below
 menu.set_value(stand.child(user_list, "Create"), "Ready Set!")
 stand.check(io.exists($"{user_dir}readyset.json"), "Create makes commands/user/<name>.json (the name cleaned)")
 local ready = stand.child(user_list, "readyset")
-stand.equal(names_in(ready), "Run | Commands | Description", "a command's list: Run, Commands, Description")
-local run = stand.child(ready, "Run")
-stand.check(table.concat(run.commands, ","):find("atdar_readyset", 1, true), "Run is the command itself, with the user prefix")
+stand.equal(names_in(ready), "readyset | Commands | Description",
+    "a command's list: Run, named after the command it is, then Commands and Description")
+local run = ready.children[1]
+-- Run reads "Run" with the cursor on it (entering the list puts it there), the command again off it
+stand.hover(run)
+stand.equal(stand.name_of(run), "Run", "with the cursor on it: Run")
+stand.leave(run)
+stand.equal(stand.name_of(run), "readyset", "the cursor off it: the command's name")
+stand.hover(run)
+stand.back(ready)
+stand.equal(stand.name_of(run), "readyset", "going back out of the list: the command's name too")
+stand.equal(table.concat(run.commands, ","), "readyset", "Run is the command itself, named as typed (no prefix by default)")
 stand.equal(stand.find_item(stand.child(find("Command Box"), "Base Commands"), "readyset"), nil, "it isn't in Base Commands")
 stand.triggered = {}
 stand.clear_logs()
@@ -664,11 +681,12 @@ menu.set_value(stand.child(ready, "Commands"), "godmode on; ; tpwaypoint ")
 stand.check(stand.read_file($"{user_dir}readyset.json"):find('"tpwaypoint"', 1, true), "Commands are kept in its file")
 stand.click(run)
 stand.equal(stand.triggered[#stand.triggered], "godmode on; tpwaypoint", "Run gives them to the command box, empty ones dropped")
+stand.equal(stand.name_of(run), "godmode on, tpwaypoint", "commands no item answers to: Run is named after them as written")
 menu.set_value(stand.child(ready, "Description"), "Ready for anything")
 stand.check(run.help:find("Ready for anything", 1, true) and run.help:find("godmode on; tpwaypoint", 1, true),
     "Run's help: the description and what it runs")
 -- A command running itself is stopped
-menu.set_value(stand.child(ready, "Commands"), "atdar_readyset")
+menu.set_value(stand.child(ready, "Commands"), "readyset")
 local real_trigger = menu.trigger_commands
 menu.trigger_commands = function(input)
     table.insert(stand.triggered, input)
@@ -681,19 +699,24 @@ menu.trigger_commands = real_trigger
 -- The same name again, or a command Stand has already: refused
 stand.clear_logs()
 menu.set_value(stand.child(user_list, "Create"), "readyset")
-stand.check(stand.find_log("There's a command atdar_readyset already"), "the same name again is refused")
+stand.check(stand.find_log("There's a command readyset already"), "the same name again is refused")
 -- The prefix and separator rename it right away
 menu.set_value(stand.child(user_list, "Prefix"), "my")
-stand.check(table.concat(stand.child(stand.child(user_list, "readyset"), "Run").commands, ","):find("my_readyset", 1, true),
-    "a new prefix renames it")
-stand.click(stand.find_item(user_list, "Separator: "), 1)
-stand.check(table.concat(stand.child(stand.child(user_list, "readyset"), "Run").commands, ","):find("myreadyset", 1, true),
-    "a new separator too")
+stand.check(table.concat(stand.child(user_list, "readyset").children[1].commands, ","):find("myreadyset", 1, true),
+    "a prefix given renames it")
+stand.click(stand.find_item(user_list, "Separator: "), 2)
+stand.check(table.concat(stand.child(user_list, "readyset").children[1].commands, ","):find("my_readyset", 1, true),
+    "a separator too")
 -- Remove: picked, gone with its file
 local remove = stand.child(user_list, "Remove")
 stand.click(remove, 1)
 stand.check(not io.exists($"{user_dir}readyset.json") and stand.child(user_list, "readyset") == nil,
     "Remove takes the command and its file away")
+stand.click(remove, 1)
+stand.check(stand.child(user_list, "settingsatdar") == nil, "the example can be removed too")
 stand.check(stand.find_item(user_list, "No commands yet"), "none left: says so")
+rebuild()
+user_list = stand.child(find("Command Box"), "User Commands")
+stand.check(stand.find_item(user_list, "No commands yet"), "the example removed isn't made again (the folder is there)")
 
 stand.finish()
