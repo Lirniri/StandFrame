@@ -1,45 +1,46 @@
-# Пример пакета меню
+# Menu pack example
 
-Пакет меню — своё меню скрипта со своими фичами и переводами. Пользователь выбирает пакет в
-«Настройки > Загрузить меню»; при загрузке другого меню пакет выгружается целиком.
+**English** | [Русский](README.ru.md)
 
-## Устройство
+A menu pack is a menu of the script's own, with its own features and translations. The user picks a pack in
+Settings > Load Menu; when another menu is loaded, the pack is unloaded as a whole.
+
+## Structure
 
 ```
 ExamplePack/
-├── info.json                  имя пакета (обязательно), автор, версия
-├── features/                  фичи пакета: все .pluto отсюда загружаются вместе с пакетом
+├── info.json                  the pack's name (required), author, version
+├── features/                  the pack's features: every .pluto here loads with the pack
 │   └── self/
-│       ├── heal.pluto         action: кнопка
-│       └── no_wanted.pluto    toggle: галочка
+│       ├── heal.pluto         action: a button
+│       └── no_wanted.pluto    toggle: a checkbox
 ├── menu/
 │   └── stand/
-│       ├── main.pluto         с него строится меню: вызывает остальные файлы через ctx.load
-│       ├── self.pluto         пункты фич
-│       └── settings.pluto     раздел настроек скрипта внутри своего списка
+│       ├── main.pluto         the menu is built from here: it calls the other files with ctx.load
+│       ├── self.pluto         the features' items
+│       └── settings.pluto     the script's settings section inside a list of its own
 └── language/
-    ├── en-us.json             переводы пакета: ключи для Atdar.lang.translate
+    ├── en-us.json             the pack's translations: keys for Atdar.lang.translate
     └── ru-ru.json
 ```
 
-Что делает каждая часть, см. в [features/](../features/) и [menu/](../menu/).
+For what each part does, see [features/](../features/) and [menu/](../menu/).
 
-## Как попробовать
+## Trying it
 
-1. Скопируйте папку `ExamplePack` в `src/store/AnitaDarin/menu/`, рядом с пакетом `AnitaDarin`.
-2. `python build.py sync`, потом перезапустите скрипт в Stand.
-3. «Настройки > Загрузить меню > ExamplePack».
+1. Copy the `ExamplePack` folder to `src/store/AnitaDarin/menu/`, next to the `AnitaDarin` pack.
+2. `python build.py sync`, then restart the script in Stand.
+3. Settings > Load Menu > ExamplePack.
 
-Можно и без `build.py`: положить папку сразу в
-`%APPDATA%/Stand/Lua Scripts/store/AnitaDarin/menu/` и выбрать пакет в меню.
+It also works without `build.py`: put the folder straight into `%APPDATA%/Stand/Lua Scripts/store/AnitaDarin/menu/`
+and pick the pack in the menu.
 
-## На что обратить внимание
+## Worth noting
 
-- **`id` фич** уникальны среди всех загруженных фич. Принято начинать с имени пакета:
+- **Feature `id`s** are unique among all loaded features. The convention is to start with the pack's name:
   `examplepack.self.heal`.
-- **Ключи переводов** тоже лучше начинать с имени пакета, чтобы не пересечься со строками скрипта.
-- **Команды** пакета (`{ "epheal" }`) получают префикс скрипта. Пользователь может переименовать их,
-  имена сохраняются в `commands.json` в папке пакета.
-- **Ошибка в одном файле** не роняет пакет: файл фичи с ошибкой пропускается, ошибка пишется в лог.
-  Пункт для пропущенной фичи `features.get` не найдёт, поэтому для необязательных фич проверяйте
-  `Atdar.features.has(id)`.
+- **Translation keys** had better start with the pack's name too, so they don't clash with the script's strings.
+- **The pack's commands** (`{ "epheal" }`) get the script's prefix. The user can rename them; the names are saved in
+  `commands.json` in the pack's folder.
+- **An error in one file** doesn't bring the pack down: a feature file with an error is skipped, and the error goes to
+  the log. `features.get` won't find a skipped feature, so check `Atdar.features.has(id)` for optional ones.

@@ -1,62 +1,67 @@
-# Тесты
+# Tests
 
-Проверяют код скрипта вне игры, на заглушках API Stand. Нужен установленный Pluto (`pluto` и `plutoc`).
+**English** | [Русский](README.ru.md)
+
+They check the script's code outside the game, against stubs of the Stand API. Pluto has to be installed (`pluto` and
+`plutoc`).
 
 ```
-python tests/run.py          все проверки
-python tests/run.py json     только тесты, в имени которых есть "json"
-python tests/run.py -v       показать вывод и у прошедших тестов
+python tests/run.py          every check
+python tests/run.py json     only tests with "json" in the name
+python tests/run.py -v       also show the output of passing tests
 ```
 
-Что проверяется:
+What's checked:
 
-1. **syntax** — `plutoc` разбирает каждый `.pluto` в `src`, `examples` и `tests` (со строкой `pluto_use`, как в лаунчере).
-2. **natives** — каждый вызов `ПРОСТРАНСТВО.НАТИВ(...)` в `src` есть в дампе нативов
-   `experiments/natives-3407a/init.lua`. Дамп не хранится в git; если его нет, шаг пропускается.
-3. **tests** — каждый `tests/test_*.pluto` запускается отдельным процессом `pluto`.
+1. **syntax**: `plutoc` parses every `.pluto` in `src`, `examples`, `tests` and `updater` (with the `pluto_use` line, as
+   in the launcher).
+2. **natives**: every `NAMESPACE.NATIVE(...)` call in `src` is in the natives dump `experiments/natives-3407a/init.lua`.
+   The dump isn't kept in git; without it the step is skipped.
+3. **tests**: each `tests/test_*.pluto` runs in its own `pluto` process.
 
-| Тест | Что проверяет |
+| Test | What it checks |
 |---|---|
-| `test_loader` | `loader.load` переживает сломанные файлы; `loader.auto` достаёт каждый файл `natives` |
-| `test_natives` | нативы функциями: `entity`, `ped` и его части, `vehicle`, `player`, `hud.blip`; таблицы `hud_color` и `feed_picture` |
-| `test_feature` | проверку опций Feature, порядок хуков, выключение при ошибке, повторные нажатия |
-| `test_module_manager` | зависимости, остановку по цепочке, повторный запуск, тик, перезагрузку с диска |
-| `test_modules_menu` | меню модулей: видимость в режиме отладки, действия, перевод |
-| `test_script_menu` | раздел скрипта: раскладку, выбор языка, профили, заглушки, переименование |
-| `test_menu_startup` | запуск как в bootstrap: копирование пака в ядро, загрузку встроенного меню |
-| `test_menu_utils` | `utils/menu`: выбор цвета, спойлер; `utils/color`: hex, Stand, игра |
-| `test_installer` | переименование скрипта с открытым лог-файлом, занятое имя |
-| `test_logger` | логгер: файл на каждый день `<скрипт>_<дата>.log` в `store/<скрипт>/logs`, новый файл в новый день, срок хранения, очистка, сломанный файл |
-| `test_notify` | куда уходят уведомления: Stand, лента игры, только лог; правило для ошибок |
-| `test_build.py` | `build.py`: установку под найденным именем, сохранение профилей и логов, очистку |
-| `test_json_file` | JsonFile: безопасную запись, испорченные файлы, `.bak`; профили поверх него |
-| `test_commands` | имена команд с префиксом профиля и переименование на лету |
-| `test_i18n` | строки из языковых файлов через метки Stand, слои источников |
-| `test_streaming` | загрузку ассетов каждого типа (и `texture_dict`, `model`), `request(false)`, таймауты |
-| `test_examples` | примеры из `examples/modules` работают как написаны |
-| `test_check` | `core/check`: `expecter` для аргументов функций и `validator` для опций; ошибки `Module` и `Feature` указывают на строку, где написаны опции, и через `extends` тоже |
-| `test_parsers` | `parsers/`: hex-цвет (`color`), строгий JSON (`json`); Pluto в `proglang.pluto`: аргументы (`args`), слова имени (`name`), тип возврата из исходника (`source`); имена команд Stand (`stand.command_box`); фасады |
-| `test_updater` / `test_updater_manifest.py` | обновлялка из `updater/` на фейковом GitHub и генератор манифеста |
+| `test_loader` | `loader.load` survives broken files; `loader.auto` reaches every file in `natives` |
+| `test_natives` | natives as functions: `entity`, `ped` and its parts, `vehicle`, `player`, `hud.blip`; the `hud_color` and `feed_picture` tables |
+| `test_feature` | Feature's option checks, hook order, switching off on error, repeated clicks |
+| `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk |
+| `test_modules_menu` | the modules menu: visibility in debug mode, actions, translation |
+| `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming |
+| `test_menu_startup` | startup as in bootstrap: copying a pack into the core, loading the built-in menu |
+| `test_menu_utils` | `utils/menu`: colour picker, spoiler; `utils/color`: hex, Stand, game |
+| `test_installer` | renaming the script with its log file open, a name already taken |
+| `test_logger` | the logger: a file per day `<script>_<date>.log` in `store/<script>/logs`, a new file on a new day, retention, cleanup, a broken file |
+| `test_notify` | where notifications go: Stand, the game's feed, log only; the rule for errors |
+| `test_build.py` | `build.py`: installing under the found name, keeping profiles and logs, cleaning |
+| `test_json_file` | JsonFile: safe writing, damaged files, `.bak`; profiles on top of it |
+| `test_commands` | command names with the profile's prefix and renaming on the fly |
+| `test_i18n` | strings from language files through Stand labels, layers of sources |
+| `test_streaming` | loading each kind of asset (and `texture_dict`, `model`), `request(false)`, timeouts |
+| `test_examples` | the examples run as written: modules, features, the pack, `basics`, `menu/helpers`; every function the natives examples call exists |
+| `test_check` | `core/check`: `expecter` for function arguments and `validator` for options; errors from `Module` and `Feature` point at the line with the options, through `extends` too |
+| `test_parsers` | `parsers/`: hex colour (`color`), strict JSON (`json`); Pluto in `proglang.pluto`: arguments (`args`), words of a name (`name`), return type from the source (`source`); Stand command names (`stand.command_box`); the facades |
+| `test_updater` / `test_updater_manifest.py` | the updater from `updater/` on a fake GitHub, and the manifest generator |
 
-## Как написать тест
+## Writing a test
 
 ```lua
-local stand = require("stand")   -- заглушка Stand: util, filesystem, menu, lang
-stand.boot()                     -- Atdar с загрузчиком, как в лаунчере
+local stand = require("stand")   -- the Stand stub: util, filesystem, menu, lang
+stand.boot()                     -- Atdar with its loader, as in the launcher
 
 local thing = Atdar.loader.load("core/...")
-stand.equal(thing.value(), 5, "что проверяем")
-stand.check(stand.find_log("текст"), "что-то записано в лог")
+stand.equal(thing.value(), 5, "what's being checked")
+stand.check(stand.find_log("text"), "something was logged")
 
-stand.finish()                   -- итог и код выхода
+stand.finish()                   -- the result and the exit code
 ```
 
-Полезное из `stand.pluto`:
-- `stand.click(item, option)` — нажать пункт меню, как пользователь;
-- `stand.frame(n)` — прогнать n кадров (тики модулей и `toggle_loop`);
-- `stand.clock` и `stand.on_yield` — время для `util.yield`;
-- `stand.tmpdir(name)` — пустая папка в `tests/.tmp`;
-- `stand.store` — куда смотрит `filesystem.store_dir()`; для тестов, которые пишут файлы, ставьте `stand.tmpdir(...)`.
+Useful things in `stand.pluto`:
+- `stand.click(item, option)` clicks a menu item, like a user;
+- `stand.frame(n)` runs n frames (module ticks and `toggle_loop`);
+- `stand.clock` and `stand.on_yield` are the time for `util.yield`;
+- `stand.tmpdir(name)` is an empty folder in `tests/.tmp`;
+- `stand.store` is where `filesystem.store_dir()` looks; for tests that write files, set it to `stand.tmpdir(...)`.
 
-Нативы игры (`PLAYER`, `ENTITY`, ...) тест подделывает сам — примеры в `test_streaming.pluto`.
-Заглушка повторяет поведение Stand только в тех местах, которые нужны тестам. Поэтому тесты не заменяют проверку в игре: они ловят ошибки логики до неё.
+A test fakes the game's natives (`PLAYER`, `ENTITY`, ...) by itself; see `test_streaming.pluto` for examples.
+The stub repeats Stand's behaviour only where the tests need it. So tests don't replace checking in the game: they catch
+logic errors before that.

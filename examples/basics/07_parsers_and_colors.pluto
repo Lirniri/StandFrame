@@ -1,0 +1,71 @@
+-- EXAMPLE: text into values (Atdar.parsers) and colours (Atdar.color).
+--
+-- Each parser is loaded on first use from lib/AnitaDarin/parsers/. Text that can't be read gives nil or
+-- an error value; a value of the wrong kind (a number instead of the text) is an error (core/check)
+
+local parsers = Atdar.parsers
+
+-- ─── Arguments, as typed in a call ───────────────────────────────────────────
+
+local args = parsers.proglang.pluto.args
+
+-- parse() works the values out; a bare word is its own text. It's what the Arguments field of the
+-- module debug menu uses
+local values, count = args.parse('adder, 5, true, "two words"')
+util.log($"{count} arguments: {values[1]}, {values[2]}, {tostring(values[3])}, {values[4]}")
+
+-- The third result says why an argument couldn't be worked out
+local _, _, parse_error = args.parse("no_such_table.call()")
+util.log($"parse error: {tostring(parse_error)}")
+
+-- split() only cuts the text at the commas between arguments, nothing is worked out
+local pieces = table.concat(args.split('f(1, 2), "a, b"'), " | ")
+util.log($"split: {pieces}")
+
+-- ─── Names and return types in code ──────────────────────────────────────────
+
+local words = parsers.proglang.pluto.name.words("getHandle")   -- the same for "get_handle"
+util.log($"has the word get: {tostring(words.get)}")
+
+local function is_parked(): bool
+    return true
+end
+-- What the source says and the running code doesn't keep; nil for lambdas and C functions
+util.log($"is_parked returns {tostring(parsers.proglang.pluto.source.return_type(is_parked))}")
+
+-- ─── Command names for Stand's command box ───────────────────────────────────
+
+local command_box = parsers.stand.command_box
+
+local command = command_box.sanitize("God Mode!")              -- only a-z, 0-9 and _ stay
+util.log($"command name: {command}")
+
+-- bases(): cleaned, no empty ones and no repeats; the second result is what had nothing usable in it
+local bases, skipped = command_box.bases({ "Heal", "heal", "", "!!!" })
+local base_names, skipped_names = table.concat(bases, ", "), table.concat(skipped, ", ")
+util.log($"bases: {base_names}; skipped: {skipped_names}")
+
+-- ─── JSON text ───────────────────────────────────────────────────────────────
+
+-- A whole object or array, or nil: a cut-off text never loads with keys missing.
+-- For files use Atdar.filesystem.json.File (see 04_json.pluto)
+local decoded = parsers.json.decode('{"slots": 2}')
+local cut_off = parsers.json.decode('{"slots": 2, "name":')
+util.log($"json: {decoded.slots} slots, cut off: {tostring(cut_off)}")
+
+-- ─── Colours ─────────────────────────────────────────────────────────────────
+
+-- Three forms: Stand { r, g, b, a } 0.0 - 1.0, the game's r, g, b, a 0 - 255, hex "RRGGBB[AA]"
+local color = Atdar.color
+
+local orange = color.from_hex("#FF8000")                       -- nil if it isn't 6 or 8 hex digits
+local r, g, b, a = color.to_game(orange)                       -- for natives
+util.log($"game colour: {r}, {g}, {b}, {a}")
+
+util.log($"hex: {color.to_hex(color.from_game(255, 128, 0))}") -- from a native's colour
+
+local see_through = color.to_hex({ r = 0, g = 0, b = 0, a = 0.5 }, true)
+util.log($"with alpha: {see_through}")
+
+local not_a_colour = color.from_hex("orange")
+util.log($"not a colour: {tostring(not_a_colour)}")

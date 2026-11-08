@@ -1,26 +1,28 @@
-# Примеры фич
+# Feature examples
 
-Фича — то, что пользователь включает, выключает или нажимает в меню. В отличие от модуля, её
-запускает не скрипт, а пункт меню. Сама фича пункта не создаёт: его создаёт файл меню через
-`node:add_feature(Atdar.features.get("id"), "Название")` (см. [menu/](../menu/)).
+**English** | [Русский](README.ru.md)
 
-| Файл | Вид | Пункт в меню | Что показывает |
+A feature is what the user switches on and off or clicks in the menu. Unlike a module, it's started by a menu item, not
+by the script. A feature doesn't create its item: a menu file does, with
+`node:add_feature(Atdar.features.get("id"), "Name")` (see [menu/](../menu/)).
+
+| File | Kind | Menu item | What it shows |
 |---|---|---|---|
-| `01_action.pluto` | `action` | кнопка | `on_trigger` по нажатию |
-| `02_toggle.pluto` | `toggle` | галочка | `on_enable` / `on_disable` и возврат прежнего состояния через `on_save_state` / `on_load_state` |
-| `03_loop.pluto` | `loop` | галочка с циклом | `on_tick` каждый кадр, пока включено |
-| `04_class.pluto` | `action` | кнопка | фича-класс со своими настройками для ползунков меню |
+| `01_action.pluto` | `action` | button | `on_trigger` on a click |
+| `02_toggle.pluto` | `toggle` | checkbox | `on_enable` / `on_disable`, and restoring the old state with `on_save_state` / `on_load_state` |
+| `03_loop.pluto` | `loop` | looping checkbox | `on_tick` every frame while it's on |
+| `04_class.pluto` | `action` | button | a feature class with its own settings for menu sliders |
 
-## Куда класть
+## Where to put them
 
-- **В пакет меню:** `store/AnitaDarin/menu/<Пакет>/features/<раздел>/имя.pluto`. Все файлы папки
-  `features` пакета загружаются, когда загружается пакет. Пример: [pack/](../pack/).
-- **Во встроенное меню:** `src/lib/AnitaDarin/features/<раздел>/имя.pluto`.
+- **In a menu pack:** `store/AnitaDarin/menu/<Pack>/features/<section>/name.pluto`. All files in a pack's `features`
+  folder load when the pack loads. Example: [pack/](../pack/).
+- **In the built-in menu:** `src/lib/AnitaDarin/features/<section>/name.pluto`.
 
-## Правила
+## Rules
 
-- `id` уникален: `Atdar.features.get(id)` находит фичу по нему. Принято `раздел.имя`.
-- Нужный хук обязателен: `loop` без `on_tick` или `action` без `on_trigger` — ошибка при загрузке.
-- Ошибка в хуке выключает фичу, её галочка в меню снимается сама, ошибка показывается один раз.
-- Повторное нажатие на `action`, пока предыдущее ещё работает (`util.yield`), игнорируется.
-- Состояние игры до включения сохраняйте в `on_save_state`, возвращайте в `on_load_state`.
+- `id` is unique: `Atdar.features.get(id)` finds a feature by it. The convention is `section.name`.
+- The matching hook is required: a `loop` without `on_tick` or an `action` without `on_trigger` is an error at load time.
+- An error in a hook turns the feature off, its menu checkbox clears by itself, and the error shows once.
+- Clicking an `action` again while the previous click is still running (`util.yield`) is ignored.
+- Save the game's state from before switching on in `on_save_state`, and restore it in `on_load_state`.

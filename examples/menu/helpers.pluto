@@ -1,0 +1,49 @@
+-- EXAMPLE: ready-made menu helpers, as a menu file of a pack (menu/stand/helpers.pluto).
+-- main.pluto calls it: ctx.load("helpers").build(node, ctx)
+--
+--   confirm.action      - a button that acts only on a second click
+--   Atdar.menu.spoiler  - a line that hides its value until clicked
+--   builder.build_items - a submenu described as a table
+
+local Logger = Atdar.loader.load("core/logger")
+local confirm = Atdar.loader.load("ui/stand/confirm")
+local builder = Atdar.loader.load("ui/stand/menu_builder")
+
+local log = new Logger("Helpers")
+
+return {
+    build = function(node, ctx)
+        -- Leaving the list forgets a first click, so it can't be confirmed by accident later
+        local cancel_forget
+        local list = node:list("Helpers", {}, "Ready-made menu helpers", function()
+            cancel_forget()
+        end)
+
+        -- For what can't be undone: the second click has to come within confirm.WAIT_MS (5 seconds).
+        -- While it waits, the button is called by its second name
+        local forget_ref, cancel = confirm.action(list, "Forget Vehicles", "Click Again To Forget", function()
+            log:notify("forgotten")
+        end, function()
+            log:warn("click again to forget every saved vehicle")
+        end, "Asks for a second click")
+        cancel_forget = cancel
+
+        -- Atdar.menu takes a Stand ref, a MenuNode keeps its own in .handle
+        Atdar.menu.spoiler(list.handle, "Address", "Vinewood 12", "Click To Show", "Hidden until clicked")
+
+        -- The same items as MenuNode's methods, written as data. A mistake in a table (an unknown type,
+        -- a missing field) is a warning in the log and that item is skipped.
+        -- A feature goes in as { feature = "self.godmode", name = "God Mode" }
+        builder.build_items(list, {
+            { divider = "From a table" },
+            { readonly = "Version", value = "1.0" },
+            { action = "Say Hello", on_click = function() log:notify("hello") end, help = "A notification" },
+            { toggle = "A Switch", on_change = function(on) log:info($"switched {tostring(on)}") end },
+            { slider = "Amount", min = 0, max = 100, default = 50, step = 5,
+                on_change = function(value) log:info($"amount {value}") end },
+            { list = "More", items = {
+                { readonly_name = "Inside More" },
+            } },
+        }, "examples/menu/helpers")
+    end,
+}

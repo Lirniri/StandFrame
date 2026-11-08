@@ -1,55 +1,58 @@
 # AnitaDarin
 
-Скрипт для [Stand](https://stand.sh) (GTA V) на Pluto: меню из подключаемых пакетов, модули со своей отладкой прямо в
-меню, профили, переводы и командная строка со своими командами.
+**English** | [Русский](README.ru.md)
 
-## Что умеет
+A script for [Stand](https://stand.sh) (GTA V) written in Pluto: a menu built from pluggable packs, modules with their
+own debugging right in the menu, profiles, translations, and a command box with commands of your own.
 
-- **Меню из пакетов.** Встроенное меню или любой пакет из `store/<скрипт>/menu/`: свои фичи, меню и переводы. Пакет
-  можно скопировать в ядро, тогда он грузится при каждом запуске.
-- **Модули.** Внутренние части скрипта с зависимостями, запуском и остановкой. В «Отладке» у каждого модуля список:
-  статус, перезагрузка с диска, вызов любой функции с аргументами, циклы, значения переменных.
-- **Профили** как у Stand: несколько наборов настроек, сохранение, автосохранение, сброс.
-- **Переводы.** Язык как у Stand или свой; создание перевода на новый язык прямо из меню, прогресс перевода,
-  перезагрузка без перезапуска.
-- **Командная строка.** Свои префиксы, переименование любых команд, дополнительные слова и пользовательские команды:
-  имя, которое выполняет цепочку других команд.
-- **Уведомления** в Stand или в ленте игры: цвета, картинка, смайлики по типу.
-- **Лог** по файлу на день, с замером загрузки каждого файла.
+## Features
 
-## Установка
+- **Menu packs.** The built-in menu or any pack from `store/<script>/menu/`, with its own features, menu and
+  translations. A pack can be copied into the core, and then it loads on every start.
+- **Modules.** Internal parts of the script with dependencies, start and stop. Debug has a list for each module:
+  status, reload from disk, calling any function with arguments, loops, variable values.
+- **Profiles**, like Stand's: several sets of settings, saving, autosave, reset.
+- **Translations.** Stand's language or one of your own; create a translation into a new language right from the menu,
+  see its progress, reload it without restarting.
+- **Command box.** Custom prefixes, renaming any command, extra words, and user commands: a name that runs a chain of
+  other commands.
+- **Notifications** in Stand or in the game's feed: colours, a picture, emoji by type.
+- **Log**, one file per day, with the load time of every file measured.
 
-Нужен Python 3. Скрипт копируется в папку Lua Scripts Stand (`%APPDATA%/Stand/Lua Scripts`):
+## Installation
+
+You need Python 3. The script is copied to Stand's Lua Scripts folder (`%APPDATA%/Stand/Lua Scripts`):
 
 ```
-python build.py sync       скопировать проект в Stand
-python build.py watch      копировать после каждого изменения в src
-python build.py rebuild    очистить и скопировать заново (убирает удалённые файлы)
-python build.py status     что установлено
+python build.py sync       copy the project to Stand
+python build.py watch      copy after every change in src
+python build.py rebuild    clean and copy again (gets rid of deleted files)
+python build.py status     show what is installed
 ```
 
-Профили, настройки, логи и свои команды (`store/<скрипт>/config.json`, `profiles/`, `logs/`, `commands/`) при
-копировании и очистке не трогаются. Скрипт можно переименовать прямо в меню, `build.py` найдёт его под новым именем.
+Profiles, settings, logs and your commands (`store/<script>/config.json`, `profiles/`, `logs/`, `commands/`) are left
+alone by copying and cleaning. The script can be renamed right in the menu; `build.py` finds it under the new name.
 
-## Где что лежит
+## Layout
 
-| Папка | Что внутри |
+| Folder | What's inside |
 |---|---|
-| `src/AnitaDarin.pluto` | Запуск: имя скрипта из имени файла, затем `lib/<скрипт>/bootstrap` |
-| `src/lib/AnitaDarin/core/` | Основа: загрузчик, лог, профили, переводы, модули, проверки (`check`), файлы |
-| `src/lib/AnitaDarin/natives/` | Нативы игры функциями, по разделам: `Atdar.natives.entity.vehicle.repair(handle)` |
-| `src/lib/AnitaDarin/parsers/` | Разбор текста: аргументы, цвет, JSON, имена команд Stand |
-| `src/lib/AnitaDarin/ui/stand/` | Меню: раздел скрипта, профили, отладка модулей, командная строка |
-| `src/lib/AnitaDarin/modules/` | Модули, например `VehicleManager` |
-| `src/store/AnitaDarin/` | Данные: переводы (`base/language`), пакеты меню (`menu/`) |
-| `examples/` | Примеры всего по шагам, с объяснениями: [examples/README.md](examples/README.md) |
-| `tests/` | Тесты вне игры: [tests/README.md](tests/README.md) |
-| `updater/` | Обновлялка, пока не подключена к скрипту: [updater/README.md](updater/README.md) |
+| `src/AnitaDarin.pluto` | Launcher: the script's name from the file name, then `lib/<script>/bootstrap` |
+| `src/lib/AnitaDarin/core/` | The foundation: loader, log, profiles, translations, modules, checks (`check`), files |
+| `src/lib/AnitaDarin/natives/` | Game natives as functions, by section: `Atdar.natives.entity.vehicle.repair(handle)` |
+| `src/lib/AnitaDarin/parsers/` | Reading text: arguments, colours, JSON, Stand command names |
+| `src/lib/AnitaDarin/ui/stand/` | The menu: the script's section, profiles, module debugging, the command box |
+| `src/lib/AnitaDarin/modules/` | Modules, such as `VehicleManager` |
+| `src/store/AnitaDarin/` | Data: translations (`base/language`), menu packs (`menu/`) |
+| `examples/` | Step-by-step examples of everything, with explanations: [examples/README.md](examples/README.md) |
+| `tests/` | Tests that run outside the game: [tests/README.md](tests/README.md) |
+| `updater/` | The updater, not connected to the script yet: [updater/README.md](updater/README.md) |
 
-## Разработка
+## Development
 
 ```
-python tests/run.py        синтаксис, нативы и все тесты на заглушках Stand
+python tests/run.py        syntax, natives and every test against the Stand stubs
 ```
 
-Нужен установленный [Pluto](https://pluto-lang.org). Ветка `experiment` — работа, `main` — проверенное.
+Requires [Pluto](https://pluto-lang.org) to be installed. The `experiment` branch is for work in progress, `main` is
+for what has been tested.

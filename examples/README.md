@@ -1,39 +1,44 @@
-# Примеры AnitaDarin
+# AnitaDarin examples
 
-Как пользоваться скриптом изнутри: писать модули, фичи и пакеты меню, строить меню, вести лог,
-показывать уведомления, читать профиль, переводы и JSON, вызывать нативы.
+**English** | [Русский](README.ru.md)
 
-Комментарии в коде на английском, как во всём проекте. Объяснения — в README каждой папки.
+How to use the script from the inside: write modules, features and menu packs, build menus, keep a log, show
+notifications, read the profile, translations and JSON, call natives.
 
-| Папка | Что внутри |
+Comments in the code are in English, as in the rest of the project. Each folder's README has the explanations, in
+English and Russian.
+
+| Folder | What's inside |
 |---|---|
-| [basics/](basics/) | Основа, которая нужна везде: лог и уведомления, профиль, переводы, JSON-файлы, нативы |
-| [modules/](modules/) | Модули: внутренние части скрипта, которые он запускает сам (без пункта в меню) |
-| [features/](features/) | Фичи: то, что пользователь включает, выключает или нажимает в меню |
-| [menu/](menu/) | Файлы меню: пункты `MenuNode`, фичи в меню, раздел настроек, отладка модулей в своём меню |
-| [pack/](pack/) | Полный пакет меню `ExamplePack`: info.json, фичи, меню, переводы — копируется и загружается целиком |
+| [basics/](basics/) | The foundation needed everywhere: log and notifications, profile, translations, JSON files, natives, checks, parsers and colours |
+| [modules/](modules/) | Modules: internal parts of the script that it starts by itself (no menu item) |
+| [features/](features/) | Features: what the user switches on and off or clicks in the menu |
+| [menu/](menu/) | Menu files: `MenuNode` items, features in the menu, the settings section, module debugging in your own menu, ready-made helpers |
+| [pack/](pack/) | A complete menu pack, `ExamplePack`: info.json, features, menu, translations, copied and loaded as a whole |
 
-## Что где лежит в `Atdar`
+## What's where in `Atdar`
 
-| Что | Где | Пример |
+| What | Where | Example |
 |---|---|---|
-| Загрузка файлов `lib` | `Atdar.loader.load("путь")` | `local Module = Atdar.loader.load("core/module")` |
-| Лог и уведомления | `core/logger` | `local log = new Logger("Имя")`, `log:notify("...")` |
-| Уведомление как есть | `Atdar.util.toast(text, opts)` | `Atdar.util.toast("Готово", { target = "game" })` |
-| Профиль (настройки) | `Atdar.profile` | `Atdar.profile.get("notify")` |
-| Переводы | `Atdar.lang` | `Atdar.lang.translate("menu.self.menu_name")` |
-| Пути | `Atdar.filesystem.paths` | `paths.store`, `paths.lib`, `paths.resources` |
-| JSON-файл | `Atdar.filesystem.json.File` | `new File(path):read()` / `:write(t)` |
-| Нативы | `Atdar.natives.<раздел>` | `Atdar.natives.entity.vehicle.delete(handle)` |
-| Парсеры | `Atdar.parsers.<вид>` | `Atdar.parsers.proglang.pluto.args.parse("5, true")` |
-| Модули | `Atdar.modules` | `Atdar.modules.get("VehicleManager")` |
-| Фичи | `Atdar.features` | `Atdar.features.get("self.godmode")` |
-| Отладка режима | `Atdar.debug` | `if Atdar.debug then ... end` |
+| Loading files from `lib` | `Atdar.loader.load("path")` | `local Module = Atdar.loader.load("core/module")` |
+| Log and notifications | `core/logger` | `local log = new Logger("Name")`, `log:notify("...")` |
+| A plain notification | `Atdar.util.toast(text, opts)` | `Atdar.util.toast("Done", { target = "game" })` |
+| Profile (settings) | `Atdar.profile` | `Atdar.profile.get("notify")` |
+| Translations | `Atdar.lang` | `Atdar.lang.translate("menu.self.menu_name")` |
+| Paths | `Atdar.filesystem.paths` | `paths.store`, `paths.lib`, `paths.resources` |
+| JSON file | `Atdar.filesystem.json.File` | `new File(path):read()` / `:write(t)` |
+| Natives | `Atdar.natives.<section>` | `Atdar.natives.entity.vehicle.delete(handle)` |
+| Parsers | `Atdar.parsers.<kind>` | `Atdar.parsers.proglang.pluto.args.parse("5, true")` |
+| Modules | `Atdar.modules` | `Atdar.modules.get("VehicleManager")` |
+| Features | `Atdar.features` | `Atdar.features.get("self.godmode")` |
+| Colours | `Atdar.color` | `Atdar.color.from_hex("FF8000")` |
+| Argument checks | `core/check` | `check.expecter("my/file")` |
+| Debug mode | `Atdar.debug` | `if Atdar.debug then ... end` |
 
-## Как проверить пример в игре
+## Trying an example in the game
 
-1. Положите файл туда, куда говорит README его папки (`src/lib/AnitaDarin/modules/`, папка пакета и т.д.).
-2. `python build.py sync` — копирует проект в Stand (`%APPDATA%/Stand/Lua Scripts`).
-3. Перезапустите скрипт в Stand, а модуль можно просто «Перезагрузить» в «Настройки > Отладка > Модули».
+1. Put the file where its folder's README says (`src/lib/AnitaDarin/modules/`, a pack's folder and so on).
+2. `python build.py sync` copies the project to Stand (`%APPDATA%/Stand/Lua Scripts`).
+3. Restart the script in Stand; a module can simply be reloaded with "Reload" in Settings > Debug > Modules.
 
-Синтаксис примеров проверяет `python tests/run.py` вместе с остальным кодом.
+`python tests/run.py` checks the examples' syntax along with the rest of the code, and runs most of them.

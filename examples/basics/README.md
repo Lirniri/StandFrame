@@ -1,26 +1,34 @@
-# Основа
+# Basics
 
-То, что нужно в любом файле скрипта: модуле, фиче, меню.
+**English** | [Русский](README.ru.md)
 
-| Файл | Что показывает |
+What any file of the script needs: a module, a feature or a menu.
+
+| File | What it shows |
 |---|---|
-| `01_log_and_notify.pluto` | `Logger`: debug / info / notify / warn / error; `Atdar.util.toast` с видом уведомления |
-| `02_profile.pluto` | Профиль: `get`, `default`, `set`, `on_change` |
-| `03_language.pluto` | Переводы: `translate` для пунктов меню, `text` для текста с `format` |
-| `04_json.pluto` | JSON-файл: безопасные `read` и `write`, где хранить свои данные |
-| `05_natives.pluto` | Нативы через `Atdar.natives` и создание машины с загрузкой модели |
+| `01_log_and_notify.pluto` | `Logger`: debug / info / notify / warn / error; `Atdar.util.toast` with a notification style |
+| `02_profile.pluto` | Profile: `get`, `default`, `set`, `on_change` |
+| `03_language.pluto` | Translations: `translate` for menu items, `text` for text filled with `format` |
+| `04_json.pluto` | JSON file: safe `read` and `write`, where to keep your data |
+| `05_natives.pluto` | Natives through `Atdar.natives`, and spawning a vehicle with model loading |
+| `06_check.pluto` | `core/check`: `expecter` for function arguments, `validator` for options |
+| `07_parsers_and_colors.pluto` | `Atdar.parsers`: arguments, names, Stand commands, JSON; `Atdar.color`: hex, Stand, game |
+| `08_natives_more.pluto` | Pointers and handles, players, the session, control over an entity, map blips |
 
-Файлы показывают вызовы, а не отдельную работающую фичу: вставляйте нужные строки в свой модуль,
-фичу или файл меню.
+These files show the calls rather than a working feature of their own: paste the lines you need into your module,
+feature or menu file.
 
-## Коротко
+## In short
 
-- **Лог.** `local log = new Logger("Имя")` в начале файла. `notify`, `warn` и `error` показываются
-  на экране, `debug` и `info` пишутся только в лог (`debug` только в режиме отладки).
-- **Вид строк.** В логе всегда `[AnitaDarin | Имя | INFO] текст`. На экране вне режима отладки
-  короче: `[AnitaDarin] Информация: текст`.
-- **Свои данные** храните в `store/AnitaDarin/`: `build.py` их не перезаписывает. Папка `lib` —
-  копия кода, `build.py rebuild` её очищает.
-- **Нативы.** Сначала ручка (`handle`), потом остальное. То, что ждёт (загрузка модели), вызывайте
-  в потоке (`util.create_thread`), действии меню или тике, а не в основном теле файла.
-- **Строки Pluto.** Внутри `$"..."` используйте одинарные кавычки: `$"model '{name}'"`.
+- **Log.** `local log = new Logger("Name")` at the top of a file. `notify`, `warn` and `error` show on screen, `debug`
+  and `info` only go to the log (`debug` only in debug mode).
+- **What lines look like.** In the log always `[AnitaDarin | Name | INFO] text`. On screen, outside debug mode, it's
+  shorter: `[AnitaDarin] Information: text`.
+- **Your own data** belongs in `store/AnitaDarin/`: `build.py` doesn't overwrite it. The `lib` folder is a copy of the
+  code, and `build.py rebuild` clears it.
+- **Natives.** The handle comes first, then everything else. Call what waits (loading a model) in a thread
+  (`util.create_thread`), a menu action or a tick, not in the main body of a file.
+- **Pluto strings.** Inside `$"..."` use single quotes: `$"model '{name}'"`. A call with quotes or a `{ ... }` table
+  inside `{...}` won't parse: put the value in a local first.
+- **Checks.** A wrong type is the caller's mistake, and `expect` points at the caller's line. Text that can't be read
+  isn't an error: the parser returns `nil`.

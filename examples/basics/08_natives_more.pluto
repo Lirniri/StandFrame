@@ -1,0 +1,69 @@
+-- EXAMPLE: more of Atdar.natives: pointers, players, the session, control over entities, blips.
+--
+-- Call these from a thread, an action or a tick. The basics are in 05_natives.pluto
+
+local natives = Atdar.natives
+
+local ped = natives.player.get_ped_id()
+
+-- ─── Handles and pointers ────────────────────────────────────────────────────
+
+-- A handle is what natives take, a pointer is what Stand's entities.* and memory work with
+local pointer = natives.entity.handle_to_pointer(ped)      -- nil when there's none
+if pointer ~= nil then
+    util.log($"back to the handle: {tostring(natives.entity.pointer_to_handle(pointer))}")
+end
+
+-- Every vehicle around, as handles; get_all(true) gives pointers
+local vehicles = natives.entity.vehicle.get_all()
+util.log($"{#vehicles} vehicles around")
+
+-- ─── Players ─────────────────────────────────────────────────────────────────
+
+-- get_all_id(false): without yourself. The ids are the keys as well, so go through it with pairs
+for _, player_id in pairs(natives.player.get_all_id(false)) do
+    local position = natives.player.get_position(player_id)
+    util.log($"{natives.player.get_name(player_id)} is at {position.x}, {position.y}")
+end
+
+-- ─── The session and control over an entity ──────────────────────────────────
+
+util.log($"session started: {tostring(natives.network.session.is_started())}")
+
+-- Online, only one player's game controls an entity: ask for it before changing what's not yours.
+-- It comes later or not at all, so ask a few times and give up
+local function take_control(entity: int): bool
+    for _ = 1, 20 do
+        if natives.network.control.has_entity(entity) then
+            return true
+        end
+        natives.network.control.request_entity(entity)
+        util.yield(50)
+    end
+    return false
+end
+
+util.create_thread(function()
+    local vehicle = natives.entity.ped.vehicle.get(ped)
+    if vehicle == 0 then
+        return
+    end
+    if take_control(vehicle) then
+        util.log("the vehicle is under control")
+    end
+end)
+
+-- ─── Blips and the waypoint ──────────────────────────────────────────────────
+
+local ped_blip = natives.visual.hud.blip.get_from_entity(ped)       -- nil when the entity has no blip
+if ped_blip ~= nil then
+    local coords = natives.visual.hud.blip.get_coords(ped_blip)
+    util.log($"blip at {coords.x}, {coords.y}")
+end
+
+if natives.visual.hud.waypoint.is_active() then
+    local waypoint = natives.visual.hud.waypoint.get_blip()         -- nil if it's gone by now
+    if waypoint ~= nil then
+        util.log($"waypoint blip {waypoint}, sprite {natives.visual.hud.blip.get_sprite(waypoint)}")
+    end
+end

@@ -1,12 +1,13 @@
 -- examples/: the examples run as written, so they stay correct when the code changes
 local stand = require("stand")
 stand.boot()
-for _, name in { "util", "filesystem", "lang", "color" } do
+for _, name in { "util", "filesystem", "lang", "color", "menu" } do
     Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
 -- A stand-in profile: the real one would save a profile file into src/store
 Atdar.profile = { get = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
 Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
 Atdar.modules = Atdar.loader.load("core/module_manager")
 Atdar.features = Atdar.loader.load("features/registry")
 local modules = Atdar.modules
@@ -112,5 +113,77 @@ stand.check(self_list ~= nil, "its Self list, named from the pack's language fil
 stand.check(stand.find_item(self_list, "Heal") and stand.find_item(self_list, "No Wanted Level"),
     "with the pack's features")
 stand.check(stand.find_item(pack_root.handle, "Settings") ~= nil, "and its Settings list")
+
+-- ─── basics/ ─────────────────────────────────────────────────────────────────
+
+local function run_example(name: string)
+    return assert(loadfile($"{stand.ROOT}/examples/{name}.pluto"))()
+end
+
+stand.clear_logs()
+run_example("basics/06_check")
+stand.check(stand.find_log("adder is in slot 1"), "06_check: right arguments pass")
+stand.check(stand.find_log("park: name must be a string, got nil"), "expecter: the wrong one is named")
+stand.check(stand.find_log("style: unknown 'tall', expected open or closed"), "validator: a value not allowed")
+stand.check(stand.find_log("option: unknown 'slotz', expected name, slots or style"), "validator: a mistyped option")
+stand.check(stand.find_log("slots must be at least 1"), "validator: fail()")
+
+stand.clear_logs()
+run_example("basics/07_parsers_and_colors")
+stand.check(stand.find_log("4 arguments: adder, 5, true, two words"), "07: args.parse")
+stand.check(not stand.find_log("parse error: nil"), "args.parse says why it failed")
+stand.check(stand.find_log('split: f(1, 2) | "a, b"'), "args.split")
+stand.check(stand.find_log("has the word get: true"), "name.words")
+stand.check(stand.find_log("is_parked returns bool"), "source.return_type")
+stand.check(stand.find_log("command name: godmode"), "command_box.sanitize")
+stand.check(stand.find_log("bases: heal; skipped: !!!"), "command_box.bases")
+stand.check(stand.find_log("json: 2 slots, cut off: nil"), "json.decode")
+stand.check(stand.find_log("game colour: 255, 128, 0, 255"), "color.to_game")
+stand.check(stand.find_log("hex: FF8000"), "color.from_game and to_hex")
+stand.check(stand.find_log("with alpha: 00000080"), "to_hex with alpha")
+stand.check(stand.find_log("not a colour: nil"), "from_hex of something else")
+
+-- The natives examples need the game; every function they call has to exist
+for _, name in { "05_natives", "08_natives_more" } do
+    local text = stand.read_file($"{stand.ROOT}/examples/basics/{name}.pluto")
+    local calls = 0
+    for chain in text:gmatch("natives%.([%w_%.]+)%(") do
+        local target = Atdar.natives
+        for part in chain:gmatch("[^%.]+") do
+            target = type(target) == "table" and target[part] or nil
+        end
+        stand.equal(type(target), "function", $"{name}: natives.{chain}")
+        calls += 1
+    end
+    stand.check(calls > 0, $"{name}: calls found")
+end
+
+-- ─── menu/helpers ────────────────────────────────────────────────────────────
+
+local helpers_root = new MenuNode(stand.root):list("Menu helpers")
+run_example("menu/helpers").build(helpers_root, {})
+local helpers = stand.find_item(helpers_root.handle, "Helpers")
+local forget = stand.find_item(helpers, "Forget Vehicles")
+stand.clear_logs()
+stand.click(forget)
+stand.equal(stand.name_of(forget), "Click Again To Forget", "helpers: the first click asks again")
+stand.check(not stand.find_log("forgotten"), "and does nothing yet")
+stand.click(forget)
+stand.check(stand.find_log("forgotten"), "the second click acts")
+stand.clock += 6000
+stand.frame()
+stand.equal(stand.name_of(forget), "Forget Vehicles", "the button gets its name back")
+stand.click(forget)
+stand.back(helpers)
+stand.clear_logs()
+stand.click(forget)
+stand.check(not stand.find_log("forgotten"), "leaving the list forgets a first click")
+local address = stand.find_item(helpers, "Address")
+stand.equal(stand.name_of(address), "Address: Click To Show", "spoiler: hidden at first")
+stand.click(address)
+stand.equal(stand.name_of(address), "Address: Vinewood 12", "a click shows it")
+stand.check(stand.find_item(helpers, "From a table") and stand.find_item(helpers, "Amount"), "build_items: its items")
+stand.check(stand.find_item(helpers, "Inside More") ~= nil, "and a nested list")
+stand.check(not stand.find_log("is not an item") and not stand.find_log("needs '"), "with no warnings")
 
 stand.finish()

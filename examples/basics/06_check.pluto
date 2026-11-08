@@ -1,0 +1,62 @@
+-- EXAMPLE: checking what a function or a constructor is given (core/check).
+--
+-- A value of the wrong kind is the caller's mistake: an error naming who checked and what was wrong,
+-- pointing at the caller instead of a quiet wrong result later on.
+--   expecter(label)  - an expect() for the functions of one file
+--   validator(label) - checks of one thing's options, what Module and Feature use
+
+local check = Atdar.loader.load("core/check")
+
+-- ─── expecter: arguments of functions ────────────────────────────────────────
+
+-- The label is usually the file's path in lib
+local expect = check.expecter("examples/garage")
+
+local function park(name, slot)
+    -- Call expect right in the function being checked: the error then points at that function's caller
+    expect("park", "name", name, "string")
+    expect("park", "slot", slot, "number")
+    return $"{name} is in slot {slot}"
+end
+
+util.log(park("adder", 1))
+
+-- "...06_check.pluto:<the line of this call>: [examples/garage] park: name must be a string, got nil"
+local parked, park_error = pcall(function()
+    park(nil, 1)
+end)
+util.log($"parked: {tostring(parked)}, {park_error}")
+
+-- ─── validator: options of a thing ───────────────────────────────────────────
+
+local OPTIONS = { name = true, slots = true, style = true }
+
+local function make_garage(opts)
+    local v = check.validator($"[Garage '{tostring(opts.name)}']")
+
+    -- A typo in an option's name is an error too, not a setting quietly ignored
+    for key in pairs(opts) do
+        v.known("option", key, OPTIONS)
+    end
+    v.non_empty("name", opts.name)                       -- a string that isn't ""
+    v.kind("slots", opts.slots, "number")                -- of that type
+    v.known("style", opts.style, { "open", "closed" })   -- one of these
+    if opts.slots < 1 then
+        v.fail("slots must be at least 1")               -- anything else, the label put in front
+    end
+    return opts
+end
+
+local home = make_garage({ name = "home", slots = 2, style = "open" })
+util.log($"a garage with {home.slots} slots")
+
+-- Usually make_garage is in one file and the options in another: the error then points at the line
+-- with the options. Here both are in this file, so only the message is worth showing
+for _, opts in {
+    { name = "home", slots = 2, style = "tall" },        -- style: unknown 'tall', expected open or closed
+    { name = "home", slotz = 2, style = "open" },        -- option: unknown 'slotz', expected name, slots or style
+    { name = "home", slots = 0, style = "open" },        -- slots must be at least 1
+} do
+    local made, made_error = pcall(make_garage, opts)
+    util.log($"made: {tostring(made)}, {made_error}")
+end

@@ -1,49 +1,50 @@
-# Примеры модулей
+# Module examples
 
-Модуль — внутренняя часть скрипта, которую скрипт запускает сам при старте. Пункта в меню у модуля нет.
-То, что пользователь включает и выключает в меню, — это `Feature`, а не модуль (см. [features/](../features/)).
+**English** | [Русский](README.ru.md)
 
-| Файл | Что показывает |
+A module is an internal part of the script that the script starts by itself at startup. A module has no menu item.
+What the user switches on and off in the menu is a `Feature`, not a module (see [features/](../features/)).
+
+| File | What it shows |
 |---|---|
-| `01_basic.pluto` | Самый простой модуль: таблица опций, `on_start` / `on_stop` |
-| `02_class.pluto` | Модуль-класс: своё состояние и функция для других модулей |
-| `03_tick.pluto` | `on_tick` каждый кадр и реакция только на изменения |
-| `04_deps.pluto` | Зависимость от другого модуля (`deps`) и вызов его функции через `self:get` |
-| `05_menu_functions.pluto` | Функции модуля в меню отладки, типы возврата, внутренние `_функции`, файлы в папке модуля |
-| `06_debug_display.pluto` | Настройка отображения в меню отладки: описания, аргументы по умолчанию, группы, скрытие |
-| `07_translations/` | Переводы модуля: своя папка `language`, `self:text` и `self:label` |
+| `01_basic.pluto` | The simplest module: a table of options, `on_start` / `on_stop` |
+| `02_class.pluto` | A module class: its own state and a function for other modules |
+| `03_tick.pluto` | `on_tick` every frame, reacting only to changes |
+| `04_deps.pluto` | Depending on another module (`deps`) and calling its function through `self:get` |
+| `05_menu_functions.pluto` | A module's functions in the debug menu, return types, internal `_functions`, files in the module's folder |
+| `06_debug_display.pluto` | Setting up how a module looks in the debug menu: descriptions, default arguments, groups, hiding |
+| `07_translations/` | A module's translations: its own `language` folder, `self:text` and `self:label` |
 
-## Как запустить
+## Running them
 
-1. Скопируйте нужные файлы в `src/lib/AnitaDarin/modules/`. Лучше каждый модуль в свою папку:
-   `modules/Counter/Counter.pluto`. `04_deps.pluto` нужен вместе с `02_class.pluto`.
-2. `python build.py sync` — копирует проект в Stand.
-3. Перезапустите скрипт в Stand. Модули из папки `modules` загружаются и запускаются при старте.
+1. Copy the files you want to `src/lib/AnitaDarin/modules/`. Each module is best in its own folder:
+   `modules/Counter/Counter.pluto`. `04_deps.pluto` needs `02_class.pluto` alongside it.
+2. `python build.py sync` copies the project to Stand.
+3. Restart the script in Stand. Modules from the `modules` folder load and start at startup.
 
-## Меню отладки модулей
+## The module debug menu
 
-«Настройки > Отладка > Модули», видно в режиме отладки (галочка «Режим отладки» там же).
+Settings > Debug > Modules, visible in debug mode (the "Debug Mode" checkbox is in the same place).
 
-- **У каждого модуля:** статус, «Запустить» / «Перезапустить» / «Остановить» / «Перезагрузить».
-- **«Отключить категории для функций»** (у каждого модуля своя): функции модуля одним списком, без
-  «Получателей» и других, а базовые функции разделом. Сохраняется после «Перезагрузить».
-- **Базовые функции** (список, с отключёнными категориями — раздел): `on_start()`, `on_stop()` по кнопке;
-  `on_tick()` — список с запуском цикла
-  вручную (с инициализацией, только цикл, на время) и статусом.
-- **Функции модуля:** каждая функция класса — список «Аргументы» (если есть параметры), «Вызвать»,
-  «Вызывать при открытии списка», «Вызывать при наведении», «Цикл», «Цикл с интервалом», «Остановить».
-  Результат вызова приходит уведомлением, у циклов рисуется на экране, таблицы раскрываются.
-- **Аргументы** пишутся как в Lua: `5, true, "текст", v3.new(1, 2, 3)`, вызовы и нативы
-  (`entities.get_user_vehicle_as_handle()`). Слово без кавычек — текст.
-- **Изменённый файл.** После правки: `build.py sync`, открыть «Модули» — у модуля появится
-  «· файл изменён». «Перезагрузить» (или «Перезагрузить изменённые») перечитает код без перезапуска скрипта.
+- **For each module:** status, "Start" / "Restart" / "Stop" / "Reload".
+- **"Disable Function Categories"** (each module has its own): the module's functions as one list, without "Getters"
+  and the others, and the base functions as a section. It's kept after "Reload".
+- **Base Functions** (a list; with categories disabled, a section): `on_start()` and `on_stop()` as buttons; `on_tick()`
+  as a list for running the loop by hand (with init, loop only, for a while) and its status.
+- **Module functions:** for each function of the class, a list with "Arguments" (if it has parameters), "Call", "Call
+  When Opened", "Call When Hovered", "Loop", "Loop With Interval" and "Stop". A call's result arrives as a notification,
+  loops draw theirs on screen, tables can be expanded.
+- **Arguments** are written as in Lua: `5, true, "text", v3.new(1, 2, 3)`, calls and natives
+  (`entities.get_user_vehicle_as_handle()`). A word without quotes is text.
+- **A changed file.** After an edit: `build.py sync`, open "Modules", and the module shows "· file changed". "Reload"
+  (or "Reload Changed") reads the code again without restarting the script.
 
-Встроить это меню в свой пакет: [menu/modules_debug.pluto](../menu/modules_debug.pluto).
+To embed this menu in your own pack: [menu/modules_debug.pluto](../menu/modules_debug.pluto).
 
-## Настройка отображения: опция `debug`
+## Setting up the display: the `debug` option
 
-Модуль может сам сказать, как он выглядит в меню отладки. Для этого нужна опция `debug`,
-в `parent:__construct({ ... })` или в `new Module({ ... })`. Всё в ней необязательно.
+A module can say how it looks in the debug menu. That's the `debug` option, in `parent:__construct({ ... })` or in
+`new Module({ ... })`. Everything in it is optional.
 
 ```lua
 parent:__construct({
@@ -51,79 +52,79 @@ parent:__construct({
     debug = {
         functions = {
             add_vehicle = {
-                help = "Запоминает машину",                         -- описание функции
-                params = { handle = "ручка машины" },              -- подсказки к параметрам
-                args = "entities.get_user_vehicle_as_handle()",    -- в поле «Аргументы» сразу
+                help = "Remembers the vehicle",                    -- the function's description
+                params = { handle = "the vehicle's handle" },      -- hints for its parameters
+                args = "entities.get_user_vehicle_as_handle()",    -- prefilled in "Arguments"
             },
         },
-        groups = {                                                 -- свои разделители
-            { name = "Получение", functions = { "get_handle", "get_handles" } },
-            { name = "Действия", functions = { "create", "delete_all" } },
+        groups = {                                                 -- dividers of your own
+            { name = "Getting", functions = { "get_handle", "get_handles" } },
+            { name = "Actions", functions = { "create", "delete_all" } },
         },
-        hide = { "explode_all", "current_vehicle" },               -- не показывать
-        categories = {                                             -- свои слова для списков
-            { key = "getters", words = { "find" } },               -- find_car тоже в «Получатели»
-            { key = "shop", name = "Магазин", words = { "buy", "sell" } },  -- свой список
+        hide = { "explode_all", "current_vehicle" },               -- not shown
+        categories = {                                             -- your own words for lists
+            { key = "getters", words = { "find" } },               -- find_car goes to "Getters" too
+            { key = "shop", name = "Shop", words = { "buy", "sell" } },  -- a list of your own
         },
     },
 })
 ```
 
-| Часть | Что делает |
+| Part | What it does |
 |---|---|
-| `functions.<имя>.help` | Описание функции в подсказке её списка |
-| `functions.<имя>.params` | Что значит каждый параметр. Видно в подсказке списка и поля «Аргументы» |
-| `functions.<имя>.live` | `true` — пока список функции открыт, она сама вызывается 4 раза в секунду и «Переменная» показывает текущее значение; `false` — только по вызову. Без него сами вызываются функции со словами `get`, `is`, `has`, `can` |
-| `functions.<имя>.args` | Текст в поле «Аргументы», пока не введено другое. Пишется как аргументы в меню: выражения Lua |
-| `groups` | Разделители со своими названиями. Функции идут под ними в заданном порядке, можно и с `_` / `__`. Не попавшие в группы остаются под «Функции», «Внутренние функции» и «Приватные функции» |
-| `hide` | Имена функций и переменных (полей модуля), которых не будет в меню |
-| `categories` | Слова для списков по именам (см. ниже): добавить слова к готовому списку по его `key` или завести свой список с `name` |
+| `functions.<name>.help` | The function's description, in its list's tooltip |
+| `functions.<name>.params` | What each parameter means. Shown in the tooltip of the list and of "Arguments" |
+| `functions.<name>.live` | `true`: while the function's list is open, it's called 4 times a second and "Variable" shows the current value; `false`: only when called. Without it, functions with the words `get`, `is`, `has`, `can` are called by themselves |
+| `functions.<name>.args` | Text in "Arguments" until something else is typed. Written like arguments in the menu: Lua expressions |
+| `groups` | Dividers with your own names. Functions go under them in the given order, `_` / `__` ones too. The rest stay under "Functions", "Internal Functions" and "Private Functions" |
+| `hide` | Names of functions and variables (module fields) that won't be in the menu |
+| `categories` | Words for lists by name (see below): add words to an existing list by its `key`, or make your own list with `name` |
 
-- **Ошибки сразу.** Неверный тип или опечатка в `debug` (например, `helps` вместо `help`) — ошибка
-  при создании модуля, а не тихо проигнорированная настройка.
-- **Поле `debug`.** Настройка хранится в `self.debug` и в «Переменных» не показывается.
-- **Скрытое не исчезает.** Скрытая функция остаётся в коде и вызывается из других модулей как обычно;
-  её просто нет в меню.
+- **Errors right away.** A wrong type or a typo in `debug` (say, `helps` instead of `help`) is an error when the module
+  is created, not a setting quietly ignored.
+- **The `debug` field.** The setup is kept in `self.debug` and isn't shown in "Variables".
+- **Hidden doesn't mean gone.** A hidden function stays in the code and other modules call it as usual; it's just not
+  in the menu.
 
-## Списки по словам в имени
+## Lists by a word in the name
 
-Функции сами раскладываются по спискам под «Функции» по слову в имени:
+Functions sort themselves into lists under "Functions" by a word in their name:
 
-| Слово | Список | `key` |
+| Word | List | `key` |
 |---|---|---|
-| `add` | «Добавлять» (Add) | `add` |
-| `get` | «Получатели» (Getters) | `getters` |
-| `set` | «Установщики» (Setters) | `setters` |
-| `is`, `has`, `can` | «Проверки» (Checks) | `checks` |
-| `load` | «Загрузка» (Loading) | `loading` |
-| `save` | «Сохранение» (Saving) | `saving` |
-| `remove` | «Удалять» (Remove): убрать из списка, сама вещь остаётся | `remove` |
-| `delete` | «Удалить» (Delete): уничтожить совсем | `delete` |
+| `add` | "Add" | `add` |
+| `get` | "Getters" | `getters` |
+| `set` | "Setters" | `setters` |
+| `is`, `has`, `can` | "Checks" | `checks` |
+| `load` | "Loading" | `loading` |
+| `save` | "Saving" | `saving` |
+| `remove` | "Remove": take it out of a list, the thing itself stays | `remove` |
+| `delete` | "Delete": destroy it for good | `delete` |
 
-- **Слово** — часть имени между `_` или с заглавной буквы: `get_handle` и `getHandle` попадут
-  в «Получатели», `budget` нет.
-- **Если подходит несколько списков**, функция идёт в первый по порядку.
-- **Кто не попадает.** Функции из `groups`, `_`-функции и `__`-функции в эти списки не попадают.
-  Пустые списки не показываются.
+- **A word** is a part of the name between `_`, or starting with a capital letter: `get_handle` and `getHandle` go to
+  "Getters", `budget` doesn't.
+- **If several lists match**, the function goes to the first in this order.
+- **What's left out.** Functions from `groups`, `_` functions and `__` functions don't go into these lists. Empty lists
+  aren't shown.
 
-Свои слова и свои списки:
+Your own words and lists:
 
 ```lua
--- Для одного модуля: опция debug.categories (см. выше)
+-- For one module: the debug.categories option (see above)
 
--- Для всех модулей: в любом файле, который загружается до открытия меню
+-- For all modules: in any file that loads before the menu is opened
 local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
-modules_menu.add_category("getters", { "find", "fetch" })        -- ещё слова для «Получателей»
-modules_menu.add_category("checks", { "has", "can" })            -- и для «Проверок»
-modules_menu.add_category("shop", { "buy", "sell" }, "Магазин")   -- новый список в конце
+modules_menu.add_category("getters", { "find", "fetch" })        -- more words for "Getters"
+modules_menu.add_category("checks", { "has", "can" })            -- and for "Checks"
+modules_menu.add_category("shop", { "buy", "sell" }, "Shop")     -- a new list at the end
 ```
 
-`add_category(key, words, name)`: если списка с таким `key` нет, он создаётся (название `name`,
-иначе сам `key`); если есть — к нему добавляются слова, а `name`, если дан, меняет его название.
+`add_category(key, words, name)`: if there's no list with that `key`, it's created (named `name`, otherwise the `key`
+itself); if there is one, the words are added to it, and `name`, when given, changes its name.
 
-## Переводы модуля
+## A module's translations
 
-Строки модуля лежат в его папке, а не в общих языковых файлах скрипта:
+A module's strings live in its own folder, not in the script's shared language files:
 
 ```
 modules/VehicleManager/
@@ -134,29 +135,30 @@ modules/VehicleManager/
 ```
 
 ```lua
-self.log:warn(self:text("wreck", "Vehicle %s can't be driven"):format(handle))   -- текст
-node:action(self:label("park", "Park"), ...)                                     -- метка для пункта меню
+self.log:warn(self:text("wreck", "Vehicle %s can't be driven"):format(handle))   -- text
+node:action(self:label("park", "Park"), ...)                                     -- a label for a menu item
 ```
 
-- **Ключи свои.** `wreck` модуля не пересекается ни со строками скрипта, ни с `wreck` другого модуля.
-- **Запасной английский.** Второй аргумент показывается, пока нет файла или ключа. Модулю без папки
-  (созданному в коде) он и остаётся.
-- **Язык** тот же, что у скрипта. Файлы читаются при первом `self:text` / `self:label`, «Перезагрузить»
-  перечитывает их заново.
-- **Сохранность.** Папка `language` модуля лежит в `lib` (копии, которую запускает Stand): `build.py sync`
-  копирует её вместе с модулем.
+- **The keys are its own.** A module's `wreck` doesn't clash with the script's strings or another module's `wreck`.
+- **English fallback.** The second argument shows while there's no file or key. A module without a folder (made in
+  code) just keeps it.
+- **The language** is the script's. The files are read on the first `self:text` / `self:label`, and "Reload" reads them
+  again.
+- **Staying safe.** A module's `language` folder is in `lib` (the copy Stand runs): `build.py sync` copies it along with
+  the module.
 
-## Правила
+## Rules
 
-- `name` уникален среди всех модулей. Повторное имя — ошибка при загрузке файла.
-- Переопределяйте только хуки `on_start`, `on_stop`, `on_tick`. Методы `start`, `stop`, `tick` трогать нельзя.
-- Ошибка в хуке не роняет скрипт: модуль получает статус «ошибка», текст ошибки виден в подсказке в меню «Модули».
-- В `on_tick` не вызывайте `notify` без проверки: уведомление будет появляться 60 раз в секунду.
-- Другой модуль берите через `self:get(name)` внутри хуков, а не в начале файла.
-- Пишите тип возврата у функций (`function get(): int`): меню его покажет.
-- Вспомогательные функции называйте с `_`: в меню они стоят отдельно, внизу под «Внутренние функции».
-  С `__` — ещё ниже, под «Приватные функции». `__construct` и метаметоды (`__index`, `__tostring`...) не показываются.
-- Не называйте функции так же, как методы `Module`: `get`, `start`, `stop`, `tick`, `fail`, `folder`,
-  `json_file`, `is_running`, `has_tick`. Такая функция перекроет метод, а в меню её не будет.
-- Внутри `$"..."` используйте одинарные кавычки: `$"module '{self.name}'"`. Двойная кавычка закрывает строку.
-- Не называйте локальную переменную так же, как параметр функции: она его перекроет, и параметр станет `nil`.
+- `name` is unique among all modules. A repeated name is an error when the file loads.
+- Override only the hooks `on_start`, `on_stop`, `on_tick`. Don't touch the `start`, `stop`, `tick` methods.
+- An error in a hook doesn't bring the script down: the module gets the "error" status, and the error's text is in its
+  tooltip in the "Modules" menu.
+- Don't call `notify` in `on_tick` without a check: the notification would appear 60 times a second.
+- Get another module with `self:get(name)` inside hooks, not at the top of the file.
+- Write return types on functions (`function get(): int`): the menu shows them.
+- Name helper functions with `_`: in the menu they're kept apart, at the bottom under "Internal Functions". With `__`,
+  even lower, under "Private Functions". `__construct` and metamethods (`__index`, `__tostring`...) aren't shown.
+- Don't name functions like `Module`'s methods: `get`, `start`, `stop`, `tick`, `fail`, `folder`, `json_file`,
+  `is_running`, `has_tick`. Such a function would override the method and wouldn't be in the menu.
+- Inside `$"..."` use single quotes: `$"module '{self.name}'"`. A double quote ends the string.
+- Don't name a local variable after a function's parameter: it shadows the parameter, which then becomes `nil`.

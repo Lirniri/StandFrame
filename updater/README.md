@@ -1,33 +1,36 @@
-# Автообновление
+# Auto-update
 
-Обновлялка скрипта. Пока лежит отдельно: скрипт её не загружает. Растёт вместе с проектом и будет подключена позже.
+**English** | [Русский](README.ru.md)
 
-| Файл | Что делает |
+The script's updater. For now it stands apart: the script doesn't load it. It grows with the project and will be
+connected later.
+
+| File | What it does |
 |---|---|
-| [updater.pluto](updater.pluto) | Обновлялка для Stand: сверяет установленные файлы с релизом, скачивает изменённые, удаляет убранные |
-| [manifest.py](manifest.py) | Делает `manifest.json`: все файлы `src` из git с их sha256 — это и есть релиз |
+| [updater.pluto](updater.pluto) | The updater for Stand: compares installed files with the release, downloads changed ones, removes dropped ones |
+| [manifest.py](manifest.py) | Makes `manifest.json`: every file of `src` from git with its sha256; that is the release |
 
-## Как это работает
+## How it works
 
-1. Перед отправкой в `main` запускается `python updater/manifest.py` (`--version 0.1.0`, чтобы задать версию).
-   `--check` скажет, отстаёт ли манифест от `src`.
-2. `updater.check()` скачивает `updater/manifest.json` из `main` и сравнивает каждый файл с установленным по хешу.
-   Текст сравнивается без `\r`, так что копия с `\r\n` не считается изменённой.
-3. `updater.apply(plan)` скачивает изменённые файлы, сверяет каждый с хешем из манифеста и, только если все
-   сошлись, записывает их: сначала рядом (`.update`), потом поверх. Ошибка на любом шаге — ничего не меняется.
+1. Before pushing to `main`, run `python updater/manifest.py` (`--version 0.1.0` sets the version). `--check` tells
+   whether the manifest is behind `src`.
+2. `updater.check()` downloads `updater/manifest.json` from `main` and compares each file with the installed one by
+   hash. Text is compared without `\r`, so a copy with `\r\n` doesn't count as changed.
+3. `updater.apply(plan)` downloads the changed files, checks each against the manifest's hash and writes them only if
+   all match: first alongside (`.update`), then over the originals. An error at any step changes nothing.
 
-Скрипт с другим именем обновляется под своим: `lib/AnitaDarin/...` из репозитория пишется в `lib/<имя>/...`.
-Пути вне папок скрипта манифест записать не может.
+A script with another name is updated under its own: `lib/AnitaDarin/...` from the repository is written to
+`lib/<name>/...`. The manifest can't write to paths outside the script's folders.
 
-## Что не трогается
+## What's left alone
 
-- Данные пользователя в `store/<имя>/`: `config.json`, папки `profiles`, `logs`, `commands` (и у паков меню).
-  Создаются, только если их нет.
-- Файлы, которых обновлялка не ставила: меню, скопированное в ядро, свои паки, свои модули.
-  Удаляются только файлы, которые были в прошлом установленном релизе (`store/<имя>/updater/installed.json`)
-  и пропали из нового. После установки через `build.py` первое обновление ничего не удаляет.
+- The user's data in `store/<name>/`: `config.json` and the `profiles`, `logs`, `commands` folders (for menu packs too).
+  They're created only if missing.
+- Files the updater didn't install: a menu copied into the core, your own packs and modules. Only files that were in
+  the last installed release (`store/<name>/updater/installed.json`) and are gone from the new one get removed. After an
+  install with `build.py`, the first update removes nothing.
 
-## Пример
+## Example
 
 ```lua
 local updater = require("updater")
@@ -47,5 +50,5 @@ util.create_thread(function()
 end)
 ```
 
-Тесты: [tests/test_updater.pluto](../tests/test_updater.pluto) (фейковый GitHub) и
+Tests: [tests/test_updater.pluto](../tests/test_updater.pluto) (a fake GitHub) and
 [tests/test_updater_manifest.py](../tests/test_updater_manifest.py).
