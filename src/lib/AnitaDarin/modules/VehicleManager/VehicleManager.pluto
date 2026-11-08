@@ -277,6 +277,27 @@ local class VehicleManager extends Module
         return handle
     end
 
+    function delete(handle): void
+        local n_vehicle = Atdar.natives.entity.vehicle
+        if math.type(handle) == "integer"
+            and n_vehicle.is_exist(handle)
+            and n_vehicle.delete(handle)
+            then
+        end
+        self:remove_vehicle(handle)
+    end
+
+    function delete_last(): void
+        local handle = self:get_handle()
+        local n_vehicle = Atdar.natives.entity.vehicle
+        if math.type(handle) == "integer"
+            and n_vehicle.is_exist(handle)
+            and n_vehicle.delete(handle)
+            then
+        end
+        self:remove_vehicle(handle)
+    end
+
     -- Deletes every remembered vehicle from the game and forgets them
     -- @return How many were deleted (ones already gone are only forgotten)
     function delete_all(): int
