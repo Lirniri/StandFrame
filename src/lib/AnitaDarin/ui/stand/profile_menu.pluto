@@ -679,7 +679,7 @@ function module.auto_copy(node: table): void
         else
             log:notify(text("auto_copy.disabled"))
         end
-    end, { "autocopy" }, label("auto_copy.help"))
+    end, { "menuloaderautocopy" }, label("auto_copy.help"))
 end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────
@@ -725,7 +725,7 @@ function module.debug(node: table): void
     node:action(label("reload_natives.name"), function()
         local count = Atdar.loader.reload(Atdar.natives, "natives")
         log:success(text("reload_natives.done"):format(count))
-    end, { "reloadnatives" }, label("reload_natives.help"))
+    end, { "debugreloadnatives" }, label("reload_natives.help"))
 end
 
 -- ─── Keep Logs ───────────────────────────────────────────────────────────────

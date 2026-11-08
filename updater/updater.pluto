@@ -1,0 +1,339 @@
+-- updater/updater.pluto
+--
+-- The script's auto-updater, kept apart from the script while both grow: the script doesn't load it yet.
+--
+-- What a release is: updater/manifest.json in the repo's release branch (main), made by
+-- updater/manifest.py - every file of src with its sha256. The updater reads it, compares each file with
+-- the one installed, downloads those that differ from raw.githubusercontent.com, checks every download
+-- against its hash and only when all came right writes them. A renamed script is updated under its name.
+--
+-- Kept as they are: what the script writes while it runs (see is_user_data) and files the updater didn't
+-- put there (a menu copied to core, a pack of one's own). Removed: only files a previous update put
+-- there that the new release doesn't have.
+--
+-- Use, from a thread (it yields while downloading):
+--     local updater = require("updater")
+--     util.create_thread(function()
+--         local plan, err = updater.check({ name = Atdar.name })
+--         if plan == nil then
+--             util.toast(err)
+--             return
+--         end
+--         if updater.is_up_to_date(plan) then
+--             return
+--         end
+--         local ok, apply_err = updater.apply(plan)
+--         if ok then
+--             util.restart_script()
+--         end
+--     end)
+
+local json = require "pluto:json"
+local crypto = require "pluto:crypto"
+
+local module = {}
+
+-- Where releases come from; each can be given in opts instead
+module.DEFAULTS = {
+    host = "raw.githubusercontent.com",
+    repo = "Lirniri/Stand-AnitaDarin",
+    branch = "main",
+    -- The manifest's place in the repo
+    manifest = "updater/manifest.json",
+    -- The repo's folder the manifest's paths are under
+    src = "src",
+    -- The name in the repo's paths: src/AnitaDarin.pluto, src/lib/AnitaDarin/...
+    project = "AnitaDarin",
+    -- How long one download may take, ms
+    timeout = 15000,
+}
+
+-- The folders of Lua Scripts that hold a <name> folder of the script
+local ROOTS = { "lib", "store", "resources" }
+
+-- Compared as they are; any other file is text, compared without \r (a Windows copy has \r\n)
+local BINARY = {
+    png = true, jpg = true, jpeg = true, gif = true, bmp = true, ico = true, dds = true, ytd = true,
+    ttf = true, otf = true, wav = true, mp3 = true, ogg = true, zip = true, dll = true, bin = true,
+}
+
+-- What the script writes while it runs, in store/<project>/: its config.json and whatever is in a
+-- profiles, logs or commands folder (a pack's in store/<project>/menu/<pack>/ too)
+local USER_FOLDERS = { profiles = true, logs = true, commands = true }
+
+-- ─── Paths ───────────────────────────────────────────────────────────────────
+
+-- opts over DEFAULTS, plus name (the script's, project if not given) and scripts_dir (Lua Scripts)
+local function options(opts: ?table): table
+    local o = {}
+    for key, value in pairs(module.DEFAULTS) do
+        o[key] = value
+    end
+    for key, value in pairs(opts or {}) do
+        o[key] = value
+    end
+    o.name = o.name or o.project
+    o.scripts_dir = o.scripts_dir or filesystem.scripts_dir()
+    return o
+end
+
+-- Where a manifest path goes in Lua Scripts, under the script's name:
+-- "lib/AnitaDarin/core/loader.pluto" -> "<Lua Scripts>lib\<name>\core\loader.pluto".
+-- A manifest can't write anywhere else: a path outside the script's own places gives nil
+-- @param o The options (scripts_dir, project, name)
+-- @return The full path, or nil
+function module.target_of(path: string, o: table): ?string
+    if path:find("..", 1, true) or path:find("\\", 1, true) or path:find(":", 1, true) or path:sub(1, 1) == "/" then
+        return nil
+    end
+    if path == $"{o.project}.pluto" then
+        return $"{o.scripts_dir}{o.name}.pluto"
+    end
+    for _, root in ipairs(ROOTS) do
+        local prefix = $"{root}/{o.project}/"
+        if path:sub(1, #prefix) == prefix and #path > #prefix then
+            local rest = path:sub(#prefix + 1):gsub("/", "\\")
+            return $"{o.scripts_dir}{root}\\{o.name}\\{rest}"
+        end
+    end
+    return nil
+end
+
+-- Whether the file is the user's, written by the script while it runs: made when missing, never
+-- replaced or removed. "store/AnitaDarin/config.json", "store/AnitaDarin/profiles/main.json"
+function module.is_user_data(path: string, project: string): bool
+    local prefix = $"store/{project}/"
+    if path:sub(1, #prefix) ~= prefix then
+        return false
+    end
+    local rest = path:sub(#prefix + 1)
+    if rest == "config.json" then
+        return true
+    end
+    for folder in rest:gmatch("([^/]+)/") do
+        if USER_FOLDERS[folder] then
+            return true
+        end
+    end
+    return false
+end
+
+-- The file's sha256 as the manifest has it: text without \r, so the same file with \r\n matches
+-- @param path Its manifest path (the extension tells text from binary)
+function module.hash(path: string, content: string): string
+    local extension = path:match("%.([^./]+)$")
+    if extension == nil or not BINARY[extension:lower()] then
+        content = content:gsub("\r\n", "\n")
+    end
+    return crypto.sha256(content)
+end
+
+local function read_file(path: string): ?string
+    local file = io.open(path, "rb")
+    if file == nil then
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    return content
+end
+
+-- @return true, or false and why not
+local function write_file(path: string, content: string)
+    local dir = path:match("^(.*)[/\\][^/\\]+$")
+    if dir ~= nil and not filesystem.exists(dir) then
+        filesystem.mkdirs(dir)
+    end
+    local file, err = io.open(path, "wb")
+    if file == nil then
+        return false, err
+    end
+    file:write(content)
+    file:close()
+    return true
+end
+
+-- The release the last update installed: store/<name>/updater/installed.json
+local function installed_path(o: table): string
+    return $"{o.scripts_dir}store\\{o.name}\\updater\\installed.json"
+end
+
+-- @return { version, files }, or nil if nothing was installed by an update yet
+function module.installed(opts: ?table): ?table
+    local text = read_file(installed_path(options(opts)))
+    if text == nil then
+        return nil
+    end
+    local data = json.decode(text)
+    if type(data) ~= "table" or type(data.files) ~= "table" then
+        return nil
+    end
+    return data
+end
+
+-- ─── Downloading ─────────────────────────────────────────────────────────────
+
+-- Characters a URL path can't have as they are: "%20" for a space
+local function url_path(path: string): string
+    return (path:gsub("[^%w%-%._~/]", |c| -> string.format("%%%02X", c:byte())))
+end
+
+-- "/Lirniri/Stand-AnitaDarin/main/src/lib/AnitaDarin/core/loader.pluto"
+local function raw_path(o: table, path: string): string
+    return url_path($"/{o.repo}/{o.branch}/{path}")
+end
+
+-- GETs https://<host><path> and waits for the answer. Yields: call it from a thread
+-- @return The body, or nil and why not
+function module.fetch(host: string, path: string, timeout: int = 15000)
+    local done, body, err = false, nil, nil
+    async_http.init(host, path, function(result, headers, status)
+        if status ~= nil and status ~= 200 then
+            err = $"HTTP {status}"
+        else
+            body = result
+        end
+        done = true
+    end, function(reason)
+        err = reason or "failed"
+        done = true
+    end)
+    async_http.dispatch()
+    local started = util.current_time_millis()
+    while not done do
+        if util.current_time_millis() - started > timeout then
+            return nil, "timed out"
+        end
+        util.yield()
+    end
+    return body, err
+end
+
+-- ─── Check and apply ─────────────────────────────────────────────────────────
+
+local function sorted_keys(tbl: table): table
+    local keys = {}
+    for key in pairs(tbl) do
+        table.insert(keys, key)
+    end
+    table.sort(keys)
+    return keys
+end
+
+-- What an update with this manifest would do, comparing it with the installed files (read from disk).
+-- Yields now and then, the files being many: call it from a thread
+-- @param o The options (see check)
+-- @return { version, download = { paths }, remove = { paths }, skipped = { paths }, manifest, opts }:
+-- download - missing or different (user data only when missing); remove - put there by the last update,
+-- gone from this release; skipped - paths outside the script's places, never written
+function module.plan(manifest: table, o: table): table
+    local plan = { version = manifest.version, download = {}, remove = {}, skipped = {}, manifest = manifest, opts = o }
+    for i, path in ipairs(sorted_keys(manifest.files)) do
+        local target = module.target_of(path, o)
+        if target == nil then
+            table.insert(plan.skipped, path)
+        elseif module.is_user_data(path, o.project) then
+            if not filesystem.exists(target) then
+                table.insert(plan.download, path)
+            end
+        else
+            local content = read_file(target)
+            if content == nil or module.hash(path, content) ~= manifest.files[path].sha256 then
+                table.insert(plan.download, path)
+            end
+        end
+        if i % 25 == 0 then
+            util.yield()
+        end
+    end
+    -- Only what an update put there: a file the updater doesn't know of stays
+    local installed = module.installed(o)
+    if installed ~= nil then
+        for _, path in ipairs(sorted_keys(installed.files)) do
+            local target = module.target_of(path, o)
+            if manifest.files[path] == nil and target ~= nil and not module.is_user_data(path, o.project)
+                and filesystem.exists(target) then
+                table.insert(plan.remove, path)
+            end
+        end
+    end
+    return plan
+end
+
+-- Whether the plan has nothing to do
+function module.is_up_to_date(plan: table): bool
+    return #plan.download == 0 and #plan.remove == 0
+end
+
+-- Downloads the release's manifest and compares it with the installed files. Yields: call it from a thread
+-- @param opts Over DEFAULTS: name (the script's name, Atdar.name), scripts_dir, repo, branch, ...
+-- @return The plan (see plan), or nil and why not
+function module.check(opts: ?table)
+    local o = options(opts)
+    if async_http.have_access ~= nil and not async_http.have_access() then
+        return nil, "Lua scripts have no internet access (Stand > Lua Scripts > Settings)"
+    end
+    local body, err = module.fetch(o.host, raw_path(o, o.manifest), o.timeout)
+    if body == nil then
+        return nil, $"manifest: {err}"
+    end
+    local manifest = json.decode(body)
+    if type(manifest) ~= "table" or type(manifest.files) ~= "table" then
+        return nil, "manifest: not a manifest"
+    end
+    if manifest.project ~= o.project then
+        return nil, $"manifest: it's for '{tostring(manifest.project)}', not '{o.project}'"
+    end
+    return module.plan(manifest, o), nil
+end
+
+-- Carries the plan out: downloads its files and checks each against the manifest; only when all came
+-- right writes them (first next to their places, then over them) and removes the old ones, then
+-- remembers the release as installed. Yields: call it from a thread. Restart the script after it
+-- @param on_progress function(done, total) after each download; optional
+-- @return true, or false and why not (nothing written then)
+function module.apply(plan: table, on_progress: ?function)
+    local o = plan.opts
+    local contents = {}
+    for i, path in ipairs(plan.download) do
+        local body, err = module.fetch(o.host, raw_path(o, $"{o.src}/{path}"), o.timeout)
+        if body == nil then
+            return false, $"{path}: {err}"
+        end
+        -- GitHub may serve a file older than the manifest for a few minutes
+        if module.hash(path, body) ~= plan.manifest.files[path].sha256 then
+            return false, $"{path}: doesn't match the manifest, try again in a few minutes"
+        end
+        contents[path] = body
+        if on_progress ~= nil then
+            on_progress(i, #plan.download)
+        end
+    end
+
+    -- Written next to their places first: a failure leaves the script as it was
+    local written = {}
+    for _, path in ipairs(plan.download) do
+        local temp = module.target_of(path, o) .. ".update"
+        local ok, err = write_file(temp, contents[path])
+        if not ok then
+            for _, done in ipairs(written) do
+                os.remove(done)
+            end
+            return false, $"{path}: {err}"
+        end
+        table.insert(written, temp)
+    end
+    for _, path in ipairs(plan.download) do
+        local target = module.target_of(path, o)
+        os.remove(target)
+        os.rename($"{target}.update", target)
+    end
+    for _, path in ipairs(plan.remove) do
+        os.remove(module.target_of(path, o))
+    end
+
+    write_file(installed_path(o), json.encode({ version = plan.version, files = plan.manifest.files }, true))
+    return true
+end
+
+return module

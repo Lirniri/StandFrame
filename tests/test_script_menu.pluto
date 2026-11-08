@@ -250,7 +250,9 @@ stand.check(UNLOADED, "Unload calls the menu's unload")
 -- Found Commands is the loaded menu's: none here
 local found = stand.child(find("Command Box"), "Base Commands")
 stand.equal(names_in(stand.child(find("Command Box"), "Found Commands")),
-    "Open Commands Folder | No menu is loaded or it has no commands", "Found Commands: its folder, no menu, no commands")
+    "Open Commands Folder | Commands | No menu is loaded or it has no commands",
+    "Found Commands: its folder, the Commands divider, no menu, no commands")
+stand.equal(found.children[2].kind, "divider", "Base Commands: the Commands divider under its folder too")
 local function row(command)
     for _, child in found.children do
         if stand.name_of(child) == command then
@@ -260,6 +262,10 @@ local function row(command)
     return nil
 end
 stand.check(#found.children > 5, $"Base Commands lists the section's commands ({#found.children})")
+-- Load Menu and what's in it: all start with menuloader
+for _, command in { "menuloader", "menuloaderunload", "menuloaderautocopy" } do
+    stand.check(row(command) ~= nil, $"Load Menu's command {command}")
+end
 local debug_row = row("debug")
 stand.equal(debug_row and debug_row.kind, "list", "a row is a list named by the command without the prefix")
 stand.equal(debug_row.help, "Debug Mode", "its help is the item's name")

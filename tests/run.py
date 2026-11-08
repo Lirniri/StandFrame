@@ -5,7 +5,7 @@
     python tests/run.py -v         also print the output of passing tests
 
 Steps:
-  1. syntax   - plutoc parses every .pluto in src, examples and tests (with the launcher's pluto_use line)
+  1. syntax   - plutoc parses every .pluto in src, examples, tests and updater (with the launcher's pluto_use line)
   2. natives  - every NAMESPACE.NATIVE(...) call in src exists in the natives dump
                 (experiments/natives-3407a/init.lua, kept locally; skipped if missing)
   3. tests    - each tests/test_*.pluto runs in its own pluto process against the fake Stand API (tests/stand.pluto)
@@ -42,7 +42,7 @@ def check_syntax(plutoc):
     TMP.mkdir(exist_ok=True)
     probe = TMP / "syntax.pluto"
     failures = []
-    files = [p for folder in ("src", "examples", "tests") for p in sorted((ROOT / folder).rglob("*.pluto"))
+    files = [p for folder in ("src", "examples", "tests", "updater") for p in sorted((ROOT / folder).rglob("*.pluto"))
              # Files the tests write, some broken on purpose
              if TMP not in p.parents]
     for path in files:

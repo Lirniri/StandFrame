@@ -321,9 +321,11 @@ function module.build(section: table, opts: table): void
 
     profile_menu.profiles(section, opts.refresh)
 
-    local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), {},
+    -- Its commands all start with menuloader: menuloader, menuloaderunload, menuloaderautocopy,
+    -- menuloaderbuiltin, menuloader<pack folder>
+    local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
         i18n.label("menu_loader.load_menu.help"))
-    load_menu:action(label("unload.name"), opts.unload, {}, label("unload.help"))
+    load_menu:action(label("unload.name"), opts.unload, { "menuloaderunload" }, label("unload.help"))
     profile_menu.auto_copy(load_menu)
     opts.fill_menus(load_menu)
 
@@ -345,6 +347,8 @@ function module.build(section: table, opts: table): void
             end
             util.open_folder(dir)
         end, {}, label($"commands_folder.{part.who}_help"))
+        -- The folder apart from the commands under it
+        part.list:divider(label("commands_divider"))
     end
 
     local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))

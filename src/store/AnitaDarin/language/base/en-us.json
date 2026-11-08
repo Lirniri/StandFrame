@@ -25,8 +25,8 @@
             "removed": "Removed from core: %d file(s)"
         },
         "pack": {
-            "help": "v%s by %s\nRuns the pack's own code with full script access. Only load packs you trust.",
-            "options_help": "Copy to core: puts the pack into the script as its built-in menu; its code will then run on every start. Existing files are never overwritten.\nMenu Folder / Features Folder: show the pack's files.",
+            "help": "v%s by %s\nRuns its own code with full access: load only packs you trust",
+            "options_help": "Copy to core: becomes the built-in menu and runs at every start",
             "unknown_version": "?",
             "unknown_author": "unknown"
         },

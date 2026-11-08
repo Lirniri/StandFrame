@@ -10,7 +10,7 @@ end
 
 function module.is_dead(vehicle: int): bool
     local n_entity = Atdar.natives.entity
-    if module.is_exist(vehicle) then
+    if module.is_vehicle(vehicle) then
         return n_entity.is_dead(vehicle)
     end
 end
@@ -147,6 +147,9 @@ local FIRE_RADIUS = 5.0
 -- @return Whether it was a vehicle (nothing is done otherwise)
 function module.repair(vehicle: int, dirt_level: float|bool = false, start_engine: bool = false): bool
     if not module.is_exist(vehicle) then
+        return false
+    end
+    if not module.is_dead(vehicle) then
         return false
     end
     local control = Atdar.natives.network.control

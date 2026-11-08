@@ -233,6 +233,13 @@ local function with_state(name: string, loaded: bool, in_core: bool): string
     return text("state.name"):format(name, table.concat(states, ", "))
 end
 
+-- A pack's command: menuloader and its folder, lower case, letters and digits only
+-- ("Example Pack" -> "menuloaderexamplepack")
+local function pack_command(info: table): string
+    local word = info.folder:lower():gsub("[^%w]", "")
+    return $"menuloader{word}"
+end
+
 -- Adds an entry per available menu: the built-in one (if any) and every pack in store, with their state.
 -- The section is rebuilt after every load and unload, so the states are always current
 local function fill_picker(node: table): void
@@ -252,10 +259,10 @@ local function fill_picker(node: table): void
                 else
                     remove_builtin()
                 end
-            end, {}, text("builtin.copied_help"):format(manifest.pack))
+            end, { "menuloaderbuiltin" }, text("builtin.copied_help"):format(manifest.pack))
             node:divider(label("menus"))
         else
-            node:action(name, load_builtin, {}, label("builtin.help"))
+            node:action(name, load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
         end
     end
     local packs = builder.find_loadable_packs(PACKS_DIR)
@@ -275,7 +282,7 @@ local function fill_picker(node: table): void
             elseif index == 4 then
                 open_features_folder(info)
             end
-        end, {}, help)
+        end, { pack_command(info) }, help)
     end
     if not builtin and #packs == 0 then
         node:divider(label("no_menus"))
