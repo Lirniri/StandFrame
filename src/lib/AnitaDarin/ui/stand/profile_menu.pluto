@@ -54,7 +54,7 @@ local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "blac
 local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
 
 -- Profile keys edited through text fields
-local INPUT_KEYS = { "display_name", "short_name", "command_prefix", "found_command_prefix",
+local INPUT_KEYS = { "display_name", "short_name", "command_prefix", "found_command_prefix", "user_command_prefix",
     "notify_emoticon_info", "notify_emoticon_warn", "notify_emoticon_error", "notify_emoticon_success" }
 
 -- Items of the latest build, updated in place when profile values change. Reset by begin()
@@ -196,6 +196,7 @@ local function update_captions(): void
     rename(view.settings_of, settings_caption())
     rename(view.separator, separator_caption())
     rename(view.found_separator, separator_caption("found_command_separator", "found_separator.name"))
+    rename(view.user_separator, separator_caption("user_command_separator", "user_separator.name"))
     rename(view.log_name, log_name_caption())
     rename(view.notify_target, notify_caption())
     rename(view.feed_style, feed_style_caption())
@@ -793,6 +794,16 @@ function module.command_box(node: table): void
         function(index)
         Atdar.profile.set("found_command_separator", SEPARATORS[index])
     end, { "cbfoundseparator" }, label("found_separator.help"))
+end
+
+-- The user's own commands' prefix and separator, at the top of User Commands: cbuserprefix, cbuserseparator
+function module.user_command_box(node: table): void
+    local options = { label("separator.none"), label("separator.underscore") }
+    input(node, "user_command_prefix", true, "cbuserprefix")
+    view.user_separator = node:list_action(separator_caption("user_command_separator", "user_separator.name"), options,
+        function(index)
+        Atdar.profile.set("user_command_separator", SEPARATORS[index])
+    end, { "cbuserseparator" }, label("user_separator.help"))
 end
 
 -- ─── Debug Mode ──────────────────────────────────────────────────────────────

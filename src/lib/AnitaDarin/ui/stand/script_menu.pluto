@@ -20,6 +20,7 @@ local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/commands")
 local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
+local user_commands = Atdar.loader.load("ui/stand/user_commands")
 -- The Modules place only: the list's items (ui/stand/modules_menu) load when it's first opened
 local modules_place = Atdar.loader.load("ui/stand/modules_place")
 local updater_menu = Atdar.loader.load("ui/stand/updater_menu")
@@ -252,9 +253,12 @@ local function fill_command_lists(base: table, found: table): void
     local counts = { script = 0, menu = 0 }
     for _, item in ipairs(commands.list()) do
         local who = commands.owner_of(item.ref)
-        local list = who == "menu" and found or base
-        table.insert(found_rows, command_entry(list, item.ref))
-        counts[who] = (counts[who] or 0) + 1
+        -- The user's own commands have their list (User Commands), named there
+        if who ~= "user" then
+            local list = who == "menu" and found or base
+            table.insert(found_rows, command_entry(list, item.ref))
+            counts[who] = (counts[who] or 0) + 1
+        end
     end
     if counts.script == 0 then
         base:readonly_name(label("base_commands.none"))
@@ -346,6 +350,7 @@ function module.build(section: table, opts: table): void
     command_box:divider(label("commands_divider"))
     local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
     local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
+    user_commands.build(command_box)
     -- The folder each list's names and words are kept in; made when it isn't there yet
     for _, part in ipairs({ { list = base_commands, who = "script" }, { list = found, who = "menu" } }) do
         part.list:action(label("commands_folder.name"), function()

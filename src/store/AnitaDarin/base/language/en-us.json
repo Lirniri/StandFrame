@@ -127,6 +127,14 @@
             "name": "Found Commands Separator: %s",
             "help": "Between the prefix and the name of the loaded menu's commands. A different prefix or separator than the base commands' keeps the same names apart"
         },
+        "user_command_prefix": {
+            "name": "Prefix",
+            "help": "Prefix of your own commands; empty for none. Commands are renamed right away"
+        },
+        "user_separator": {
+            "name": "Separator: %s",
+            "help": "Between the prefix and the name of your own commands"
+        },
         "log_name": {
             "name": "Name In Logs: %s",
             "help": "Which name log and notification lines start with",
@@ -585,6 +593,40 @@
                 "own": "'%s' is this command's already"
             },
             "not_saved": "The custom command names couldn't be saved"
+        },
+        "user_commands": {
+            "name": "User Commands",
+            "help": "Your own commands: a name that runs other commands, Stand's or the script's, one after another",
+            "create": {
+                "name": "Create",
+                "help": "Type the new command's name: it shows below, then write what it runs in its Commands"
+            },
+            "remove": {
+                "name": "Remove",
+                "help": "Removes the command picked, with its file",
+                "warning": "Remove the command %s?"
+            },
+            "run": {
+                "name": "Run",
+                "help": "Runs the commands written in Commands"
+            },
+            "commands": {
+                "name": "Commands",
+                "help": "What it runs: Stand's or the script's commands separated by ; - godmode on; tpwaypoint"
+            },
+            "description": {
+                "name": "Description",
+                "help": "Shown as the help of Run and of the command"
+            },
+            "runs": "Runs: %s",
+            "none": "No commands yet: Create one above",
+            "created": "Command %s created: write what it runs in its Commands",
+            "exists": "There's a command %s already",
+            "invalid": "'%s' has nothing usable for a command name (a-z, 0-9, _)",
+            "removed": "Command %s removed",
+            "nothing": "%s runs nothing yet: write its Commands",
+            "loop": "%s runs itself over and over: stopped",
+            "failed": "%s failed: %s"
         },
         "commands_folder": {
             "name": "Open Commands Folder",

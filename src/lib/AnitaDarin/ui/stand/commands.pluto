@@ -12,7 +12,9 @@
 --                     or core's for the built-in menu
 --   the script      - store/<script>/commands/
 -- An older commands.json there ({ base: name }) is still read, and goes once the folder is written.
--- Items made between begin_menu() and end_menu() are the menu's, all others the script's
+-- Items made between begin_menu() and end_menu() are the menu's, between begin_user() and end_user() the
+-- user's own commands (ui/stand/user_commands: named by the user, no custom names or words), all others
+-- the script's
 
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
@@ -23,19 +25,22 @@ local log = new Logger("Commands")
 
 local module = {}
 
--- Prefix and separator of each owner: "script" (Base Commands) and "menu" (Found Commands)
+-- Prefix and separator of each owner: "script" (Base Commands), "menu" (Found Commands) and "user"
+-- (User Commands)
 local config = {
     use_prefix = true,
     script = { prefix = "atdar", separator = "" }, -- separator "" -> atdargodmode, "_" -> atdar_godmode
     menu = { prefix = "atdar", separator = "" },
+    user = { prefix = "atdar", separator = "" },
 }
 
 -- ref -> base names it was created with
 local tracked = {}
 -- ref -> "menu" or "script": whose item it is, so whose custom names apply
 local owner = {}
--- Set while the loaded menu builds: items made then are its own
-local building_menu = false
+-- Whose items are being made: "menu" while the loaded menu builds, "user" while the user's commands
+-- are made, nil for the script's
+local building = nil
 
 -- Custom names and extra words of each owner: base name -> { name = custom base name or nil,
 -- words = { ... } } (all sanitized), the folder they're kept in and the older commands.json there.
@@ -82,9 +87,15 @@ local function script_custom(): table
     return custom.script
 end
 
+-- The user's commands have no custom names or words: the user names them already
+local NO_CUSTOM = {}
+
 local function custom_of_owner(who: string): table
     if who == "menu" then
         return custom.menu
+    end
+    if who == "user" then
+        return NO_CUSTOM
     end
     return script_custom()
 end
@@ -124,10 +135,7 @@ end
 
 -- Whose items are being made now
 local function current_owner(): string
-    if building_menu then
-        return "menu"
-    end
-    return "script"
+    return building or "script"
 end
 
 -- @return Full command names for a list of base names, with the custom names of whoever makes the item now
@@ -264,11 +272,20 @@ function module.begin_menu(menu_dir: string): void
     dirs.menu = $"{menu_dir}commands\\"
     legacy.menu = new JsonFile($"{menu_dir}commands.json")
     custom.menu = read_names(dirs.menu, legacy.menu)
-    building_menu = true
+    building = "menu"
 end
 
 function module.end_menu(): void
-    building_menu = false
+    building = nil
+end
+
+-- The user's own commands are made (ui/stand/user_commands): their prefix and separator until end_user()
+function module.begin_user(): void
+    building = "user"
+end
+
+function module.end_user(): void
+    building = nil
 end
 
 -- Writes one command's file: its name and words; with neither left the file goes
@@ -487,6 +504,8 @@ local PROFILE_KEYS = {
     command_separator = { who = "script", what = "separator" },
     found_command_prefix = { who = "menu", what = "prefix" },
     found_command_separator = { who = "menu", what = "separator" },
+    user_command_prefix = { who = "user", what = "prefix" },
+    user_command_separator = { who = "user", what = "separator" },
 }
 
 -- Prefixes and separators come from the script profile and follow its changes; an empty prefix means none

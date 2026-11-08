@@ -15,6 +15,9 @@ local DEFAULTS = {
     -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
     found_command_prefix = "atdar",
     found_command_separator = "",
+    -- The same for the user's own commands (User Commands: a name running other commands)
+    user_command_prefix = "atdar",
+    user_command_separator = "_",
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)

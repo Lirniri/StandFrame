@@ -34,7 +34,8 @@ SRC = pathlib.Path(__file__).resolve().parent / "src"
 # Folders in Lua Scripts that hold a <name>/ folder of the script
 SHARED_DIRS = ("lib", "store", "resources")
 # In store/<name>/: written by the script while it runs, never touched by sync or clean
-USER_DATA = ("config.json", "profiles", "logs")
+# (commands: the names, words and user commands made in the menu)
+USER_DATA = ("config.json", "profiles", "logs", "commands")
 
 
 class BuildError(Exception):

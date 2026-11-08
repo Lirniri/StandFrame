@@ -1,0 +1,255 @@
+-- lib/AnitaDarin/ui/stand/user_commands.pluto
+--
+-- The user's own commands: a name that runs other commands, Stand's or the script's, one after another -
+-- ready -> "godmode on; neverwanted on; tpwaypoint". Made in Command Box > User Commands:
+--
+--   Prefix, Separator             - of these commands only (profile: user_command_prefix / _separator)
+--   Create                        - type a name: the command is made, empty
+--   Remove                        - pick one: it goes, with its file
+--   ── Commands ──
+--   ready >    Run                - the command itself: atdar_ready
+--              Commands           - what it runs, separated by ;
+--              Description        - Run's help
+--
+-- Each is kept in store/<script>/commands/user/<name>.json { "commands": [...], "help": "..." }, shared by
+-- every profile; the commands folder is the user's (build.py and the updater leave it).
+-- Strings: base/language "script_menu.user_commands"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local commands = Atdar.loader.load("ui/stand/commands")
+local command_box = Atdar.loader.load("parsers/stand/command_box")
+local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
+
+local log = new Logger("Commands")
+
+local module = {}
+
+local function label(key: string): int
+    return i18n.label($"script_menu.user_commands.{key}")
+end
+
+local function text(key: string): string
+    return i18n.text($"script_menu.user_commands.{key}")
+end
+
+-- ─── Files ───────────────────────────────────────────────────────────────────
+
+-- store/<script>/commands/user/
+function module.folder(): string
+    return $"{filesystem.store_dir()}{Atdar.name}\\commands\\user\\"
+end
+
+-- "godmode on; ; tpwaypoint " -> { "godmode on", "tpwaypoint" }
+function module.split(input: string): table
+    local list = {}
+    for part in input:gmatch("[^;]+") do
+        local clean = part:match("^%s*(.-)%s*$")
+        if clean ~= "" then
+            table.insert(list, clean)
+        end
+    end
+    return list
+end
+
+-- What a file holds, cleaned: { commands = { texts }, help = text }
+local function clean_entry(data): table
+    local entry = { commands = {}, help = "" }
+    if type(data) ~= "table" then
+        return entry
+    end
+    for _, line in ipairs(type(data.commands) == "table" and data.commands or {}) do
+        if type(line) == "string" and line:match("%S") then
+            table.insert(entry.commands, line)
+        end
+    end
+    if type(data.help) == "string" then
+        entry.help = data.help
+    end
+    return entry
+end
+
+-- @return { [name] = { commands, help } } of every file in the folder
+function module.read(): table
+    local entries = {}
+    local dir = module.folder()
+    if not filesystem.is_dir(dir) then
+        return entries
+    end
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        local base = path:match("([^\\/]+)%.json$")
+        local name = base and command_box.sanitize(base) or ""
+        if name ~= "" then
+            entries[name] = clean_entry(new JsonFile(path):read())
+        end
+    end
+    return entries
+end
+
+-- @return Whether it was written
+function module.save(name: string, entry: table): bool
+    return new JsonFile($"{module.folder()}{name}.json"):write({ commands = entry.commands, help = entry.help })
+end
+
+function module.remove(name: string): void
+    new JsonFile($"{module.folder()}{name}.json"):remove()
+end
+
+-- ─── Running ─────────────────────────────────────────────────────────────────
+
+-- Commands running now: one that runs itself, straight or through others, is stopped there
+local running = {}
+-- Name -> the times it ran in the last second: a loop Stand runs later rather than at once is stopped too
+local recent = {}
+local MAX_PER_SECOND = 20
+
+-- Runs the entry's commands through Stand's command box, one after another
+-- @return Whether they were given to Stand
+function module.run(name: string, entry: table): bool
+    if #entry.commands == 0 then
+        log:notify(text("nothing"):format(name))
+        return false
+    end
+    local now = util.current_time_millis()
+    local times = {}
+    for _, time in ipairs(recent[name] or {}) do
+        if now - time < 1000 then
+            table.insert(times, time)
+        end
+    end
+    if running[name] or #times >= MAX_PER_SECOND then
+        log:warn(text("loop"):format(name))
+        return false
+    end
+    table.insert(times, now)
+    recent[name] = times
+    running[name] = true
+    local ok, err = pcall(menu.trigger_commands, table.concat(entry.commands, "; "))
+    running[name] = nil
+    if not ok then
+        log:warn(text("failed"):format(name, tostring(err)))
+    end
+    return ok
+end
+
+-- ─── Menu ────────────────────────────────────────────────────────────────────
+
+-- The list made by build: { node, first, entries, remove_ref }
+local view = {}
+
+-- "ready" -> the names it has in Stand now ("atdar_ready"), with the user's prefix
+local function full_name(name: string): string
+    commands.begin_user()
+    local names = commands.names({ name })
+    commands.end_user()
+    return names[1] or name
+end
+
+-- Whether Stand already has a command of that name (Stand's own, the script's, another user one)
+local function command_taken(full: string): bool
+    if type(menu.ref_by_command_name) ~= "function" then
+        return false
+    end
+    local ok, ref = pcall(menu.ref_by_command_name, full)
+    return ok and ref ~= nil and menu.is_ref_valid(ref) == true
+end
+
+local refresh
+
+-- One command's list: Run (the command itself), Commands, Description
+local function entry_list(node: table, name: string, entry: table): void
+    local function run_help(): string
+        local help = entry.help ~= "" and entry.help or text("run.help")
+        local runs = text("runs"):format(table.concat(entry.commands, "; "))
+        return $"{help}\n{runs}"
+    end
+    local list = node:list(name, {}, entry.help)
+    commands.begin_user()
+    local run_ref = list:action(label("run.name"), || -> module.run(name, entry), { name }, run_help())
+    list:text_input(label("commands.name"), { $"cbuser{name}" }, function(value)
+        entry.commands = module.split(value)
+        module.save(name, entry)
+        pcall(menu.set_help_text, run_ref, run_help())
+    end, label("commands.help"), table.concat(entry.commands, "; "))
+    list:text_input(label("description.name"), { $"cbuser{name}help" }, function(value)
+        entry.help = value
+        module.save(name, entry)
+        pcall(menu.set_help_text, run_ref, run_help())
+        pcall(menu.set_help_text, list.handle, value)
+    end, label("description.help"), entry.help)
+    commands.end_user()
+end
+
+-- The Remove picker's options: the commands by name, or a line saying there are none
+local function remove_options(names: table): table
+    if #names == 0 then
+        return { text("none") }
+    end
+    return names
+end
+
+-- The commands under the divider made again, from the files
+refresh = function()
+    local node = view.node
+    node:clear_from(view.first)
+    view.entries = module.read()
+    local names = {}
+    for name in pairs(view.entries) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    view.names = names
+    for _, name in ipairs(names) do
+        entry_list(node, name, view.entries[name])
+    end
+    if #names == 0 then
+        node:readonly_name(label("none"))
+    end
+    pcall(menu.set_list_action_options, view.remove_ref, remove_options(names))
+end
+
+-- User Commands, in node (Command Box's Commands part)
+function module.build(node: table): table
+    local list = node:list(label("name"), {}, label("help"))
+    profile_menu.user_command_box(list)
+
+    list:text_input(label("create.name"), { "cbusercreate" }, function(value)
+        local name = command_box.sanitize(value)
+        if name == "" then
+            if value ~= "" then
+                log:warn(text("invalid"):format(value))
+            end
+            return
+        end
+        if view.entries[name] ~= nil or command_taken(full_name(name)) then
+            log:warn(text("exists"):format(full_name(name)))
+            return
+        end
+        if not module.save(name, { commands = {}, help = "" }) then
+            return
+        end
+        refresh()
+        log:success(text("created"):format(full_name(name)))
+    end, label("create.help"), "")
+
+    local remove_ref = nil
+    remove_ref = list:list_action(label("remove.name"), remove_options({}), function(index, _, click_type)
+        local name = (view.names or {})[index]
+        if name == nil then
+            return
+        end
+        menu.show_warning(remove_ref, click_type, text("remove.warning"):format(full_name(name)), function()
+            module.remove(name)
+            refresh()
+            log:success(text("removed"):format(full_name(name)))
+        end)
+    end, { "cbuserremove" }, label("remove.help"))
+
+    list:divider(i18n.label("script_menu.commands_divider"))
+    view = { node = list, first = #list.children + 1, entries = {}, remove_ref = remove_ref }
+    refresh()
+    return list
+end
+
+return module

@@ -237,7 +237,7 @@ stand.toasts = {}
 stand.click(update_list.children[4])
 stand.check(stand.toasts[#stand.toasts]:find("Updating isn't made yet", 1, true), "Update too")
 stand.equal(names_in(find("Command Box")), "Base Commands Prefix | Base Commands Separator: None | Found Commands Prefix"
-    .. " | Found Commands Separator: None | Commands | Base Commands | Found Commands", "Command Box")
+    .. " | Found Commands Separator: None | Commands | Base Commands | Found Commands | User Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
 
 -- Open Folder opens the script's own folders; a missing one is made first
@@ -639,5 +639,61 @@ stand.equal(stand.name_of(branch_item), "Update Branch: experiment", "and the it
 stand.check(stand.toasts[#stand.toasts]:find("from the experiment branch", 1, true), "and says so")
 stand.click(branch_item, 1)
 stand.equal(profile.get("update_branch"), "main", "main back")
+
+-- ─── User Commands: a name that runs other commands ──────────────────────────
+
+local user_dir = $"{stand.store}AnitaDarin\\commands\\user\\"
+local user_list = stand.child(find("Command Box"), "User Commands")
+stand.equal(names_in(user_list), "Prefix | Separator: _ (underscore) | Create | Remove | Commands"
+    .. " | No commands yet: Create one above", "User Commands: prefix, separator, Create, Remove, then the commands")
+-- Create: the name typed, cleaned; an empty command below
+menu.set_value(stand.child(user_list, "Create"), "Ready Set!")
+stand.check(io.exists($"{user_dir}readyset.json"), "Create makes commands/user/<name>.json (the name cleaned)")
+local ready = stand.child(user_list, "readyset")
+stand.equal(names_in(ready), "Run | Commands | Description", "a command's list: Run, Commands, Description")
+local run = stand.child(ready, "Run")
+stand.check(table.concat(run.commands, ","):find("atdar_readyset", 1, true), "Run is the command itself, with the user prefix")
+stand.equal(stand.find_item(stand.child(find("Command Box"), "Base Commands"), "readyset"), nil, "it isn't in Base Commands")
+stand.triggered = {}
+stand.clear_logs()
+stand.click(run)
+stand.equal(#stand.triggered, 0, "with no Commands it runs nothing")
+stand.check(stand.find_log("runs nothing yet"), "and says so")
+-- Commands: separated by ;, kept in the file, run through the command box
+menu.set_value(stand.child(ready, "Commands"), "godmode on; ; tpwaypoint ")
+stand.check(stand.read_file($"{user_dir}readyset.json"):find('"tpwaypoint"', 1, true), "Commands are kept in its file")
+stand.click(run)
+stand.equal(stand.triggered[#stand.triggered], "godmode on; tpwaypoint", "Run gives them to the command box, empty ones dropped")
+menu.set_value(stand.child(ready, "Description"), "Ready for anything")
+stand.check(run.help:find("Ready for anything", 1, true) and run.help:find("godmode on; tpwaypoint", 1, true),
+    "Run's help: the description and what it runs")
+-- A command running itself is stopped
+menu.set_value(stand.child(ready, "Commands"), "atdar_readyset")
+local real_trigger = menu.trigger_commands
+menu.trigger_commands = function(input)
+    table.insert(stand.triggered, input)
+    stand.click(stand.by_command(input))
+end
+stand.clear_logs()
+stand.click(run)
+stand.check(stand.find_log("runs itself over and over"), "a command running itself is stopped")
+menu.trigger_commands = real_trigger
+-- The same name again, or a command Stand has already: refused
+stand.clear_logs()
+menu.set_value(stand.child(user_list, "Create"), "readyset")
+stand.check(stand.find_log("There's a command atdar_readyset already"), "the same name again is refused")
+-- The prefix and separator rename it right away
+menu.set_value(stand.child(user_list, "Prefix"), "my")
+stand.check(table.concat(stand.child(stand.child(user_list, "readyset"), "Run").commands, ","):find("my_readyset", 1, true),
+    "a new prefix renames it")
+stand.click(stand.find_item(user_list, "Separator: "), 1)
+stand.check(table.concat(stand.child(stand.child(user_list, "readyset"), "Run").commands, ","):find("myreadyset", 1, true),
+    "a new separator too")
+-- Remove: picked, gone with its file
+local remove = stand.child(user_list, "Remove")
+stand.click(remove, 1)
+stand.check(not io.exists($"{user_dir}readyset.json") and stand.child(user_list, "readyset") == nil,
+    "Remove takes the command and its file away")
+stand.check(stand.find_item(user_list, "No commands yet"), "none left: says so")
 
 stand.finish()

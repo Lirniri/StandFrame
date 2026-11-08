@@ -100,6 +100,8 @@ stand.toasts = {}
 stand.profiled = {}
 -- Lines util.draw_debug_text drew, in order
 stand.debug_texts = {}
+-- Texts given to menu.trigger_commands, oldest first
+stand.triggered = {}
 
 function stand.clear_logs(): void
     stand.logs = {}
@@ -317,6 +319,10 @@ _G.menu = {
     set_menu_name = function(it, name) it.name = name end,
     set_help_text = function(it, help) it.help = help end,
     set_list_action_options = function(it, options) it.options = options end,
+    -- What the command box was given, oldest first (stand.triggered)
+    trigger_commands = function(input) table.insert(stand.triggered, input) end,
+    -- The item answering to a command name (its commands as Stand has them), nil if none
+    ref_by_command_name = |name| -> stand.by_command(name),
     set_visible = function(it, visible) it.visible = visible end,
     set_command_names = function(it, names) it.commands = names end,
     -- Where the cursor was sent last (stand.focused)
@@ -397,6 +403,22 @@ function stand.name_of(it): string
         return lang.get_localised(it.name)
     end
     return tostring(it.name)
+end
+
+-- @return The item answering to a command name, like menu.ref_by_command_name; nil if none
+function stand.by_command(name: string, parent: ?table): ?table
+    for _, child in (parent or stand.root).children do
+        for _, command in ipairs(child.commands or {}) do
+            if command == name and not child.deleted then
+                return child
+            end
+        end
+        local found = stand.by_command(name, child)
+        if found then
+            return found
+        end
+    end
+    return nil
 end
 
 -- @return The first item under parent (any depth) whose name contains text
