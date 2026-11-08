@@ -149,9 +149,7 @@ function module.repair(vehicle: int, dirt_level: float|bool = false, start_engin
     if not module.is_exist(vehicle) then
         return false
     end
-    if not module.is_dead(vehicle) then
-        return false
-    end
+    
     local control = Atdar.natives.network.control
     if util.is_session_started() and not control.has_entity(vehicle) then
         control.request_entity(vehicle)
@@ -224,19 +222,22 @@ function module.explode(opts: table): void
     local vehicle = opts.vehicle
     local is_audible = opts.is_audible ~= false
     local is_invisible = opts.is_invisible == true
-    if opts.net_id ~= nil then
-        NETWORK.NETWORK_EXPLODE_VEHICLE(
-            vehicle,
-            is_audible, is_invisible,
-            opts.net_id
-        )
-    else
-        VEHICLE.EXPLODE_VEHICLE(
-            vehicle,
-            is_audible,
-            is_invisible
-        )
-    end
+
+    -- if opts.not_profitable ~= true then
+        if opts.net_id ~= nil then
+            NETWORK.NETWORK_EXPLODE_VEHICLE(
+                vehicle,
+                is_audible, is_invisible,
+                opts.net_id
+            )
+        else
+            VEHICLE.EXPLODE_VEHICLE(
+                vehicle,
+                is_audible,
+                is_invisible
+            )
+        end
+    -- end
 end
 
 return module

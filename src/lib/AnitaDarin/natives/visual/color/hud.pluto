@@ -4,7 +4,7 @@
 -- isn't always what the game shows now: get() asks the game.
 -- Source: https://docs.fivem.net/docs/game-references/hud-colors/ (common:/data/ui/hudcolor.dat)
 --
---     local hud_color = Atdar.natives.visual.hud_color
+--     local hud_color = Atdar.natives.visual.color.hud
 --     hud_color.RED                    -- 6, the index for natives
 --     hud_color.default(hud_color.RED) -- { r = 224, g = 50, b = 50, a = 255 }
 --     hud_color.get(hud_color.RED)     -- the colour the game uses now

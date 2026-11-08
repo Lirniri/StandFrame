@@ -4,6 +4,6 @@ function module.is_hidden(): bool
     return HUD.IS_HUD_HIDDEN()
 end
 
--- HUD colours (indexes, defaults, the current colour of a slot): natives/visual/hud_color
+-- HUD colours (indexes, defaults, the current colour of a slot): natives/visual/color/hud
 
 return Atdar.loader.auto(module, "natives/visual/hud")

@@ -75,7 +75,7 @@ end
 -- part of a long text. { background = index, color = { r, g, b, a }, flash = { r, g, b, a } }
 local next_look = {}
 
--- The background colour of the next post (a HUD colour index, natives/visual/hud_color)
+-- The background colour of the next post (a HUD colour index, natives/visual/color.hud)
 function module.set_next_background(hud_color: int): void
     next_look.background = hud_color
     next_look.color = nil
