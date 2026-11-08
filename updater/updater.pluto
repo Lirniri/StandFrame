@@ -1,6 +1,7 @@
 -- updater/updater.pluto
 --
 -- The script's auto-updater, kept apart from the script while both grow: the script doesn't load it yet.
+-- It runs inside the script all the same (Atdar.loader): installed.json goes through core JsonFile.
 --
 -- What a release is: updater/manifest.json in the repo's release branch (main), made by
 -- updater/manifest.py - every file of src with its sha256. The updater reads it, compares each file with
@@ -28,8 +29,10 @@
 --         end
 --     end)
 
+-- json: only for the manifest downloaded (a text, not a file); installed.json goes through JsonFile
 local json = require "pluto:json"
 local crypto = require "pluto:crypto"
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 
 local module = {}
 
@@ -154,18 +157,14 @@ local function write_file(path: string, content: string)
 end
 
 -- The release the last update installed: store/<name>/updater/installed.json
-local function installed_path(o: table): string
-    return $"{o.scripts_dir}store\\{o.name}\\updater\\installed.json"
+local function installed_file(o: table): table
+    return new JsonFile($"{o.scripts_dir}store\\{o.name}\\updater\\installed.json")
 end
 
 -- @return { version, files }, or nil if nothing was installed by an update yet
 function module.installed(opts: ?table): ?table
-    local text = read_file(installed_path(options(opts)))
-    if text == nil then
-        return nil
-    end
-    local data = json.decode(text)
-    if type(data) ~= "table" or type(data.files) ~= "table" then
+    local data = installed_file(options(opts)):read()
+    if data == nil or type(data.files) ~= "table" then
         return nil
     end
     return data
@@ -332,7 +331,9 @@ function module.apply(plan: table, on_progress: ?function)
         os.remove(module.target_of(path, o))
     end
 
-    write_file(installed_path(o), json.encode({ version = plan.version, files = plan.manifest.files }, true))
+    -- The files are in place by now; a failed write is logged by JsonFile, and the next update then
+    -- only doesn't know what to remove
+    installed_file(o):write({ version = plan.version, files = plan.manifest.files })
     return true
 end
 

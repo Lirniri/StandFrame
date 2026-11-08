@@ -118,6 +118,8 @@ stand.equal(installed("store/AnitaDarin/config.json"), "{\"mine\": true}", "the 
 stand.equal(installed("store/AnitaDarin/profiles/main.json"), "{}", "a missing profile made")
 stand.check(not io.exists($"{ls}lib\\Renamed\\core\\loader.pluto.update"), "no .update files left")
 stand.equal(updater.installed(opts).version, "0.1.0", "the release is remembered as installed")
+local installed_text = stand.read_file($"{ls}store\\Renamed\\updater\\installed.json")
+stand.check(installed_text and installed_text:find("\n%s+\"version\""), "written through JsonFile: indented like the script's other JSON files")
 plan = updater.check(opts)
 stand.check(updater.is_up_to_date(plan), "checked again: up to date")
 
