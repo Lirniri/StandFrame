@@ -187,6 +187,20 @@ end
 local result_tables = {}
 -- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like
 local update_result_list
+-- Tables inside tables made lists this deep; deeper ones are a line ("{...}")
+local MAX_VARIABLE_DEPTH = 3
+-- The same key -> how deep its Value list opens tables (none - MAX_VARIABLE_DEPTH); set_result_depth changes it
+local result_depths = {}
+-- The same key -> the items of the Table Depth setting (the slider, a divider over it): shown only while
+-- the function's last result is a table
+local depth_items = {}
+
+local function show_depth_items(key: string): void
+    local on = last_tables[key] ~= nil
+    for _, ref in ipairs(depth_items[key] or {}) do
+        pcall(menu.set_visible, ref, on)
+    end
+end
 
 local function show_result(key: string, results: table): void
     local value = results.n > 1 and results_text(results) or nil
@@ -202,6 +216,7 @@ local function show_result(key: string, results: table): void
     last_types[key] = table.concat(types, ", ")
     last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
     update_result_list(key)
+    show_depth_items(key)
     local ref = result_lines[key]
     if ref ~= nil then
         local ok, err = pcall(menu.set_menu_name, ref, result_line(key))
@@ -223,17 +238,48 @@ function module.show_result(key: string, results: table): void
 end
 
 -- A function's Variable line and its Value list, made in its list (node) for key ("<module>.<function>")
-function module.add_result_lines(node: table, key: string): void
+-- How deep tables inside tables open as lists in the Value list of key; the list is made again.
+-- Kept by key, so it stays when the Modules list is made again
+function module.set_result_depth(key: string, depth: int): void
+    result_depths[key] = depth
+    update_result_list(key)
+end
+
+-- The items of the Table Depth setting of key's list (refs): shown only while the last result is a table
+function module.bind_depth_items(key: string, refs: table): void
+    depth_items[key] = refs
+    show_depth_items(key)
+end
+
+-- @return The depth set for key (the default one when none is)
+function module.result_depth(key: string): int
+    return result_depths[key] or MAX_VARIABLE_DEPTH
+end
+
+-- kept: the lines belong to a list outside Modules (Debug > Call Function), so forget_lines leaves them
+local kept_keys = {}
+
+function module.add_result_lines(node: table, key: string, kept: ?bool): void
     result_lines[key] = node:divider(result_line(key))
     -- A table it gave: its entries in a list right under (hidden while it gave none)
     result_tables[key] = { list = node:list(text("loop.result_list"):format(0)), shape = nil, texts = {}, lines = {} }
+    if kept then
+        kept_keys[key] = true
+    end
     update_result_list(key)
 end
 
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
-    result_lines = {}
-    result_tables = {}
+    local lines, tables, depth = {}, {}, {}
+    for key in pairs(kept_keys) do
+        lines[key] = result_lines[key]
+        tables[key] = result_tables[key]
+        depth[key] = depth_items[key]
+    end
+    result_lines = lines
+    result_tables = tables
+    depth_items = depth
 end
 
 -- ─── Variables: the module's fields and their values now ─────────────────────
@@ -288,8 +334,6 @@ end
 
 -- Entries shown of one table; the rest is a "..." line
 local MAX_TABLE_ENTRIES = 100
--- Tables inside tables made lists this deep; deeper ones are a line ("{...}")
-local MAX_VARIABLE_DEPTH = 3
 
 -- How often an open Variables list looks at the values again, ms
 local VARIABLES_REFRESH_MS = 250
@@ -298,9 +342,11 @@ local VARIABLES_REFRESH_MS = 250
 -- for a table a list { kind = "list", name = "name (entries)" } with its entries after it. Each has
 -- a path (where it is, unique) and parent (the path of the list it's in, "" - the Variables list).
 -- seen: the tables on the way here, so one inside itself is a line, not lists without end
-local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table): void
+-- limit: how deep tables are made lists (MAX_VARIABLE_DEPTH when nil)
+local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table, limit: ?int): void
+    limit = limit or MAX_VARIABLE_DEPTH
     local path = $"{parent}/{name}"
-    if type(value) ~= "table" or seen[value] or depth >= MAX_VARIABLE_DEPTH then
+    if type(value) ~= "table" or seen[value] or depth >= limit then
         table.insert(out, { kind = "line", path = path, parent = parent, name = name,
             text = describe_item(value, depth, seen) })
         return
@@ -317,7 +363,7 @@ local function collect_variable(out: table, parent: string, name: string, value,
             table.insert(out, { kind = "note", path = $"{path}/...", parent = path, name = "..." })
             break
         end
-        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen)
+        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen, limit)
     end
     seen[value] = nil
 end
@@ -389,7 +435,7 @@ update_result_list = function(key)
             table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
             break
         end
-        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true })
+        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, result_depths[key])
     end
     pcall(menu.set_visible, ui.list.handle, true)
     pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))

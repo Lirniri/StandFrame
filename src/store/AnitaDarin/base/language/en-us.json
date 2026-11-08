@@ -507,7 +507,9 @@
                 "failed": "error"
             },
             "status_line": "Loop Status: %s",
-            "result_line": "Variable: %s",
+            "table_depth": "Table Depth",
+            "table_depth_help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables makes a great many items",
+            "result_line":"Variable: %s",
             "result_list": "Value (%d)",
             "no_result": "—"
         },
@@ -689,6 +691,49 @@
             "help": "Removes every log file of the script. Opens a confirmation first",
             "warning": "Remove every log file of the script in %s?\nThis can't be undone.",
             "done": "Removed %d log file(s)"
+        },
+        "call_function": {
+            "name": "Call Function",
+            "help": "Calls any function of the script by name, with arguments",
+            "function": {
+                "name": "Function Name",
+                "help": "A path from Atdar with dots: game.repair_vehicle. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get"
+            },
+            "args": {
+                "name": "Argument",
+                "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3). A word without quotes is text"
+            },
+            "on_enter_name": {
+                "name": "Call After Typing Function",
+                "help": "Calls the function as soon as its name is typed in, with the arguments already typed. A table or a variable is read when its name is typed"
+            },
+            "on_enter": {
+                "name": "Call After Typing Arguments",
+                "help": "Calls the function as soon as the arguments are typed in"
+            },
+            "stand": {
+                "name": "Notice In Stand",
+                "help": "The result comes as a Stand notification, not in the game's feed"
+            },
+            "call": {
+                "divider": "Call",
+                "name": "Call",
+                "help": "Calls a function once, reads a table or a variable; the result is in the notice, in the Variable line and, for a table, in the Value list"
+            },
+            "table": {
+                "divider": "Tables"
+            },
+            "depth": {
+                "name": "Table Depth",
+                "help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables (Atdar) makes a great many items"
+            },
+            "empty": "%s: empty (nil)",
+            "no_name": "No function name given",
+            "not_found": "'%s' not found",
+            "bad_args": "%s: error in the arguments: %s",
+            "failed": "%s: error: %s",
+            "done": "%s: done",
+            "result": "%s -> %s"
         },
         "delete_script": {
             "name": "Delete Script",

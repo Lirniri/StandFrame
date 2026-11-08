@@ -540,6 +540,16 @@ local function function_list(entry: table, mod: table, fn: table): void
     end)
     -- What it gave last and, for a table, its Value list right under; then how its loop is
     values.add_result_lines(node, key)
+    -- How deep a table it gave opens in the Value list (kept by key)
+    -- Shown only while the last result is a table
+    local depth_ref = node:track(menu.slider(node.handle, label("loop.table_depth"), {}, label("loop.table_depth_help"),
+        1, 8, values.result_depth(key), 1, function(depth)
+        if stopping then
+            return
+        end
+        values.set_result_depth(key, depth)
+    end))
+    values.bind_depth_items(key, { depth_ref })
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
     if run ~= nil and run.every ~= nil then
