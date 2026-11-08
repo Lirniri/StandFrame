@@ -40,10 +40,6 @@ end
 -- The open Modules list's items: list (the MenuNode), entries / statuses / sections per module name.
 -- Empty while no Modules list is open
 local view = {}
--- The place in the script's settings (build): the "Debug" divider, the list, items added with debug_only()
-local place = {}
--- Debug mode, as the profile last said
-local debug_mode = Atdar.debug == true
 
 -- Module name -> its on_tick run by hand going on (see "on_tick by hand" below)
 local manual_ticks = {}
@@ -127,22 +123,10 @@ local function refresh(): void
     end
 end
 
--- The "Debug" divider, the settings' Modules list and the items added with debug_only() show in debug mode
-local function update_visibility(): void
-    local refs = { place.divider, place.list and place.list.handle }
-    for _, ref in ipairs(place.extra or {}) do
-        table.insert(refs, ref)
-    end
-    for _, ref in pairs(refs) do
-        pcall(menu.set_visible, ref, debug_mode)
-    end
-end
-
--- Puts an item made after build() under the "Debug" divider's visibility: shown only in debug mode
+-- The place in the settings - the "Debug" divider, the Modules list, debug_only() - is ui/stand/modules_place,
+-- light, so this file loads only when the list is first opened
 function module.debug_only(ref): void
-    place.extra ??= {}
-    table.insert(place.extra, ref)
-    pcall(menu.set_visible, ref, debug_mode)
+    Atdar.loader.load("ui/stand/modules_place").debug_only(ref)
 end
 
 
@@ -1561,23 +1545,18 @@ function module.module_in(node: table, name: string): ?table
     return entry
 end
 
--- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode)
-function module.build(parent: table): void
-    -- The manager failed to load: the loader left an empty table
-    if type(Atdar.modules.names) ~= "function" then
-        return
-    end
-    -- A section made again (a profile created or deleted): the old place's items are gone
-    place = { divider = parent:divider(label("divider")) }
-    place.list = module.list_in(parent)
-    update_visibility()
+-- The list's items: made on opening it, gone on going back out (modules_place's list calls these)
+function module.open(list: table): void
+    fill(list)
 end
 
-Atdar.profile.on_change(function(key: string, value)
-    if key == "debug" then
-        debug_mode = value == true
-        update_visibility()
-    end
-end)
+function module.close(list: table): void
+    empty(list)
+end
+
+-- The place in the script's settings: the "Debug" divider and the Modules list (ui/stand/modules_place)
+function module.build(parent: table): void
+    Atdar.loader.load("ui/stand/modules_place").build(parent)
+end
 
 return module

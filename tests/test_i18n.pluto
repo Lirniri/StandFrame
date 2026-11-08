@@ -32,6 +32,30 @@ stand.equal(i18n.text("menu.only_en"), "English only", "keys it doesn't have com
 i18n.remove_source(source)
 stand.equal(i18n.text("menu.self.name"), "Self", "removing the source brings the base back")
 
+-- Files read lazily: English at once, another language when Stand shows it or its strings are asked for.
+-- The language list names every language without reading the files it doesn't need
+local lazy = stand.tmpdir("i18n_lazy")
+stand.write_file($"{lazy}en-us.json", '{"lazy": {"word": "Word"}}')
+stand.write_file($"{lazy}ru-ru.json", '{"lazy": {"word": "Слово"}}')
+stand.write_file($"{lazy}de-de.json", '{"language_name": "Deutsch", "lazy": {"word": "Wort"}}')
+local lazy_source = i18n.add_source(lazy)
+stand.check(rawget(lazy_source.languages, "en-us") ~= nil, "English is read when the folder is added")
+stand.equal(i18n.text("lazy.word"), "Word", "Stand in English: the English text")
+stand.check(rawget(lazy_source.languages, "ru-ru") == nil and rawget(lazy_source.languages, "de-de") == nil,
+    "the other languages aren't read while Stand is in English")
+local names = {}
+for _, language in ipairs(i18n.languages()) do
+    names[language.code] = language.name
+end
+stand.equal(names["de-de"], "Deutsch", "the language list has the name from the file")
+stand.check(rawget(lazy_source.languages, "de-de") == nil, "without reading the whole file")
+stand.language = "ru"
+stand.equal(i18n.text("lazy.word"), "Слово", "Stand switched to Russian: its file is read and shown")
+stand.check(rawget(lazy_source.languages, "ru-ru") ~= nil and rawget(lazy_source.languages, "de-de") == nil,
+    "Russian read now, German still not")
+stand.language = "en"
+i18n.remove_source(lazy_source)
+
 -- A damaged language file is reported and gives no strings, instead of being half-read
 local broken = stand.tmpdir("i18n_broken")
 stand.write_file($"{broken}en-us.json", '{"menu": {"self": {"name": "Half"')

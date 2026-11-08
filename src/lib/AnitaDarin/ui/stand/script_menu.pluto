@@ -20,7 +20,8 @@ local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/commands")
 local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
-local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
+-- The Modules place only: the list's items (ui/stand/modules_menu) load when it's first opened
+local modules_place = Atdar.loader.load("ui/stand/modules_place")
 local updater_menu = Atdar.loader.load("ui/stand/updater_menu")
 
 local log = new Logger("Menu")
@@ -378,8 +379,8 @@ function module.build(section: table, opts: table): void
     profile_menu.log_keep_days(debug)
     clear_logs(debug)
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
-    modules_menu.build(debug)
-    modules_menu.debug_only(delete_script(debug))
+    modules_place.build(debug)
+    modules_place.debug_only(delete_script(debug))
 
     -- The script's cards and posts in the game's feed, all taken away (other scripts' and the game's stay).
     -- Told in Stand: a notice in the feed would be one more to take away

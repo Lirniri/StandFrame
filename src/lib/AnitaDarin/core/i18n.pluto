@@ -35,18 +35,54 @@ local requested = nil
 -- Called after the shown language changed (on_change), e.g. to rebuild texts made with text()
 local listeners = {}
 
--- @return { [language code] = strings } for every <code>.json in dir; a damaged file gives no strings (JsonFile warns)
-local function read_languages(dir: string): table
-    local languages = {}
-    if filesystem.is_dir(dir) then
-        for _, path in ipairs(filesystem.list_files(dir)) do
+-- A source's languages: files = { [code] = path } of every <code>.json in its folder, and languages =
+-- { [code] = strings }, each file read and decoded the first time its strings are asked for. So a start
+-- reads English and the language shown, not every translation there is. A damaged file gives no
+-- strings (JsonFile warns)
+local function read_languages(source: table): void
+    local files = {}
+    if filesystem.is_dir(source.dir) then
+        for _, path in ipairs(filesystem.list_files(source.dir)) do
             local code = path:match("([^\\/]+)%.json$")
             if code then
-                languages[code] = new JsonFile(path):read() or {}
+                files[code] = path
             end
         end
     end
-    return languages
+    source.files = files
+    source.languages = setmetatable({}, {
+        __index = function(languages, code)
+            local path = files[code]
+            if path == nil then
+                return nil
+            end
+            local strings = new JsonFile(path):read() or {}
+            rawset(languages, code, strings)
+            return strings
+        end,
+    })
+end
+
+-- A language's name, its "language_name", without decoding the whole file when it isn't read yet:
+-- the language list names every language, and needs nothing else from most of them
+-- @return The name, or nil if the source doesn't have it
+local function name_in(source: table, code: string): ?string
+    local strings = rawget(source.languages, code)
+    if strings ~= nil then
+        local name = strings.language_name
+        return type(name) == "string" and name or nil
+    end
+    local path = source.files[code]
+    if path == nil then
+        return nil
+    end
+    local file = io.open(path, "r")
+    if file == nil then
+        return nil
+    end
+    local text = file:read("*a")
+    file:close()
+    return text:match('"language_name"%s*:%s*"([^"\\]*)"')
 end
 
 local function lookup(data: table, key: string)
@@ -87,11 +123,11 @@ local function find(code: string, key: string): ?string
     return nil
 end
 
--- @return Every language code that has a file in any source, except English
+-- @return Every language code that has a file in any source, except English (the files aren't read)
 local function translated_codes(): table
     local codes, seen = {}, {}
     for _, source in ipairs(sources) do
-        for code in pairs(source.languages) do
+        for code in pairs(source.files) do
             if code ~= ENGLISH and not seen[code] then
                 seen[code] = true
                 table.insert(codes, code)
@@ -130,6 +166,37 @@ local function apply_current(label: int, key: string, english: string): void
     end
 end
 
+-- Puts the language's texts on every label made, as its translation into that language in Stand
+local function translate_made(code: string): void
+    -- A code Stand has no language for can't take translations: it's still there to be chosen
+    if not pcall(lang.set_translate, stand_code(code)) then
+        return
+    end
+    for label, entry in pairs(made) do
+        local text = find(code, entry.key)
+        if text then
+            lang.translate(label, text)
+        end
+    end
+end
+
+-- Stand's language the labels made were last given their translations for. Only that language's file
+-- is read: another language is read and put on the labels when Stand switches to it
+local translated_for = nil
+
+-- The labels made in Stand's current language, if they aren't yet (Stand switched since)
+local function ensure_translated(): void
+    local current = lang.get_current()
+    if current == translated_for then
+        return
+    end
+    translated_for = current
+    local code = current_code()
+    if code ~= nil then
+        translate_made(code)
+    end
+end
+
 -- Whether a language other than Stand's can be shown. Stand takes no translations into English,
 -- its source language ("Provided language has no data"), so with Stand in English the script follows it
 function module.can_choose_language(): bool
@@ -141,8 +208,11 @@ end
 -- its "wreck" is "module.VehicleManager.wreck"), so a module's strings never mix with anyone else's
 -- @return Handle for remove_source
 function module.add_source(dir: string, required: bool = false, prefix: ?string): table
-    local source = { dir = dir, languages = read_languages(dir), prefix = prefix }
-    if required and not source.languages[ENGLISH] then
+    local source = { dir = dir, prefix = prefix }
+    read_languages(source)
+    -- English is read at once: every label needs it, and a damaged file is reported when it's added
+    local english = source.languages[ENGLISH]
+    if required and english == nil then
         log:warn($"language file not found: {dir}{ENGLISH}.json")
     end
     table.insert(sources, source)
@@ -179,15 +249,15 @@ function module.label(key: string, fallback: ?string = nil): int
     if label == 0 then
         label = lang.register(english)
     end
-    -- Same English text means the same label, so its translations are shared too
-    for _, code in ipairs(translated_codes()) do
-        local text = find(code, key)
-        if text then
-            lang.set_translate(stand_code(code))
-            lang.translate(label, text)
-        end
-    end
     made[label] = { key = key, english = english }
+    -- Its translation into Stand's language now; same English text means the same label, so its
+    -- translations are shared too. Other languages come when Stand switches to them (ensure_translated)
+    ensure_translated()
+    local code = current_code()
+    local text = code and find(code, key)
+    if text and pcall(lang.set_translate, stand_code(code)) then
+        lang.translate(label, text)
+    end
     if forced then
         apply_current(label, key, english)
     end
@@ -199,7 +269,7 @@ end
 -- @return Whether any source has a <code>.json file
 function module.has_language(code: string): bool
     for _, source in ipairs(sources) do
-        if source.languages[code] then
+        if source.files[code] then
             return true
         end
     end
@@ -212,10 +282,20 @@ function module.languages(): table
     local list = {}
     local seen = {}
     for _, source in ipairs(sources) do
-        for code in pairs(source.languages) do
+        for code in pairs(source.files) do
             if not seen[code] then
                 seen[code] = true
-                table.insert(list, { code = code, name = find(code, "language_name") or code })
+                table.insert(list, { code = code, name = code })
+            end
+        end
+    end
+    -- The name, newest source first, read without decoding files not needed yet
+    for _, language in ipairs(list) do
+        for i = #sources, 1, -1 do
+            local name = name_in(sources[i], language.code)
+            if name ~= nil then
+                language.name = name
+                break
             end
         end
     end
@@ -270,18 +350,11 @@ end
 -- Labels already in the menu get the new texts, the chosen language is put on them again
 function module.reload(): void
     for _, source in ipairs(sources) do
-        source.languages = read_languages(source.dir)
+        read_languages(source)
     end
     labels = {}
-    for label, entry in pairs(made) do
-        for _, code in ipairs(translated_codes()) do
-            local text = find(code, entry.key)
-            -- A code Stand has no language for can't take translations: it's still there to be chosen
-            if text and pcall(lang.set_translate, stand_code(code)) then
-                lang.translate(label, text)
-            end
-        end
-    end
+    translated_for = nil
+    ensure_translated()
     module.set_language(requested)
 end
 
@@ -345,6 +418,7 @@ util.create_tick_handler(function()
     local current = lang.get_current()
     if current ~= stand_language then
         stand_language = current
+        ensure_translated()
         if requested then
             module.set_language(requested)
         else
@@ -359,7 +433,9 @@ end)
 
 -- @return Text for key in Stand's current language, for strings built from parts (format, concatenation)
 function module.text(key: string, fallback: ?string = nil): string
-    return lang.get_localised(module.label(key, fallback))
+    local label = module.label(key, fallback)
+    ensure_translated()
+    return lang.get_localised(label)
 end
 
 -- @return The English value at key as is (newest source first), or nil

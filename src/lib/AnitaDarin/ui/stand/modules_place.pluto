@@ -1,0 +1,73 @@
+-- lib/AnitaDarin/ui/stand/modules_place.pluto
+--
+-- The Modules place in the script's settings (Debug): the "Debug" divider and the Modules list, shown in
+-- debug mode, and the items put under the divider's visibility (debug_only).
+-- Light on purpose: ui/stand/modules_menu - the list's items, the script's biggest file with the parsers
+-- it needs - loads only when the list is first opened, not at every start.
+-- Strings: base/language "modules"
+
+local i18n = Atdar.loader.load("core/i18n")
+
+local module = {}
+
+local function label(key: string): int
+    return i18n.label($"modules.{key}")
+end
+
+-- The place (build): the "Debug" divider, the list, items added with debug_only()
+local place = {}
+-- Debug mode, as the profile last said
+local debug_mode = Atdar.debug == true
+
+-- The "Debug" divider, the Modules list and the items added with debug_only() show in debug mode
+local function update_visibility(): void
+    local refs = { place.divider, place.list and place.list.handle }
+    for _, ref in ipairs(place.extra or {}) do
+        table.insert(refs, ref)
+    end
+    for _, ref in pairs(refs) do
+        pcall(menu.set_visible, ref, debug_mode)
+    end
+end
+
+-- Puts an item made after build() under the "Debug" divider's visibility: shown only in debug mode
+function module.debug_only(ref): void
+    place.extra ??= {}
+    table.insert(place.extra, ref)
+    pcall(menu.set_visible, ref, debug_mode)
+end
+
+-- The list's items, loaded the first time they're needed
+local function modules_menu(): table
+    return Atdar.loader.load("ui/stand/modules_menu")
+end
+
+-- Puts a Modules list into node (a MenuNode), its items made only while it's open; the file that makes
+-- them loads when it's first opened
+-- @return The list (a MenuNode)
+function module.list_in(node: table): table
+    local list = nil
+    list = node:list(label("title"), {}, label("help"), || -> modules_menu().close(list), || -> modules_menu().open(list))
+    return list
+end
+
+-- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode)
+function module.build(parent: table): void
+    -- The manager failed to load: the loader left an empty table
+    if Atdar.modules == nil or type(Atdar.modules.names) ~= "function" then
+        return
+    end
+    -- A section made again (a profile created or deleted): the old place's items are gone
+    place = { divider = parent:divider(label("divider")) }
+    place.list = module.list_in(parent)
+    update_visibility()
+end
+
+Atdar.profile.on_change(function(key: string, value)
+    if key == "debug" then
+        debug_mode = value == true
+        update_visibility()
+    end
+end)
+
+return module

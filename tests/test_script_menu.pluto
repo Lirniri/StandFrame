@@ -32,6 +32,10 @@ local function rebuild()
     })
 end
 rebuild()
+-- The Modules list's items (the biggest file, with its parsers) aren't loaded with the section
+local MODULES_MENU = "AnitaDarin/ui/stand/modules_menu"
+stand.equal(package.loaded[MODULES_MENU], nil, "the section is made without loading ui/stand/modules_menu")
+stand.equal(package.loaded["AnitaDarin/parsers/proglang/pluto/args"], nil, "nor the parsers it needs")
 
 local function names_in(node)
     local names = {}
@@ -323,6 +327,13 @@ local function all_visible(on)
 end
 stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
+-- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
+local modules_list = debug_list.children[10]
+stand.click(modules_list)
+stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules_menu")
+stand.check(#modules_list.children > 0, "and makes the list's items")
+stand.back(modules_list)
+stand.equal(#modules_list.children, 0, "going back out takes them away")
 
 -- Logs: Open Log Folder opens Logger.folder(); Keep Logs is the profile's days; Clear removes every file after a warning
 stand.equal(opened("Open Log Folder"), $"open_folder {Atdar.log_dir}", "Open Log Folder")

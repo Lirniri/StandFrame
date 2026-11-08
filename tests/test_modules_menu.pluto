@@ -631,8 +631,9 @@ stand.equal(stand.name_of(entry_b), "2: b: running", "a module starts again afte
 stand.click(stand.find_item(list, "Open Folder"))
 stand.check(stand.toasts[#stand.toasts]:find("lib\\AnitaDarin\\modules", 1, true), "Open Folder opens lib/AnitaDarin/modules")
 
--- Russian, through Stand's labels
+-- Russian, through Stand's labels: given to them in the next frame after Stand switched, as in the game
 stand.language = "ru"
+stand.frame()
 stand.click(stand.find_item(list, "Обновить"))
 stand.equal(stand.name_of(entry_a), "1: a: работает", "statuses follow Stand's language")
 stand.language = "en"
