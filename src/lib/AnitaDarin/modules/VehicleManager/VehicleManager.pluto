@@ -189,11 +189,7 @@ local class VehicleManager extends Module
     -- Repairs the vehicle remembered last
     -- @return Whether there was one in the game
     function repair_last(dirt_level: float|bool, start_engine: bool): bool
-        local handle = self:get_handle()
-        if handle == nil then
-            return false
-        end
-        return self:repair(handle, dirt_level, start_engine)
+        return self:repair(self:get_handle(), dirt_level, start_engine)
     end
 
     -- Repairs every remembered vehicle still in the game
@@ -208,11 +204,14 @@ local class VehicleManager extends Module
         return repaired
     end
 
-    function explode(handle): bool
-        local n_vehicle = Atdar.natives.entity.vehicle
+    -- Explodes a vehicle
+    -- @return Whether it was exploded (one already gone or already dead is left alone)
+    function explode(handle: int): bool
         if math.type(handle) ~= "integer" then
             return false
         end
+
+        local n_vehicle = Atdar.natives.entity.vehicle
         if not n_vehicle.is_exist(handle) then
             return false
         end
@@ -229,32 +228,16 @@ local class VehicleManager extends Module
     -- Explodes the vehicle remembered last
     -- @return Whether there was one in the game
     function explode_last(): bool
-        local n_vehicle = Atdar.natives.entity.vehicle
-        local handle = self:get_handle()
-        if handle == nil or not n_vehicle.is_exist(handle) then
-            return false
-        end
-        if n_vehicle.is_dead(handle) then
-            return false
-        end
-        n_vehicle.explode({
-            vehicle = handle,
-            net_id = n_vehicle.get_net_id(handle)
-        })
-        return true
+        return self:explode(self:get_handle())
     end
 
+    -- Explodes every remembered vehicle still in the game
+    -- @return How many were exploded
     function explode_all(): int
-        local n_vehicle = Atdar.natives.entity.vehicle
         local exploded = 0
-        for _, handle in pairs(self:get_handles()) do
-            if math.type(handle) == "integer"
-                and n_vehicle.is_exist(handle)
-                then
-
-                if self:explode(handle) then
-                    exploded += 1
-                end
+        for _, handle in ipairs(self:get_handles()) do
+            if self:explode(handle) then
+                exploded += 1
             end
         end
         return exploded
@@ -299,40 +282,33 @@ local class VehicleManager extends Module
         return handle
     end
 
-    function delete(handle): void
-        local n_vehicle = Atdar.natives.entity.vehicle
-        if math.type(handle) == "integer"
-            and n_vehicle.is_exist(handle)
-            and n_vehicle.delete(handle)
-            then
+    -- Deletes a vehicle from the game and forgets it
+    -- @return Whether it was deleted (one already gone is only forgotten)
+    function delete(handle: int): bool
+        if math.type(handle) ~= "integer" then
+            return false
         end
         self:remove_vehicle(handle)
+
+        local n_vehicle = Atdar.natives.entity.vehicle
+        if not n_vehicle.is_exist(handle) then
+            return false
+        end
+        return n_vehicle.delete(handle)
     end
 
-    function delete_last(): void
-        local handle = self:get_handle()
-        local n_vehicle = Atdar.natives.entity.vehicle
-        if math.type(handle) == "integer"
-            and n_vehicle.is_exist(handle)
-            and n_vehicle.delete(handle)
-            then
-        end
-        self:remove_vehicle(handle)
+    function delete_last(): bool
+        return self:delete(self:get_handle())
     end
 
     -- Deletes every remembered vehicle from the game and forgets them
     -- @return How many were deleted (ones already gone are only forgotten)
     function delete_all(): int
-        local n_vehicle = Atdar.natives.entity.vehicle
         local deleted = 0
         for _, handle in ipairs(self:get_handles()) do
-            if math.type(handle) == "integer"
-                and n_vehicle.is_exist(handle)
-                and n_vehicle.delete(handle)
-                then
+            if self:delete(handle) then
                 deleted += 1
             end
-            self:remove_vehicle(handle)
         end
         return deleted
     end
