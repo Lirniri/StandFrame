@@ -4,78 +4,16 @@ local module = {}
 
 -- Get
 
--- @return Index of the active character slot
-function module.get_char_slot(): int
-    return util.get_char_slot()
-end
-
 function module.get_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false)
     if as_pointer then
         return entities.get_user_vehicle_as_pointer(include_last_vehicle)
     end
-    return entities.get_user_vehicle_as_handle(include_last_vehicle)
-end
 
-function module.get_personal_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false): int
-    if not util.is_session_started() then
-        return nil
-    end
-    local handle = entities.get_user_personal_vehicle_as_handle(include_last_vehicle)
-    if as_pointer then
-        return entities.handle_to_pointer(handle)
-    end
-    return handle
+    return entities.get_user_vehicle_as_handle(include_last_vehicle)
 end
 
 -- Set
 
 -- Actions
-
-function module.restore_health(): void
-    local ped = players.user_ped()
-    local entity = Atdar.natives.entity
-    if entity.is_dead(ped) then
-        return
-    end
-    entity.set_health(ped, entity.get_max_health(ped))
-end
-
-function module.restore_armor(): void
-    local n_player = Atdar.natives.player
-    local n_ped = Atdar.natives.entity.ped
-    local player = n_player.get_id()
-    local ped = n_player.get_ped_id()
-    if n_ped.is_dead(ped) then
-        return
-    end
-    n_ped.set_armor(ped, n_player.get_max_armor(player))
-end
-
-function module.restore_stamina(value: float = 1.0): void
-    local n_player = Atdar.natives.player
-    local player = n_player.get_id()
-    if n_player.is_dead(player) then
-        return
-    end
-    n_player.movement.restore_sprint_stamina(player, value)
-end
-
-function module.reset_stamina(): void
-    local n_player = Atdar.natives.player
-    local player = n_player.get_id()
-    if n_player.is_dead(player) then
-        return
-    end
-    n_player.movement.reset_sprint_stamina(player)
-end
-
--- function module.infinite_stamina(toggle: bool): void
---     local n_player = Atdar.natives.player
---     local ped = n_player.get_ped_id()
---     if n_player.is_dead(player) then
---         return
---     end
---     n_player.movement.set_infinite_sprint_stamina(ped, toggle)
--- end
 
 return module

@@ -14,7 +14,7 @@ local class RestoreArmor extends Feature
     end
 
     function on_trigger()
-        local player = Atdar.natives.player.user
+        local player = Atdar.game.players.user
         player.restore_armor()
     end
 end

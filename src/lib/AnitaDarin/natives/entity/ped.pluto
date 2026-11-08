@@ -3,8 +3,8 @@ local module = {}
 -- State
 
 -- Whether it's in the game and a ped
-function module.is_exist(ped: int): bool
-    local is_entity = Atdar.natives.entity.is_exist(ped)
+function module.does_exist(ped: int): bool
+    local is_entity = Atdar.natives.entity.does_exist(ped)
     local is_ped = module.is_ped(ped)
     return is_entity and is_ped
 end

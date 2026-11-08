@@ -1,18 +1,32 @@
-local module = {}
+local module = {
+    -- Variables
+    engine = {
+        max_health = 1000
+    }
+}
+
+-- Variables
 
 -- State
 
-function module.is_exist(vehicle: int): bool
-    local is_entity = Atdar.natives.entity.is_exist(vehicle)
+function module.does_exist(vehicle: int): bool
+    local is_entity = Atdar.natives.entity.does_exist(vehicle)
     local is_vehicle = module.is_vehicle(vehicle)
     return is_entity and is_vehicle
 end
 
-function module.is_dead(vehicle: int): bool
+function module.is_destroyed(vehicle: int): bool
     local n_entity = Atdar.natives.entity
-    if module.is_vehicle(vehicle) then
-        return n_entity.is_dead(vehicle)
+    
+    if not n_entity.does_exist(vehicle) then
+        return true
     end
+
+    if module.is_vehicle(vehicle) then
+        return n_entity.is_dead(vehicle) or n_entity.get_health(vehicle) <= 0
+    end
+
+    return false
 end
 
 function module.is_vehicle(entity: int): bool
@@ -48,15 +62,17 @@ end
 -- vehicle_or_model: vehicle handle (number) or model name (string, e.g. "adder")
 function module.get_class(vehicle_or_model: int|string): int
     local target = vehicle_or_model
+
     if type(target) == "string" then
         return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(Atdar.util.hash(target))
     end
-    if module.is_exist(target) then
+    if module.does_exist(target) then
         return VEHICLE.GET_VEHICLE_CLASS(target)
     end
     if module.is_model(target) then
         return VEHICLE.GET_VEHICLE_CLASS_FROM_NAME(target)
     end
+
     error($"[natives/vehicle] get_class: {tostring(target)} is not a vehicle, vehicle model or model name")
 end
 
@@ -64,6 +80,7 @@ function module.get_all(as_pointers: bool = false): table
     if as_pointers then
         return entities.get_all_vehicles_as_pointers()
     end
+
     return entities.get_all_vehicles_as_handles()
 end
 
@@ -73,7 +90,10 @@ end
 
 function module.from_net_id(net_id): ?int
     local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
-    if not is_net_id_exist then return nil end
+    if not is_net_id_exist then
+        return nil
+    end
+
     return NETWORK.NET_TO_VEH(net_id)
 end
 
@@ -112,7 +132,13 @@ end
 -- Starts or stops the engine
 -- @param instantly Without the starting sound and delay
 -- @param disable_auto_start The engine doesn't start by itself when someone gets in
-function module.set_engine_on(vehicle: int, on: bool, instantly: bool = false, disable_auto_start: bool = false): void
+function module.set_engine_on(
+    vehicle: int,
+    on: bool,
+    instantly: bool = false, 
+    disable_auto_start: bool = false
+): void
+    -- body
     VEHICLE.SET_VEHICLE_ENGINE_ON(vehicle, on, instantly, disable_auto_start)
 end
 
@@ -126,63 +152,12 @@ end
 -- Deletes the vehicle from the game
 -- @return Whether it was a vehicle (nothing is deleted otherwise)
 function module.delete(vehicle: int): bool
+
     if not module.is_vehicle(vehicle) then
         return false
     end
+
     Atdar.natives.entity.delete(vehicle)
-    return true
-end
-
--- Health a repaired vehicle gets: the game's full engine, body and petrol tank health
-local FULL_HEALTH = 1000.0
--- Around a repaired vehicle the fires are put out this far, metres: burning fuel it spilled
-local FIRE_RADIUS = 5.0
-
--- Repairs the vehicle: damage and dents gone, engine, body and petrol tank at full health, drivable again,
--- the fire on it and around it put out, the entity's own health back (0 after an explosion).
--- Online the game applies it only for the one who controls the vehicle: control is asked for (not waited
--- for), so on someone else's vehicle it may take another call
--- @param dirt_level A number - the dirt it gets (0.0 - 15.0); true - washed clean; false - the dirt stays
--- An exploded vehicle can be driven again too: set_undriveable(false) undoes what the explosion set
--- @return Whether it was repaired (false if it isn't a vehicle in the game or isn't dead)
-function module.repair(vehicle: int, dirt_level: float|bool = false, start_engine: bool = false): bool
-    if not module.is_exist(vehicle) then
-        return false
-    end
-    
-    local control = Atdar.natives.network.control
-    if util.is_session_started() and not control.has_entity(vehicle) then
-        control.request_entity(vehicle)
-    end
-    module.set_fixed(vehicle)
-    module.set_deformation_fixed(vehicle)
-
-    module.set_engine_health(vehicle, FULL_HEALTH)
-
-    module.set_body_health(vehicle, FULL_HEALTH)
-
-    module.set_petrol_tank_health(vehicle, FULL_HEALTH)
-
-    module.set_undriveable(vehicle, false)
-
-    -- Health of the entity itself: no value - its maximum
-    Atdar.natives.entity.set_health(vehicle)
-
-    -- Burning after an explosion or a fire: on it and the fuel it spilled around
-    local fire = Atdar.natives.world.fire
-    fire.stop_entity(vehicle)
-    local coords = ENTITY.GET_ENTITY_COORDS(vehicle, true)
-    fire.stop_in_range(coords.x, coords.y, coords.z, FIRE_RADIUS)
-    -- A repaired engine may stay off (after it died or burned)
-    if start_engine then
-        module.set_engine_on(vehicle, true, true)
-    end
-
-    if dirt_level == true then
-        module.set_dirt_level(vehicle, 0.0)
-    elseif type(dirt_level) == "number" then
-        module.set_dirt_level(vehicle, dirt_level)
-    end
     return true
 end
 
@@ -200,6 +175,7 @@ function module.create(
     script_host_vehicle: bool,
     allow_low_z: bool
 ): int
+    -- body
     local model = Atdar.util.hash(hash)
     if is_network ~= nil then
         return VEHICLE.CREATE_VEHICLE(
@@ -223,21 +199,18 @@ function module.explode(opts: table): void
     local is_audible = opts.is_audible ~= false
     local is_invisible = opts.is_invisible == true
 
-    -- if opts.not_profitable ~= true then
-        if opts.net_id ~= nil then
-            NETWORK.NETWORK_EXPLODE_VEHICLE(
-                vehicle,
-                is_audible, is_invisible,
-                opts.net_id
-            )
-        else
-            VEHICLE.EXPLODE_VEHICLE(
-                vehicle,
-                is_audible,
-                is_invisible
-            )
-        end
-    -- end
+    if opts.net_id ~= nil then
+        NETWORK.NETWORK_EXPLODE_VEHICLE(
+            vehicle,
+            is_audible, is_invisible,
+            opts.net_id
+        )
+    else
+        VEHICLE.EXPLODE_VEHICLE(
+            vehicle,
+            is_audible, is_invisible
+        )
+    end
 end
 
 return module

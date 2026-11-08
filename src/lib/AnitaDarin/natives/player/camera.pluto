@@ -16,4 +16,4 @@ end
 
 -- Actions
 
-return Atdar.loader.auto(module, "natives/player/camera")
+return module

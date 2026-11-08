@@ -1,5 +1,7 @@
 local module = {}
 
+-- Variables
+
 -- State
 
 -- Get

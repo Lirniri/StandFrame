@@ -73,7 +73,7 @@ local class VehicleManager extends Module
 
     function is_ped_exist(): bool
         local n_ped = Atdar.natives.entity.ped
-        return n_ped.is_exist(self:get_ped_id())
+        return n_ped.does_exist(self:get_ped_id())
     end
 
     -- Whether the vehicle remembered last is still in the game
@@ -82,7 +82,7 @@ local class VehicleManager extends Module
         if handle == nil then
             return false
         end
-        return Atdar.natives.entity.vehicle.is_exist(handle)
+        return Atdar.natives.entity.vehicle.does_exist(handle)
     end
 
     function is_auto_remember(): bool
@@ -190,7 +190,7 @@ local class VehicleManager extends Module
             return false
         end
 
-        return Atdar.natives.entity.vehicle.repair(handle, dirt_level or false, start_engine)
+        return Atdar.game.entity.vehicle.repair(handle, dirt_level or false, start_engine)
     end
 
     -- Repairs the vehicle remembered last
@@ -221,11 +221,11 @@ local class VehicleManager extends Module
         end
 
         local n_vehicle = Atdar.natives.entity.vehicle
-        if not n_vehicle.is_exist(handle) then
+        if not n_vehicle.does_exist(handle) then
             return false
         end
 
-        if n_vehicle.is_dead(handle) then
+        if n_vehicle.is_destroyed(handle) then
             return false
         end
 
@@ -307,7 +307,7 @@ local class VehicleManager extends Module
 
         local n_vehicle = Atdar.natives.entity.vehicle
 
-        if not n_vehicle.is_exist(handle) then
+        if not n_vehicle.does_exist(handle) then
             return false
         end
         return n_vehicle.delete(handle)
@@ -338,7 +338,7 @@ local class VehicleManager extends Module
     -- @param name The file's name; nil - the model's name, with _2, _3... when that one is taken
     -- @return The file's name (without .json), nil if the vehicle doesn't exist or the file couldn't be written
     function save_vehicle(handle: int, name: ?string): ?string
-        if math.type(handle) ~= "integer" or not Atdar.natives.entity.is_exist(handle) then
+        if math.type(handle) ~= "integer" or not Atdar.natives.entity.does_exist(handle) then
             self.log:warn(self:text("not_in_game", "%s isn't a vehicle in the game"):format(tostring(handle)))
             return nil
         end
@@ -375,7 +375,7 @@ local class VehicleManager extends Module
 
         for handle in pairs(self.vehicles) do
             if math.type(handle) == "integer"
-                and Atdar.natives.entity.is_exist(handle)
+                and Atdar.natives.entity.does_exist(handle)
                 and self:save_vehicle(handle) ~= nil then
                 saved += 1
             end

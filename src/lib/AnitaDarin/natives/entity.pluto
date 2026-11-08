@@ -9,8 +9,6 @@ local module = {}
 
 -- State
 
-local module = {}
-
 function module.has_handle(pointer: int): bool
     return entities.has_handle(pointer)
 end
@@ -36,7 +34,7 @@ function module.pointer_to_handle(pointer: int): int?
     return nil
 end
 
-function module.is_exist(entity: int): bool
+function module.does_exist(entity: int): bool
     return ENTITY.DOES_ENTITY_EXIST(entity)
 end
 

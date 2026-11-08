@@ -1,0 +1,57 @@
+local module = {}
+
+-- Around a repaired vehicle the fires are put out this far, metres: burning fuel it spilled
+local FIRE_RADIUS = 5.0
+
+-- Repairs the vehicle: damage and dents gone, engine, body and petrol tank at full health, drivable again,
+-- the fire on it and around it put out, the entity's own health back (0 after an explosion).
+-- Online the game applies it only for the one who controls the vehicle: control is asked for (not waited
+-- for), so on someone else's vehicle it may take another call
+-- @param dirt_level A number - the dirt it gets (0.0 - 15.0); true - washed clean; false - the dirt stays
+-- @param start_engine A repaired engine may stay off (after it died or burned): true starts it
+-- An exploded vehicle can be driven again too: set_undriveable(false) undoes what the explosion set
+-- @return Whether it was repaired (false if it isn't a vehicle in the game)
+function module.repair(vehicle: int, dirt_level: float|bool = false, start_engine: bool = false): bool
+    local n_vehicle = Atdar.natives.entity.vehicle
+
+    if not n_vehicle.does_exist(vehicle) then
+        return false
+    end
+
+    local control = Atdar.natives.network.control
+    if util.is_session_started() and not control.has_entity(vehicle) then
+        control.request_entity(vehicle)
+    end
+
+    n_vehicle.set_fixed(vehicle)
+    n_vehicle.set_deformation_fixed(vehicle)
+
+    local max_health = n_vehicle.engine.max_health
+    n_vehicle.set_engine_health(vehicle, max_health)
+    n_vehicle.set_body_health(vehicle, max_health)
+    n_vehicle.set_petrol_tank_health(vehicle, max_health)
+    n_vehicle.set_undriveable(vehicle, false)
+
+    -- Health of the entity itself: no value - its maximum
+    Atdar.natives.entity.set_health(vehicle)
+
+    -- Burning after an explosion or a fire: on it and the fuel it spilled around
+    local fire = Atdar.natives.world.fire
+    fire.stop_entity(vehicle)
+    local coords = ENTITY.GET_ENTITY_COORDS(vehicle, true)
+    fire.stop_in_range(coords.x, coords.y, coords.z, FIRE_RADIUS)
+
+    if start_engine then
+        n_vehicle.set_engine_on(vehicle, true, true)
+    end
+
+    if dirt_level == true then
+        n_vehicle.set_dirt_level(vehicle, 0.0)
+    elseif type(dirt_level) == "number" then
+        n_vehicle.set_dirt_level(vehicle, dirt_level)
+    end
+
+    return true
+end
+
+return module
