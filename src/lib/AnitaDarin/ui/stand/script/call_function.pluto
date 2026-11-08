@@ -8,11 +8,12 @@
 -- The panel (module.panel) is the same in every list that calls a function: this one, and the functions
 -- found in a table of a Value list (Call Functions In Tables, ui/stand/modules/values):
 --
---   Argument, ── Call ──, Call After Typing Function (this list only), Call After Typing Arguments,
---   Notice In Stand (this list only), Call, Call After (ms), Call When Opened, Call When Hovered, Loop,
---   Loop With Interval,
---   ── Tables ──, Table Depth, Call Functions In Tables (these three while the result is a table),
---   then the Variable line and, for a table, the Value list
+--   in the order of a function in the Modules list:
+--   Call After Typing Function (this list only), Arguments, Call After Typing Arguments,
+--   Notice In Stand (this list only), Call, Call After (ms), Call When Opened, Call When Hovered,
+--   the Variable line and, for a table, the Value list, then Table Depth, Call Functions In Tables,
+--   Change Variable Values (these three while the result is a table), the Loop Status line,
+--   Loop, Loop With Interval
 --
 -- The name is a path from Atdar with dots (game.repair_vehicle, game.some_table). A module's name may come
 -- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get).
@@ -180,13 +181,31 @@ local function sync_toggle(state: table, on: bool): void
     state.syncing = false
 end
 
--- The loop ended by itself or was stopped
-local function end_loop(state: table, loop_run: table): void
+-- "running" / "every" (ms) / "stopped" / "failed" in words, for the Loop Status line
+local function status_text(kind: string, every: ?int): string
+    local value = mtext($"loop.state.{kind}")
+    if every ~= nil then
+        value = value:format(every)
+    end
+    return value
+end
+
+-- Shows how the loop is on its Loop Status line
+local function show_status(state: table, kind: string, every: ?int): void
+    if state.status_ref == nil then
+        return
+    end
+    pcall(menu.set_menu_name, state.status_ref, mtext("loop.status_line"):format(status_text(kind, every)))
+end
+
+-- The loop ended by itself (kind "failed") or was stopped (kind "stopped", the default)
+local function end_loop(state: table, loop_run: table, kind: ?string): void
     if state.loop ~= loop_run then
         return
     end
     state.loop = nil
     sync_toggle(state, false)
+    show_status(state, kind or "stopped")
 end
 
 -- Calls the function every frame (every: nil) or once every `every` ms, until stopped; an error ends it.
@@ -203,8 +222,10 @@ local function start_loop(spec: table, every: ?int): void
     state.loop = loop_run
     sync_toggle(state, true)
     if every == nil then
+        show_status(state, "running")
         log:notify(mtext("loop.started"):format(name))
     else
+        show_status(state, "every", every)
         log:notify(mtext("loop.started_every"):format(name, every))
     end
     local values = Atdar.loader.load("ui/stand/modules/values")
@@ -222,7 +243,7 @@ local function start_loop(spec: table, every: ?int): void
         end
         local found, value, owner = spec.target()
         if not found then
-            end_loop(state, loop_run)
+            end_loop(state, loop_run, "failed")
             log:warn(text("not_found"):format(name))
             return false
         end
@@ -232,13 +253,13 @@ local function start_loop(spec: table, every: ?int): void
         end
         local args, count, err = args_parser.parse(state.args or "")
         if err ~= nil then
-            end_loop(state, loop_run)
+            end_loop(state, loop_run, "failed")
             log:error(text("bad_args"):format(name, err))
             return false
         end
         local results = run(value, owner, args, count)
         if not results[1] then
-            end_loop(state, loop_run)
+            end_loop(state, loop_run, "failed")
             log:error(text("failed"):format(name, tostring(results[2])))
             return false
         end
@@ -273,7 +294,15 @@ function module.panel(list: table, spec: table): table
     local state = spec.state
     local values = Atdar.loader.load("ui/stand/modules/values")
 
-    list:text_input(label("args.name"), { spec.args_command }, function(value, click_type)
+    -- The same order as a function in the Modules list: Arguments, Call, Call After, Call When Opened / Hovered,
+    -- the Variable line with its Value list and Table settings, the loop's status, Loop, Loop With Interval
+    if spec.with_name then
+        list:toggle(label("on_enter_name.name"), function(on)
+            state.on_enter_name = on
+        end, {}, label("on_enter_name.help"), state.on_enter_name == true)
+    end
+
+    list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end
@@ -282,14 +311,6 @@ function module.panel(list: table, spec: table): table
             call(spec)
         end
     end, label("args.help"), state.args or "")
-
-    list:divider(label("call.divider"))
-
-    if spec.with_name then
-        list:toggle(label("on_enter_name.name"), function(on)
-            state.on_enter_name = on
-        end, {}, label("on_enter_name.help"), state.on_enter_name == true)
-    end
 
     list:toggle(label("on_enter.name"), function(on)
         state.on_enter = on
@@ -301,7 +322,7 @@ function module.panel(list: table, spec: table): table
         end, {}, label("stand.help"), state.stand == true)
     end
 
-    list:action(label("call.name"), function()
+    list:action(mlabel("loop.call"), function()
         call(spec)
     end, {}, label("call.help"))
 
@@ -333,6 +354,45 @@ function module.panel(list: table, spec: table): table
         end
     end)
 
+    -- What came out: the Variable line, and for a table the Value list under it
+    values.add_result_lines(list, spec.key, spec.kept)
+
+    -- Table Depth, Call Functions In Tables and Change Variable Values: shown only while the result is a table.
+    -- Stand puts the saved state of these back while the script starts, where the Value list can't be made
+    -- again: then it's only remembered (quiet)
+    local depth_ref = list:slider(mlabel("loop.table_depth"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
+        if stopping then
+            return
+        end
+        values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
+    end, {}, mlabel("loop.table_depth_help"))
+    -- The functions in the table become lists with the same panel
+    local call_ref = list:toggle(mlabel("loop.call_in_tables"), function(on, click_type)
+        if stopping then
+            return
+        end
+        values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+    end, {}, mlabel("loop.call_in_tables_help"), values.call_in_tables(spec.key))
+    -- The other values in the table become fields to type a new value in
+    local edit_ref = list:toggle(mlabel("loop.edit_in_tables"), function(on, click_type)
+        if stopping then
+            return
+        end
+        values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+    end, {}, mlabel("loop.edit_in_tables_help"), values.edit_in_tables(spec.key))
+    values.bind_depth_items(spec.key, { depth_ref, call_ref, edit_ref })
+
+    -- The loop: its status line (as the loop is now), Loop, Loop With Interval
+    local status_kind = "stopped"
+    local status_every = nil
+    if state.loop ~= nil and state.loop.every ~= nil then
+        status_kind = "every"
+        status_every = state.loop.every
+    elseif state.loop ~= nil then
+        status_kind = "running"
+    end
+    state.status_ref = list:divider(mtext("loop.status_line"):format(status_text(status_kind, status_every)))
+
     state.loop_toggle = list:toggle(mlabel("loop.loop"), function(on)
         if stopping or state.syncing then
             return
@@ -352,35 +412,6 @@ function module.panel(list: table, spec: table): table
         end
         start_loop(spec, ms)
     end, {}, mlabel("loop.every_help"))
-
-    -- The Tables divider, Table Depth and Call Functions In Tables: shown only while the result is a table
-    local table_divider = list:divider(label("table.divider"))
-    -- Stand puts the saved state of these back while the script starts, where the Value list can't be made
-    -- again: then it's only remembered (quiet)
-    local depth_ref = list:slider(label("depth.name"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
-        if stopping then
-            return
-        end
-        values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
-    end, {}, label("depth.help"))
-    -- The functions in the table become lists with the same panel
-    local call_ref = list:toggle(mlabel("loop.call_in_tables"), function(on, click_type)
-        if stopping then
-            return
-        end
-        values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.call_in_tables_help"), values.call_in_tables(spec.key))
-    -- The other values in the table become fields to type a new value in
-    local edit_ref = list:toggle(mlabel("loop.edit_in_tables"), function(on, click_type)
-        if stopping then
-            return
-        end
-        values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.edit_in_tables_help"), values.edit_in_tables(spec.key))
-    values.bind_depth_items(spec.key, { table_divider, depth_ref, call_ref, edit_ref })
-
-    -- What came out: the Variable line, and for a table the Value list under it
-    values.add_result_lines(list, spec.key, spec.kept)
 
     return {
         call = function() call(spec) end,
