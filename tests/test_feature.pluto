@@ -12,10 +12,10 @@ local function fails(opts: table, text: string, name: string): void
     stand.check(not ok and tostring(err):find(text, 1, true), name)
 end
 fails({ kind = "loop", on_tick = || -> nil }, "id must be a non-empty string", "id is required")
-fails({ id = "t.kind", kind = "nope" }, "unknown kind 'nope'", "unknown kind")
+fails({ id = "t.kind", kind = "nope" }, "kind: unknown 'nope', expected action, loop or toggle", "unknown kind")
 fails({ id = "t.loop", kind = "loop" }, "requires on_tick", "loop needs on_tick")
 fails({ id = "t.action", kind = "action" }, "requires on_trigger", "action needs on_trigger")
-fails({ id = "t.opt", kind = "toggle", on_tik = || -> nil }, "unknown option 'on_tik'", "a typo in an option")
+fails({ id = "t.opt", kind = "toggle", on_tik = || -> nil }, "options: unknown 'on_tik'", "a typo in an option")
 fails({ id = "t.hook", kind = "toggle", on_enable = 5 }, "must be a function", "a hook must be a function")
 
 local class Sneaky extends Feature

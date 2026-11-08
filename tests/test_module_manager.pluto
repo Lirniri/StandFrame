@@ -33,9 +33,9 @@ local function rejects(debug_opts, text: string, name: string): void
     stand.check(not ok and tostring(err):find(text, 1, true), name)
 end
 rejects("x", "debug must be a table", "debug must be a table")
-rejects({ hidden = {} }, "unknown part 'hidden'", "a typo in a part")
+rejects({ hidden = {} }, "debug: unknown 'hidden', expected categories, functions, groups or hide", "a typo in a part")
 rejects({ hide = "a" }, "debug.hide must be a table", "hide must be a list")
-rejects({ functions = { f = { helps = "" } } }, "unknown 'helps'", "a typo in a function's options")
+rejects({ functions = { f = { helps = "" } } }, "debug.functions.f: unknown 'helps', expected help, params, args or live", "a typo in a function's options")
 rejects({ groups = { { name = "G" } } }, "debug.groups[1] must be", "a group needs its functions")
 rejects({ categories = { { words = { "x" } } } }, "debug.categories[1] must be", "a category needs its key")
 local fine = new Module({ name = "with_debug", debug = { hide = { "x" } } })

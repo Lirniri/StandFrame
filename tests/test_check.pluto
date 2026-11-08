@@ -1,0 +1,99 @@
+-- core/check: expecter for functions, validator for options (Module, Feature) - the messages and the line
+-- each error points at
+local stand = require("stand")
+stand.boot()
+local check = Atdar.loader.load("core/check")
+local Module = Atdar.loader.load("core/module")
+local Feature = Atdar.loader.load("features/feature")
+
+-- @param call A function of this file making the call, so the error has a line here to point at
+-- @return The error of call(), or nil if it didn't fail
+local function error_of(call): ?string
+    local ok, err = pcall(call)
+    if ok then
+        return nil
+    end
+    return tostring(err)
+end
+
+local function check_error(err: ?string, expected: string, name: string): void
+    stand.check(err ~= nil and err:find(expected, 1, true) ~= nil, $"{name}: says what was wrong ({tostring(err)})")
+    stand.check(err ~= nil and err:find("test_check.pluto:", 1, true) ~= nil, $"{name}: points at this file's line")
+end
+
+-- ─── validator: the messages ─────────────────────────────────────────────────
+-- Made here, so this file is the checker and its lines are skipped: only the messages are checked.
+-- Where errors point is checked below, through Module and Feature
+
+local function message_is(err: ?string, expected: string, name: string): void
+    stand.check(err ~= nil and err:find(expected, 1, true) ~= nil, $"{name} ({tostring(err)})")
+end
+
+local function validate(opts: table): void
+    local v = check.validator("[Thing 'x']")
+    v.non_empty("id", opts.id)
+    v.kind("count", opts.count, "number")
+    v.known("color", opts.color, { "red", "green", "blue" })
+    v.known("size", opts.size, { small = true, big = true })
+    if opts.broken then
+        v.fail("is broken")
+    end
+end
+local good = { id = "a", count = 1, color = "red", size = "big" }
+local function with(key: string, value): table
+    local opts = {}
+    for k, val in pairs(good) do
+        opts[k] = val
+    end
+    opts[key] = value
+    return opts
+end
+stand.equal(error_of(|| -> validate(good)), nil, "right options: no error")
+message_is(error_of(|| -> validate(with("id", ""))), "[Thing 'x'] id must be a non-empty string, got string", "non_empty \"\"")
+message_is(error_of(|| -> validate(with("count", "1"))), "[Thing 'x'] count must be a number, got string", "kind")
+message_is(error_of(|| -> validate(with("color", "pink"))),
+    "[Thing 'x'] color: unknown 'pink', expected red, green or blue", "known: a list in its order")
+message_is(error_of(|| -> validate(with("size", "huge"))),
+    "[Thing 'x'] size: unknown 'huge', expected big or small", "known: a set sorted")
+message_is(error_of(|| -> validate(with("broken", true))), "[Thing 'x'] is broken", "fail")
+
+-- ─── expecter: the function checked, its caller pointed at ───────────────────
+
+local expect = check.expecter("test/thing")
+local function takes_text(text): string
+    expect("takes_text", "text", text, "string")
+    return text
+end
+stand.equal(takes_text("ok"), "ok", "expecter: the right kind passes")
+check_error(error_of(|| -> takes_text(5)), "[test/thing] takes_text: text must be a string, got number", "expecter")
+
+-- ─── Module and Feature: the line that wrote the options ─────────────────────
+
+check_error(error_of(|| -> new Module({ name = "" })), "[Module] name must be a non-empty string", "Module name")
+check_error(error_of(|| -> new Module({ name = "m", on_start = 5 })), "[Module 'm'] on_start must be a function, got number",
+    "a Module hook")
+check_error(error_of(|| -> new Module({ name = "m", dpes = {} })), "[Module 'm'] options: unknown 'dpes', expected ",
+    "a typo in a Module option")
+check_error(error_of(|| -> new Module({ name = "m", deps = { "a", 5 } })), "[Module 'm'] deps[2] must be a string, got number",
+    "a Module dependency")
+check_error(error_of(|| -> new Feature({ id = "f", kind = "toggle", on_enable = "x" })),
+    "[Feature 'f'] on_enable must be a function, got string", "a Feature hook")
+check_error(error_of(|| -> new Feature({ id = "f", kind = "loop" })), "[Feature 'f'] kind 'loop' requires on_tick",
+    "a Feature kind's hook")
+
+-- Through extends: parent:__construct in the subclass is the line written by its author
+local class Garage extends Module
+    function __construct()
+        parent:__construct({ name = "garage", deps = "VehicleManager" })
+    end
+end
+check_error(error_of(|| -> new Garage()), "[Module 'garage'] deps must be a table, got string", "a subclass of Module")
+local class Lamp extends Feature
+    function __construct()
+        parent:__construct({ id = "lamp", kind = "glow" })
+    end
+end
+check_error(error_of(|| -> new Lamp()), "[Feature 'lamp'] kind: unknown 'glow', expected action, loop or toggle",
+    "a subclass of Feature")
+
+stand.finish()

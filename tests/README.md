@@ -34,6 +34,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_i18n` | строки из языковых файлов через метки Stand, слои источников |
 | `test_streaming` | загрузку ассетов каждого типа (и `texture_dict`, `model`), `request(false)`, таймауты |
 | `test_examples` | примеры из `examples/modules` работают как написаны |
+| `test_check` | `core/check`: `expecter` для аргументов функций и `validator` для опций; ошибки `Module` и `Feature` указывают на строку, где написаны опции, и через `extends` тоже |
 | `test_parsers` | `parsers/`: hex-цвет (`color`), строгий JSON (`json`); Pluto в `proglang.pluto`: аргументы (`args`), слова имени (`name`), тип возврата из исходника (`source`); имена команд Stand (`stand.command_box`); фасады |
 | `test_updater` / `test_updater_manifest.py` | обновлялка из `updater/` на фейковом GitHub и генератор манифеста |
 

@@ -21,6 +21,7 @@ local class_utils = Atdar.globals.pluto.class
 local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local check = Atdar.loader.load("core/check")
 
 -- Module name -> its language source in core/i18n (language/ in its folder), replaced when a new instance
 -- (Reload) reads them again
@@ -43,71 +44,60 @@ local HOOKS = { on_start = true, on_stop = true, on_tick = true }
 
 -- The debug option's parts and what each must be
 local DEBUG_PARTS = { functions = "table", groups = "table", hide = "table", categories = "table" }
+-- What one function's entry in debug.functions may hold
+local FUNCTION_PARTS = { "help", "params", "args", "live" }
+-- The options a Module takes besides its hooks
+local OPTIONS = { name = true, deps = true, debug = true }
+for hook in pairs(HOOKS) do
+    OPTIONS[hook] = true
+end
 
 -- debug = { functions, groups, hide }: wrong types are errors, so a typo shows at once, not as a menu
 -- that silently ignores it
-local function validate_debug(label: string, debug_opts): void
-    if type(debug_opts) ~= "table" then
-        error($"{label} debug must be a table, got {type(debug_opts)}")
-    end
+local function validate_debug(v: table, debug_opts): void
+    v.kind("debug", debug_opts, "table")
     for key, value in pairs(debug_opts) do
-        local wanted = DEBUG_PARTS[key]
-        if wanted == nil then
-            error($"{label} debug: unknown part '{tostring(key)}', expected functions, groups, hide or categories")
-        end
-        if type(value) ~= wanted then
-            error($"{label} debug.{key} must be a {wanted}, got {type(value)}")
-        end
+        v.known("debug", key, DEBUG_PARTS)
+        v.kind($"debug.{key}", value, DEBUG_PARTS[key])
     end
     for name, fn_opts in pairs(debug_opts.functions or {}) do
-        if type(fn_opts) ~= "table" then
-            error($"{label} debug.functions.{tostring(name)} must be a table, got {type(fn_opts)}")
-        end
+        v.kind($"debug.functions.{tostring(name)}", fn_opts, "table")
         for key in pairs(fn_opts) do
-            if key ~= "help" and key ~= "params" and key ~= "args" and key ~= "live" then
-                error($"{label} debug.functions.{name}: unknown '{tostring(key)}', expected help, params, args or live")
-            end
+            v.known($"debug.functions.{name}", key, FUNCTION_PARTS)
         end
     end
     for i, category in ipairs(debug_opts.categories or {}) do
         if type(category) ~= "table" or type(category.key) ~= "string" or type(category.words) ~= "table" then
-            error(label .. " debug.categories[" .. i .. "] must be { key = \"...\", words = { ... }, name = ... }")
+            v.fail("debug.categories[" .. i .. "] must be { key = \"...\", words = { ... }, name = ... }")
         end
     end
     for i, group in ipairs(debug_opts.groups or {}) do
         if type(group) ~= "table" or group.name == nil or type(group.functions) ~= "table" then
-            error(label .. " debug.groups[" .. i .. "] must be { name = ..., functions = { ... } }")
+            v.fail("debug.groups[" .. i .. "] must be { name = ..., functions = { ... } }")
         end
     end
 end
 
+-- The errors point at the new Module({ ... }) or parent:__construct({ ... }) that wrote the options
 local function validate_opts(opts: table): void
-    if type(opts.name) ~= "string" or opts.name == "" then
-        error($"[Module] name must be a non-empty string, got {type(opts.name)}")
-    end
-    local label = $"[Module '{opts.name}']"
+    check.validator("[Module]").non_empty("name", opts.name)
+    local v = check.validator($"[Module '{opts.name}']")
 
     for key, value in pairs(opts) do
-        if key ~= "name" and key ~= "deps" and key ~= "debug" and not HOOKS[key] then
-            error($"{label} unknown option '{key}'")
-        end
-        if HOOKS[key] and type(value) ~= "function" then
-            error($"{label} '{key}' must be a function, got {type(value)}")
+        v.known("options", key, OPTIONS)
+        if HOOKS[key] then
+            v.kind(key, value, "function")
         end
     end
 
     if opts.debug ~= nil then
-        validate_debug(label, opts.debug)
+        validate_debug(v, opts.debug)
     end
 
     if opts.deps ~= nil then
-        if type(opts.deps) ~= "table" then
-            error($"{label} deps must be a table of module names, got {type(opts.deps)}")
-        end
-        for _, dep in ipairs(opts.deps) do
-            if type(dep) ~= "string" then
-                error($"{label} deps must hold module names, got {type(dep)}")
-            end
+        v.kind("deps", opts.deps, "table")
+        for i, dep in ipairs(opts.deps) do
+            v.kind($"deps[{i}]", dep, "string")
         end
     end
 end

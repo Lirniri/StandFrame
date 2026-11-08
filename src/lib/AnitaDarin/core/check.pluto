@@ -9,7 +9,29 @@
 --         expect("parse", "input", input, "string")
 --         -- input: nil -> "caller.pluto:12: [parsers/proglang/pluto/args] parse: input must be a string, got nil"
 
+-- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake doesn't break it
+local debug = debug
+
 local module = {}
+
+-- "a, b or c": the allowed values for a message; a set ({ a = true }) is sorted, a list kept in its order
+local function allowed_text(allowed: table): string
+    local names = {}
+    if #allowed > 0 then
+        for _, name in ipairs(allowed) do
+            table.insert(names, tostring(name))
+        end
+    else
+        for name in pairs(allowed) do
+            table.insert(names, tostring(name))
+        end
+        table.sort(names)
+    end
+    if #names <= 1 then
+        return names[1] or ""
+    end
+    return table.concat(names, ", ", 1, #names - 1) .. " or " .. names[#names]
+end
 
 -- An expect(fn_name, what, value, kind) for one file, its label in every error it gives.
 -- Call the expect right in the function being checked: the error then points at that function's caller
@@ -21,6 +43,73 @@ function module.expecter(label: string): function
             error($"[{label}] {fn_name}: {what} must be a {kind}, got {type(value)}", 3)
         end
     end
+end
+
+-- Checks of one thing's options, e.g. a Module's or a Feature's, each error with the label in front:
+--     local v = check.validator($"[Module '{opts.name}']")
+--     v.kind("deps", opts.deps, "table")  -- "[Module 'garage'] deps must be a table, got string"
+-- The error points at the first line outside core/check and the file that made the validator: the
+-- `new Module({ ... })` or `parent:__construct({ ... })` in the user's file, not the checks inside.
+-- Checks:
+--   kind(what, value, kind)     - what must be of that type: "... must be a table, got string"
+--   non_empty(what, value)      - what must be a string that isn't ""
+--   known(what, key, allowed)   - key must be one of allowed (a set or a list): "what: unknown 'k', expected a or b"
+--   fail(message)               - anything else, the label put in front
+-- @param label Who's checked, shown in front of every message: "[Feature 'self.godmode']"
+function module.validator(label: string): table
+    -- The file that checks its options: its own lines aren't the caller's mistake
+    local checker = debug.getinfo(2, "S").source
+    local own = debug.getinfo(1, "S").source
+    local v = {}
+
+    function v.fail(message: string): void
+        -- The first frame of Lua code in neither file: where the options were written. Not C and not
+        -- "Pluto-injected code" (new X(...) goes through it), those have no line to point at
+        local level = 2
+        while true do
+            local info = debug.getinfo(level, "S")
+            if info == nil then
+                level = 1
+                break
+            end
+            local is_code = info.what == "Lua" or info.what == "main"
+            if is_code and info.source ~= own and info.source ~= checker then
+                break
+            end
+            level += 1
+        end
+        error($"{label} {message}", level)
+    end
+
+    function v.kind(what: string, value, kind: string): void
+        if type(value) ~= kind then
+            v.fail($"{what} must be a {kind}, got {type(value)}")
+        end
+    end
+
+    function v.non_empty(what: string, value): void
+        if type(value) ~= "string" or value == "" then
+            v.fail($"{what} must be a non-empty string, got {type(value)}")
+        end
+    end
+
+    function v.known(what: string, key, allowed: table): void
+        local is_known = false
+        if #allowed > 0 then
+            for _, name in ipairs(allowed) do
+                if name == key then
+                    is_known = true
+                end
+            end
+        else
+            is_known = allowed[key] ~= nil
+        end
+        if not is_known then
+            v.fail($"{what}: unknown '{tostring(key)}', expected {allowed_text(allowed)}")
+        end
+    end
+
+    return v
 end
 
 return module

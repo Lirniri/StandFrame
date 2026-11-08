@@ -1,5 +1,6 @@
 local class_utils = Atdar.globals.pluto.class
 local Logger = Atdar.loader.load("core/logger")
+local check = Atdar.loader.load("core/check")
 
 local log = new Logger("Feature")
 
@@ -33,38 +34,29 @@ local KINDS = {
     action = { requires = "on_trigger" },
 }
 
-local function kind_names(): string
-    local names = {}
-    for name in pairs(KINDS) do
-        table.insert(names, name)
-    end
-    table.sort(names)
-    return table.concat(names, ", ")
+-- The options a Feature takes besides its hooks
+local OPTIONS = { id = true, kind = true }
+for hook in pairs(HOOKS) do
+    OPTIONS[hook] = true
 end
 
+-- The errors point at the new Feature({ ... }) or parent:__construct({ ... }) that wrote the options
 local function validate_opts(instance: table, opts: table): void
-    if type(opts.id) ~= "string" or opts.id == "" then
-        error($"[Feature] id must be a non-empty string, got {type(opts.id)}")
-    end
-    local label = $"[Feature '{opts.id}']"
+    check.validator("[Feature]").non_empty("id", opts.id)
+    local v = check.validator($"[Feature '{opts.id}']")
 
     for key, value in pairs(opts) do
-        if key ~= "id" and key ~= "kind" and not HOOKS[key] then
-            error($"{label} unknown option '{key}'")
-        end
-        if HOOKS[key] and type(value) ~= "function" then
-            error($"{label} '{key}' must be a function, got {type(value)}")
+        v.known("options", key, OPTIONS)
+        if HOOKS[key] then
+            v.kind(key, value, "function")
         end
     end
 
-    local kind = KINDS[opts.kind]
-    if not kind then
-        error($"{label} unknown kind '{tostring(opts.kind)}', expected one of: {kind_names()}")
-    end
+    v.known("kind", opts.kind, KINDS)
 
-    local hook = kind.requires
+    local hook = KINDS[opts.kind].requires
     if hook and opts[hook] == nil and instance[hook] == Feature[hook] then
-        error($"{label} kind '{opts.kind}' requires {hook}")
+        v.fail($"kind '{opts.kind}' requires {hook}")
     end
 end
 
