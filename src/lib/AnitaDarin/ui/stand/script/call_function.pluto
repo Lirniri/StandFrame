@@ -141,8 +141,9 @@ end
 -- (a table, a variable) is read. Either way the value is what comes out
 local function call(spec: table): void
     local name = spec.name()
+    -- No name: nothing to show, what was there is taken away (the Variable line, the Value list, Table Depth...)
     if name == "" then
-        log:warn(text("no_name"))
+        Atdar.loader.load("ui/stand/modules/values").show_result(spec.key, table.pack(true))
         return
     end
     local found, value, owner = spec.target()
@@ -417,6 +418,11 @@ function module.build(node: table): any
             return
         end
         main_state.name = value
+        -- The name taken away: the result goes with it, whatever the toggles say
+        if value == "" then
+            Atdar.loader.load("ui/stand/modules/values").show_result(RESULT_KEY, table.pack(true))
+            return
+        end
         if panel ~= nil then
             panel.name_typed()
         end
