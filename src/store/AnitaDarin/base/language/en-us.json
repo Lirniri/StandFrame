@@ -465,6 +465,13 @@
             "delete": "Delete"
         },
         "no_functions": "No functions",
+        "edit": {
+            "help": "The new value as an expression: 5, true, \"text\", v3.new(1, 2, 3), nil. Written to the table at once",
+            "bad_value": "%s: error in the value: %s",
+            "one_value": "%s: one value is needed",
+            "failed": "%s: not written: %s",
+            "done": "%s = %s"
+        },
         "call": {
             "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. — in the help: not given",
             "button_help": "Calls the function once; what it gives shows in a notification and on the Variable line",
@@ -509,6 +516,8 @@
             "status_line": "Loop Status: %s",
             "call_in_tables": "Call Functions In Tables",
             "call_in_tables_help": "The functions in the Value list become lists with the same menu as Call Function, except the name and the notice in Stand",
+            "edit_in_tables": "Change Variable Values",
+            "edit_in_tables_help": "The values in the Value list (not functions or tables) become fields: type a new expression (5, true, \"text\", v3.new(1, 2, 3), nil) and it's written to the table",
             "table_depth": "Table Depth",
             "table_depth_help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables makes a great many items",
             "result_line":"Variable: %s",

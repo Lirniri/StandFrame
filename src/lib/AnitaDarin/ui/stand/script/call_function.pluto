@@ -369,7 +369,14 @@ function module.panel(list: table, spec: table): table
         end
         values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
     end, {}, mlabel("loop.call_in_tables_help"), values.call_in_tables(spec.key))
-    values.bind_depth_items(spec.key, { table_divider, depth_ref, call_ref })
+    -- The other values in the table become fields to type a new value in
+    local edit_ref = list:toggle(mlabel("loop.edit_in_tables"), function(on, click_type)
+        if stopping then
+            return
+        end
+        values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+    end, {}, mlabel("loop.edit_in_tables_help"), values.edit_in_tables(spec.key))
+    values.bind_depth_items(spec.key, { table_divider, depth_ref, call_ref, edit_ref })
 
     -- What came out: the Variable line, and for a table the Value list under it
     values.add_result_lines(list, spec.key, spec.kept)

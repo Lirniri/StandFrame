@@ -11,6 +11,7 @@ local i18n = Atdar.loader.load("core/i18n")
 local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 local log = new Logger("Modules")
 
 local module = {}
@@ -20,6 +21,13 @@ local label, text = i18n.scope("modules")
 
 -- Stand runs the lists' tick handlers once more while the script stops: they end then
 local stopping = false
+-- Click types of Stand's own calls (restoring a field's state, bulk changes): not the user's
+local NOT_USER_CLICKS = { [4] = true }
+for _, click_name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
+    if _G[click_name] ~= nil then
+        NOT_USER_CLICKS[_G[click_name]] = true
+    end
+end
 util.on_stop(function() stopping = true end)
 
 -- ─── What a call gave ────────────────────────────────────────────────────────
@@ -203,6 +211,8 @@ end
 
 -- The same key -> true when the functions in its Value list are buttons that call them
 local call_in_tables = {}
+-- The same key -> true when the other values in its Value list are fields to change them in
+local edit_in_tables = {}
 -- What is typed for the functions in the Value lists, by "<key><path>": the panel's state (Arguments, toggles,
 -- its loop; see call_function.panel). Kept, so it stays when the list is made again
 local table_fn_states = {}
@@ -288,6 +298,23 @@ function module.set_call_in_tables(key: string, on: bool, quiet: ?bool): void
     util.create_thread(function()
         update_result_list(key)
     end)
+end
+
+-- Change Variables In Tables for key's Value list: the values in it become fields to type a new value in
+-- quiet: as in set_result_depth
+function module.set_edit_in_tables(key: string, on: bool, quiet: ?bool): void
+    edit_in_tables[key] = on or nil
+    if quiet then
+        return
+    end
+    util.create_thread(function()
+        update_result_list(key)
+    end)
+end
+
+-- @return Whether Change Variables In Tables is on for key
+function module.edit_in_tables(key: string): bool
+    return edit_in_tables[key] == true
 end
 
 -- @return Whether Call Functions In Tables is on for key
@@ -394,9 +421,12 @@ local function collect_variable(out: table, parent: string, name: string, value,
     if type(value) ~= "table" or seen[value] or depth >= limit then
         local item = { kind = "line", path = path, parent = parent, name = name,
             text = describe_item(value, depth, seen) }
-        if type(value) == "function" and holder ~= nil then
+        -- Not a table (one at the depth limit is a line, but not one to change): a function can be called,
+        -- another value changed
+        if type(value) ~= "table" and holder ~= nil then
             item.holder = holder
             item.raw_key = raw_key
+            item.is_function = type(value) == "function"
         end
         table.insert(out, item)
         return
@@ -441,14 +471,17 @@ local function shape_of(items: table): string
 end
 
 -- Makes the items in list
--- scope: the key of the Value list when its functions are lists to call (Call Functions In Tables); nil -
--- they are lines like the rest
--- @return path -> the ref of each line, to change its value later
-local function build_variables(list: table, items: table, scope: ?string): table
+-- scope: the key of the Value list the items are for (nil - the module's Variables: all lines are read only)
+-- call_on: Call Functions In Tables - the functions are lists to call
+-- edit_on: Change Variables In Tables - the other values are fields to type a new value in
+-- @return path -> the ref of each line, to change its value later; and the set of paths whose name carries
+--         the value ("name: value"), which is changed with it
+local function build_variables(list: table, items: table, scope: ?string, call_on: ?bool, edit_on: ?bool): table
     local lines = {}
+    local named = {}
     if #items == 0 then
         list:readonly_name(label("no_variables"))
-        return lines
+        return lines, named
     end
     local nodes = { [""] = list }
     local number = 0
@@ -456,7 +489,34 @@ local function build_variables(list: table, items: table, scope: ?string): table
         local parent = nodes[item.parent]
         if item.kind == "list" then
             nodes[item.path] = parent:list(item.name)
-        elseif item.kind == "line" and item.holder ~= nil and scope ~= nil then
+        elseif item.kind == "line" and item.holder ~= nil and not item.is_function and edit_on then
+            -- A value: a field with it typed as an expression (5, true, "text", v3.new(1, 2, 3), nil)
+            number += 1
+            named[item.path] = true
+            lines[item.path] = parent:text_input($"{item.name}: {item.text}",
+                { $"tablevaredit{scope_number(scope)}_{number}" }, function(value, click_type)
+                if stopping or NOT_USER_CLICKS[click_type] then
+                    return
+                end
+                local args, count, err = args_parser.parse(value)
+                if err ~= nil then
+                    log:error(text("edit.bad_value"):format(item.name, err))
+                    return
+                end
+                if count ~= 1 then
+                    log:error(text("edit.one_value"):format(item.name))
+                    return
+                end
+                local ok, why = pcall(function() item.holder[item.raw_key] = args[1] end)
+                if not ok then
+                    log:error(text("edit.failed"):format(item.name, tostring(why)))
+                    return
+                end
+                log:notify(text("edit.done"):format(item.name, describe_item(args[1], 0, {})))
+                update_result_list(scope)
+            end, label("edit.help"), item.text)
+        elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on then
+            named[item.path] = true
             -- A function: a list with the panel of Debug > Call Function (Argument, Call, Call After, Loop, ...),
             -- without the name and the notice in Stand
             number += 1
@@ -489,7 +549,7 @@ local function build_variables(list: table, items: table, scope: ?string): table
             parent:readonly_name(item.name)
         end
     end
-    return lines
+    return lines, named
 end
 
 -- The Value list under a function's Variable line: what a table it gave holds, a line or list per entry
@@ -519,17 +579,21 @@ update_result_list = function(key)
     end
     pcall(menu.set_visible, ui.list.handle, true)
     pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
-    -- With Call Functions In Tables on, the function lines are buttons: the other shape
-    local scope = nil
+    -- With Call Functions In Tables / Change Variables In Tables on, the lines are lists or fields: the
+    -- other shape
+    local call_on = call_in_tables[key] == true
+    local edit_on = edit_in_tables[key] == true
     local shape = shape_of(items)
-    if call_in_tables[key] then
-        scope = key
+    if call_on then
         shape = shape .. "\ncall"
+    end
+    if edit_on then
+        shape = shape .. "\nedit"
     end
     if shape ~= ui.shape then
         ui.list:clear()
         ui.shape = shape
-        ui.lines = build_variables(ui.list, items, scope)
+        ui.lines, ui.named = build_variables(ui.list, items, key, call_on, edit_on)
         ui.texts = {}
         for _, item in ipairs(items) do
             ui.texts[item.path] = item.text
@@ -539,6 +603,9 @@ update_result_list = function(key)
     for _, item in ipairs(items) do
         if item.kind == "line" and ui.texts[item.path] ~= item.text then
             ui.texts[item.path] = item.text
+            if (ui.named or {})[item.path] then
+                pcall(menu.set_menu_name, ui.lines[item.path], $"{item.name}: {item.text}")
+            end
             pcall(menu.set_value, ui.lines[item.path], item.text)
         end
     end

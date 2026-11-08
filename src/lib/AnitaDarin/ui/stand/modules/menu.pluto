@@ -557,7 +557,14 @@ local function function_list(entry: table, mod: table, fn: table): void
         end
         values.set_call_in_tables(key, on, NOT_USER_CLICKS[click_type])
     end, {}, label("loop.call_in_tables_help"), values.call_in_tables(key))
-    values.bind_depth_items(key, { depth_ref, call_ref })
+    -- The other values in the table become fields to type a new value in
+    local edit_ref = node:toggle(label("loop.edit_in_tables"), function(on, click_type)
+        if stopping then
+            return
+        end
+        values.set_edit_in_tables(key, on, NOT_USER_CLICKS[click_type])
+    end, {}, label("loop.edit_in_tables_help"), values.edit_in_tables(key))
+    values.bind_depth_items(key, { depth_ref, call_ref, edit_ref })
     -- (the functions of a table it gave get the same panel as Debug > Call Function: Argument, Call, Loop...)
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
