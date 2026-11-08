@@ -1,4 +1,5 @@
--- parsers/: text into values - color, json, proglang.pluto (args, name, source) - and the facades
+-- parsers/: text into values - color, json, proglang.pluto (args, name, source), stand.command_box -
+-- and the facades
 local stand = require("stand")
 stand.boot()
 Atdar.parsers = Atdar.loader.auto({}, "parsers")
@@ -60,5 +61,19 @@ local typed = dofile($"{dir}typed.pluto")
 stand.equal(pluto.source.return_type(typed.count), "int", "source.return_type: written after parameters on another line")
 stand.equal(pluto.source.return_type(typed.plain), nil, "source.return_type: none written - nil")
 stand.equal(pluto.source.return_type(print), nil, "source.return_type: a C function - nil")
+
+-- ─── stand.command_box ───────────────────────────────────────────────────────
+
+local command_box = parsers.stand.command_box
+stand.check(rawequal(command_box, Atdar.loader.load("parsers/stand/command_box")), "Atdar.parsers.stand.command_box")
+stand.equal(command_box.sanitize("God Mode_2!"), "godmode_2", "command_box.sanitize: lower case, a-z 0-9 _ only")
+local clean, skipped = command_box.bases({ "God Mode", "godmode", "", "!!", "fly" })
+stand.equal(table.concat(clean, " "), "godmode fly", "command_box.bases: sanitized, no repeats, no empty ones")
+stand.equal(table.concat(skipped, " "), "!!", "and what had nothing usable, \"\" left out quietly")
+local entry = command_box.entry("godmode", "God", { "gm", "", "GM", "god", "godmode", 5 })
+stand.check(entry.name == "god" and table.concat(entry.words, " ") == "gm",
+    "command_box.entry: the name and words clean, repeats of the base, the name and each other dropped")
+stand.equal(command_box.entry("godmode", "GodMode", {}), nil, "command_box.entry: the base itself as the name - nothing left")
+stand.equal(command_box.entry("godmode", 42, "gm"), nil, "command_box.entry: values of the wrong kind are ignored")
 
 stand.finish()

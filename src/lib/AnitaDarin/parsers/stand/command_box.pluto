@@ -1,0 +1,71 @@
+-- lib/AnitaDarin/parsers/stand/command_box.pluto
+--
+-- Command names for Stand's command box, as people type them and files keep them. Stand takes
+-- only a-z, 0-9 and _ in a command; ui/stand/commands builds the full names from what this gives.
+--   sanitize(text)            - a name Stand takes: "God Mode!" -> "godmode"
+--   bases(names)              - an item's base names cleaned: sanitized, no empty ones, no repeats
+--   entry(base, name, words)  - one command's file, commands/<base>.json { name, words }, cleaned
+--
+--     local command_box = Atdar.parsers.stand.command_box
+--     command_box.sanitize("God Mode!")                  -- "godmode"
+--     command_box.entry("godmode", "God", { "gm", "" })  -- { name = "god", words = { "gm" } }
+
+local module = {}
+
+-- Lowercase, keeps only a-z, 0-9 and _
+function module.sanitize(text: string): string
+    local clean = text:lower():gsub("[^%w_]", "")
+    return clean
+end
+
+-- Sanitized base names without empty ones and duplicates. "" is no command ({ "" } reads as "this item
+-- has none") and is left out quietly
+-- @return The clean names, and the names given that had nothing usable in them (to warn about)
+function module.bases(names: table)
+    local clean, seen, skipped = {}, {}, {}
+    for _, base in ipairs(names) do
+        local name = module.sanitize(base)
+        if name == "" then
+            if base ~= "" then
+                table.insert(skipped, base)
+            end
+        elseif not seen[name] then
+            seen[name] = true
+            table.insert(clean, name)
+        end
+    end
+    return clean, skipped
+end
+
+-- One command's entry as read: { name, words }, only sound names and words kept - a custom name that's
+-- the base itself, words repeating the base, the name or each other are dropped
+-- @param base The command's base name, already sanitized
+-- @param name The custom name as written (anything: a file may hold any value)
+-- @param words The extra words as written
+-- @return The entry, or nil when nothing's left
+function module.entry(base: string, name, words): ?table
+    local entry = { name = nil, words = {} }
+    if type(name) == "string" then
+        local clean = module.sanitize(name)
+        if clean ~= "" and clean ~= base then
+            entry.name = clean
+        end
+    end
+    local seen = { [base] = true }
+    if entry.name then
+        seen[entry.name] = true
+    end
+    for _, word in ipairs(type(words) == "table" and words or {}) do
+        local clean = type(word) == "string" and module.sanitize(word) or ""
+        if clean ~= "" and not seen[clean] then
+            seen[clean] = true
+            table.insert(entry.words, clean)
+        end
+    end
+    if entry.name == nil and #entry.words == 0 then
+        return nil
+    end
+    return entry
+end
+
+return module

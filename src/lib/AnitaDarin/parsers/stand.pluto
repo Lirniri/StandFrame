@@ -1,0 +1,10 @@
+-- lib/AnitaDarin/parsers/stand.pluto
+--
+-- Parsers of what Stand itself takes, each in parsers/stand/, loaded on first use:
+--   command_box - command names: sanitize(), bases(), entry()
+--
+--     Atdar.parsers.stand.command_box.sanitize("God Mode!")  -- "godmode"
+
+local module = {}
+
+return Atdar.loader.auto(module, "parsers/stand")

@@ -28,7 +28,8 @@ Atdar.profile = Atdar.loader.load("core/profile")
 Atdar.natives = Atdar.loader.auto({}, "natives")
 
 -- Parsers: Atdar.parsers.<kind>, each loaded from parsers/<kind>.pluto on first use. Text into values:
--- color (hex), json, proglang (programming languages: proglang.pluto.args / name / source)
+-- color (hex), json, proglang (programming languages: proglang.pluto.args / name / source),
+-- stand (what Stand takes: stand.command_box)
 Atdar.parsers = Atdar.loader.auto({}, "parsers")
 
 -- Modules: internal parts the script starts by itself, in dependency order (core/module).

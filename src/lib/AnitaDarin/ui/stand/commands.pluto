@@ -16,6 +16,8 @@
 
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+-- What a command name may be, and the files of names read clean
+local command_box = Atdar.loader.load("parsers/stand/command_box")
 
 local log = new Logger("Commands")
 
@@ -42,37 +44,8 @@ local custom = { menu = {}, script = nil }
 local dirs = { menu = nil, script = nil }
 local legacy = { menu = nil, script = nil }
 
--- Lowercase, keeps only a-z, 0-9 and _
-function module.sanitize(name: string): string
-    local clean = name:lower():gsub("[^%w_]", "")
-    return clean
-end
-
--- One command's entry as read: { name, words }, only sound names and words kept; nil when nothing's left
-local function clean_entry(base: string, name, words): ?table
-    local entry = { name = nil, words = {} }
-    if type(name) == "string" then
-        local clean = module.sanitize(name)
-        if clean ~= "" and clean ~= base then
-            entry.name = clean
-        end
-    end
-    local seen = { [base] = true }
-    if entry.name then
-        seen[entry.name] = true
-    end
-    for _, word in ipairs(type(words) == "table" and words or {}) do
-        local clean = type(word) == "string" and module.sanitize(word) or ""
-        if clean ~= "" and not seen[clean] then
-            seen[clean] = true
-            table.insert(entry.words, clean)
-        end
-    end
-    if entry.name == nil and #entry.words == 0 then
-        return nil
-    end
-    return entry
-end
+-- Lowercase, keeps only a-z, 0-9 and _ (parsers/stand/command_box). Here too: script_menu uses it
+module.sanitize = command_box.sanitize
 
 -- An owner's names: the older commands.json first, then each commands/<base>.json (they win)
 local function read_names(dir: string, old_file: table): table
@@ -81,7 +54,7 @@ local function read_names(dir: string, old_file: table): table
         if type(base) == "string" then
             local clean_base = module.sanitize(base)
             if clean_base ~= "" then
-                names[clean_base] = clean_entry(clean_base, name, nil)
+                names[clean_base] = command_box.entry(clean_base, name, nil)
             end
         end
     end
@@ -91,7 +64,7 @@ local function read_names(dir: string, old_file: table): table
             local clean_base = base and module.sanitize(base) or ""
             if clean_base ~= "" then
                 local data = new JsonFile(path):read() or {}
-                names[clean_base] = clean_entry(clean_base, data.name, data.words)
+                names[clean_base] = command_box.entry(clean_base, data.name, data.words)
             end
         end
     end
@@ -116,19 +89,13 @@ local function custom_of_owner(who: string): table
     return script_custom()
 end
 
--- @return Sanitized base names without empty ones and duplicates. "" is no command, quietly
--- ({ "" } reads as "this item has none"); a name with nothing usable in it is warned about
+-- @return Sanitized base names without empty ones and duplicates (parsers/stand/command_box);
+-- a name with nothing usable in it is warned about when warn is set
 local function clean_bases(bases: table, warn: bool): table
-    local clean, seen = {}, {}
-    for _, base in ipairs(bases) do
-        local name = module.sanitize(base)
-        if name == "" then
-            if warn and base ~= "" then
-                log:warn($"command '{base}' has no allowed characters (a-z, 0-9, _), skipped")
-            end
-        elseif not seen[name] then
-            seen[name] = true
-            table.insert(clean, name)
+    local clean, skipped = command_box.bases(bases)
+    if warn then
+        for _, base in ipairs(skipped) do
+            log:warn($"command '{base}' has no allowed characters (a-z, 0-9, _), skipped")
         end
     end
     return clean
