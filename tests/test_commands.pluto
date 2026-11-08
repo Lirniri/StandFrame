@@ -1,7 +1,7 @@
 -- ui/stand/commands: command names with the profile's prefix, renamed in place when it changes
 local stand = require("stand")
 stand.boot()
-local values = { command_prefix = "atdar", command_separator = "", found_command_prefix = "atdar", found_command_separator = "" }
+local values = { command_box_prefix = "atdar", command_box_separator = "", command_box_found_prefix = "atdar", command_box_found_separator = "" }
 local listeners = {}
 Atdar.profile = {
     get = |key| -> values[key],
@@ -25,11 +25,11 @@ stand.equal(stand.find_log("has no allowed characters"), nil, "and isn't warned 
 -- Items are renamed in place when the profile's prefix or separator changes
 local item = menu.action(stand.root, "God", commands.names({ "godmode" }), "", || -> nil)
 commands.track(item, { "godmode" })
-profile_set("command_separator", "_")
+profile_set("command_box_separator", "_")
 stand.equal(table.concat(item.commands, ","), "atdar_godmode", "the separator applies to tracked items")
-profile_set("command_prefix", "Ani Dar")
+profile_set("command_box_prefix", "Ani Dar")
 stand.equal(table.concat(item.commands, ","), "anidar_godmode", "a new prefix is cleaned and applied")
-profile_set("command_prefix", "")
+profile_set("command_box_prefix", "")
 stand.equal(table.concat(item.commands, ","), "godmode", "an empty prefix means none")
 
 -- An item deleted without untrack: renaming the rest doesn't fail on it, and it's forgotten
@@ -45,7 +45,7 @@ menu.set_command_names = function(it, names)
     end
     real_set_names(it, names)
 end
-local renamed_ok = pcall(profile_set, "command_prefix", "zz")
+local renamed_ok = pcall(profile_set, "command_box_prefix", "zz")
 menu.set_command_names = real_set_names
 stand.check(renamed_ok, "a new prefix doesn't fail on an item deleted without untrack")
 stand.equal(kept.commands[1], "zz_kept", "the other items are renamed")
@@ -56,16 +56,16 @@ for _, item in ipairs(commands.list()) do
 end
 stand.check(not listed, "nor listed in Found Commands")
 commands.untrack(kept)
-profile_set("command_prefix", "")
+profile_set("command_box_prefix", "")
 
 -- Untracked (deleted) items aren't touched any more
 commands.untrack(item)
-profile_set("command_prefix", "x")
+profile_set("command_box_prefix", "x")
 stand.equal(table.concat(item.commands, ","), "godmode", "untracked items keep their names")
 
 -- The loaded menu's commands have a prefix and separator of their own: the same base name can't clash
-profile_set("command_prefix", "atdar")
-profile_set("command_separator", "")
+profile_set("command_box_prefix", "atdar")
+profile_set("command_box_separator", "")
 local script_item = menu.action(stand.root, "Settings", commands.names({ "settings" }), "", || -> nil)
 commands.track(script_item, { "settings" })
 commands.begin_menu(stand.tmpdir("commands_menu_none"))
@@ -73,10 +73,10 @@ local menu_item = menu.action(stand.root, "Pack Settings", commands.names({ "set
 commands.track(menu_item, { "settings" })
 commands.end_menu()
 stand.equal(script_item.commands[1], menu_item.commands[1], "with the same prefix and separator they clash")
-profile_set("found_command_separator", "_")
+profile_set("command_box_found_separator", "_")
 stand.equal(menu_item.commands[1], "atdar_settings", "the found separator renames the menu's commands")
 stand.equal(script_item.commands[1], "atdarsettings", "and leaves the script's alone")
-profile_set("found_command_prefix", "ad")
+profile_set("command_box_found_prefix", "ad")
 stand.equal(menu_item.commands[1], "ad_settings", "the found prefix too")
 stand.equal(script_item.commands[1], "atdarsettings", "the script's commands keep theirs")
 commands.untrack(script_item)
@@ -88,8 +88,8 @@ stand.check(stand.find_log("separator must be"), "only '' and '_' are allowed as
 
 -- ─── Custom names and extra words: commands/<base>.json in the owner's folder ──────────────────
 
-profile_set("found_command_prefix", "atdar")
-profile_set("found_command_separator", "")
+profile_set("command_box_found_prefix", "atdar")
+profile_set("command_box_found_separator", "")
 local menu_dir = stand.tmpdir("commands_words")
 -- An older commands.json there: still read, moved into the folder at the first save
 stand.write_file($"{menu_dir}commands.json", '{"heal": "hp"}')
@@ -130,6 +130,9 @@ commands.set_separator("", "script")
 local _, same_full = commands.set_custom(heal, "fly")
 stand.equal(same_full, "taken", "the same full name is (the script's is atdarfly now too)")
 commands.set_custom(heal, "hp")
+-- A dot between the prefix and the name
+commands.set_separator(".", "script")
+stand.equal(fly.commands[1], "atdar.fly", "the dot as a separator: atdar.fly")
 commands.set_separator(script_config.separator, "script")
 commands.set_separator(menu_config.separator, "menu")
 commands.untrack(fly)

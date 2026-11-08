@@ -495,10 +495,13 @@ function module.set_use_prefix(use: bool): void
     module.refresh()
 end
 
--- "" or "_"; who: "script" (default) or "menu"
+-- Separators a command name may have between its prefix and its name: atdargodmode, atdar_godmode, atdar.godmode
+local SEPARATORS = { [""] = true, ["_"] = true, ["."] = true }
+
+-- "", "_" or "."; who: "script" (default), "menu" or "user"
 function module.set_separator(separator: string, who: string = "script"): void
-    if separator ~= "" and separator ~= "_" then
-        log:warn($"separator must be '' or '_', got '{separator}'")
+    if not SEPARATORS[separator] then
+        log:warn($"separator must be '', '_' or '.', got '{separator}'")
         return
     end
     config[who].separator = separator
@@ -512,12 +515,12 @@ end
 
 -- Profile keys of each owner's prefix and separator
 local PROFILE_KEYS = {
-    command_prefix = { who = "script", what = "prefix" },
-    command_separator = { who = "script", what = "separator" },
-    found_command_prefix = { who = "menu", what = "prefix" },
-    found_command_separator = { who = "menu", what = "separator" },
-    user_command_prefix = { who = "user", what = "prefix" },
-    user_command_separator = { who = "user", what = "separator" },
+    command_box_prefix = { who = "script", what = "prefix" },
+    command_box_separator = { who = "script", what = "separator" },
+    command_box_found_prefix = { who = "menu", what = "prefix" },
+    command_box_found_separator = { who = "menu", what = "separator" },
+    command_box_user_prefix = { who = "user", what = "prefix" },
+    command_box_user_separator = { who = "user", what = "separator" },
 }
 
 -- Prefixes and separators come from the script profile and follow its changes; an empty prefix means none
@@ -526,10 +529,10 @@ if profile and profile.get then
     for key, target in pairs(PROFILE_KEYS) do
         local value = profile.get(key)
         if target.what == "prefix" then
-            -- No found_command_prefix in the profile (an old one): the same as the script's
-            config[target.who].prefix = command_box.sanitize(value or profile.get("command_prefix") or "")
+            -- No command_box_found_prefix in the profile (an old one): the same as the script's
+            config[target.who].prefix = command_box.sanitize(value or profile.get("command_box_prefix") or "")
         else
-            config[target.who].separator = (value == "_") ? "_" : ""
+            config[target.who].separator = SEPARATORS[value] and value or ""
         end
     end
     profile.on_change(function(key: string, value)
@@ -540,7 +543,7 @@ if profile and profile.get then
         if target.what == "prefix" then
             module.set_prefix(value or "", target.who)
         else
-            module.set_separator((value == "_") ? "_" : "", target.who)
+            module.set_separator(SEPARATORS[value] and value or "", target.who)
         end
     end)
 end

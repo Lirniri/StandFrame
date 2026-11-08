@@ -3,7 +3,7 @@
 -- The user's own commands: a name that runs other commands, Stand's or the script's, one after another -
 -- ready -> "godmode on; neverwanted on; tpwaypoint". Made in Command Box > User Commands:
 --
---   Prefix, Separator             - of these commands only (profile: user_command_prefix / _separator)
+--   Prefix, Separator             - of these commands only (profile: command_box_user_prefix / _separator)
 --   Create                        - type a name: the command is made, empty
 --   Remove                        - pick one: it goes, with its file
 --   ── Commands ──
@@ -321,9 +321,9 @@ end
 -- nothing to run, its own). Any of them, not only the user's: a profile reset or loaded gives them all
 -- at once, in no set order, and the last one must find every command under its new name
 local NAME_KEYS = {
-    command_prefix = true, command_separator = true,
-    found_command_prefix = true, found_command_separator = true,
-    user_command_prefix = true, user_command_separator = true,
+    command_box_prefix = true, command_box_separator = true,
+    command_box_found_prefix = true, command_box_found_separator = true,
+    command_box_user_prefix = true, command_box_user_separator = true,
 }
 
 Atdar.profile.on_change(function(key: string)

@@ -109,7 +109,7 @@
             "name": "Short Name",
             "help": "Short name, e.g. for log and notification lines"
         },
-        "command_prefix": {
+        "command_box_prefix": {
             "name": "Base Commands Prefix",
             "help": "Prefix of the script's own commands (Base Commands); empty for none. Commands are renamed right away"
         },
@@ -117,9 +117,10 @@
             "name": "Base Commands Separator: %s",
             "help": "Between the prefix and the name of the script's own commands",
             "none": "None",
-            "underscore": "_ (underscore)"
+            "underscore": "_ (underscore)",
+            "dot": ". (dot)"
         },
-        "found_command_prefix": {
+        "command_box_found_prefix": {
             "name": "Found Commands Prefix",
             "help": "Prefix of the loaded menu's commands (Found Commands); empty for none. Commands are renamed right away"
         },
@@ -127,7 +128,7 @@
             "name": "Found Commands Separator: %s",
             "help": "Between the prefix and the name of the loaded menu's commands. A different prefix or separator than the base commands' keeps the same names apart"
         },
-        "user_command_prefix": {
+        "command_box_user_prefix": {
             "name": "Prefix",
             "help": "Prefix of your own commands; empty for none. Commands are renamed right away"
         },

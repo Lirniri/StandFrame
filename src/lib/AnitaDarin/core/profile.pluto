@@ -10,15 +10,15 @@ local log = new Logger("Profile")
 local DEFAULTS = {
     display_name = Atdar.name,  -- shown to the user: settings section, built-in menu entry
     short_name = "AniDar",
-    command_prefix = "atdar",
-    command_separator = "_",     -- "" -> atdargodmode, "_" -> atdar_godmode
+    command_box_prefix = "atdar",
+    command_box_separator = "_",     -- "" -> atdargodmode, "_" -> atdar_godmode
     -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
-    found_command_prefix = "atdar",
-    found_command_separator = "",
+    command_box_found_prefix = "atdar",
+    command_box_found_separator = "",
     -- The same for the user's own commands (User Commands: a name running other commands). None: a command
     -- is called exactly what the user named it ("settingsatdar")
-    user_command_prefix = "",
-    user_command_separator = "",
+    command_box_user_prefix = "",
+    command_box_user_separator = "",
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
@@ -100,7 +100,18 @@ end
 -- when it loads (it never chose them, they were only what the script gave it)
 local OLD_DEFAULTS = {
     -- 2026-11-08: user commands were prefixed atdar_ for a day; now they're named exactly as typed
-    { user_command_prefix = "atdar", user_command_separator = "_" },
+    { command_box_user_prefix = "atdar", command_box_user_separator = "_" },
+}
+
+-- Keys renamed: a profile with the old name gets its value under the new one when it loads (2026-11-08:
+-- the command box's keys all start with command_box_)
+local RENAMED_KEYS = {
+    command_prefix = "command_box_prefix",
+    command_separator = "command_box_separator",
+    found_command_prefix = "command_box_found_prefix",
+    found_command_separator = "command_box_found_separator",
+    user_command_prefix = "command_box_user_prefix",
+    user_command_separator = "command_box_user_separator",
 }
 
 -- Puts the new defaults over old ones the profile never chose
@@ -129,6 +140,14 @@ local function load_profile(name: string): void
     local file = profile_file(name)
     local data = file:read() or {}
     local changed = false
+    for old_key, new_key in pairs(RENAMED_KEYS) do
+        if data[old_key] ~= nil then
+            if data[new_key] == nil then
+                data[new_key] = data[old_key]
+            end
+            changed = true
+        end
+    end
     values = {}
     for key, default in pairs(DEFAULTS) do
         if data[key] == nil then

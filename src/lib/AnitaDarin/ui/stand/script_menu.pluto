@@ -267,8 +267,8 @@ end
 
 -- A new prefix or separator renames the commands (ui/stand/commands): the full ones inside the lists follow
 Atdar.profile.on_change(function(key: string)
-    if key ~= "command_prefix" and key ~= "command_separator" and key ~= "found_command_prefix"
-        and key ~= "found_command_separator" then
+    if key ~= "command_box_prefix" and key ~= "command_box_separator" and key ~= "command_box_found_prefix"
+        and key ~= "command_box_found_separator" then
         return
     end
     for _, found in ipairs(found_rows) do

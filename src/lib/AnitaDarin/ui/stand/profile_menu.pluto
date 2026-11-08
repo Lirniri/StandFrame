@@ -37,7 +37,9 @@ local module = {}
 local label, text = i18n.scope("profile")
 
 -- Option index -> profile value for the two fixed-choice settings
-local SEPARATORS = { "", "_" }
+local SEPARATORS = { "", "_", "." }
+-- Each separator's word in the menu
+local SEPARATOR_NAMES = { [""] = "separator.none", ["_"] = "separator.underscore", ["."] = "separator.dot" }
 local LOG_NAMES = { "short", "display" }
 local NOTIFY_TARGETS = { "stand", "game", "none" }
 local FEED_STYLES = { "message", "ticker" }
@@ -49,7 +51,7 @@ local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "blac
 local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
 
 -- Profile keys edited through text fields
-local INPUT_KEYS = { "display_name", "short_name", "command_prefix", "found_command_prefix", "user_command_prefix",
+local INPUT_KEYS = { "display_name", "short_name", "command_box_prefix", "command_box_found_prefix", "command_box_user_prefix",
     "notify_emoticon_info", "notify_emoticon_warn", "notify_emoticon_error", "notify_emoticon_success" }
 
 -- Items of the latest build, updated in place when profile values change. Reset by begin()
@@ -74,8 +76,8 @@ local function settings_caption(): string
 end
 
 -- "Base Commands Separator: None"; key: the profile key, name: the caption's label key
-local function separator_caption(key: string = "command_separator", name: string = "separator.name"): string
-    local value = Atdar.profile.get(key) == "_" ? "separator.underscore" : "separator.none"
+local function separator_caption(key: string = "command_box_separator", name: string = "separator.name"): string
+    local value = SEPARATOR_NAMES[Atdar.profile.get(key) or ""] or "separator.none"
     return text(name):format(text(value))
 end
 
@@ -174,8 +176,8 @@ local function update_captions(): void
     end
     rename(view.settings_of, settings_caption())
     rename(view.separator, separator_caption())
-    rename(view.found_separator, separator_caption("found_command_separator", "found_separator.name"))
-    rename(view.user_separator, separator_caption("user_command_separator", "user_separator.name"))
+    rename(view.found_separator, separator_caption("command_box_found_separator", "found_separator.name"))
+    rename(view.user_separator, separator_caption("command_box_user_separator", "user_separator.name"))
     rename(view.log_name, log_name_caption())
     rename(view.notify_target, notify_caption())
     rename(view.feed_style, feed_style_caption())
@@ -651,26 +653,26 @@ end
 
 -- Base Commands (the script's own) and Found Commands (the loaded menu's) each have a prefix and a separator
 function module.command_box(node: table): void
-    local options = { label("separator.none"), label("separator.underscore") }
+    local options = { label("separator.none"), label("separator.underscore"), label("separator.dot") }
     -- Commands start with cb (command box): cbprefix, cbseparator, cbfoundprefix, cbfoundseparator
-    input(node, "command_prefix", true, "cbprefix")
+    input(node, "command_box_prefix", true, "cbprefix")
     view.separator = node:list_action(separator_caption(), options, function(index)
-        Atdar.profile.set("command_separator", SEPARATORS[index])
+        Atdar.profile.set("command_box_separator", SEPARATORS[index])
     end, { "cbseparator" }, label("separator.help"))
-    input(node, "found_command_prefix", true, "cbfoundprefix")
-    view.found_separator = node:list_action(separator_caption("found_command_separator", "found_separator.name"), options,
+    input(node, "command_box_found_prefix", true, "cbfoundprefix")
+    view.found_separator = node:list_action(separator_caption("command_box_found_separator", "found_separator.name"), options,
         function(index)
-        Atdar.profile.set("found_command_separator", SEPARATORS[index])
+        Atdar.profile.set("command_box_found_separator", SEPARATORS[index])
     end, { "cbfoundseparator" }, label("found_separator.help"))
 end
 
 -- The user's own commands' prefix and separator, at the top of User Commands: cbuserprefix, cbuserseparator
 function module.user_command_box(node: table): void
-    local options = { label("separator.none"), label("separator.underscore") }
-    input(node, "user_command_prefix", true, "cbuserprefix")
-    view.user_separator = node:list_action(separator_caption("user_command_separator", "user_separator.name"), options,
+    local options = { label("separator.none"), label("separator.underscore"), label("separator.dot") }
+    input(node, "command_box_user_prefix", true, "cbuserprefix")
+    view.user_separator = node:list_action(separator_caption("command_box_user_separator", "user_separator.name"), options,
         function(index)
-        Atdar.profile.set("user_command_separator", SEPARATORS[index])
+        Atdar.profile.set("command_box_user_separator", SEPARATORS[index])
     end, { "cbuserseparator" }, label("user_separator.help"))
 end
 

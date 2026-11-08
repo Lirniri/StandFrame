@@ -65,7 +65,7 @@ stand.write_file($"{profiles}main.json", '{"short_name": "Ke')
 local profile = Atdar.loader.load("core/profile")
 stand.equal(profile.get("short_name"), "Kept", "profile values survive a damaged file")
 stand.equal(Atdar.debug, true, "and debug mode with them")
-stand.equal(profile.get("command_prefix"), "atdar", "missing keys come from the defaults")
+stand.equal(profile.get("command_box_prefix"), "atdar", "missing keys come from the defaults")
 
 profile.set("short_name", "New")
 stand.check(profile.is_dirty(), "a change is unsaved until save()")
@@ -81,14 +81,22 @@ stand.equal(profile.active_name(), "main", "deleting the active profile switches
 stand.check(not io.exists($"{profiles}secondprofile.json"), "the deleted profile's file is gone")
 
 -- Old defaults a profile never chose give way to the new ones when it loads; a value chosen stays
-stand.write_file($"{profiles}old.json", '{"user_command_prefix": "atdar", "user_command_separator": "_"}')
+stand.write_file($"{profiles}old.json", '{"command_box_user_prefix": "atdar", "command_box_user_separator": "_"}')
 profile.switch("old")
-stand.check(profile.get("user_command_prefix") == "" and profile.get("user_command_separator") == "",
+stand.check(profile.get("command_box_user_prefix") == "" and profile.get("command_box_user_separator") == "",
     "the old user command prefix and separator (atdar_) are replaced by the new defaults")
-stand.check(read($"{profiles}old.json"):find('"user_command_prefix": ""', 1, true), "and written back")
-stand.write_file($"{profiles}chosen.json", '{"user_command_prefix": "atdar", "user_command_separator": ""}')
+stand.check(read($"{profiles}old.json"):find('"command_box_user_prefix": ""', 1, true), "and written back")
+stand.write_file($"{profiles}chosen.json", '{"command_box_user_prefix": "atdar", "command_box_user_separator": ""}')
 profile.switch("chosen")
-stand.equal(profile.get("user_command_prefix"), "atdar", "a prefix with another separator was chosen: it stays")
+stand.equal(profile.get("command_box_user_prefix"), "atdar", "a prefix with another separator was chosen: it stays")
+-- Keys renamed: an old profile's value comes over under the new name, the old key goes from the file
+stand.write_file($"{profiles}renamed.json", '{"command_prefix": "zz", "user_command_separator": "_"}')
+profile.switch("renamed")
+stand.equal(profile.get("command_box_prefix"), "zz", "command_prefix is read as command_box_prefix")
+stand.equal(profile.get("command_box_user_separator"), "_", "user_command_separator as command_box_user_separator")
+local renamed_text = read($"{profiles}renamed.json")
+stand.check(renamed_text:find('"command_box_prefix": "zz"', 1, true) and not renamed_text:find('"command_prefix"', 1, true),
+    "written back under the new names only")
 profile.switch("main")
 
 stand.finish()
