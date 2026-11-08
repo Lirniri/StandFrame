@@ -18,14 +18,14 @@
 local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
-local commands = Atdar.loader.load("ui/stand/commands")
+local commands = Atdar.loader.load("ui/stand/core/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
-local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
-local language_menu = Atdar.loader.load("ui/stand/language_menu")
-local user_commands = Atdar.loader.load("ui/stand/user_commands")
--- The Modules place only: the list's items (ui/stand/modules_menu) load when it's first opened
-local modules_place = Atdar.loader.load("ui/stand/modules_place")
-local updater_menu = Atdar.loader.load("ui/stand/updater_menu")
+local profile_menu = Atdar.loader.load("ui/stand/script/profile_menu")
+local language_menu = Atdar.loader.load("ui/stand/script/language_menu")
+local user_commands = Atdar.loader.load("ui/stand/script/user_commands")
+-- The Modules place only: the list's items (ui/stand/modules/menu) load when it's first opened
+local modules_place = Atdar.loader.load("ui/stand/modules/place")
+local updater_menu = Atdar.loader.load("ui/stand/script/updater_menu")
 
 local log = new Logger("Menu")
 
@@ -138,7 +138,7 @@ local stopping = false
 util.on_stop(function() stopping = true end)
 
 -- A command: a list with its full command, its custom name and a reset, then its extra words. They're
--- kept by ui/stand/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
+-- kept by ui/stand/core/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
 local function command_entry(list: table, ref): table
     local entry = list:list(short_names(ref), {}, item_name(ref))
     local found = { ref = ref, row = entry.handle }
@@ -265,7 +265,7 @@ local function fill_command_lists(base: table, found: table): void
     end
 end
 
--- A new prefix or separator renames the commands (ui/stand/commands): the full ones inside the lists follow
+-- A new prefix or separator renames the commands (ui/stand/core/commands): the full ones inside the lists follow
 Atdar.profile.on_change(function(key: string)
     if key ~= "command_box_prefix" and key ~= "command_box_separator" and key ~= "command_box_found_prefix"
         and key ~= "command_box_found_separator" then

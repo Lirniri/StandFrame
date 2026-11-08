@@ -3,7 +3,7 @@
 -- The section (Profile, Load Menu, Debug, ...) is the script's own and shows with any menu. By default
 -- it's at the bottom of the root; a pack can put it into a list of its own and add items to it
 
-local settings = Atdar.loader.load("ui/stand/settings")
+local settings = Atdar.loader.load("ui/stand/script/settings")
 
 return {
     build = function(node, ctx)

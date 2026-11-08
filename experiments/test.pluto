@@ -1,4 +1,4 @@
-local builder = Atdar.loader.load("ui/stand/menu_builder")
+local builder = Atdar.loader.load("ui/stand/core/menu_builder")
 local lang = Atdar.lang
 
 return {

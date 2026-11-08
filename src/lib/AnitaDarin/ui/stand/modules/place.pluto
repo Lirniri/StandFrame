@@ -1,8 +1,8 @@
--- lib/AnitaDarin/ui/stand/modules_place.pluto
+-- lib/AnitaDarin/ui/stand/modules/place.pluto
 --
 -- The Modules place in the script's settings (Debug): the "Debug" divider and the Modules list, shown in
 -- debug mode, and the items put under the divider's visibility (debug_only).
--- Light on purpose: ui/stand/modules_menu - the list's items, the script's biggest file with the parsers
+-- Light on purpose: ui/stand/modules/menu - the list's items, the script's biggest file with the parsers
 -- it needs - loads only when the list is first opened, not at every start.
 -- Strings: base/language "modules"
 
@@ -38,7 +38,7 @@ end
 
 -- The list's items, loaded the first time they're needed
 local function modules_menu(): table
-    return Atdar.loader.load("ui/stand/modules_menu")
+    return Atdar.loader.load("ui/stand/modules/menu")
 end
 
 -- Puts a Modules list into node (a MenuNode), its items made only while it's open; the file that makes

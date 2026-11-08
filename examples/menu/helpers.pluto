@@ -6,8 +6,8 @@
 --   builder.build_items - a submenu described as a table
 
 local Logger = Atdar.loader.load("core/logger")
-local confirm = Atdar.loader.load("ui/stand/confirm")
-local builder = Atdar.loader.load("ui/stand/menu_builder")
+local confirm = Atdar.loader.load("ui/stand/core/confirm")
+local builder = Atdar.loader.load("ui/stand/core/menu_builder")
 
 local log = new Logger("Helpers")
 

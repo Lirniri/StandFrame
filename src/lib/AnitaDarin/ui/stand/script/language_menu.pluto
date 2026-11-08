@@ -1,6 +1,6 @@
--- lib/AnitaDarin/ui/stand/language_menu.pluto
+-- lib/AnitaDarin/ui/stand/script/language_menu.pluto
 --
--- The Language list in Settings (ui/stand/script_menu puts it there):
+-- The Language list in Settings (ui/stand/script/script_menu puts it there):
 --
 --   Language: Auto (Stand)            - the language picked: Auto follows Stand's (lang)
 --   ── Translation ──

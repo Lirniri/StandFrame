@@ -1,4 +1,4 @@
--- lib/AnitaDarin/ui/stand/user_commands.pluto
+-- lib/AnitaDarin/ui/stand/script/user_commands.pluto
 --
 -- The user's own commands: a name that runs other commands, Stand's or the script's, one after another -
 -- ready -> "godmode on; neverwanted on; tpwaypoint". Made in Command Box > User Commands:
@@ -19,9 +19,9 @@
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-local commands = Atdar.loader.load("ui/stand/commands")
+local commands = Atdar.loader.load("ui/stand/core/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
-local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
+local profile_menu = Atdar.loader.load("ui/stand/script/profile_menu")
 
 local log = new Logger("Commands")
 

@@ -1,6 +1,6 @@
--- Items for the active profile's values, built where ui/stand/script_menu.pluto puts them:
+-- Items for the active profile's values, built where ui/stand/script/script_menu.pluto puts them:
 --   header      - "Profile: main" divider, Display Name, Short Name
---   (the Language list is ui/stand/language_menu)
+--   (the Language list is ui/stand/script/language_menu)
 --   log_name    - Name In Logs
 --   appearance  - Appearance > Notifications: flash, where they show, errors always in Stand, a test;
 --                 under the Game divider how they look in the game's feed (post or message card with its picture,
@@ -25,7 +25,7 @@ local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
 local color = Atdar.loader.load("utils/color")
 local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
-local confirm = Atdar.loader.load("ui/stand/confirm")
+local confirm = Atdar.loader.load("ui/stand/core/confirm")
 local texture_dict = Atdar.loader.load("natives/streaming/texture_dict/asset")
 local thefeed = Atdar.loader.load("natives/visual/hud/thefeed")
 

@@ -1,7 +1,7 @@
 local globals = Atdar.globals
 local Feature = Atdar.loader.load("features/feature")
 -- Capitalized: methods below take a `commands` parameter with the item's base command names
-local Commands = Atdar.loader.load("ui/stand/commands")
+local Commands = Atdar.loader.load("ui/stand/core/commands")
 local menu_utils = Atdar.loader.load("utils/menu")
 
 -- Stand item for each Feature kind; names and help may be Stand labels (int) from i18n

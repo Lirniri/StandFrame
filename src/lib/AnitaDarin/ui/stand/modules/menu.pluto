@@ -19,15 +19,15 @@ local i18n = Atdar.loader.load("core/i18n")
 local debug = debug
 local Logger = Atdar.loader.load("core/logger")
 local Module = Atdar.loader.load("core/module")
-local commands = Atdar.loader.load("ui/stand/commands")
+local commands = Atdar.loader.load("ui/stand/core/commands")
 -- The arguments typed in the menu, the return types from the source, the words of a function's name
 local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
 local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
 -- What calls gave and the module's variables, shown (Variable lines, Value and Variables lists)
-local values = Atdar.loader.load("ui/stand/modules_values")
+local values = Atdar.loader.load("ui/stand/modules/values")
 -- A module's on_tick run by hand (its on_tick() list)
-local ticks = Atdar.loader.load("ui/stand/modules_ticks")
+local ticks = Atdar.loader.load("ui/stand/modules/ticks")
 
 local log = new Logger("Modules")
 
@@ -118,7 +118,7 @@ local function refresh(): void
     end
 end
 
--- The place in the settings - the "Debug" divider, the Modules list, debug_only() - is ui/stand/modules_place,
+-- The place in the settings - the "Debug" divider, the Modules list, debug_only() - is ui/stand/modules/place,
 -- light, so this file loads only when the list is first opened
 
 
@@ -907,7 +907,7 @@ local function empty(node: table): void
     end
 end
 
--- A value as it's shown in a call's notice (ui/stand/modules_values)
+-- A value as it's shown in a call's notice (ui/stand/modules/values)
 module.describe = values.describe
 
 -- Puts a Modules list into node (a MenuNode, e.g. a pack's list), its items made only while it's open

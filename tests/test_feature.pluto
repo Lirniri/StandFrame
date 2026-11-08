@@ -1,8 +1,8 @@
--- features/feature + ui/stand/menu_node: options check, lifecycle order, failures switch the feature off
+-- features/feature + ui/stand/core/menu_node: options check, lifecycle order, failures switch the feature off
 local stand = require("stand")
 stand.boot()
 local Feature = Atdar.loader.load("features/feature")
-local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
 local node = new MenuNode(stand.root)
 
 -- ─── Options are checked when the feature is created ─────────────────────────

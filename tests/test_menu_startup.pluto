@@ -53,7 +53,7 @@ stand.check(not io.exists($"{lib}ui\\stand\\menu\\old.pluto"), "the older copy's
 stand.check(stand.read_file($"{lib}ui\\stand\\menu\\.copied.json"):find('"AnitaDarin"', 1, true), "the new copy has a manifest")
 
 -- The copy is the pack's now: the next start leaves it as it is; a changed file makes it copy again
-local builder = Atdar.loader.load("ui/stand/menu_builder")
+local builder = Atdar.loader.load("ui/stand/core/menu_builder")
 local store_packs = $"{Atdar.filesystem.paths.store}menu\\"
 local function pack_info()
     for _, pack in ipairs(builder.find_loadable_packs(store_packs)) do

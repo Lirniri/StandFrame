@@ -7,7 +7,7 @@
 -- Made like a Feature: new Module({ name = ..., deps = {...}, on_start = fn, on_stop = fn, on_tick = fn })
 -- or `local class X extends Module` with parent:__construct({ name = ..., deps = {...} }) and on_* overrides.
 --
--- debug = { ... } (optional): how the module shows in Settings > Debug > Modules (ui/stand/modules_menu):
+-- debug = { ... } (optional): how the module shows in Settings > Debug > Modules (ui/stand/modules/menu):
 --     functions = { add_vehicle = { help = "...", params = { handle = "..." }, args = "...", live = false } },
 --     groups = { { name = "Getting", functions = { "get_handle", "get_handles" } }, ... },
 --     hide = { "explode_all", "current_vehicle" },   -- functions and variables not shown

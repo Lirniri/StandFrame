@@ -13,7 +13,7 @@
 --   the script      - store/<script>/commands/
 -- An older commands.json there ({ base: name }) is still read, and goes once the folder is written.
 -- Items made between begin_menu() and end_menu() are the menu's, between begin_user() and end_user() the
--- user's own commands (ui/stand/user_commands: named by the user, no custom names or words), all others
+-- user's own commands (ui/stand/script/user_commands: named by the user, no custom names or words), all others
 -- the script's
 
 local Logger = Atdar.loader.load("core/logger")
@@ -281,7 +281,7 @@ function module.end_menu(): void
     building = nil
 end
 
--- The user's own commands are made (ui/stand/user_commands): their prefix and separator until end_user()
+-- The user's own commands are made (ui/stand/script/user_commands): their prefix and separator until end_user()
 function module.begin_user(): void
     building = "user"
 end

@@ -1,4 +1,4 @@
--- ui/stand/commands: command names with the profile's prefix, renamed in place when it changes
+-- ui/stand/core/commands: command names with the profile's prefix, renamed in place when it changes
 local stand = require("stand")
 stand.boot()
 local values = { command_box_prefix = "atdar", command_box_separator = "", command_box_found_prefix = "atdar", command_box_found_separator = "" }
@@ -11,7 +11,7 @@ local function profile_set(key, value)
     values[key] = value
     for _, fn in listeners do fn(key, value) end
 end
-local commands = Atdar.loader.load("ui/stand/commands")
+local commands = Atdar.loader.load("ui/stand/core/commands")
 
 stand.equal(table.concat(commands.names({ "godmode", "God Mode!", "godmode" }), ","), "atdargodmode",
     "names are cleaned, prefixed and deduplicated")

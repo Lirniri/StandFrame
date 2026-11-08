@@ -1,4 +1,4 @@
--- ui/stand/modules_menu: shown only in debug mode, statuses, actions, a module's functions, translations
+-- ui/stand/modules/menu: shown only in debug mode, statuses, actions, a module's functions, translations
 local stand = require("stand")
 stand.boot()
 Atdar.filesystem = Atdar.loader.load("utils/filesystem")
@@ -6,7 +6,7 @@ local listeners = {}
 Atdar.profile = { get = || -> nil, on_change = |fn| -> table.insert(listeners, fn) }
 Atdar.modules = Atdar.loader.load("core/module_manager")
 local Module = Atdar.loader.load("core/module")
-local MenuNode = Atdar.loader.load("ui/stand/menu_node")
+local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
 
 local stops = 0
 Atdar.modules.add(new Module({ name = "a" }))
@@ -46,8 +46,8 @@ stand.write_file($"{reload_dir}reloader.pluto",
 Atdar.modules.load_dir(reload_dir)
 Atdar.modules.start()
 
-local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
-Atdar.loader.load("ui/stand/modules_place").build(new MenuNode(stand.root))
+local modules_menu = Atdar.loader.load("ui/stand/modules/menu")
+Atdar.loader.load("ui/stand/modules/place").build(new MenuNode(stand.root))
 
 local divider = stand.find_item(stand.root, "Debug")
 local list = stand.find_item(stand.root, "Modules")
