@@ -162,9 +162,7 @@ function module.repair(vehicle: int, dirt_level: float|bool = false, start_engin
         control.request_entity(vehicle)
     end
     module.set_fixed(vehicle)
-    if fix_details then
-        module.set_deformation_fixed(vehicle)
-    end
+    module.set_deformation_fixed(vehicle)
 
     module.set_engine_health(vehicle, FULL_HEALTH)
 
