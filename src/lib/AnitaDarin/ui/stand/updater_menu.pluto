@@ -21,13 +21,8 @@ local log = new Logger("Updater")
 
 local module = {}
 
-local function label(key: string): int
-    return i18n.label($"updater_menu.{key}")
-end
-
-local function text(key: string): string
-    return i18n.text($"updater_menu.{key}")
-end
+-- Strings under "updater_menu"
+local label, text = i18n.scope("updater_menu")
 
 -- An item that isn't made yet: says so when clicked
 local function stub(node: table, key: string, command: string): void

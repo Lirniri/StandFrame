@@ -1,6 +1,6 @@
 -- Items for the active profile's values, built where ui/stand/script_menu.pluto puts them:
 --   header      - "Profile: main" divider, Display Name, Short Name
---   language    - Language list (Auto follows Stand)
+--   (the Language list is ui/stand/language_menu)
 --   log_name    - Name In Logs
 --   appearance  - Appearance > Notifications: flash, where they show, errors always in Stand, a test;
 --                 under the Game divider how they look in the game's feed (post or message card with its picture,
@@ -33,13 +33,8 @@ local log = new Logger("Profile")
 
 local module = {}
 
-local function label(key: string): int
-    return i18n.label($"profile.{key}")
-end
-
-local function text(key: string): string
-    return i18n.text($"profile.{key}")
-end
+-- Strings under "profile"
+local label, text = i18n.scope("profile")
 
 -- Option index -> profile value for the two fixed-choice settings
 local SEPARATORS = { "", "_" }
@@ -152,22 +147,6 @@ local function show_profile_value(ref, key: string, value): void
     end
 end
 
--- "Language: Auto (Stand)", "Language: Русский", or the chosen language marked unavailable
--- while Stand can't show it (Stand in English)
-local function language_caption(): string
-    local code = Atdar.profile.get("language")
-    for _, language in ipairs(i18n.languages()) do
-        if language.code == code then
-            local name = language.name
-            if i18n.get_language() ~= code then
-                name = text("language.unavailable_mark"):format(name)
-            end
-            return text("language.name"):format(name)
-        end
-    end
-    return text("language.name"):format(text("language.auto"))
-end
-
 -- "Copy Menu To Core: AnitaDarin", "...: Off", or the saved folder marked missing if it's gone from store
 local function auto_copy_caption(): string
     local id = Atdar.profile.get("auto_copy_menu")
@@ -212,7 +191,6 @@ local function update_captions(): void
     for _, ref in pairs(view.subject_colors) do
         pcall(menu.set_visible, ref, is_message)
     end
-    rename(view.language, language_caption())
     rename(view.auto_copy, auto_copy_caption())
 end
 
@@ -231,6 +209,10 @@ local function update_fields(): bool
         ok = false
     end
     if view.load_timing and not pcall(menu.set_value, view.load_timing, Atdar.profile.get("load_timing") == true) then
+        ok = false
+    end
+    if view.log_info_at_once
+        and not pcall(menu.set_value, view.log_info_at_once, Atdar.profile.get("log_info_at_once") == true) then
         ok = false
     end
     if view.notify_errors
@@ -302,120 +284,6 @@ function module.header(node: table): void
     view.settings_of = node:divider(settings_caption())
     input(node, "display_name", false)
     input(node, "short_name", false)
-end
-
--- ─── Language ────────────────────────────────────────────────────────────────
-
--- The language list: Language: Auto (Stand) at the top, then the Translation divider with Create Translation,
--- Reload Translations and Open Translation Folder
---
--- The languages to pick: Auto, then each language by its file's language_name, and the code of each
-local function language_options()
-    local names, codes = { label("language.auto") }, { "auto" }
-    for _, language in ipairs(i18n.languages()) do
-        table.insert(names, language.name)
-        table.insert(codes, language.code)
-    end
-    return names, codes
-end
-
--- After a translation was made or read again: the picker lists the languages there are now
-local function refresh_languages(): void
-    local names, codes = language_options()
-    view.language_codes = codes
-    pcall(menu.set_list_action_options, view.language, names)
-    rename(view.language, language_caption())
-end
-
--- What a new translation's code starts as: Stand's language when the script has no file for it ("de" -> "de-de")
-local function suggested_code(): string
-    local current = lang.get_current()
-    if type(current) ~= "string" or not current:match("^%l%l$") or current == "en" then
-        return ""
-    end
-    local code = $"{current}-{current}"
-    if i18n.has_language(code) then
-        return ""
-    end
-    return code
-end
-
--- "Translate From: English"
-local function from_caption(code: string): string
-    for _, language in ipairs(i18n.languages()) do
-        if language.code == code then
-            return text("translation.from.name"):format(language.name)
-        end
-    end
-    return text("translation.from.name"):format(code)
-end
-
--- Create Translation: the code, the name and the language to start from, then Create. Makes a file to
--- translate in every folder of strings (i18n.create_language); the language shows in the picker at once
-local function create_translation(list: table): void
-    local draft = { code = suggested_code(), name = "", from = "en-us" }
-    local create = list:list(label("translation.create.name"), {}, label("translation.create.help"))
-    create:text_input(label("translation.code.name"), { "langcode" }, function(value)
-        draft.code = value:lower():match("^%s*(.-)%s*$")
-    end, label("translation.code.help"), draft.code)
-    create:text_input(label("translation.language_name.name"), { "langname" }, function(value)
-        draft.name = value:match("^%s*(.-)%s*$")
-    end, label("translation.language_name.help"), "")
-
-    local from_codes = {}
-    local from_names = {}
-    for _, language in ipairs(i18n.languages()) do
-        table.insert(from_codes, language.code)
-        table.insert(from_names, language.name)
-    end
-    local from_ref = nil
-    from_ref = create:list_action(from_caption(draft.from), from_names, function(index)
-        draft.from = from_codes[index]
-        rename(from_ref, from_caption(draft.from))
-    end, { "langfrom" }, label("translation.from.help"))
-
-    create:action(label("translation.create_button.name"), function()
-        local count, err = i18n.create_language(draft.code, draft.name, draft.from)
-        if count == nil then
-            if err == "exists" then
-                log:warn(text("translation.exists"):format(draft.code))
-                return
-            end
-            log:warn(text("translation.bad_code"):format(draft.code))
-            return
-        end
-        refresh_languages()
-        log:success(text("translation.created"):format(draft.code, count))
-    end, { "langcreate" }, label("translation.create_button.help"))
-end
-
--- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
-function module.language(node: table): void
-    local list = node:list(label("language.list"), {}, label("language.list_help"))
-
-    local names, codes = language_options()
-    view.language_codes = codes
-    view.language = list:list_action(language_caption(), names, function(index)
-        local code = view.language_codes[index]
-        Atdar.profile.set("language", code)
-        -- Also when the profile already had it: picking again tries again (e.g. after Stand's language changed)
-        i18n.set_language(code)
-        update_captions()
-    end, { "lang" }, label("language.help"))
-
-    list:divider(label("translation.divider"))
-    create_translation(list)
-    list:action(label("translation.reload.name"), function()
-        i18n.reload()
-        refresh_languages()
-        log:success(text("translation.reloaded"))
-    end, { "langreload" }, label("translation.reload.help"))
-    list:action(label("translation.folder.name"), function()
-        local dir = i18n.base_dir()
-        if dir ~= nil then
-            util.open_folder(dir)
-        end
-    end, { "langfolder" }, label("translation.folder.help"))
 end
 
 -- ─── Name In Logs ────────────────────────────────────────────────────────────
@@ -852,6 +720,18 @@ function module.log_keep_days(node: table): void
         end, { "logkeepdays" }, label("log_keep_days.help"))
     show_profile_value(view.sliders.log_keep_days, "log_keep_days", Atdar.profile.get("log_keep_days"))
     updating = false
+end
+
+-- Info lines on disk at once too (core/logger): warnings and errors always are, the rest within a second
+function module.log_info_at_once(node: table): void
+    view.log_info_at_once = node:toggle(label("log_info_at_once.name"), function(on)
+        if updating or Atdar.profile.get("log_info_at_once") == on then
+            return
+        end
+        Atdar.profile.set("log_info_at_once", on)
+        -- What waits goes now: nothing written before stays behind
+        Logger.flush()
+    end, { "loginfoatonce" }, label("log_info_at_once.help"), Atdar.profile.get("log_info_at_once") == true)
 end
 
 -- ─── Rename Script ───────────────────────────────────────────────────────────

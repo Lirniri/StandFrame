@@ -253,7 +253,8 @@ stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before ope
 stand.equal(names_in(find("Debug")),
     "Debug Mode | Load Timing | Reload Natives | Logs | Name In Logs: "
     .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
-    .. " | Keep Logs (Days) | Clear Current Log File | Clear All Log Files | Debug | Modules | Delete Script", "Debug")
+    .. " | Keep Logs (Days) | Write Info At Once | Clear Current Log File | Clear All Log Files | Debug | Modules"
+    .. " | Delete Script", "Debug")
 stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
@@ -318,7 +319,7 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[9], debug_list.children[10], debug_list.children[11] }
+local debug_only = { debug_list.children[10], debug_list.children[11], debug_list.children[12] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
@@ -328,7 +329,7 @@ end
 stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
-local modules_list = debug_list.children[10]
+local modules_list = debug_list.children[11]
 stand.click(modules_list)
 stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules_menu")
 stand.check(#modules_list.children > 0, "and makes the list's items")
@@ -392,7 +393,8 @@ stand.check(all_visible(false), "turning debug mode off hides them again")
 -- ─── Language ────────────────────────────────────────────────────────────────
 
 local language_list = stand.child(settings(), "Language")
-stand.equal(names_in(language_list), "Language: Auto (Stand) | Translation | Create Translation | Reload Translations"
+stand.equal(names_in(language_list), "Language: Auto (Stand) | Translation | Create Translation | Translation Progress"
+    .. " | Reload Translations"
     .. " | Open Translation Folder", "Language: the picker at the top, then the Translation divider and its items")
 local language = stand.find_item(language_list, "Language: ")
 stand.equal(language.kind, "list_action", "the language is picked from a list action")
@@ -488,6 +490,14 @@ stand.equal(stand.name_of(language), "Sprache: Deutsch", "the German file's text
 stand.write_file($"{base}de-de.json", '{"language_name": "Deutsch", "profile": {"language": {"name": "Die Sprache: %s"}}}')
 stand.click(stand.child(language_list, "Reload Translations"))
 stand.equal(stand.name_of(language), "Die Sprache: Deutsch", "Reload Translations: the edit shows")
+-- Translation Progress: each translation's share as a notice, the strings left in Stand's log
+stand.clear_logs()
+stand.click(stand.child(language_list, "Translation Progress"))
+local progress_notice = stand.toasts[#stand.toasts]
+stand.check(progress_notice:find("Deutsch: %d+%% %(1 of %d+%)") ~= nil, $"one German string translated ({progress_notice})")
+stand.check(progress_notice:find(russian_name, 1, true) ~= nil, "Russian too")
+stand.check(stand.find_log("de-de: profile.language.list"), "what German misses is in the log, key by key")
+stand.equal(stand.find_log("de-de: profile.language.name"), nil, "not the one it has")
 stand.click(language, 1)
 stand.language = "en"
 stand.frame()

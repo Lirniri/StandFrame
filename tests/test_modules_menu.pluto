@@ -47,7 +47,7 @@ Atdar.modules.load_dir(reload_dir)
 Atdar.modules.start()
 
 local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
-modules_menu.build(new MenuNode(stand.root))
+Atdar.loader.load("ui/stand/modules_place").build(new MenuNode(stand.root))
 
 local divider = stand.find_item(stand.root, "Debug")
 local list = stand.find_item(stand.root, "Modules")

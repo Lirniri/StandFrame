@@ -294,6 +294,10 @@
             "name": "Keep Logs (Days)",
             "help": "How many days of the script's log files (store/<script>/logs, a file per day) are kept, today included. Older files are removed at the start and when a new day begins. 0 keeps them all"
         },
+        "log_info_at_once": {
+            "name": "Write Info At Once",
+            "help": "Every log line goes to the file at once, not within a second. Warnings and errors always go at once. Slower, but nothing is lost if the game crashes"
+        },
         "auto_copy": {
             "name": "Copy Menu To Core: %s",
             "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
@@ -342,6 +346,12 @@
             "create_button": {
                 "name": "Create",
                 "help": "Makes the files; ones there already stay as they are"
+            },
+            "progress": {
+                "name": "Translation Progress",
+                "help": "How much of each translation is done; the strings left go to Stand's log, key by key. A string the same as the English one counts as not translated",
+                "line": "%s: %d%% (%d of %d)",
+                "none": "There are no translations yet: Create Translation starts one"
             },
             "created": "Translation %s created, files: %d. Translate them in the folder, then Reload Translations",
             "bad_code": "'%s' isn't a language code: write it like de-de",

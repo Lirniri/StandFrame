@@ -21,6 +21,9 @@
 
 -- The open file of today; a new day (or another folder) opens a new one
 local log_file = { path = nil, handle = nil }
+-- Lines written but not on disk yet, and when they last went (see Writing to disk below)
+local unflushed = false
+local last_flush = 0
 -- Set when the file can't be opened or written: lines then go to Stand's log only,
 -- so a full disk or a locked file doesn't fail every line
 local file_broken = false
@@ -35,7 +38,9 @@ end
 
 local function close_file(): void
     if log_file.handle then
+        -- Closing puts what waits in the buffer on disk too
         log_file.handle:close()
+        unflushed = false
     end
     log_file.handle = nil
     log_file.path = nil
@@ -112,12 +117,45 @@ local function today_file()
     return handle
 end
 
-local function write_to_file(line: string): void
+-- ─── Writing to disk ─────────────────────────────────────────────────────────
+-- A warning or an error is put on disk at once: what a crash leaves in the file must have them. Other lines
+-- wait in the file's buffer and go once a second (or with the next warning, or when the file closes), so a
+-- module logging every frame in debug mode doesn't touch the disk every frame. The profile's
+-- log_info_at_once (Debug > Write Info At Once) puts every line on disk at once
+
+-- How long a line waits to go to disk at most, ms
+local FLUSH_MS = 1000
+
+-- Puts the lines written so far on disk
+local function flush_file(): void
+    if unflushed and log_file.handle then
+        pcall(log_file.handle.flush, log_file.handle)
+    end
+    unflushed = false
+    last_flush = util.current_time_millis()
+end
+
+local function info_at_once(): bool
+    local profile = Atdar.profile
+    return profile ~= nil and profile.get ~= nil and profile.get("log_info_at_once") == true
+end
+
+local function write_to_file(level: string, line: string): void
     local handle = today_file()
     handle:write(os.date("[%H:%M:%S] "), line, "\n")
-    -- Flushed per line: what's written survives a crash of the game
-    handle:flush()
+    unflushed = true
+    if level == "WARN" or level == "ERROR" or info_at_once() then
+        flush_file()
+    end
 end
+
+-- The lines waiting go to disk once a second
+util.create_tick_handler(function()
+    if unflushed and util.current_time_millis() - last_flush >= FLUSH_MS then
+        flush_file()
+    end
+    return true
+end)
 
 util.on_stop(close_file)
 
@@ -193,7 +231,7 @@ local class Logger
         local line = self:full_line(level, msg)
         util.log(line)
         if not file_broken then
-            local ok, err = pcall(write_to_file, line)
+            local ok, err = pcall(write_to_file, level, line)
             if not ok then
                 file_broken = true
                 pcall(close_file)
@@ -292,18 +330,18 @@ function Logger.clear(): int
     return removed
 end
 
+-- Puts the lines waiting in the file's buffer on disk now (warnings and errors go at once anyway)
+function Logger.flush(): void
+    flush_file()
+end
+
 -- Removes today's file only; the next line starts it again
 -- @return Whether there was one to remove
 function Logger.clear_today(): bool
     close_file()
     local today = os.date("%Y-%m-%d")
-    local path = $"{log_dir()}{Atdar.name}_{today}.log"
-    -- Pluto's os.remove says true for a file that isn't there too
-    if not filesystem.exists(path) then
-        return false
-    end
-    os.remove(path)
-    return not filesystem.exists(path)
+    -- Plain require: the logger loads before the loader is there
+    return require($"{Atdar.name}/core/filesystem/file").remove($"{log_dir()}{Atdar.name}_{today}.log")
 end
 
 -- Closes the log file and writes no more files until the script starts again (Stand's log goes on).

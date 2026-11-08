@@ -24,27 +24,22 @@ local commands = Atdar.loader.load("ui/stand/commands")
 local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
 local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
+-- What calls gave and the module's variables, shown (Variable lines, Value and Variables lists)
+local values = Atdar.loader.load("ui/stand/modules_values")
+-- A module's on_tick run by hand (its on_tick() list)
+local ticks = Atdar.loader.load("ui/stand/modules_ticks")
 
 local log = new Logger("Modules")
 
 local module = {}
 
-local function label(key: string): int
-    return i18n.label($"modules.{key}")
-end
-
-local function text(key: string): string
-    return i18n.text($"modules.{key}")
-end
+-- Strings under "modules"
+local label, text = i18n.scope("modules")
 
 -- The open Modules list's items: list (the MenuNode), entries / statuses / sections per module name.
 -- Empty while no Modules list is open
 local view = {}
 
--- Module name -> its on_tick run by hand going on (see "on_tick by hand" below)
-local manual_ticks = {}
--- Stops the module's on_tick run by hand; set below, with the runs
-local stop_manual_tick
 -- Ends the loops of the module's functions (nil: of every module); set below, with the loops
 local stop_function_loops
 
@@ -88,7 +83,7 @@ end
 
 -- "Status: running", the divider on top of a module's list
 local function status_line(mod: table): string
-    if manual_ticks[mod.name] ~= nil then
+    if ticks.is_running(mod.name) then
         return text("entry.status_line"):format(text("status.manual"))
     end
     return text("entry.status_line"):format(text($"status.{mod.status}"))
@@ -125,27 +120,24 @@ end
 
 -- The place in the settings - the "Debug" divider, the Modules list, debug_only() - is ui/stand/modules_place,
 -- light, so this file loads only when the list is first opened
-function module.debug_only(ref): void
-    Atdar.loader.load("ui/stand/modules_place").debug_only(ref)
-end
 
 
 -- Options shown for each module, in this order: label key and what it does with the module
 local ACTIONS = {
     { key = "start", run = |name| -> Atdar.modules.start_module(name) },
     { key = "restart", run = function(name)
-        stop_manual_tick(name)
+        ticks.stop(name)
         stop_function_loops(name)
         Atdar.modules.stop_module(name)
         Atdar.modules.start_module(name)
     end },
     { key = "stop", run = function(name)
-        stop_manual_tick(name)
+        ticks.stop(name)
         stop_function_loops(name)
         Atdar.modules.stop_module(name)
     end },
     { key = "reload", run = function(name)
-        stop_manual_tick(name)
+        ticks.stop(name)
         stop_function_loops(name)
         Atdar.modules.reload_module(name)
     end },
@@ -168,195 +160,8 @@ local function signature(fn: table): string
     return $"{fn.name}({params})"
 end
 
--- ─── Showing what a call gave ────────────────────────────────────────────────
-
--- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known
-local function function_text(fn): string
-    local info = debug.getinfo(fn, "u")
-    local params = {}
-    for i = 1, info.nparams do
-        local name = debug.getlocal(fn, i)
-        if i ~= 1 or name ~= "self" then
-            table.insert(params, name)
-        end
-    end
-    if info.isvararg then
-        table.insert(params, "...")
-    end
-    local params_text = table.concat(params, ", ")
-    local returns = source_parser.return_type(fn)
-    if returns == nil then
-        return $"function({params_text})"
-    end
-    return $"function({params_text}): {returns}"
-end
-
--- Items shown of one table; the rest is "..."
-local MAX_ITEMS = 20
--- Tables inside tables shown this deep; deeper ones are "{...}"
-local MAX_DEPTH = 3
-
-local describe
-
--- A value inside a table: a text in quotes, so "1" and 1 differ
-local function describe_item(value, depth: int, seen: table): string
-    if type(value) == "string" then
-        return $"\"{value}\""
-    end
-    return describe(value, depth, seen)
-end
-
--- A value as text: a table unpacked ({1, 2}, {"a", "b"}, {name = "x", [5] = true}), a function as its
--- signature, the rest by tostring. seen: the tables being shown, so one inside itself is "{...}"
-describe = function(value, depth, seen)
-    local kind = type(value)
-    if kind == "function" then
-        return function_text(value)
-    end
-    if kind ~= "table" then
-        return tostring(value)
-    end
-    if seen[value] or depth >= MAX_DEPTH then
-        return "{...}"
-    end
-    seen[value] = true
-
-    local parts = {}
-    local length = #value
-    for i = 1, length do
-        table.insert(parts, describe_item(value[i], depth + 1, seen))
-    end
-    -- The other keys after the list part, in a fixed order
-    local keys = {}
-    for key in pairs(value) do
-        if math.type(key) ~= "integer" or key < 1 or key > length then
-            table.insert(keys, key)
-        end
-    end
-    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
-    for _, key in ipairs(keys) do
-        local key_text = type(key) == "string" and key:match("^[%a_][%w_]*$") ? key
-            : $"[{describe_item(key, depth + 1, seen)}]"
-        table.insert(parts, $"{key_text} = {describe_item(value[key], depth + 1, seen)}")
-    end
-
-    seen[value] = nil
-    if #parts > MAX_ITEMS then
-        parts = table.move(parts, 1, MAX_ITEMS, 1, {})
-        table.insert(parts, "...")
-    end
-    return "{" .. table.concat(parts, ", ") .. "}"
-end
-
--- A value as it's shown in a call's notice
-function module.describe(value): string
-    return describe(value, 0, {})
-end
-
--- A call's results for the notice: "5, x, {1, 2}, function(a): bool"
-local function results_text(results: table): string
-    local parts = {}
-    for i = 2, results.n do
-        table.insert(parts, module.describe(results[i]))
-    end
-    return table.concat(parts, ", ")
-end
-
 -- Calls a function of the module by name: the module as it is now (Reload makes a new one).
 -- In a thread of its own, since a function may wait (e.g. for a model to load)
--- "<module>.<function>" -> what it gave last ("147462", "{1, 2}"); the line showing it in its list
-local last_results = {}
-local result_lines = {}
--- Longer results are cut in the Variable line (the notice and the debug text show them whole)
-local MAX_RESULT_CHARS = 60
-
--- The same key -> the type(s) of what it gave last: "integer", "table of integers", "integer, string"
-local last_types = {}
--- The same key -> the table it gave last (when it gave one table), for the Value list under Variable
-local last_tables = {}
-
--- A value's kind for the types' strings: integer and float apart, the rest as type() says
-local function kind_of(value): string
-    local kind = type(value)
-    if kind == "number" then
-        return math.type(value) == "integer" and "integer" or "float"
-    end
-    return kind
-end
-
--- A value's type in words: "integer", "float", "table of strings"... A table by what it holds: all of one
--- kind - "table of <kind>" (integers and floats together: "table of numbers"), mixed - "table", none -
--- "empty table". Cheap: one look at each entry, only when the value changed
-local function type_text(value): string
-    local kind = kind_of(value)
-    if kind ~= "table" then
-        return text($"types.{kind}")
-    end
-    local inner = nil
-    for _, entry in pairs(value) do
-        local entry_kind = kind_of(entry)
-        if inner == nil then
-            inner = entry_kind
-        elseif inner ~= entry_kind then
-            local numbers = (inner == "integer" or inner == "float" or inner == "number")
-                and (entry_kind == "integer" or entry_kind == "float")
-            if not numbers then
-                return text("types.table")
-            end
-            inner = "number"
-        end
-    end
-    if inner == nil then
-        return text("types.table_empty")
-    end
-    return text($"types.table_of_{inner}")
-end
-
--- "Variable: 147462", "Variable: table of integers" for a table (what it holds is in the Value list right
--- under), "Variable: -" before a call or when it gave nothing
-local function result_line(key: string): string
-    local value = last_results[key]
-    if value == nil then
-        return text("loop.result_line"):format(text("loop.no_result"))
-    end
-    if last_tables[key] ~= nil then
-        return text("loop.result_line"):format(last_types[key] or "")
-    end
-    if #value > MAX_RESULT_CHARS then
-        value = value:sub(1, MAX_RESULT_CHARS) .. "..."
-    end
-    return text("loop.result_line"):format(value)
-end
-
--- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
--- The same key -> the Value list in the function's list: { list, shape, texts, lines }
-local result_tables = {}
--- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like
-local update_result_list
-
-local function show_result(key: string, results: table): void
-    local value = results.n > 1 and results_text(results) or nil
-    if value == last_results[key] then
-        return
-    end
-    last_results[key] = value
-    -- Each value's type, as many as it gave ("integer, string")
-    local types = {}
-    for i = 2, results.n do
-        table.insert(types, type_text(results[i]))
-    end
-    last_types[key] = table.concat(types, ", ")
-    last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
-    update_result_list(key)
-    local ref = result_lines[key]
-    if ref ~= nil then
-        local ok, err = pcall(menu.set_menu_name, ref, result_line(key))
-        if not ok then
-            log:debug($"{key}: Variable line not updated: {tostring(err)}")
-        end
-    end
-end
-
 local function call(module_name: string, fn: table, args: table, count: int): void
     util.create_thread(function()
         local modules = Atdar.modules
@@ -371,11 +176,11 @@ local function call(module_name: string, fn: table, args: table, count: int): vo
             log:error(text("call.failed"):format(name, tostring(results[2])))
             return
         end
-        show_result($"{module_name}.{fn.name}", results)
+        values.show_result($"{module_name}.{fn.name}", results)
         if results.n <= 1 then
             log:notify(text("call.done"):format(name))
         else
-            log:notify(text("call.result"):format(name, results_text(results)))
+            log:notify(text("call.result"):format(name, values.results_text(results)))
         end
     end)
 end
@@ -391,198 +196,19 @@ end
 local stopping = false
 util.on_stop(function() stopping = true end)
 
--- ─── on_tick by hand ─────────────────────────────────────────────────────────
--- A module's on_tick run every frame from the menu, with or without a time limit, whatever its status.
--- Each run is a table of its own: a newer run or Stop replaces it, and its tick handler ends then
-
-
-local function tick_name(module_name: string): string
-    return $"{short_name(module_name)}.on_tick()"
-end
-
--- Module name -> the Status line in its on_tick() list
-local tick_statuses = {}
-
--- Shows how the manual on_tick of the module is: state "running" / "running_for" (seconds left) /
--- "stopped" / "failed"
-local function show_tick_status(module_name: string, state: string, seconds_left: ?int): void
-    local ref = tick_statuses[module_name]
-    if ref == nil then
-        return
-    end
-    local value = text($"tick.state.{state}")
-    if seconds_left ~= nil then
-        value = value:format(seconds_left)
-    end
-    -- The list may belong to a section that was already removed
-    pcall(menu.set_menu_name, ref, text("entry.status_line"):format(value))
-    -- The module's Status: "running by hand" while a run goes on
-    local status_ref = (view.statuses or {})[module_name]
-    if status_ref ~= nil and Atdar.modules.has(module_name) then
-        pcall(menu.set_menu_name, status_ref, status_line(Atdar.modules.get(module_name)))
-    end
-end
-
--- Seconds left of a run with a limit, rounded up: 10 at the start, 1 in its last second
-local function seconds_left(run: table): int
-    return math.ceil((run.ends - util.current_time_millis()) / 1000)
-end
-
--- Calls one of the module's hooks by hand for a manual run; an error is told
--- @return Whether it finished without an error
-local function run_hook(module_name: string, hook: string): bool
-    local modules = Atdar.modules
-    if not modules.has(module_name) then
-        return false
-    end
-    local mod = modules.get(module_name)
-    local ok, err = pcall(mod[hook], mod)
-    if not ok then
-        log:error(text("call.failed"):format($"{short_name(module_name)}.{hook}()", tostring(err)))
-    end
-    return ok
-end
-
--- Ends a run: forgets it, shows the state; a run started with init calls on_stop, so the module cleans up
-local function end_run(module_name: string, run: table, state: string): void
-    if manual_ticks[module_name] == run then
-        manual_ticks[module_name] = nil
-    end
-    show_tick_status(module_name, state)
-    if run.with_init then
-        run_hook(module_name, "on_stop")
-    end
-end
-
--- Runs the module's on_tick every frame; seconds: for how long, nil - until Stop.
--- with_init: on_start first (a failing one starts nothing), on_stop when the run ends
-local function start_tick(module_name: string, seconds: ?int, with_init: bool): void
-    -- A running module is ticked by the manager already: stopped, so on_tick runs once a frame, by hand
-    local modules = Atdar.modules
-    if modules.has(module_name) and modules.get(module_name):is_running() then
-        modules.stop_module(module_name)
-        refresh()
-        log:notify(text("tick.module_stopped"):format(short_name(module_name)))
-    end
-
-    -- A run going on is replaced: ended first, so its on_stop comes before the new on_start
-    local previous = manual_ticks[module_name]
-    if previous ~= nil then
-        end_run(module_name, previous, "stopped")
-    end
-
-    if with_init and not run_hook(module_name, "on_start") then
-        show_tick_status(module_name, "failed")
-        return
-    end
-
-    local run = { ends = nil, shown = nil, with_init = with_init }
-    if seconds ~= nil then
-        run.ends = util.current_time_millis() + seconds * 1000
-    end
-    manual_ticks[module_name] = run
-    if seconds == nil then
-        show_tick_status(module_name, "running")
-        log:notify(text(with_init ? "tick.started_init" : "tick.started"):format(tick_name(module_name)))
-    else
-        run.shown = seconds
-        show_tick_status(module_name, "running_for", seconds)
-        log:notify(text("tick.started_for"):format(tick_name(module_name), seconds))
-    end
-
-    util.create_tick_handler(function()
-        -- Stopped, or replaced by a newer run
-        if stopping or manual_ticks[module_name] ~= run then
-            return false
+-- What the on_tick runs need of this list
+ticks.bind({
+    short_name = short_name,
+    refresh = refresh,
+    is_user_click = |click_type| -> not NOT_USER_CLICKS[click_type],
+    -- The module's Status divider: "running by hand" while a run goes on
+    status_changed = function(module_name)
+        local status_ref = (view.statuses or {})[module_name]
+        if status_ref ~= nil and Atdar.modules.has(module_name) then
+            pcall(menu.set_menu_name, status_ref, status_line(Atdar.modules.get(module_name)))
         end
-        if run.ends ~= nil then
-            local left = seconds_left(run)
-            if left <= 0 then
-                end_run(module_name, run, "stopped")
-                log:notify(text("tick.finished"):format(tick_name(module_name)))
-                return false
-            end
-            -- Once a second, not every frame
-            if left ~= run.shown then
-                run.shown = left
-                show_tick_status(module_name, "running_for", left)
-            end
-        end
-        -- The module as it is now (Reload makes a new one)
-        local current = Atdar.modules
-        if not current.has(module_name) then
-            manual_ticks[module_name] = nil
-            show_tick_status(module_name, "stopped")
-            return false
-        end
-        local mod = current.get(module_name)
-        local ok, err = true, nil
-        local function tick_once()
-            ok, err = pcall(mod.on_tick, mod)
-        end
-        -- Stand shows how long it took this frame on screen (info text), under the module's full name
-        if profiling ~= nil then
-            profiling.tick($"{module_name}.on_tick()", tick_once)
-        else
-            tick_once()
-        end
-        if not ok then
-            log:error(text("call.failed"):format(tick_name(module_name), tostring(err)))
-            end_run(module_name, run, "failed")
-            return false
-        end
-        return true
-    end)
-end
-
-local function stop_tick(module_name: string): void
-    local run = manual_ticks[module_name]
-    if run == nil then
-        log:notify(text("tick.not_running"):format(tick_name(module_name)))
-        return
-    end
-    end_run(module_name, run, "stopped")
-    log:notify(text("tick.stopped"):format(tick_name(module_name)))
-end
-
--- Stop and Restart: a run going on ends (told), none - nothing said
-stop_manual_tick = function(module_name)
-    if manual_ticks[module_name] ~= nil then
-        stop_tick(module_name)
-    end
-end
-
--- Stops every manual on_tick (Stop All)
-local function stop_all_ticks(): void
-    local runs = manual_ticks
-    manual_ticks = {}
-    for module_name, run in pairs(runs) do
-        end_run(module_name, run, "stopped")
-    end
-end
-
--- The on_tick() list: Start With Init, Start Loop Only, Start For A While (seconds), Stop, then the Status
-local function tick_list(entry: table, mod: table, title: string): void
-    local name = mod.name
-    local node = entry:list(title, {}, label("tick.help"))
-    node:action(label("tick.start_init"), || -> start_tick(name, nil, true), {}, label("tick.start_init_help"))
-    node:action(label("tick.start"), || -> start_tick(name, nil, false), {}, label("tick.start_help"))
-    node:track(menu.click_slider(node.handle, label("tick.start_for"), {}, label("tick.start_for_help"),
-        1, 600, 10, 1, function(seconds, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
-            return
-        end
-        start_tick(name, seconds, false)
-    end))
-    node:action(label("tick.stop"), || -> stop_tick(name), {}, label("tick.stop_help"))
-    tick_statuses[name] = node:divider(text("entry.status_line"):format(text("tick.state.stopped")))
-    local run = manual_ticks[name]
-    if run ~= nil and run.ends ~= nil then
-        show_tick_status(name, "running_for", math.max(seconds_left(run), 1))
-    elseif run ~= nil then
-        show_tick_status(name, "running")
-    end
-end
+    end,
+})
 
 -- ─── Functions without parameters: Call, Loop, Loop With Interval ────────────
 -- A loop calls the function every frame, or once every so many ms, until Stop; an error ends it
@@ -723,11 +349,11 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
         end
         -- Tables unpacked, functions as their signatures (describe); a call that gives nothing shows nothing
         if results.n > 1 then
-            run.result = $"{module_name}.{signature(fn)} -> {results_text(results)}"
+            run.result = $"{module_name}.{signature(fn)} -> {values.results_text(results)}"
         else
             run.result = nil
         end
-        show_result(key, results)
+        values.show_result(key, results)
         draw_result()
         return true
     end)
@@ -798,7 +424,7 @@ local function keep_live(module_name: string, fn: table, key: string, opened): v
         local mod = modules.get(module_name)
         local results = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
         if results[1] then
-            show_result(key, results)
+            values.show_result(key, results)
         end
         return true
     end)
@@ -912,11 +538,8 @@ local function function_list(entry: table, mod: table, fn: table): void
             call_with_args(module_name, fn, key)
         end
     end)
-    -- What it gave last, then how its loop is, above the loop's items
-    result_lines[key] = node:divider(result_line(key))
-    -- A table it gave: its entries in a list right under (hidden while it gave none)
-    result_tables[key] = { list = node:list(text("loop.result_list"):format(0)), shape = nil, texts = {}, lines = {} }
-    update_result_list(key)
+    -- What it gave last and, for a table, its Value list right under; then how its loop is
+    values.add_result_lines(node, key)
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
     if run ~= nil and run.every ~= nil then
@@ -947,240 +570,6 @@ local function function_list(entry: table, mod: table, fn: table): void
         end
         start_loop(module_name, fn, ms)
     end))
-end
-
--- ─── Variables: the module's fields and their values now ─────────────────────
-
--- Fields every module has (Module's own): not the module's variables
-local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true, debug = true,
-    _language_loaded = true }
-
-
--- The module's own fields (set in its __construct or later), sorted by name: { name, value }.
--- Functions (hooks given as options) and Module's fields are left out
-local function variables_of(mod: table): table
-    local list = {}
-    local hidden = hidden_of(mod)
-    for key, value in pairs(mod) do
-        if type(key) == "string" and not MODULE_FIELDS[key] and not hidden[key] and key:sub(1, 2) ~= "__"
-            and type(value) ~= "function" then
-            table.insert(list, { name = key, value = value })
-        end
-    end
-    table.sort(list, |a, b| -> a.name < b.name)
-    return list
-end
-
--- A table's entries in the order they're shown: the list part, then the other keys sorted.
--- @return { key_text, value }: "[1]", "name", "[158214]"
-local function table_entries(tbl: table): table
-    local entries = {}
-    local length = #tbl
-    for i = 1, length do
-        table.insert(entries, { key_text = $"[{i}]", value = tbl[i] })
-    end
-    local keys = {}
-    for key in pairs(tbl) do
-        if math.type(key) ~= "integer" or key < 1 or key > length then
-            table.insert(keys, key)
-        end
-    end
-    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
-    for _, key in ipairs(keys) do
-        local key_text = key
-        if type(key) ~= "string" or not key:match("^[%a_][%w_]*$") then
-            -- Not a plain name: in brackets, a text in quotes ([158214], ["a b"])
-            local shown = describe_item(key, 0, {})
-            key_text = $"[{shown}]"
-        end
-        table.insert(entries, { key_text = key_text, value = tbl[key] })
-    end
-    return entries
-end
-
--- Entries shown of one table; the rest is a "..." line
-local MAX_TABLE_ENTRIES = 100
--- Tables inside tables made lists this deep; deeper ones are a line ("{...}")
-local MAX_VARIABLE_DEPTH = 3
-
--- How often an open Variables list looks at the values again, ms
-local VARIABLES_REFRESH_MS = 250
-
--- A variable as items to show, added to out in menu order: a line { kind = "line", name, text } or
--- for a table a list { kind = "list", name = "name (entries)" } with its entries after it. Each has
--- a path (where it is, unique) and parent (the path of the list it's in, "" - the Variables list).
--- seen: the tables on the way here, so one inside itself is a line, not lists without end
-local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table): void
-    local path = $"{parent}/{name}"
-    if type(value) ~= "table" or seen[value] or depth >= MAX_VARIABLE_DEPTH then
-        table.insert(out, { kind = "line", path = path, parent = parent, name = name,
-            text = describe_item(value, depth, seen) })
-        return
-    end
-    local entries = table_entries(value)
-    table.insert(out, { kind = "list", path = path, parent = parent, name = $"{name} ({#entries})" })
-    if #entries == 0 then
-        table.insert(out, { kind = "note", path = $"{path}/", parent = path, name = "{}" })
-        return
-    end
-    seen[value] = true
-    for i, entry in ipairs(entries) do
-        if i > MAX_TABLE_ENTRIES then
-            table.insert(out, { kind = "note", path = $"{path}/...", parent = path, name = "..." })
-            break
-        end
-        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen)
-    end
-    seen[value] = nil
-end
-
--- Every item of the module's Variables, in menu order (collect_variable), nil if there's no such module
-local function collect_variables(module_name: string): ?table
-    local modules = Atdar.modules
-    if not modules.has(module_name) then
-        return nil
-    end
-    local out = {}
-    for _, variable in ipairs(variables_of(modules.get(module_name))) do
-        collect_variable(out, "", variable.name, variable.value, 0, {})
-    end
-    return out
-end
-
--- What the items are without their values: the same shape means only values changed
-local function shape_of(items: table): string
-    local parts = {}
-    for _, item in ipairs(items) do
-        table.insert(parts, $"{item.kind}:{item.path}:{item.name}")
-    end
-    return table.concat(parts, "\n")
-end
-
--- Makes the items in list
--- @return path -> the ref of each line, to change its value later
-local function build_variables(list: table, items: table): table
-    local lines = {}
-    if #items == 0 then
-        list:readonly_name(label("no_variables"))
-        return lines
-    end
-    local nodes = { [""] = list }
-    for _, item in ipairs(items) do
-        local parent = nodes[item.parent]
-        if item.kind == "list" then
-            nodes[item.path] = parent:list(item.name)
-        elseif item.kind == "line" then
-            lines[item.path] = parent:readonly(item.name, item.text)
-        else
-            parent:readonly_name(item.name)
-        end
-    end
-    return lines
-end
-
--- The Value list under a function's Variable line: what a table it gave holds, a line or list per entry
--- like Variables. Hidden when it gave no table; changed values change in place, entries that came or
--- went make the list again
-update_result_list = function(key)
-    local ui = result_tables[key]
-    if ui == nil then
-        return
-    end
-    local tbl = last_tables[key]
-    if tbl == nil then
-        pcall(menu.set_visible, ui.list.handle, false)
-        return
-    end
-    local entries = table_entries(tbl)
-    local items = {}
-    if #entries == 0 then
-        table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
-    end
-    for i, entry in ipairs(entries) do
-        if i > MAX_TABLE_ENTRIES then
-            table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
-            break
-        end
-        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true })
-    end
-    pcall(menu.set_visible, ui.list.handle, true)
-    pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
-    local shape = shape_of(items)
-    if shape ~= ui.shape then
-        ui.list:clear()
-        ui.shape = shape
-        ui.lines = build_variables(ui.list, items)
-        ui.texts = {}
-        for _, item in ipairs(items) do
-            ui.texts[item.path] = item.text
-        end
-        return
-    end
-    for _, item in ipairs(items) do
-        if item.kind == "line" and ui.texts[item.path] ~= item.text then
-            ui.texts[item.path] = item.text
-            pcall(menu.set_value, ui.lines[item.path], item.text)
-        end
-    end
-end
-
--- The Variables list: a line per field, "count: 0" (texts in quotes), a list per table field.
--- Made when it's opened; while it's open the values are looked at again every VARIABLES_REFRESH_MS:
--- changed values change in place, a field or entry that came or went makes the list again
-local function variables_list(node: table, module_name: string): void
-    local list = nil
-    -- The current opening: a newer one (or going back) ends the refresh of the one before
-    local opened = nil
-    list = node:list(label("variables"), {}, label("variables_help"), function()
-        opened = nil
-        list:clear()
-    end, function()
-        local this = {}
-        opened = this
-        list:clear()
-        local items = collect_variables(module_name) or {}
-        local shape = shape_of(items)
-        local texts = {}
-        for _, item in ipairs(items) do
-            texts[item.path] = item.text
-        end
-        local lines = build_variables(list, items)
-        local next_look = util.current_time_millis() + VARIABLES_REFRESH_MS
-
-        util.create_tick_handler(function()
-            if stopping or opened ~= this then
-                return false
-            end
-            local now = util.current_time_millis()
-            if now < next_look then
-                return true
-            end
-            next_look = now + VARIABLES_REFRESH_MS
-            local fresh = collect_variables(module_name)
-            if fresh == nil then
-                return false
-            end
-            local fresh_shape = shape_of(fresh)
-            if fresh_shape ~= shape then
-                -- Something came or went: made again
-                list:clear()
-                shape = fresh_shape
-                texts = {}
-                lines = build_variables(list, fresh)
-                for _, item in ipairs(fresh) do
-                    texts[item.path] = item.text
-                end
-                return true
-            end
-            for _, item in ipairs(fresh) do
-                if item.kind == "line" and texts[item.path] ~= item.text then
-                    texts[item.path] = item.text
-                    pcall(menu.set_value, lines[item.path], item.text)
-                end
-            end
-            return true
-        end)
-    end)
 end
 
 -- ─── Categories: lists of functions by a word in their names ────────────────
@@ -1275,7 +664,7 @@ local HOOKS = {
 -- divider with the hooks
 local function functions_of(entry: table, mod: table): void
     local functions_node = entry:list(label("functions"), {}, label("functions_help"))
-    variables_list(functions_node, mod.name)
+    values.variables_list(functions_node, mod.name, hidden_of)
 
     -- The functions to show (debug.hide left out), by name; _ ones apart
     local hidden = hidden_of(mod)
@@ -1397,7 +786,7 @@ local function functions_of(entry: table, mod: table): void
         local named = { name = hook.name, params = hook.params, vararg = hook.vararg, returns = returns }
         -- on_tick runs every frame, so it's a list to start and stop, not a button
         if hook.name == "on_tick" then
-            tick_list(hooks_node, mod, item_name(named))
+            ticks.list(hooks_node, mod, item_name(named))
         else
             hooks_node:action(item_name(named), || -> call(mod.name, hook, {}, 0), {}, label("call.hook_help"))
         end
@@ -1461,7 +850,7 @@ local function fill(node: table): void
     node:action(label("refresh.name"), refresh, {}, label("refresh.help"))
     node:action(label("stop_all.name"), function()
         -- On_tick run by hand stops too: nothing of the modules keeps running
-        stop_all_ticks()
+        ticks.stop_all()
         stop_function_loops(nil)
         modules.stop()
         refresh()
@@ -1504,13 +893,15 @@ local function empty(node: table): void
     node:clear()
     if view.list == node then
         view = {}
-        tick_statuses = {}
+        ticks.forget_lines()
         loop_statuses = {}
         loop_toggles = {}
-        result_lines = {}
-        result_tables = {}
+        values.forget_lines()
     end
 end
+
+-- A value as it's shown in a call's notice (ui/stand/modules_values)
+module.describe = values.describe
 
 -- Puts a Modules list into node (a MenuNode, e.g. a pack's list), its items made only while it's open
 -- @return The list (a MenuNode)
@@ -1552,11 +943,6 @@ end
 
 function module.close(list: table): void
     empty(list)
-end
-
--- The place in the script's settings: the "Debug" divider and the Modules list (ui/stand/modules_place)
-function module.build(parent: table): void
-    Atdar.loader.load("ui/stand/modules_place").build(parent)
 end
 
 return module

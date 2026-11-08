@@ -17,7 +17,9 @@ os.date = function(format, time)
     return real_date(format, time)
 end
 
+-- The file as it is on disk: info lines wait in the buffer for up to a second, so they're put there first
 local function lines_of(day)
+    Logger.flush()
     local text = stand.read_file(file_of(day))
     if text == nil then
         return {}
@@ -91,6 +93,24 @@ stand.check(not io.exists(file_of("2026-11-08")) and io.exists(file_of("2026-11-
 stand.check(not Logger.clear_today(), "none for today: says so")
 log:info("after clearing today")
 stand.equal(#lines_of("2026-11-08"), 1, "the next line starts today's file again")
+
+-- On disk: a warning or an error at once, other lines within a second (the frame after); with
+-- log_info_at_once every line at once
+local function on_disk(): string
+    return stand.read_file(file_of("2026-11-08")) or ""
+end
+log:info("waits in the buffer")
+stand.check(not on_disk():find("waits in the buffer", 1, true), "an info line isn't on disk at once")
+log:warn("goes at once")
+stand.check(on_disk():find("goes at once", 1, true) and on_disk():find("waits in the buffer", 1, true),
+    "a warning is, and takes the lines before it along")
+log:info("within a second")
+stand.clock += 1000
+stand.frame()
+stand.check(on_disk():find("within a second", 1, true), "an info line is on disk a second later")
+Atdar.profile = { get = |key| -> key == "log_info_at_once" }
+log:info("at once too")
+stand.check(on_disk():find("at once too", 1, true), "with Write Info At Once every line is on disk at once")
 Atdar.profile = nil
 
 -- A file that can't be opened: one warning in Stand's log, then lines go there only

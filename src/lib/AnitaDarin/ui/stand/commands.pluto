@@ -49,15 +49,12 @@ local custom = { menu = {}, script = nil }
 local dirs = { menu = nil, script = nil }
 local legacy = { menu = nil, script = nil }
 
--- Lowercase, keeps only a-z, 0-9 and _ (parsers/stand/command_box). Here too: script_menu uses it
-module.sanitize = command_box.sanitize
-
 -- An owner's names: the older commands.json first, then each commands/<base>.json (they win)
 local function read_names(dir: string, old_file: table): table
     local names = {}
     for base, name in pairs(old_file:read() or {}) do
         if type(base) == "string" then
-            local clean_base = module.sanitize(base)
+            local clean_base = command_box.sanitize(base)
             if clean_base ~= "" then
                 names[clean_base] = command_box.entry(clean_base, name, nil)
             end
@@ -66,7 +63,7 @@ local function read_names(dir: string, old_file: table): table
     if filesystem.is_dir(dir) then
         for _, path in ipairs(filesystem.list_files(dir)) do
             local base = path:match("([^\\/]+)%.json$")
-            local clean_base = base and module.sanitize(base) or ""
+            local clean_base = base and command_box.sanitize(base) or ""
             if clean_base ~= "" then
                 local data = new JsonFile(path):read() or {}
                 names[clean_base] = command_box.entry(clean_base, data.name, data.words)
@@ -331,15 +328,25 @@ local function save(who: string, base: string): bool
 end
 
 -- Whether another item already answers to name (its own, custom name or a word)
+-- Compared as Stand sees them, with the prefixes: the script's "settings" (atdar_settings) and a pack's
+-- (atdarsettings) are different commands, so neither keeps the other from a name. Stand's own commands
+-- count too: a custom name can't take one of them
 local function taken_by_other(ref, name: string): bool
     prune()
+    local full = full_name(name, owner[ref] or "script")
     for other in pairs(tracked) do
         if other ~= ref then
-            for _, other_name in ipairs(module.bases_of(other)) do
-                if other_name == name then
+            for _, other_full in ipairs(module.names_of(other) or {}) do
+                if other_full == full then
                     return true
                 end
             end
+        end
+    end
+    if type(menu.ref_by_command_name) == "function" then
+        local ok, found = pcall(menu.ref_by_command_name, full)
+        if ok and found ~= nil and found ~= ref and menu.is_ref_valid(found) then
+            return true
         end
     end
     return false
@@ -371,7 +378,7 @@ function module.set_custom(ref, name: string): (bool, ?string)
         return false, "unknown"
     end
     local base = clean[1]
-    local new_name = module.sanitize(name)
+    local new_name = command_box.sanitize(name)
     local entry = entry_of(ref)
     if new_name == "" or new_name == base then
         entry.name = nil
@@ -406,7 +413,7 @@ function module.add_word(ref, word: string): (bool, ?string)
     if not clean then
         return false, "unknown"
     end
-    local new_word = module.sanitize(word)
+    local new_word = command_box.sanitize(word)
     if new_word == "" then
         return false, "invalid"
     end
@@ -479,7 +486,7 @@ end
 
 -- who: "script" (default) or "menu"
 function module.set_prefix(prefix: string, who: string = "script"): void
-    config[who].prefix = module.sanitize(prefix)
+    config[who].prefix = command_box.sanitize(prefix)
     module.refresh()
 end
 
@@ -520,7 +527,7 @@ if profile and profile.get then
         local value = profile.get(key)
         if target.what == "prefix" then
             -- No found_command_prefix in the profile (an old one): the same as the script's
-            config[target.who].prefix = module.sanitize(value or profile.get("command_prefix") or "")
+            config[target.who].prefix = command_box.sanitize(value or profile.get("command_prefix") or "")
         else
             config[target.who].separator = (value == "_") ? "_" : ""
         end

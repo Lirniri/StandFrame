@@ -189,7 +189,7 @@ function module.repair(vehicle: int, dirt_level: float|bool = false, start_engin
 end
 
 -- Spawns a vehicle of a model (name or hash) at x, y, z facing heading.
--- isNetwork given (and the flags after it) - the game's VEHICLE.CREATE_VEHICLE with exactly those flags;
+-- is_network given (and the flags after it) - the game's VEHICLE.CREATE_VEHICLE with exactly those flags;
 -- without it - Stand's entities.create_vehicle, which picks them itself.
 -- The game's native needs the model loaded first (STREAMING.REQUEST_MODEL / HAS_MODEL_LOADED)
 -- @param allow_low_z The native's p7: true lets the vehicle spawn below z -100 (the game refuses that otherwise)
@@ -198,16 +198,16 @@ function module.create(
     hash: int|string,
     x: float, y: float, z: float,
     heading: float,
-    isNetwork: bool,
-    bScriptHostVeh: bool,
+    is_network: bool,
+    script_host_vehicle: bool,
     allow_low_z: bool
 ): int
     local model = Atdar.util.hash(hash)
-    if isNetwork ~= nil then
+    if is_network ~= nil then
         return VEHICLE.CREATE_VEHICLE(
             model, x, y, z, heading,
-            isNetwork,
-            bScriptHostVeh == true,
+            is_network,
+            script_host_vehicle == true,
             allow_low_z == true
         )
     end

@@ -10,9 +10,8 @@ local i18n = Atdar.loader.load("core/i18n")
 
 local module = {}
 
-local function label(key: string): int
-    return i18n.label($"modules.{key}")
-end
+-- Strings under "modules"
+local label = i18n.scope("modules")
 
 -- The place (build): the "Debug" divider, the list, items added with debug_only()
 local place = {}

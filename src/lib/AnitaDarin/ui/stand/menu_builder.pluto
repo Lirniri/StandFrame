@@ -1,5 +1,7 @@
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local Logger = Atdar.loader.load("core/logger")
+-- Pack files copied and compared as they are
+local plain = Atdar.loader.load("core/filesystem/file")
 
 local log = new Logger("MenuBuilder")
 
@@ -268,24 +270,11 @@ function module.load_feature_files(files: table): int
 end
 
 local function copy_file(from: string, to: string): bool
-    local src = io.open(from, "rb")
-    if not src then
+    local content = plain.read(from, true)
+    if content == nil then
         return false
     end
-    local content = src:read("*a")
-    src:close()
-
-    local folder = to:match("^(.+)[\\/][^\\/]+$")
-    if folder and not filesystem.exists(folder) then
-        filesystem.mkdirs(folder)
-    end
-    local dst = io.open(to, "wb")
-    if not dst then
-        return false
-    end
-    dst:write(content)
-    dst:close()
-    return true
+    return (plain.write(to, content, true))
 end
 
 -- Lists what copy_pack_to_core put into lib, so remove_copied_core can take exactly that out
@@ -344,13 +333,7 @@ end
 
 -- A file's whole content, nil if it can't be read
 local function read_bytes(path: string): ?string
-    local file = io.open(path, "rb")
-    if not file then
-        return nil
-    end
-    local content = file:read("*a")
-    file:close()
-    return content
+    return plain.read(path, true)
 end
 
 -- Whether the copy of this pack in the script is the same as the pack: the same files, each with the

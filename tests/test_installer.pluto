@@ -45,6 +45,7 @@ Atdar.log_dir = $"{stand.store}Renamed\\logs\\"
 Logger.resume_file()
 local before = #filesystem.list_files(Atdar.log_dir)
 log:info("written again")
+Logger.flush()
 stand.check(#filesystem.list_files(Atdar.log_dir) >= before and stand.read_file(filesystem.list_files(Atdar.log_dir)[1]):find("written again", 1, true),
     "resume_file() writes the file again")
 

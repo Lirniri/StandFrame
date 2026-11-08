@@ -202,13 +202,8 @@ end
 -- Strings of the independent menu live in store/AnitaDarin/base/language/ under "menu_loader".
 -- label(): Stand label for item names and help, shown in Stand's language;
 -- text(): ready string in Stand's current language, for strings filled with format()
-local function label(key: string): int
-    return i18n.label($"menu_loader.{key}")
-end
-
-local function text(key: string): string
-    return i18n.text($"menu_loader.{key}")
-end
+-- Strings under "menu_loader"
+local label, text = i18n.scope("menu_loader")
 
 local function pack_options(): table
     return { label("options.load"), label("options.copy_to_core"), label("options.open_menu_folder"), label("options.open_features_folder") }

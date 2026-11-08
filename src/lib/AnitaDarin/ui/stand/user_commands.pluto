@@ -27,13 +27,8 @@ local log = new Logger("Commands")
 
 local module = {}
 
-local function label(key: string): int
-    return i18n.label($"script_menu.user_commands.{key}")
-end
-
-local function text(key: string): string
-    return i18n.text($"script_menu.user_commands.{key}")
-end
+-- Strings under "script_menu.user_commands"
+local label, text = i18n.scope("script_menu.user_commands")
 
 -- ─── Files ───────────────────────────────────────────────────────────────────
 
@@ -322,9 +317,17 @@ function module.build(node: table): table
     return list
 end
 
--- A new prefix or separator: a Run with nothing to run is named after its command, called anew now
+-- Every command's prefix and separator: a change renames the commands Run is named after (or, with
+-- nothing to run, its own). Any of them, not only the user's: a profile reset or loaded gives them all
+-- at once, in no set order, and the last one must find every command under its new name
+local NAME_KEYS = {
+    command_prefix = true, command_separator = true,
+    found_command_prefix = true, found_command_separator = true,
+    user_command_prefix = true, user_command_separator = true,
+}
+
 Atdar.profile.on_change(function(key: string)
-    if key ~= "user_command_prefix" and key ~= "user_command_separator" then
+    if not NAME_KEYS[key] then
         return
     end
     for name, ref in pairs(view.runs or {}) do

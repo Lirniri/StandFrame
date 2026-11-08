@@ -1,0 +1,475 @@
+-- lib/AnitaDarin/ui/stand/modules_values.pluto
+--
+-- What the Modules list (ui/stand/modules_menu) shows of values: what a call gave - the notice's text,
+-- a function's Variable line and, for a table, the Value list under it - and a module's Variables list,
+-- its fields kept up to date while it's open. Loaded with modules_menu, when the list is first opened.
+-- Strings: base/language "modules"
+
+local i18n = Atdar.loader.load("core/i18n")
+-- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake
+-- (a missing `local`) doesn't break reading functions here
+local debug = debug
+local Logger = Atdar.loader.load("core/logger")
+local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
+
+local log = new Logger("Modules")
+
+local module = {}
+
+-- Strings under "modules"
+local label, text = i18n.scope("modules")
+
+-- Stand runs the lists' tick handlers once more while the script stops: they end then
+local stopping = false
+util.on_stop(function() stopping = true end)
+
+-- ─── What a call gave ────────────────────────────────────────────────────────
+
+
+-- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known
+local function function_text(fn): string
+    local info = debug.getinfo(fn, "u")
+    local params = {}
+    for i = 1, info.nparams do
+        local name = debug.getlocal(fn, i)
+        if i ~= 1 or name ~= "self" then
+            table.insert(params, name)
+        end
+    end
+    if info.isvararg then
+        table.insert(params, "...")
+    end
+    local params_text = table.concat(params, ", ")
+    local returns = source_parser.return_type(fn)
+    if returns == nil then
+        return $"function({params_text})"
+    end
+    return $"function({params_text}): {returns}"
+end
+
+-- Items shown of one table; the rest is "..."
+local MAX_ITEMS = 20
+-- Tables inside tables shown this deep; deeper ones are "{...}"
+local MAX_DEPTH = 3
+
+local describe
+
+-- A value inside a table: a text in quotes, so "1" and 1 differ
+local function describe_item(value, depth: int, seen: table): string
+    if type(value) == "string" then
+        return $"\"{value}\""
+    end
+    return describe(value, depth, seen)
+end
+
+-- A value as text: a table unpacked ({1, 2}, {"a", "b"}, {name = "x", [5] = true}), a function as its
+-- signature, the rest by tostring. seen: the tables being shown, so one inside itself is "{...}"
+describe = function(value, depth, seen)
+    local kind = type(value)
+    if kind == "function" then
+        return function_text(value)
+    end
+    if kind ~= "table" then
+        return tostring(value)
+    end
+    if seen[value] or depth >= MAX_DEPTH then
+        return "{...}"
+    end
+    seen[value] = true
+
+    local parts = {}
+    local length = #value
+    for i = 1, length do
+        table.insert(parts, describe_item(value[i], depth + 1, seen))
+    end
+    -- The other keys after the list part, in a fixed order
+    local keys = {}
+    for key in pairs(value) do
+        if math.type(key) ~= "integer" or key < 1 or key > length then
+            table.insert(keys, key)
+        end
+    end
+    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+    for _, key in ipairs(keys) do
+        local key_text = type(key) == "string" and key:match("^[%a_][%w_]*$") ? key
+            : $"[{describe_item(key, depth + 1, seen)}]"
+        table.insert(parts, $"{key_text} = {describe_item(value[key], depth + 1, seen)}")
+    end
+
+    seen[value] = nil
+    if #parts > MAX_ITEMS then
+        parts = table.move(parts, 1, MAX_ITEMS, 1, {})
+        table.insert(parts, "...")
+    end
+    return "{" .. table.concat(parts, ", ") .. "}"
+end
+
+-- A value as it's shown in a call's notice
+function module.describe(value): string
+    return describe(value, 0, {})
+end
+
+-- A call's results for the notice: "5, x, {1, 2}, function(a): bool"
+local function results_text(results: table): string
+    local parts = {}
+    for i = 2, results.n do
+        table.insert(parts, module.describe(results[i]))
+    end
+    return table.concat(parts, ", ")
+end
+
+-- "<module>.<function>" -> what it gave last ("147462", "{1, 2}"); the line showing it in its list
+local last_results = {}
+local result_lines = {}
+-- Longer results are cut in the Variable line (the notice and the debug text show them whole)
+local MAX_RESULT_CHARS = 60
+
+-- The same key -> the type(s) of what it gave last: "integer", "table of integers", "integer, string"
+local last_types = {}
+-- The same key -> the table it gave last (when it gave one table), for the Value list under Variable
+local last_tables = {}
+
+-- A value's kind for the types' strings: integer and float apart, the rest as type() says
+local function kind_of(value): string
+    local kind = type(value)
+    if kind == "number" then
+        return math.type(value) == "integer" and "integer" or "float"
+    end
+    return kind
+end
+
+-- A value's type in words: "integer", "float", "table of strings"... A table by what it holds: all of one
+-- kind - "table of <kind>" (integers and floats together: "table of numbers"), mixed - "table", none -
+-- "empty table". Cheap: one look at each entry, only when the value changed
+local function type_text(value): string
+    local kind = kind_of(value)
+    if kind ~= "table" then
+        return text($"types.{kind}")
+    end
+    local inner = nil
+    for _, entry in pairs(value) do
+        local entry_kind = kind_of(entry)
+        if inner == nil then
+            inner = entry_kind
+        elseif inner ~= entry_kind then
+            local numbers = (inner == "integer" or inner == "float" or inner == "number")
+                and (entry_kind == "integer" or entry_kind == "float")
+            if not numbers then
+                return text("types.table")
+            end
+            inner = "number"
+        end
+    end
+    if inner == nil then
+        return text("types.table_empty")
+    end
+    return text($"types.table_of_{inner}")
+end
+
+-- "Variable: 147462", "Variable: table of integers" for a table (what it holds is in the Value list right
+-- under), "Variable: -" before a call or when it gave nothing
+local function result_line(key: string): string
+    local value = last_results[key]
+    if value == nil then
+        return text("loop.result_line"):format(text("loop.no_result"))
+    end
+    if last_tables[key] ~= nil then
+        return text("loop.result_line"):format(last_types[key] or "")
+    end
+    if #value > MAX_RESULT_CHARS then
+        value = value:sub(1, MAX_RESULT_CHARS) .. "..."
+    end
+    return text("loop.result_line"):format(value)
+end
+
+-- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
+-- The same key -> the Value list in the function's list: { list, shape, texts, lines }
+local result_tables = {}
+-- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like
+local update_result_list
+
+local function show_result(key: string, results: table): void
+    local value = results.n > 1 and results_text(results) or nil
+    if value == last_results[key] then
+        return
+    end
+    last_results[key] = value
+    -- Each value's type, as many as it gave ("integer, string")
+    local types = {}
+    for i = 2, results.n do
+        table.insert(types, type_text(results[i]))
+    end
+    last_types[key] = table.concat(types, ", ")
+    last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
+    update_result_list(key)
+    local ref = result_lines[key]
+    if ref ~= nil then
+        local ok, err = pcall(menu.set_menu_name, ref, result_line(key))
+        if not ok then
+            log:debug($"{key}: Variable line not updated: {tostring(err)}")
+        end
+    end
+end
+
+
+-- A call's results for the notice
+function module.results_text(results: table): string
+    return results_text(results)
+end
+
+-- What a call gave, remembered and shown where its function's list shows it (when it changed)
+function module.show_result(key: string, results: table): void
+    show_result(key, results)
+end
+
+-- A function's Variable line and its Value list, made in its list (node) for key ("<module>.<function>")
+function module.add_result_lines(node: table, key: string): void
+    result_lines[key] = node:divider(result_line(key))
+    -- A table it gave: its entries in a list right under (hidden while it gave none)
+    result_tables[key] = { list = node:list(text("loop.result_list"):format(0)), shape = nil, texts = {}, lines = {} }
+    update_result_list(key)
+end
+
+-- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
+function module.forget_lines(): void
+    result_lines = {}
+    result_tables = {}
+end
+
+-- ─── Variables: the module's fields and their values now ─────────────────────
+
+
+-- Fields every module has (Module's own): not the module's variables
+local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true, debug = true,
+    _language_loaded = true }
+
+
+-- The module's own fields (set in its __construct or later), sorted by name: { name, value }.
+-- Functions (hooks given as options) and Module's fields are left out
+local function variables_of(mod: table, hidden_of): table
+    local list = {}
+    local hidden = hidden_of(mod)
+    for key, value in pairs(mod) do
+        if type(key) == "string" and not MODULE_FIELDS[key] and not hidden[key] and key:sub(1, 2) ~= "__"
+            and type(value) ~= "function" then
+            table.insert(list, { name = key, value = value })
+        end
+    end
+    table.sort(list, |a, b| -> a.name < b.name)
+    return list
+end
+
+-- A table's entries in the order they're shown: the list part, then the other keys sorted.
+-- @return { key_text, value }: "[1]", "name", "[158214]"
+local function table_entries(tbl: table): table
+    local entries = {}
+    local length = #tbl
+    for i = 1, length do
+        table.insert(entries, { key_text = $"[{i}]", value = tbl[i] })
+    end
+    local keys = {}
+    for key in pairs(tbl) do
+        if math.type(key) ~= "integer" or key < 1 or key > length then
+            table.insert(keys, key)
+        end
+    end
+    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+    for _, key in ipairs(keys) do
+        local key_text = key
+        if type(key) ~= "string" or not key:match("^[%a_][%w_]*$") then
+            -- Not a plain name: in brackets, a text in quotes ([158214], ["a b"])
+            local shown = describe_item(key, 0, {})
+            key_text = $"[{shown}]"
+        end
+        table.insert(entries, { key_text = key_text, value = tbl[key] })
+    end
+    return entries
+end
+
+-- Entries shown of one table; the rest is a "..." line
+local MAX_TABLE_ENTRIES = 100
+-- Tables inside tables made lists this deep; deeper ones are a line ("{...}")
+local MAX_VARIABLE_DEPTH = 3
+
+-- How often an open Variables list looks at the values again, ms
+local VARIABLES_REFRESH_MS = 250
+
+-- A variable as items to show, added to out in menu order: a line { kind = "line", name, text } or
+-- for a table a list { kind = "list", name = "name (entries)" } with its entries after it. Each has
+-- a path (where it is, unique) and parent (the path of the list it's in, "" - the Variables list).
+-- seen: the tables on the way here, so one inside itself is a line, not lists without end
+local function collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table): void
+    local path = $"{parent}/{name}"
+    if type(value) ~= "table" or seen[value] or depth >= MAX_VARIABLE_DEPTH then
+        table.insert(out, { kind = "line", path = path, parent = parent, name = name,
+            text = describe_item(value, depth, seen) })
+        return
+    end
+    local entries = table_entries(value)
+    table.insert(out, { kind = "list", path = path, parent = parent, name = $"{name} ({#entries})" })
+    if #entries == 0 then
+        table.insert(out, { kind = "note", path = $"{path}/", parent = path, name = "{}" })
+        return
+    end
+    seen[value] = true
+    for i, entry in ipairs(entries) do
+        if i > MAX_TABLE_ENTRIES then
+            table.insert(out, { kind = "note", path = $"{path}/...", parent = path, name = "..." })
+            break
+        end
+        collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen)
+    end
+    seen[value] = nil
+end
+
+-- Every item of the module's Variables, in menu order (collect_variable), nil if there's no such module
+local function collect_variables(module_name: string, hidden_of): ?table
+    local modules = Atdar.modules
+    if not modules.has(module_name) then
+        return nil
+    end
+    local out = {}
+    for _, variable in ipairs(variables_of(modules.get(module_name), hidden_of)) do
+        collect_variable(out, "", variable.name, variable.value, 0, {})
+    end
+    return out
+end
+
+-- What the items are without their values: the same shape means only values changed
+local function shape_of(items: table): string
+    local parts = {}
+    for _, item in ipairs(items) do
+        table.insert(parts, $"{item.kind}:{item.path}:{item.name}")
+    end
+    return table.concat(parts, "\n")
+end
+
+-- Makes the items in list
+-- @return path -> the ref of each line, to change its value later
+local function build_variables(list: table, items: table): table
+    local lines = {}
+    if #items == 0 then
+        list:readonly_name(label("no_variables"))
+        return lines
+    end
+    local nodes = { [""] = list }
+    for _, item in ipairs(items) do
+        local parent = nodes[item.parent]
+        if item.kind == "list" then
+            nodes[item.path] = parent:list(item.name)
+        elseif item.kind == "line" then
+            lines[item.path] = parent:readonly(item.name, item.text)
+        else
+            parent:readonly_name(item.name)
+        end
+    end
+    return lines
+end
+
+-- The Value list under a function's Variable line: what a table it gave holds, a line or list per entry
+-- like Variables. Hidden when it gave no table; changed values change in place, entries that came or
+-- went make the list again
+update_result_list = function(key)
+    local ui = result_tables[key]
+    if ui == nil then
+        return
+    end
+    local tbl = last_tables[key]
+    if tbl == nil then
+        pcall(menu.set_visible, ui.list.handle, false)
+        return
+    end
+    local entries = table_entries(tbl)
+    local items = {}
+    if #entries == 0 then
+        table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
+    end
+    for i, entry in ipairs(entries) do
+        if i > MAX_TABLE_ENTRIES then
+            table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
+            break
+        end
+        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true })
+    end
+    pcall(menu.set_visible, ui.list.handle, true)
+    pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
+    local shape = shape_of(items)
+    if shape ~= ui.shape then
+        ui.list:clear()
+        ui.shape = shape
+        ui.lines = build_variables(ui.list, items)
+        ui.texts = {}
+        for _, item in ipairs(items) do
+            ui.texts[item.path] = item.text
+        end
+        return
+    end
+    for _, item in ipairs(items) do
+        if item.kind == "line" and ui.texts[item.path] ~= item.text then
+            ui.texts[item.path] = item.text
+            pcall(menu.set_value, ui.lines[item.path], item.text)
+        end
+    end
+end
+
+-- The Variables list: a line per field, "count: 0" (texts in quotes), a list per table field.
+-- Made when it's opened; while it's open the values are looked at again every VARIABLES_REFRESH_MS:
+-- changed values change in place, a field or entry that came or went makes the list again
+-- @param hidden_of function(mod): the fields not shown, as a set (the module's debug.hide)
+function module.variables_list(node: table, module_name: string, hidden_of): void
+    local list = nil
+    -- The current opening: a newer one (or going back) ends the refresh of the one before
+    local opened = nil
+    list = node:list(label("variables"), {}, label("variables_help"), function()
+        opened = nil
+        list:clear()
+    end, function()
+        local this = {}
+        opened = this
+        list:clear()
+        local items = collect_variables(module_name, hidden_of) or {}
+        local shape = shape_of(items)
+        local texts = {}
+        for _, item in ipairs(items) do
+            texts[item.path] = item.text
+        end
+        local lines = build_variables(list, items)
+        local next_look = util.current_time_millis() + VARIABLES_REFRESH_MS
+
+        util.create_tick_handler(function()
+            if stopping or opened ~= this then
+                return false
+            end
+            local now = util.current_time_millis()
+            if now < next_look then
+                return true
+            end
+            next_look = now + VARIABLES_REFRESH_MS
+            local fresh = collect_variables(module_name, hidden_of)
+            if fresh == nil then
+                return false
+            end
+            local fresh_shape = shape_of(fresh)
+            if fresh_shape ~= shape then
+                -- Something came or went: made again
+                list:clear()
+                shape = fresh_shape
+                texts = {}
+                lines = build_variables(list, fresh)
+                for _, item in ipairs(fresh) do
+                    texts[item.path] = item.text
+                end
+                return true
+            end
+            for _, item in ipairs(fresh) do
+                if item.kind == "line" and texts[item.path] ~= item.text then
+                    texts[item.path] = item.text
+                    pcall(menu.set_value, lines[item.path], item.text)
+                end
+            end
+            return true
+        end)
+    end)
+end
+
+return module

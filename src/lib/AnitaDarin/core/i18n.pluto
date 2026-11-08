@@ -76,12 +76,10 @@ local function name_in(source: table, code: string): ?string
     if path == nil then
         return nil
     end
-    local file = io.open(path, "r")
-    if file == nil then
+    local text = Atdar.loader.load("core/filesystem/file").read(path)
+    if text == nil then
         return nil
     end
-    local text = file:read("*a")
-    file:close()
     return text:match('"language_name"%s*:%s*"([^"\\]*)"')
 end
 
@@ -395,6 +393,38 @@ function module.create_language(code: string, name: ?string, from: ?string)
     return made_count, nil
 end
 
+-- How far a translation has come: every English string (of every folder of strings) against the language's.
+-- A string counts as translated when the language has one at its key and it isn't the English text; one
+-- the same in both languages on purpose ("Stand", "%s") counts as not, the list shows it
+-- @return { total, translated, missing = { keys, as the script asks for them } }
+function module.progress(code: string): table
+    local result = { total = 0, translated = 0, missing = {} }
+    local function walk(english: table, translated, path: string, prefix: ?string): void
+        for key, value in pairs(english) do
+            local full = path == "" and tostring(key) or $"{path}.{tostring(key)}"
+            local other = type(translated) == "table" and translated[key] or nil
+            if type(value) == "table" then
+                walk(value, other, full, prefix)
+            elseif type(value) == "string" and full ~= "language_name" then
+                result.total += 1
+                if type(other) == "string" and other ~= value then
+                    result.translated += 1
+                else
+                    table.insert(result.missing, prefix and $"{prefix}.{full}" or full)
+                end
+            end
+        end
+    end
+    for _, source in ipairs(sources) do
+        local english = source.languages[ENGLISH]
+        if english ~= nil then
+            walk(english, source.languages[code], "", source.prefix)
+        end
+    end
+    table.sort(result.missing)
+    return result
+end
+
 -- The folder of the script's own strings, where a translation's main file goes
 function module.base_dir(): ?string
     local first = sources[1]
@@ -430,6 +460,15 @@ util.create_tick_handler(function()
     end
     return true
 end)
+
+-- label and text for the keys under one part of the strings, so a file doesn't write its part each time:
+--     local label, text = i18n.scope("modules")
+--     label("title")   -- i18n.label("modules.title")
+-- @return label(key, fallback), text(key, fallback)
+function module.scope(part: string)
+    return |key, fallback| -> module.label($"{part}.{key}", fallback),
+        |key, fallback| -> module.text($"{part}.{key}", fallback)
+end
 
 -- @return Text for key in Stand's current language, for strings built from parts (format, concatenation)
 function module.text(key: string, fallback: ?string = nil): string

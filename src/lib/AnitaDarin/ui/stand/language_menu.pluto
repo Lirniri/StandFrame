@@ -1,0 +1,185 @@
+-- lib/AnitaDarin/ui/stand/language_menu.pluto
+--
+-- The Language list in Settings (ui/stand/script_menu puts it there):
+--
+--   Language: Auto (Stand)            - the language picked: Auto follows Stand's (lang)
+--   ── Translation ──
+--   Create Translation >              - code, name, the language to start from, Create (langcode ... langcreate)
+--   Translation Progress              - how far each translation has come (langprogress)
+--   Reload Translations               - the files read again (langreload)
+--   Open Translation Folder           - store/<script>/base/language (langfolder)
+--
+-- Strings: base/language "profile.language" and "profile.translation"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Language")
+
+local module = {}
+
+-- Strings under "profile"
+local label, text = i18n.scope("profile")
+
+-- The picker made by build, and the code of each of its options
+local view = { language = nil, codes = {} }
+
+local function rename(ref, caption: string): void
+    if ref then
+        pcall(menu.set_menu_name, ref, caption)
+    end
+end
+
+-- "Language: Auto (Stand)", "Language: Русский", or the chosen language marked unavailable
+-- while Stand can't show it (Stand in English)
+local function language_caption(): string
+    local code = Atdar.profile.get("language")
+    for _, language in ipairs(i18n.languages()) do
+        if language.code == code then
+            local name = language.name
+            if i18n.get_language() ~= code then
+                name = text("language.unavailable_mark"):format(name)
+            end
+            return text("language.name"):format(name)
+        end
+    end
+    return text("language.name"):format(text("language.auto"))
+end
+
+-- The language list: Language: Auto (Stand) at the top, then the Translation divider with Create Translation,
+-- Reload Translations and Open Translation Folder
+--
+-- The languages to pick: Auto, then each language by its file's language_name, and the code of each
+local function language_options()
+    local names, codes = { label("language.auto") }, { "auto" }
+    for _, language in ipairs(i18n.languages()) do
+        table.insert(names, language.name)
+        table.insert(codes, language.code)
+    end
+    return names, codes
+end
+
+-- After a translation was made or read again: the picker lists the languages there are now
+local function refresh_languages(): void
+    local names, codes = language_options()
+    view.codes = codes
+    pcall(menu.set_list_action_options, view.language, names)
+    rename(view.language, language_caption())
+end
+
+-- What a new translation's code starts as: Stand's language when the script has no file for it ("de" -> "de-de")
+local function suggested_code(): string
+    local current = lang.get_current()
+    if type(current) ~= "string" or not current:match("^%l%l$") or current == "en" then
+        return ""
+    end
+    local code = $"{current}-{current}"
+    if i18n.has_language(code) then
+        return ""
+    end
+    return code
+end
+
+-- "Translate From: English"
+local function from_caption(code: string): string
+    for _, language in ipairs(i18n.languages()) do
+        if language.code == code then
+            return text("translation.from.name"):format(language.name)
+        end
+    end
+    return text("translation.from.name"):format(code)
+end
+
+-- Create Translation: the code, the name and the language to start from, then Create. Makes a file to
+-- translate in every folder of strings (i18n.create_language); the language shows in the picker at once
+local function create_translation(list: table): void
+    local draft = { code = suggested_code(), name = "", from = "en-us" }
+    local create = list:list(label("translation.create.name"), {}, label("translation.create.help"))
+    create:text_input(label("translation.code.name"), { "langcode" }, function(value)
+        draft.code = value:lower():match("^%s*(.-)%s*$")
+    end, label("translation.code.help"), draft.code)
+    create:text_input(label("translation.language_name.name"), { "langname" }, function(value)
+        draft.name = value:match("^%s*(.-)%s*$")
+    end, label("translation.language_name.help"), "")
+
+    local from_codes = {}
+    local from_names = {}
+    for _, language in ipairs(i18n.languages()) do
+        table.insert(from_codes, language.code)
+        table.insert(from_names, language.name)
+    end
+    local from_ref = nil
+    from_ref = create:list_action(from_caption(draft.from), from_names, function(index)
+        draft.from = from_codes[index]
+        rename(from_ref, from_caption(draft.from))
+    end, { "langfrom" }, label("translation.from.help"))
+
+    create:action(label("translation.create_button.name"), function()
+        local count, err = i18n.create_language(draft.code, draft.name, draft.from)
+        if count == nil then
+            if err == "exists" then
+                log:warn(text("translation.exists"):format(draft.code))
+                return
+            end
+            log:warn(text("translation.bad_code"):format(draft.code))
+            return
+        end
+        refresh_languages()
+        log:success(text("translation.created"):format(draft.code, count))
+    end, { "langcreate" }, label("translation.create_button.help"))
+end
+
+-- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
+function module.build(node: table): void
+    local list = node:list(label("language.list"), {}, label("language.list_help"))
+
+    local names, codes = language_options()
+    view.codes = codes
+    view.language = list:list_action(language_caption(), names, function(index)
+        local code = view.codes[index]
+        Atdar.profile.set("language", code)
+        -- Also when the profile already had it: picking again tries again (e.g. after Stand's language changed)
+        i18n.set_language(code)
+        rename(view.language, language_caption())
+    end, { "lang" }, label("language.help"))
+
+    list:divider(label("translation.divider"))
+    create_translation(list)
+    -- How far each translation has come, as a notice; what's left of each in Stand's log, key by key
+    list:action(label("translation.progress.name"), function()
+        local lines = {}
+        for _, language in ipairs(i18n.languages()) do
+            if language.code ~= "en-us" then
+                local progress = i18n.progress(language.code)
+                local percent = progress.total > 0 and math.floor(progress.translated * 100 / progress.total) or 100
+                table.insert(lines, text("translation.progress.line"):format(language.name, percent,
+                    progress.translated, progress.total))
+                for _, key in ipairs(progress.missing) do
+                    log:info($"{language.code}: {key}")
+                end
+            end
+        end
+        if #lines == 0 then
+            log:notify(text("translation.progress.none"))
+            return
+        end
+        log:notify(table.concat(lines, "\n"))
+    end, { "langprogress" }, label("translation.progress.help"))
+    list:action(label("translation.reload.name"), function()
+        i18n.reload()
+        refresh_languages()
+        log:success(text("translation.reloaded"))
+    end, { "langreload" }, label("translation.reload.help"))
+    list:action(label("translation.folder.name"), function()
+        local dir = i18n.base_dir()
+        if dir ~= nil then
+            util.open_folder(dir)
+        end
+    end, { "langfolder" }, label("translation.folder.help"))
+end
+
+-- The picker's caption follows the profile (another one loaded, a reset) and the language shown
+Atdar.profile.on_change(|| -> rename(view.language, language_caption()))
+i18n.on_change(|| -> rename(view.language, language_caption()))
+
+return module

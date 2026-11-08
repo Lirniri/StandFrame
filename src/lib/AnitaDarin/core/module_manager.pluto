@@ -26,15 +26,7 @@ local loading_file = nil
 local loaded_text = {}
 
 -- The file's whole text, nil if it can't be read
-local function read_text(path: string): ?string
-    local file = io.open(path, "r")
-    if file == nil then
-        return nil
-    end
-    local text = file:read("*a")
-    file:close()
-    return text
-end
+local read_text = Atdar.loader.load("core/filesystem/file").read
 
 function module.add(mod: table): table
     local name = mod.name

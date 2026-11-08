@@ -19,7 +19,9 @@ local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/commands")
+local command_box = Atdar.loader.load("parsers/stand/command_box")
 local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
+local language_menu = Atdar.loader.load("ui/stand/language_menu")
 local user_commands = Atdar.loader.load("ui/stand/user_commands")
 -- The Modules place only: the list's items (ui/stand/modules_menu) load when it's first opened
 local modules_place = Atdar.loader.load("ui/stand/modules_place")
@@ -29,13 +31,8 @@ local log = new Logger("Menu")
 
 local module = {}
 
-local function label(key: string): int
-    return i18n.label($"script_menu.{key}")
-end
-
-local function text(key: string): string
-    return i18n.text($"script_menu.{key}")
-end
+-- Strings under "script_menu"
+local label, text = i18n.scope("script_menu")
 
 -- An item that isn't made yet: says so when used. Unused now, kept for the next new item
 local function stub(node: table, key: string): void
@@ -170,7 +167,7 @@ local function command_entry(list: table, ref): table
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end
-        if commands.sanitize(value) == commands.custom_of(ref) then
+        if command_box.sanitize(value) == commands.custom_of(ref) then
             return
         end
         local ok, reason = commands.set_custom(ref, value)
@@ -239,7 +236,7 @@ local function command_entry(list: table, ref): table
         end
         renamed()
         show_words()
-        log:notify(text("found_commands.words.added"):format(commands.sanitize(value)))
+        log:notify(text("found_commands.words.added"):format(command_box.sanitize(value)))
     end, "")
     show_words()
     return found
@@ -331,7 +328,7 @@ function module.build(section: table, opts: table): void
     local settings = section:list(i18n.label("profile.settings.name"), { "settings" },
         i18n.label("profile.settings.help"))
     profile_menu.appearance(settings)
-    profile_menu.language(settings)
+    language_menu.build(settings)
     settings:divider(i18n.label("profile.script"))
     profile_menu.rename(settings)
 
@@ -382,6 +379,7 @@ function module.build(section: table, opts: table): void
     debug:divider(label("logs"))
     profile_menu.log_name(debug)
     profile_menu.log_keep_days(debug)
+    profile_menu.log_info_at_once(debug)
     clear_logs(debug)
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_place.build(debug)

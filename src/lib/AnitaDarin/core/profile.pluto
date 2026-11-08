@@ -23,6 +23,8 @@ local DEFAULTS = {
     debug = false,              -- show debug-level log lines
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
+    -- Every log line on disk at once; otherwise warnings and errors only, the rest within a second
+    log_info_at_once = false,
     auto_copy_menu = "AnitaDarin",        -- folder of a menu pack in store, copied to core at every start; "" = off
     auto_update = false,        -- a new version found by a check is installed by itself (updater_menu)
     update_check_days = 1,      -- check for a new version once in this many days; 0 = never

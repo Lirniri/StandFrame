@@ -25,6 +25,7 @@
 | Пути | `Atdar.filesystem.paths` | `paths.store`, `paths.lib`, `paths.resources` |
 | JSON-файл | `Atdar.filesystem.json.File` | `new File(path):read()` / `:write(t)` |
 | Нативы | `Atdar.natives.<раздел>` | `Atdar.natives.entity.vehicle.delete(handle)` |
+| Парсеры | `Atdar.parsers.<вид>` | `Atdar.parsers.proglang.pluto.args.parse("5, true")` |
 | Модули | `Atdar.modules` | `Atdar.modules.get("VehicleManager")` |
 | Фичи | `Atdar.features` | `Atdar.features.get("self.godmode")` |
 | Отладка режима | `Atdar.debug` | `if Atdar.debug then ... end` |

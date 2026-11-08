@@ -29,11 +29,7 @@ local function lines_of(path: string)
         return cached.lines
     end
     if text == nil then
-        local file = io.open(path, "r")
-        if file ~= nil then
-            text = file:read("*a")
-            file:close()
-        end
+        text = Atdar.loader.load("core/filesystem/file").read(path)
     end
     local lines = false
     if text ~= nil then
