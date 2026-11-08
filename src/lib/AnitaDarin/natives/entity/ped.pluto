@@ -2,6 +2,13 @@ local module = {}
 
 -- State
 
+-- Whether it's in the game and a ped
+function module.is_exist(ped: int): bool
+    local is_entity = Atdar.natives.entity.is_exist(ped)
+    local is_ped = module.is_ped(ped)
+    return is_entity and is_ped
+end
+
 function module.is_ped(ped: int): bool
     return ENTITY.IS_ENTITY_A_PED(ped)
 end
@@ -72,8 +79,8 @@ function module.is_in_high_cover(ped: int): bool
     return PED.IS_PED_IN_HIGH_COVER(ped)
 end
 
-function module.is_in_cover(ped: int, exceptUseWeapon: bool = false): bool
-    return PED.IS_PED_IN_COVER(ped, exceptUseWeapon)
+function module.is_in_cover(ped: int, except_use_weapon: bool = false): bool
+    return PED.IS_PED_IN_COVER(ped, except_use_weapon)
 end
 
 function module.is_swimming(ped: int, under_water: bool = false): bool
@@ -145,32 +152,30 @@ function module.set_scuba(ped: int, toggle: bool): void
     module.flags.set_config(ped, module.flags.CONFIG.IS_SCUBA, toggle)
 end
 
-function module.set_health(ped: int, value: ?int, instigator: int = 0, weaponType: int = 0): ?int
-    local entity = Atdar.natives.entity
-    local is_ped = module.is_ped(ped)
-    if is_ped then
-        entity.set_health(ped, value, instigator, weaponType)
-    else
-        return nil
+-- @return Whether it was a ped (nothing is set otherwise)
+function module.set_health(ped: int, value: ?int, instigator: int = 0, weapon_type: int = 0): bool
+    if not module.is_ped(ped) then
+        return false
     end
+    Atdar.natives.entity.set_health(ped, value, instigator, weapon_type)
+    return true
 end
 
-function module.set_max_health(ped: int, value: ?int, instigator: int = 0, weaponType: int = 0): ?int
-    local entity = Atdar.natives.entity
-    local is_ped = module.is_ped(ped)
-    if is_ped then
-        entity.set_max_health(ped, value, instigator, weaponType)
-    else
-        return nil
+-- @return Whether it was a ped (nothing is set otherwise)
+function module.set_max_health(ped: int, value: ?int, instigator: int = 0, weapon_type: int = 0): bool
+    if not module.is_ped(ped) then
+        return false
     end
+    Atdar.natives.entity.set_max_health(ped, value, instigator, weapon_type)
+    return true
 end
 
-function module.set_armor(ped: int, value: int): int
-    return PED.SET_PED_ARMOUR(ped, value)
+function module.set_armor(ped: int, value: int): void
+    PED.SET_PED_ARMOUR(ped, value)
 end
 
-function module.add_armor(ped: int, value: int): int
-    return PED.ADD_ARMOUR_TO_PED(ped, value)
+function module.add_armor(ped: int, value: int): void
+    PED.ADD_ARMOUR_TO_PED(ped, value)
 end
 
 return Atdar.loader.auto(module, "natives/entity/ped")

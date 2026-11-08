@@ -120,20 +120,20 @@ end
 -- @param "value" Health to set; nil or true restores the maximum
 function module.set_health(
     entity: int, value: ?int,
-    instigator: int = 0, weaponType: int = 0
+    instigator: int = 0, weapon_type: int = 0
 ): void
     -- body
     if value == nil or value == true then
         value = module.get_max_health(entity)
         log:debug($"set_health: value is {value}!")
     end
-    ENTITY.SET_ENTITY_HEALTH(entity, value, instigator, weaponType)
+    ENTITY.SET_ENTITY_HEALTH(entity, value, instigator, weapon_type)
 end
 
 -- @param "value" Health to set; nil or true restores the maximum
 function module.set_max_health(
     entity: int, value: ?int, 
-    instigator: int = 0, weaponType: int = 0
+    instigator: int = 0, weapon_type: int = 0
 ): void
     -- body
     if value == nil or value == true then

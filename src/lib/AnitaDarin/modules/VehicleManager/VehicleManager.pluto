@@ -30,7 +30,11 @@ local class VehicleManager extends Module
             }
         })
         -- State lives in fields; set defaults here
+        self.ped_id = 0
+
+        self.last_handle = -1
         self.auto_remember = true
+
         self.vehicles = {}
     end
 
@@ -67,6 +71,11 @@ local class VehicleManager extends Module
 
     -- Is
 
+    function is_ped_exist(): bool
+        local n_ped = Atdar.natives.entity.ped
+        return n_ped.is_exist(self.ped_id)
+    end
+
     -- Whether the vehicle remembered last is still in the game
     function is_last_exist(): bool
         local handle = self:get_handle()
@@ -81,6 +90,10 @@ local class VehicleManager extends Module
     end
 
     -- Get
+
+    function get_ped_id(): int
+        return self.ped_id
+    end
 
     -- The last vehicle remembered (add_vehicle), or nil if there's none
     function get_handle(): ?int
@@ -101,12 +114,17 @@ local class VehicleManager extends Module
 
     -- Set
 
-    function set_auto_remember(toggle: bool): void
-        self.auto_remember = toggle
+    -- The ped the manager looks at; only a whole number (a handle), like add_vehicle takes
+    function set_ped_id(ped: int): void
+        if math.type(ped) ~= "integer" then
+            self.log:warn(self:text("not_ped", "'%s' isn't a ped's handle, not set"):format(tostring(ped)))
+            return
+        end
+        self.ped_id = ped
     end
 
-    function set_ped(handle_or_ptr)
-        -- body
+    function set_auto_remember(toggle: bool): void
+        self.auto_remember = toggle
     end
 
     -- Remembers a vehicle the script made or the player got into
@@ -121,7 +139,7 @@ local class VehicleManager extends Module
         self.last_handle = handle
     end
 
-        -- Forgets a vehicle
+    -- Forgets a vehicle
     function remove_vehicle(handle: int): void
         self.vehicles[handle] = nil
         if self.last_handle == handle then
@@ -146,7 +164,7 @@ local class VehicleManager extends Module
     -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
     -- self.current_vehicle: the one they were in last time, 0 - none
     function _remember_current_vehicle(): void
-        local ped = Atdar.natives.player.get_ped_id()
+        local ped = self.ped_id
         local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
         if vehicle == self.current_vehicle then
             return
@@ -180,7 +198,7 @@ local class VehicleManager extends Module
 
     -- Repairs every remembered vehicle still in the game
     -- @return How many were repaired
-    function repair_all(dirt_level: float|bool, start_engine): int
+    function repair_all(dirt_level: float|bool, start_engine: bool): int
         local repaired = 0
         for _, handle in ipairs(self:get_handles()) do
             if self:repair(handle, dirt_level, start_engine) then
@@ -262,7 +280,7 @@ local class VehicleManager extends Module
             return nil
         end
 
-        local ped = Atdar.natives.player.get_ped_id()
+        local ped = self.ped_id
         if coords == nil then
             coords = v3.new(ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ped, 0.0, 5.0, 0.0))
         end
