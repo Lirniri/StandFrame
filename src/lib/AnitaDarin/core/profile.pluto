@@ -8,10 +8,12 @@ local Logger = Atdar.loader.load("core/logger")
 local log = new Logger("Profile")
 
 local DEFAULTS = {
+    -- How many of OLD_DEFAULTS (below) the profile has had: a new one all of them (set there)
+    defaults_version = 0,
     display_name = Atdar.name,  -- shown to the user: settings section, built-in menu entry
     short_name = "AniDar",
     command_box_prefix = "atdar",
-    command_box_separator = "_",     -- "" -> atdargodmode, "_" -> atdar_godmode
+    command_box_separator = ".",     -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
     -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
     command_box_found_prefix = "atdar",
     command_box_found_separator = "",
@@ -96,12 +98,15 @@ local function notify_all(): void
     end
 end
 
--- Defaults that were changed: a profile still holding all of the old ones together gets the new ones
--- when it loads (it never chose them, they were only what the script gave it)
+-- Defaults that were changed, oldest first: a profile still holding all of the old ones together gets the
+-- new ones when it loads (it never chose them, they were only what the script gave it). Each is done once
+-- per profile: defaults_version says how many it has had, so a value chosen later is never replaced.
+-- A new one goes at the end
 local OLD_DEFAULTS = {
     -- 2026-11-08: user commands were prefixed atdar_ for a day; now they're named exactly as typed
     { command_box_user_prefix = "atdar", command_box_user_separator = "_" },
 }
+DEFAULTS.defaults_version = #OLD_DEFAULTS
 
 -- Keys renamed: a profile with the old name gets its value under the new one when it loads (2026-11-08:
 -- the command box's keys all start with command_box_)
@@ -114,12 +119,13 @@ local RENAMED_KEYS = {
     user_command_separator = "command_box_user_separator",
 }
 
--- Puts the new defaults over old ones the profile never chose
+-- Puts the new defaults over old ones the profile never chose, the ones after its defaults_version
+-- @param version How many OLD_DEFAULTS the profile has had (0 for one older than defaults_version)
 -- @return Whether anything was replaced
-local function replace_old_defaults(): bool
+local function replace_old_defaults(version: int): bool
     local replaced = false
-    for _, old in ipairs(OLD_DEFAULTS) do
-        local all_old = true
+    for i, old in ipairs(OLD_DEFAULTS) do
+        local all_old = i > version
         for key, value in pairs(old) do
             if values[key] ~= value then
                 all_old = false
@@ -148,6 +154,8 @@ local function load_profile(name: string): void
             changed = true
         end
     end
+    -- Read before the defaults fill it in: a profile without it is older than every OLD_DEFAULTS
+    local version = math.type(data.defaults_version) == "integer" and data.defaults_version or 0
     values = {}
     for key, default in pairs(DEFAULTS) do
         if data[key] == nil then
@@ -157,7 +165,11 @@ local function load_profile(name: string): void
             values[key] = data[key]
         end
     end
-    if replace_old_defaults() then
+    if replace_old_defaults(version) then
+        changed = true
+    end
+    if values.defaults_version ~= #OLD_DEFAULTS then
+        values.defaults_version = #OLD_DEFAULTS
         changed = true
     end
     active = name

@@ -29,7 +29,7 @@ local module = {}
 -- (User Commands)
 local config = {
     use_prefix = true,
-    script = { prefix = "atdar", separator = "" }, -- separator "" -> atdargodmode, "_" -> atdar_godmode
+    script = { prefix = "atdar", separator = "." }, -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
     menu = { prefix = "atdar", separator = "" },
     user = { prefix = "", separator = "" },
 }

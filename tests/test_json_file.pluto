@@ -89,6 +89,16 @@ stand.check(read($"{profiles}old.json"):find('"command_box_user_prefix": ""', 1,
 stand.write_file($"{profiles}chosen.json", '{"command_box_user_prefix": "atdar", "command_box_user_separator": ""}')
 profile.switch("chosen")
 stand.equal(profile.get("command_box_user_prefix"), "atdar", "a prefix with another separator was chosen: it stays")
+-- Once per profile: the old values chosen again later are kept, the change isn't done twice
+profile.switch("old")
+stand.equal(profile.get("defaults_version"), 1, "the profile remembers it had the change")
+profile.set("command_box_user_prefix", "atdar")
+profile.set("command_box_user_separator", "_")
+profile.save()
+profile.switch("chosen")
+profile.switch("old")
+stand.check(profile.get("command_box_user_prefix") == "atdar" and profile.get("command_box_user_separator") == "_",
+    "atdar_ chosen after the change stays at the next load")
 -- Keys renamed: an old profile's value comes over under the new name, the old key goes from the file
 stand.write_file($"{profiles}renamed.json", '{"command_prefix": "zz", "user_command_separator": "_"}')
 profile.switch("renamed")

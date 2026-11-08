@@ -658,11 +658,11 @@ stand.equal(names_in(user_list), "Prefix | Separator: None | Create | Remove | C
     "User Commands: prefix, separator, Create, Remove, then the commands - the example made the first time")
 -- The example: settingsatdar opens the script's settings through their command
 local example = stand.child(user_list, "settingsatdar")
-stand.equal(stand.child(example, "Commands").value, "atdar_settings", "the example runs the settings' command")
+stand.equal(stand.child(example, "Commands").value, "atdar.settings", "the example runs the settings' command (the dot by default)")
 stand.check(stand.read_file($"{user_dir}settingsatdar.json"), "and is kept in a file like any other")
 stand.triggered = {}
 stand.click(example.children[1])
-stand.equal(stand.triggered[1], "atdar_settings", "running it gives the settings' command to the command box")
+stand.equal(stand.triggered[1], "atdar.settings", "running it gives the settings' command to the command box")
 stand.equal(stand.name_of(example.children[1]), "Settings", "its Run is named after what it runs: the Settings item")
 -- Create: the name typed, cleaned; an empty command below
 menu.set_value(stand.child(user_list, "Create"), "Ready Set!")
