@@ -12,6 +12,7 @@
 
 local module = {}
 
+
 -- { index, name without HUD_COLOUR_, r, g, b, a }, a - 255 opaque
 local COLORS = {
     {   0, "PURE_WHITE",                   255, 255, 255, 255 },

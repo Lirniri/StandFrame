@@ -10,7 +10,7 @@
 -- The game shows at most MAX_TEXT_BYTES of a post's text (bytes: a Cyrillic letter takes 2), so a longer
 -- text goes out as several posts with the same look, and remove(id) of the first takes them all away
 
-local hud_color = Atdar.loader.load("natives/visual/hud_color")
+local hud_color = Atdar.loader.load("natives/visual/color/hud")
 
 local module = { begin = {}, end = {} }
 
