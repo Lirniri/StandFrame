@@ -49,8 +49,8 @@ local o = { scripts_dir = "C:\\LS\\", project = "AnitaDarin", name = "Renamed" }
 stand.equal(updater.target_of("AnitaDarin.pluto", o), "C:\\LS\\Renamed.pluto", "the launcher goes under the script's name")
 stand.equal(updater.target_of("lib/AnitaDarin/core/loader.pluto", o), "C:\\LS\\lib\\Renamed\\core\\loader.pluto",
     "lib files go to lib/<name>/")
-stand.equal(updater.target_of("store/AnitaDarin/language/base/en-us.json", o),
-    "C:\\LS\\store\\Renamed\\language\\base\\en-us.json", "store files to store/<name>/")
+stand.equal(updater.target_of("store/AnitaDarin/base/language/en-us.json", o),
+    "C:\\LS\\store\\Renamed\\base\\language\\en-us.json", "store files to store/<name>/")
 for _, bad in { "lib/Other/x.pluto", "lib/AnitaDarin/../../evil.pluto", "C:/evil.pluto", "/evil.pluto",
     "lib\\AnitaDarin\\x.pluto", "Other.pluto", "lib/AnitaDarin/" } do
     stand.equal(updater.target_of(bad, o), nil, $"a path outside the script's places is never written: {bad}")
@@ -60,7 +60,7 @@ stand.check(updater.is_user_data("store/AnitaDarin/config.json", "AnitaDarin"), 
 stand.check(updater.is_user_data("store/AnitaDarin/profiles/main.json", "AnitaDarin"), "profiles are")
 stand.check(updater.is_user_data("store/AnitaDarin/commands/debug.json", "AnitaDarin"), "command names are")
 stand.check(updater.is_user_data("store/AnitaDarin/menu/AnitaDarin/profiles/main.json", "AnitaDarin"), "a pack's profiles are")
-stand.check(not updater.is_user_data("store/AnitaDarin/language/base/en-us.json", "AnitaDarin"), "translations aren't")
+stand.check(not updater.is_user_data("store/AnitaDarin/base/language/en-us.json", "AnitaDarin"), "translations aren't")
 stand.check(not updater.is_user_data("lib/AnitaDarin/commands/x.pluto", "AnitaDarin"), "nothing in lib is")
 
 -- The same hash as manifest.py: sha256 of the text without \r (Python: hashlib.sha256(b"a\nb\n"))

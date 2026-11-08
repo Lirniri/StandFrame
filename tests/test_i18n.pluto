@@ -2,7 +2,7 @@
 local stand = require("stand")
 stand.boot()
 stand.store = stand.tmpdir("i18n_store")
-local base = $"{stand.store}AnitaDarin/language/base/"
+local base = $"{stand.store}AnitaDarin/base/language/"
 io.makedirs(base)
 stand.write_file($"{base}en-us.json", '{"menu": {"self": {"name": "Self"}, "only_en": "English only"}, "list": [1, 2]}')
 stand.write_file($"{base}ru-ru.json", '{"menu": {"self": {"name": "Себя"}}}')

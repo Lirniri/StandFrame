@@ -611,5 +611,36 @@
             "done": "Notifications taken out of the feed: %d",
             "none": "No notifications of the script in the feed"
         }
+    },
+    "updater_menu": {
+        "name": "Update",
+        "help": "Checking for and installing a new version of the script",
+        "check": {
+            "name": "Check For Updates",
+            "help": "Finds out whether a new version of the script is out"
+        },
+        "divider": "Update",
+        "install": {
+            "name": "Update",
+            "help": "Downloads and installs the new version; profiles and settings stay"
+        },
+        "auto": {
+            "name": "Update Automatically",
+            "help": "Installs a new version by itself as soon as a check finds one"
+        },
+        "check_days": {
+            "name": "Check For Updates Every (Days)",
+            "help": "How often to check whether a new version is out. Applied on a click; 0 - never",
+            "set": "Updates will be checked every %d days",
+            "never": "Updates won't be checked"
+        },
+        "branch": {
+            "name": "Update Branch: %s",
+            "help": "Where updates come from: main - tried versions, experiment - the newest, less tried",
+            "main": "main (tried)",
+            "experiment": "experiment (newest)",
+            "set": "Updates will come from the %s branch"
+        },
+        "stub": "Updating isn't made yet"
     }
 }

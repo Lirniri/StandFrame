@@ -2,7 +2,7 @@
 -- profiles store the English names (like Stand's own items) whatever language is shown.
 --
 -- Strings come from <source>/<language>.json files. The script's own strings live in
--- store/AnitaDarin/language/base/; a loaded menu adds its own folder on top (add_source) and takes it away on unload.
+-- store/AnitaDarin/base/language/; a loaded menu adds its own folder on top (add_source) and takes it away on unload.
 -- Keys are dot paths into nested JSON: "menu.self.godmode" -> { "menu": { "self": { "godmode": "..." } } }
 -- en-us.json holds the English text, which is the label's identity; other files are its translations.
 
@@ -304,6 +304,6 @@ function module.get(key: string)
 end
 
 -- The script's own strings (independent menu and the rest), always there
-module.add_source($"{Atdar.filesystem.paths.store}language\\base\\", true)
+module.add_source($"{Atdar.filesystem.paths.store}base\\language\\", true)
 
 return module

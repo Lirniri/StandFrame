@@ -208,6 +208,12 @@ MenuNode = class
             min, max, default, step, on_change), commands)
     end
 
+    -- Number picker that acts on a click with the number picked; on_click(value, click_type)
+    function click_slider(name: string|int, min: int, max: int, default: int, step: int, on_click: function, commands: table = {}, help: string|int = "")
+        return self:track(menu.click_slider(self.handle, name, Commands.names(commands), help,
+            min, max, default, step, on_click), commands)
+    end
+
     -- Colour picker (utils/menu.color); default { r, g, b, a } 0.0 - 1.0; on_change(colour, click_type).
     -- transparency adds Opacity
     function color(name: string|int, default: table, on_change: function, commands: table = {}, help: string|int = "",

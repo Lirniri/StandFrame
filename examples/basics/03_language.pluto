@@ -3,7 +3,7 @@
 -- Strings live in JSON files by language: language/en-us.json, language/ru-ru.json, keys nested:
 --     { "menu": { "garage": { "menu_name": "Garage", "saved": "Saved %d vehicle(s)" } } }
 -- A pack's language/ folder is read when the pack loads; the script's own strings are in
--- store/AnitaDarin/language/base/.
+-- store/AnitaDarin/base/language/.
 --
 -- translate(): a Stand label for item names and help texts. Stand shows it in its own language and
 --              switches it when the language changes, nothing to do for that

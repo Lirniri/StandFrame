@@ -144,13 +144,18 @@ local FIRE_RADIUS = 5.0
 -- for), so on someone else's vehicle it may take another call
 -- @param dirt_level A number - the dirt it gets (0.0 - 15.0); true - washed clean; false - the dirt stays
 -- An exploded vehicle can be driven again too: set_undriveable(false) undoes what the explosion set
--- @return Whether it was a vehicle (nothing is done otherwise)
-function module.repair(vehicle: int, dirt_level: float|bool = false, start_engine: bool = false): bool
+-- @return What it did:
+--   0 - not a vehicle in the game, nothing done
+--   1 - not dead (a wreck), nothing done
+--   3 - repaired
+function module.repair(vehicle: int, dirt_level: float|bool = false, start_engine: bool = false): int
+    -- 0: not a vehicle in the game
     if not module.is_exist(vehicle) then
-        return false
+        return 0
     end
+    -- 1: not dead, left as it is
     if not module.is_dead(vehicle) then
-        return false
+        return 1
     end
     local control = Atdar.natives.network.control
     if util.is_session_started() and not control.has_entity(vehicle) then
@@ -187,7 +192,8 @@ function module.repair(vehicle: int, dirt_level: float|bool = false, start_engin
     elseif type(dirt_level) == "number" then
         module.set_dirt_level(vehicle, dirt_level)
     end
-    return true
+    -- 3: repaired
+    return 3
 end
 
 -- Spawns a vehicle of a model (name or hash) at x, y, z facing heading.

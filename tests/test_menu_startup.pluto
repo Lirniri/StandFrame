@@ -25,7 +25,7 @@ local function copy_tree(from: string, to: string): void
     end
 end
 copy_tree($"{stand.SRC}store/AnitaDarin/menu/AnitaDarin", $"{stand.store}AnitaDarin/menu/AnitaDarin")
-copy_tree($"{stand.SRC}store/AnitaDarin/language", $"{stand.store}AnitaDarin/language")
+copy_tree($"{stand.SRC}store/AnitaDarin/base", $"{stand.store}AnitaDarin/base")
 io.makedirs($"{stand.store}AnitaDarin/profiles")
 stand.write_file($"{stand.store}AnitaDarin/profiles/main.json", '{"auto_copy_menu": "AnitaDarin", "language": "ru-ru"}')
 

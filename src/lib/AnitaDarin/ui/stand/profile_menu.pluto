@@ -12,7 +12,7 @@
 --   debug       - Debug Mode, Load Timing
 --   log_keep_days - Keep Logs (Days)
 --   rename      - Rename Script
--- Strings live in language/base under "profile".
+-- Strings live in base/language under "profile".
 --
 -- Changes apply right away but reach the profile file only on Save, like Stand's own profiles,
 -- unless the profile saves automatically.

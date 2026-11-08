@@ -20,6 +20,9 @@ local DEFAULTS = {
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
     auto_copy_menu = "AnitaDarin",        -- folder of a menu pack in store, copied to core at every start; "" = off
+    auto_update = false,        -- a new version found by a check is installed by itself (updater_menu)
+    update_check_days = 1,      -- check for a new version once in this many days; 0 = never
+    update_branch = "main",     -- the repo's branch updates come from: "main" (releases) | "experiment" (newest)
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
     notify = "game",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)
     notify_errors_in_stand = true, -- errors show in Stand whatever notify says, so none goes unseen

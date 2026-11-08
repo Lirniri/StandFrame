@@ -8,11 +8,12 @@
 --   Load Menu >     Unload, Copy Menu To Core, ── Menus ──, the menus with their state
 --   Command Box >   Command Prefix, Separator, Found Commands
 --   Open Folder >   Lib, Resources, Store
+--   Update >        Check For Updates, Update (updater_menu, a stub for now)
 --   Debug >         Debug Mode, then at the bottom in debug mode only:
 --                   ── Debug ──, Modules, Delete Script (asks first)
 --
 -- Stand adds every item at the end of its list, so the order of the calls below is the order in the menu.
--- Strings: language/base "script_menu"
+-- Strings: base/language "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
@@ -20,6 +21,7 @@ local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/commands")
 local profile_menu = Atdar.loader.load("ui/stand/profile_menu")
 local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
+local updater_menu = Atdar.loader.load("ui/stand/updater_menu")
 
 local log = new Logger("Menu")
 
@@ -357,6 +359,8 @@ function module.build(section: table, opts: table): void
     open_folder(folders, "resources", paths.resources)
     open_folder(folders, "store", paths.store)
     open_folder(folders, "logs", Logger.folder())
+
+    updater_menu.build(section)
 
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)

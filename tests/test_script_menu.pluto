@@ -8,10 +8,10 @@ stand.store = stand.tmpdir("script_menu_store")
 -- resources: a folder that doesn't exist yet, so Open Resource Folder has to make it
 local resources_root = stand.tmpdir("script_menu_resources")
 filesystem.resources_dir = || -> resources_root
-local base = $"{stand.store}AnitaDarin/language/base/"
+local base = $"{stand.store}AnitaDarin/base/language/"
 io.makedirs(base)
 for _, file in { "en-us.json", "ru-ru.json" } do
-    stand.write_file($"{base}{file}", stand.read_file($"{stand.SRC}store/AnitaDarin/language/base/{file}"))
+    stand.write_file($"{base}{file}", stand.read_file($"{stand.SRC}store/AnitaDarin/base/language/{file}"))
 end
 Atdar.filesystem = Atdar.loader.load("utils/filesystem")
 Atdar.profile = Atdar.loader.load("core/profile")
@@ -56,7 +56,7 @@ local function entry(name) return stand.find_item(profiles(), name) end
 -- ─── Layout ──────────────────────────────────────────────────────────────────
 
 stand.equal(names_in(stand.root),
-    "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Debug"
+    "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Update | Debug"
     .. " | Remove Game Notifications",
     "the section's layout")
 stand.equal(names_in(settings()), "Appearance | Language: Auto (Stand) | Script | Rename Script", "Settings")
@@ -221,6 +221,17 @@ menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
+local update_list = find("Update")
+stand.equal(names_in(update_list), "Check For Updates | Update Branch: main | Update | Update | Update Automatically"
+    .. " | Check For Updates Every (Days)",
+    "Update: Check For Updates and its branch, then the Update divider with Update and its settings")
+stand.equal(update_list.children[3].kind, "divider", "the Update divider under the branch")
+stand.toasts = {}
+stand.click(stand.find_item(update_list, "Check For Updates"))
+stand.check(stand.toasts[#stand.toasts]:find("Updating isn't made yet", 1, true), "Check For Updates says it isn't made yet")
+stand.toasts = {}
+stand.click(update_list.children[4])
+stand.check(stand.toasts[#stand.toasts]:find("Updating isn't made yet", 1, true), "Update too")
 stand.equal(names_in(find("Command Box")), "Base Commands Prefix | Base Commands Separator: None | Found Commands Prefix"
     .. " | Found Commands Separator: None | Commands | Base Commands | Found Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
@@ -512,5 +523,32 @@ stand.stop()
 menu.set_value(rename_field, "Third")
 stand.equal(warnings, 1, "no warning while the script stops")
 menu.show_warning = real_warning
+
+-- Update's settings are kept in the profile already (last: they leave it changed)
+local update_list = find("Update")
+local auto_update = update_list.children[5]
+stand.equal(auto_update.value, profile.get("auto_update") == true, "Update Automatically shows the profile's value")
+local auto_before = profile.get("auto_update")
+stand.click(auto_update)
+stand.equal(profile.get("auto_update"), not auto_before, "and switching it saves it")
+stand.click(auto_update)
+local check_days = update_list.children[6]
+stand.equal(check_days.kind, "click_slider", "Check For Updates Every is a click slider")
+stand.equal(check_days.value, profile.get("update_check_days"), "showing the profile's days")
+local days_before = profile.get("update_check_days")
+stand.click(check_days, 3)
+stand.equal(profile.get("update_check_days"), 3, "a click saves the days picked")
+stand.check(stand.toasts[#stand.toasts]:find("every 3 days", 1, true), "and says so")
+stand.click(check_days, 0)
+stand.check(stand.toasts[#stand.toasts]:find("won't be checked", 1, true), "0: never")
+profile.set("update_check_days", days_before)
+local branch_item = update_list.children[2]
+stand.equal(stand.name_of(branch_item), "Update Branch: main", "Update Branch shows the profile's branch")
+stand.click(branch_item, 2)
+stand.equal(profile.get("update_branch"), "experiment", "picking experiment saves it")
+stand.equal(stand.name_of(branch_item), "Update Branch: experiment", "and the item shows it")
+stand.check(stand.toasts[#stand.toasts]:find("from the experiment branch", 1, true), "and says so")
+stand.click(branch_item, 1)
+stand.equal(profile.get("update_branch"), "main", "main back")
 
 stand.finish()

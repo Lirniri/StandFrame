@@ -1,0 +1,83 @@
+-- The Update list of the script's section (script_menu puts it under Open Folder): checking for a new
+-- release and installing it.
+--
+--   Check For Updates
+--   Update Branch: main            (profile: update_branch)
+--   ── Update ──
+--   Update
+--   Update Automatically          (profile: auto_update)
+--   Check For Updates Every (Days) (profile: update_check_days)
+--
+-- A stub for now: the auto-updater lives apart in updater/ until it's brought into the script, so
+-- Check For Updates and Update only say they aren't made yet; the settings are kept in the profile
+-- already, for when it is.
+-- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays, updaterbranch
+-- Strings: base/language "updater_menu"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Updater")
+
+local module = {}
+
+local function label(key: string): int
+    return i18n.label($"updater_menu.{key}")
+end
+
+local function text(key: string): string
+    return i18n.text($"updater_menu.{key}")
+end
+
+-- An item that isn't made yet: says so when clicked
+local function stub(node: table, key: string, command: string): void
+    node:action(label($"{key}.name"), || -> log:notify(text("stub")), { command }, label($"{key}.help"))
+end
+
+-- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried
+local BRANCHES = { "main", "experiment" }
+
+local function branch_caption(): string
+    return text("branch.name"):format(Atdar.profile.get("update_branch") or "main")
+end
+
+function module.build(node: table): table
+    local profile = Atdar.profile
+    local list = node:list(label("name"), { "updater" }, label("help"))
+    stub(list, "check", "updatercheck")
+    -- The branch updates come from, its name in the item: "Update Branch: main"
+    local options = {}
+    for _, branch in ipairs(BRANCHES) do
+        table.insert(options, text($"branch.{branch}"))
+    end
+    local branch_ref = nil
+    branch_ref = list:list_action(branch_caption(), options, function(index)
+        local branch = BRANCHES[index]
+        profile.set("update_branch", branch)
+        pcall(menu.set_menu_name, branch_ref, branch_caption())
+        log:notify(text("branch.set"):format(branch))
+    end, { "updaterbranch" }, label("branch.help"))
+
+    list:divider(label("divider"))
+    stub(list, "install", "updaterinstall")
+    list:toggle(label("auto.name"), function(on)
+        -- Stand also calls it at every start, restoring the state it keeps: only a real change is saved
+        if profile.get("auto_update") == on then
+            return
+        end
+        profile.set("auto_update", on)
+    end, { "updaterauto" }, label("auto.help"), profile.get("auto_update") == true)
+    -- Applied on a click with the days picked: 0 - never
+    list:click_slider(label("check_days.name"), 0, 30, profile.get("update_check_days") or 1, 1, function(days)
+        profile.set("update_check_days", days)
+        if days == 0 then
+            log:notify(text("check_days.never"))
+            return
+        end
+        log:notify(text("check_days.set"):format(days))
+    end, { "updaterdays" }, label("check_days.help"))
+
+    return list
+end
+
+return module
