@@ -179,4 +179,4 @@ function module.uhash(hash: string): int
     return util.ujoaat(hash)
 end
 
-return module
+return Atdar.loader.auto(module, "utils/util")

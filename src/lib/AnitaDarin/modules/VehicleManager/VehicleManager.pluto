@@ -190,7 +190,7 @@ local class VehicleManager extends Module
             return false
         end
 
-        return Atdar.game.entity.vehicle.repair(handle, dirt_level or false, start_engine)
+        return Atdar.util.game.entity.vehicle.repair(handle, dirt_level or false, start_engine)
     end
 
     -- Repairs the vehicle remembered last

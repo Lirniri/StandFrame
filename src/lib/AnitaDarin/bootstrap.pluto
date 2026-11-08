@@ -20,9 +20,10 @@ local UTILS = {
     "game", -- Atdar.util.game: things built on natives (game.entity.vehicle.repair, game.players.user.restore_health)
 }
 for _, name in UTILS do
+    -- Not Atdar.game: it is in utils/util/game
     if name == "game" then
-        util.toast(name)
-        Atdar.util[name] = Atdar.loader.load($"utils/{name}")
+        Atdar.util[name] = Atdar.loader.load($"utils/util/{name}")
+        continue
     end
     Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
