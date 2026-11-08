@@ -19,7 +19,7 @@ end
 
 local class VehicleManager extends Module
     
-    function __construct()
+    function __construct(ped: int)
         parent:__construct({
             name = "VehicleManager",
             -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
@@ -30,10 +30,10 @@ local class VehicleManager extends Module
             }
         })
         -- State lives in fields; set defaults here
-        self.ped_id = 0
+        self.ped_id = ped
 
         self.last_handle = -1
-        self.auto_remember = true
+        self.auto_remember = false
 
         self.vehicles = {}
     end
@@ -73,7 +73,7 @@ local class VehicleManager extends Module
 
     function is_ped_exist(): bool
         local n_ped = Atdar.natives.entity.ped
-        return n_ped.is_exist(self.ped_id)
+        return n_ped.is_exist(self:get_ped_id())
     end
 
     -- Whether the vehicle remembered last is still in the game
@@ -91,8 +91,12 @@ local class VehicleManager extends Module
 
     -- Get
 
+    -- The ped the manager looks at: the one given to set_ped_id, or the player's own when none is set (0)
     function get_ped_id(): int
-        return self.ped_id
+        if self.ped_id ~= 0 then
+            return self.ped_id
+        end
+        return Atdar.natives.player.get_ped_id()
     end
 
     -- The last vehicle remembered (add_vehicle), or nil if there's none
@@ -164,7 +168,7 @@ local class VehicleManager extends Module
     -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
     -- self.current_vehicle: the one they were in last time, 0 - none
     function _remember_current_vehicle(): void
-        local ped = self.ped_id
+        local ped = self:get_ped_id()
         local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
         if vehicle == self.current_vehicle then
             return
@@ -215,9 +219,9 @@ local class VehicleManager extends Module
         if not n_vehicle.is_exist(handle) then
             return false
         end
-        if n_vehicle.is_dead(handle) then
-            return false
-        end
+        -- if n_vehicle.is_dead(handle) then
+        --     return false
+        -- end
         n_vehicle.explode({
             vehicle = handle,
             net_id = n_vehicle.get_net_id(handle)
@@ -263,7 +267,7 @@ local class VehicleManager extends Module
             return nil
         end
 
-        local ped = self.ped_id
+        local ped = self:get_ped_id()
         if coords == nil then
             coords = v3.new(ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ped, 0.0, 5.0, 0.0))
         end

@@ -169,7 +169,7 @@ waypoint_blip = 0
 
 -- ─── HUD colours and feed pictures: tables ───────────────────────────────────
 
-local hud_color = Atdar.natives.visual.hud_color
+local hud_color = Atdar.natives.visual.color.hud
 stand.equal(hud_color.RED, 6, "hud_color.RED is the index natives take")
 stand.equal(hud_color.SCRIPT_VARIABLE, 128, "the script slot the feed background uses")
 stand.equal(hud_color.name_of(9), "BLUE", "name_of(index)")
