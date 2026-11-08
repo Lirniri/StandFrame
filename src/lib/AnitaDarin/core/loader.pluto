@@ -103,12 +103,30 @@ end
 
 -- ─── Loading ─────────────────────────────────────────────────────────────────
 
--- Requires lib/AnitaDarin/<path>. On error logs it and returns an empty table,
--- so one broken file doesn't take down the whole section
+-- @return The file and line that asked for a load, past the loader's own frames and C functions
+-- (require, pcall): "lib/AnitaDarin/natives/visual/hud/thefeed.pluto:13"
+local function caller(): string
+    local own = debug.getinfo(1, "S").source
+    local level = 2
+    while true do
+        local info = debug.getinfo(level, "Sl")
+        if info == nil then
+            return "?"
+        end
+        if info.what ~= "C" and info.source ~= own then
+            local file = info.source:gsub("^@", "")
+            return $"{shorten(file)}:{info.currentline}"
+        end
+        level += 1
+    end
+end
+
+-- Requires lib/AnitaDarin/<path>. On error logs it with the file that asked for it and returns
+-- an empty table, so one broken file doesn't take down the whole section
 function module.load(path: string): table
     local ok, result = timed_require(path, $"{Atdar.name}/{path}")
     if not ok then
-        log:error($"failed to load '{path}'\n{result}")
+        log:error($"failed to load '{path}' (from {caller()})\n{result}")
         return {}
     end
     -- An empty file makes require return true instead of a table

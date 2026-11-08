@@ -103,6 +103,8 @@ def run_tests(pluto, name_filter, verbose):
         # Pluto's type-hint warnings aren't failures; keep them out of the way
         lines = [l for l in output.splitlines()
                  if not re.match(r"^(Pluto warning:|\s+\d+ \||\s+\||\s+\^)", l)]
+        # Each failed check says which test file it came from
+        lines = [re.sub(r"^(\s*)FAIL  ", lambda m: f"{m.group(1)}FAIL  {path.name}: ", l) for l in lines]
         summary = next((l for l in reversed(lines) if re.match(r"^test_\w+: \d+ passed", l)), None)
         ok = result.returncode == 0 and summary is not None
         results.append((path.stem, ok, summary or "crashed", "\n".join(lines)))

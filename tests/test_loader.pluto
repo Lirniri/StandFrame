@@ -11,6 +11,15 @@ stand.check(stand.find_log("failed to load 'test_throws'"), "throwing file is lo
 stand.equal(next(loader.load("test_no_table")), nil, "file without a table loads as an empty table")
 stand.check(stand.find_log("'test_no_table' did not return a table"), "file without a table is logged")
 
+-- The log says which file asked for the one that failed (not a tail call: that frame would be gone)
+package.preload["AnitaDarin/test_asks_missing"] = function()
+    local missing = loader.load("test_missing")
+    return missing
+end
+loader.load("test_asks_missing")
+local missing_line = stand.find_log("failed to load 'test_missing'") or ""
+stand.check(missing_line:find("%(from .*test_loader%.pluto:%d+%)"), "the log names the file and line asking for the load")
+
 -- Every .pluto under natives/ loads as a table without errors, and is reachable by its path through
 -- auto() (natives.visual.hud.minimap, natives.entity.ped.weapon)
 Atdar.natives = loader.auto({}, "natives")
