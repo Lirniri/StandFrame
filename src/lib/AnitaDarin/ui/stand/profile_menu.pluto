@@ -354,10 +354,10 @@ end
 local function create_translation(list: table): void
     local draft = { code = suggested_code(), name = "", from = "en-us" }
     local create = list:list(label("translation.create.name"), {}, label("translation.create.help"))
-    create:text_input(label("translation.code.name"), { "translationcode" }, function(value)
+    create:text_input(label("translation.code.name"), { "langcode" }, function(value)
         draft.code = value:lower():match("^%s*(.-)%s*$")
     end, label("translation.code.help"), draft.code)
-    create:text_input(label("translation.language_name.name"), { "translationname" }, function(value)
+    create:text_input(label("translation.language_name.name"), { "langname" }, function(value)
         draft.name = value:match("^%s*(.-)%s*$")
     end, label("translation.language_name.help"), "")
 
@@ -371,7 +371,7 @@ local function create_translation(list: table): void
     from_ref = create:list_action(from_caption(draft.from), from_names, function(index)
         draft.from = from_codes[index]
         rename(from_ref, from_caption(draft.from))
-    end, { "translationfrom" }, label("translation.from.help"))
+    end, { "langfrom" }, label("translation.from.help"))
 
     create:action(label("translation.create_button.name"), function()
         local count, err = i18n.create_language(draft.code, draft.name, draft.from)
@@ -385,7 +385,7 @@ local function create_translation(list: table): void
         end
         refresh_languages()
         log:success(text("translation.created"):format(draft.code, count))
-    end, { "translationcreate" }, label("translation.create_button.help"))
+    end, { "langcreate" }, label("translation.create_button.help"))
 end
 
 -- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
@@ -400,7 +400,7 @@ function module.language(node: table): void
         -- Also when the profile already had it: picking again tries again (e.g. after Stand's language changed)
         i18n.set_language(code)
         update_captions()
-    end, { "language" }, label("language.help"))
+    end, { "lang" }, label("language.help"))
 
     list:divider(label("translation.divider"))
     create_translation(list)
@@ -408,13 +408,13 @@ function module.language(node: table): void
         i18n.reload()
         refresh_languages()
         log:success(text("translation.reloaded"))
-    end, { "translationreload" }, label("translation.reload.help"))
+    end, { "langreload" }, label("translation.reload.help"))
     list:action(label("translation.folder.name"), function()
         local dir = i18n.base_dir()
         if dir ~= nil then
             util.open_folder(dir)
         end
-    end, { "translationfolder" }, label("translation.folder.help"))
+    end, { "langfolder" }, label("translation.folder.help"))
 end
 
 -- ─── Name In Logs ────────────────────────────────────────────────────────────
