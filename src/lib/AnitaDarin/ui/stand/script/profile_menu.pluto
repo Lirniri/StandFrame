@@ -754,9 +754,13 @@ function module.rename(node: table): void
         -- Still possible if Stand stops the script before our on_stop handler runs
         local shown = pcall(menu.show_warning, rename_ref, click_type, text("rename.warning"):format(Atdar.name, value), function()
             renaming = true
-            local ok, reason = installer.rename(value)
+            local ok, reason, busy_folder = installer.rename(value)
             if not ok then
                 renaming = false
+                if busy_folder then
+                    log:warn(text("rename.busy"):format(busy_folder))
+                    return
+                end
                 log:warn(text("rename.failed"):format(reason))
                 return
             end

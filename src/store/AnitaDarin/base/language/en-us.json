@@ -314,6 +314,7 @@
             "warning": "Rename the script '%s' to '%s'?\nIts file and folders will be renamed and it will restart.\nStand profile states saved under the old name won't apply to the new one.",
             "invalid": "'%s' isn't a valid name: use letters, digits and _",
             "failed": "Not renamed: %s",
+            "busy": "Not renamed: an open folder is keeping the script from being renamed (%s). Close Explorer windows, editors and consoles open inside it and try again",
             "done": "Renamed to %s. If it doesn't start by itself, start %s in Stand > Lua Scripts"
         },
         "language": {

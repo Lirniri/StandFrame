@@ -28,6 +28,17 @@ io.makedirs($"{stand.store}Taken")
 stand.write_file($"{scripts}Taken.pluto", "-- someone else")
 local ok = installer.rename("Taken")
 stand.check(not ok, "a taken name isn't used")
+
+-- A folder something holds open (an Explorer window inside it does the same): says which, everything is undone
+local held_path = $"{scripts}lib/AnitaDarin/held.txt"
+local held = io.open(held_path, "w")
+local busy_ok, _, busy_folder = installer.rename("Busy")
+held:close()
+os.remove(held_path)
+stand.check(not busy_ok, "a folder held open isn't renamed")
+stand.equal(busy_folder, "lib\\AnitaDarin", "and the folder is named, from Lua Scripts on")
+stand.check(io.exists($"{scripts}AnitaDarin.pluto") and not io.exists($"{scripts}Busy.pluto"), "the launcher is put back")
+
 local ok_rename, err = installer.rename("Renamed")
 stand.check(ok_rename, $"the rename goes through with the log file open ({tostring(err)})")
 stand.check(io.exists($"{scripts}Renamed.pluto") and io.exists($"{scripts}lib/Renamed/bootstrap.pluto"),

@@ -28,8 +28,8 @@ end
 
 -- Renames the launcher and the script's folders. Either everything is renamed or nothing:
 -- a failed step undoes the ones before it, so the script is never left half-renamed
--- @return true, or false and a reason
-function module.rename(new_name: string): (bool, string)
+-- @return true, or false and a reason; a folder that couldn't be renamed comes third, from Lua Scripts on
+function module.rename(new_name: string): (bool, string, ?string)
     local old_name = Atdar.name
     if not module.valid_name(new_name) then
         return false, $"'{new_name}' isn't a valid name, use letters, digits and _"
@@ -58,6 +58,11 @@ function module.rename(new_name: string): (bool, string)
             end
             Logger.resume_file()
             log:error($"rename failed at {step.from}: {err}; undone")
+            -- Pluto's err is "operation failed" whatever the cause. A taken name was ruled out above and the
+            -- folder is there, so something holds it or a folder inside it open: Explorer, an editor, a console
+            if filesystem.is_dir(step.from) then
+                return false, $"couldn't rename {step.from}", step.from:sub(#filesystem.scripts_dir() + 1)
+            end
             return false, $"couldn't rename {step.from}"
         end
         table.insert(done, step)

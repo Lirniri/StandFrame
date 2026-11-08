@@ -29,7 +29,7 @@ What's checked:
 | `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming |
 | `test_menu_startup` | startup as in bootstrap: copying a pack into the core, loading the built-in menu |
 | `test_menu_utils` | `utils/menu`: colour picker, spoiler; `utils/color`: hex, Stand, game |
-| `test_installer` | renaming the script with its log file open, a name already taken |
+| `test_installer` | renaming the script with its log file open, a name already taken, a folder held open |
 | `test_logger` | the logger: a file per day `<script>_<date>.log` in `store/<script>/logs`, a new file on a new day, retention, cleanup, a broken file |
 | `test_notify` | where notifications go: Stand, the game's feed, log only; the rule for errors |
 | `test_build.py` | `build.py`: installing under the found name, keeping profiles and logs, cleaning |

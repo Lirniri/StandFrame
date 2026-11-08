@@ -618,6 +618,19 @@ menu.set_value(rename_field, "Other")
 stand.equal(warnings, 1, "a new name is asked about")
 menu.set_value(rename_field, "AnitaDarin")
 stand.equal(warnings, 1, "the current name isn't asked about")
+
+-- A folder held open: the message says so and which one
+local script_installer = Atdar.loader.load("core/installer")
+local real_rename = script_installer.rename
+local counting_warning = menu.show_warning
+script_installer.rename = function() return false, "reason", "lib\\AnitaDarin" end
+menu.show_warning = function(_, _, _, proceed) proceed() end
+stand.clear_logs()
+menu.set_value(rename_field, "Busy")
+stand.check(stand.find_log("an open folder is keeping the script from being renamed (lib\\AnitaDarin)"), "a held folder is named in the message")
+script_installer.rename = real_rename
+menu.show_warning = counting_warning
+
 stand.stop()
 menu.set_value(rename_field, "Third")
 stand.equal(warnings, 1, "no warning while the script stops")
