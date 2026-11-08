@@ -305,20 +305,116 @@ end
 
 -- ─── Language ────────────────────────────────────────────────────────────────
 
+-- The language list: Language: Auto (Stand) at the top, then the Translation divider with Create Translation,
+-- Reload Translations and Open Translation Folder
+--
+-- The languages to pick: Auto, then each language by its file's language_name, and the code of each
+local function language_options()
+    local names, codes = { label("language.auto") }, { "auto" }
+    for _, language in ipairs(i18n.languages()) do
+        table.insert(names, language.name)
+        table.insert(codes, language.code)
+    end
+    return names, codes
+end
+
+-- After a translation was made or read again: the picker lists the languages there are now
+local function refresh_languages(): void
+    local names, codes = language_options()
+    view.language_codes = codes
+    pcall(menu.set_list_action_options, view.language, names)
+    rename(view.language, language_caption())
+end
+
+-- What a new translation's code starts as: Stand's language when the script has no file for it ("de" -> "de-de")
+local function suggested_code(): string
+    local current = lang.get_current()
+    if type(current) ~= "string" or not current:match("^%l%l$") or current == "en" then
+        return ""
+    end
+    local code = $"{current}-{current}"
+    if i18n.has_language(code) then
+        return ""
+    end
+    return code
+end
+
+-- "Translate From: English"
+local function from_caption(code: string): string
+    for _, language in ipairs(i18n.languages()) do
+        if language.code == code then
+            return text("translation.from.name"):format(language.name)
+        end
+    end
+    return text("translation.from.name"):format(code)
+end
+
+-- Create Translation: the code, the name and the language to start from, then Create. Makes a file to
+-- translate in every folder of strings (i18n.create_language); the language shows in the picker at once
+local function create_translation(list: table): void
+    local draft = { code = suggested_code(), name = "", from = "en-us" }
+    local create = list:list(label("translation.create.name"), {}, label("translation.create.help"))
+    create:text_input(label("translation.code.name"), { "translationcode" }, function(value)
+        draft.code = value:lower():match("^%s*(.-)%s*$")
+    end, label("translation.code.help"), draft.code)
+    create:text_input(label("translation.language_name.name"), { "translationname" }, function(value)
+        draft.name = value:match("^%s*(.-)%s*$")
+    end, label("translation.language_name.help"), "")
+
+    local from_codes = {}
+    local from_names = {}
+    for _, language in ipairs(i18n.languages()) do
+        table.insert(from_codes, language.code)
+        table.insert(from_names, language.name)
+    end
+    local from_ref = nil
+    from_ref = create:list_action(from_caption(draft.from), from_names, function(index)
+        draft.from = from_codes[index]
+        rename(from_ref, from_caption(draft.from))
+    end, { "translationfrom" }, label("translation.from.help"))
+
+    create:action(label("translation.create_button.name"), function()
+        local count, err = i18n.create_language(draft.code, draft.name, draft.from)
+        if count == nil then
+            if err == "exists" then
+                log:warn(text("translation.exists"):format(draft.code))
+                return
+            end
+            log:warn(text("translation.bad_code"):format(draft.code))
+            return
+        end
+        refresh_languages()
+        log:success(text("translation.created"):format(draft.code, count))
+    end, { "translationcreate" }, label("translation.create_button.help"))
+end
+
 -- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
 function module.language(node: table): void
-    local list = node:list(language_caption(), { "language" }, label("language.help"))
-    view.language = list.handle
-    local function pick(code: string): void
+    local list = node:list(label("language.list"), {}, label("language.list_help"))
+
+    local names, codes = language_options()
+    view.language_codes = codes
+    view.language = list:list_action(language_caption(), names, function(index)
+        local code = view.language_codes[index]
         Atdar.profile.set("language", code)
         -- Also when the profile already had it: picking again tries again (e.g. after Stand's language changed)
         i18n.set_language(code)
         update_captions()
-    end
-    list:action(label("language.auto"), || -> pick("auto"), {}, label("language.auto_help"))
-    for _, language in ipairs(i18n.languages()) do
-        list:action(language.name, || -> pick(language.code))
-    end
+    end, { "language" }, label("language.help"))
+
+    list:divider(label("translation.divider"))
+    create_translation(list)
+    list:action(label("translation.reload.name"), function()
+        i18n.reload()
+        refresh_languages()
+        log:success(text("translation.reloaded"))
+    end, { "translationreload" }, label("translation.reload.help"))
+    list:action(label("translation.folder.name"), function()
+        local dir = i18n.base_dir()
+        if dir ~= nil then
+            util.open_folder(dir)
+        end
+    end, { "translationfolder" }, label("translation.folder.help"))
 end
 
 -- ─── Name In Logs ────────────────────────────────────────────────────────────

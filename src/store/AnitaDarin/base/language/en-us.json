@@ -304,12 +304,49 @@
             "done": "Renamed to %s. If it doesn't start by itself, start %s in Stand > Lua Scripts"
         },
         "language": {
+            "list": "Language",
+            "list_help": "The script's language, and translations into others",
             "name": "Language: %s",
             "help": "Language of the script. Auto follows Stand's language",
             "auto": "Auto (Stand)",
             "auto_help": "Show the script in Stand's language",
             "unavailable": "Stand is in English, so the script can't be shown in another language: it follows Stand. The choice is kept and works while Stand is in another language",
             "unavailable_mark": "%s (not with Stand in English)"
+        },
+        "translation": {
+            "divider": "Translation",
+            "create": {
+                "name": "Create Translation",
+                "help": "Starts a translation into a new language: a file to translate in each folder of strings, a copy of the language picked"
+            },
+            "code": {
+                "name": "Language Code",
+                "help": "The new language's code, a language and its country: de-de, fr-fr, pt-br"
+            },
+            "language_name": {
+                "name": "Language Name",
+                "help": "How the language shows in the language list, in itself: Deutsch, Français"
+            },
+            "from": {
+                "name": "Translate From: %s",
+                "help": "Which language's text the new files start with"
+            },
+            "create_button": {
+                "name": "Create",
+                "help": "Makes the files; ones there already stay as they are"
+            },
+            "created": "Translation %s created, files: %d. Translate them in the folder, then Reload Translations",
+            "bad_code": "'%s' isn't a language code: write it like de-de",
+            "exists": "There's a translation %s already",
+            "reload": {
+                "name": "Reload Translations",
+                "help": "Reads the language files again: changes show without restarting the script"
+            },
+            "reloaded": "Translations reloaded",
+            "folder": {
+                "name": "Open Translation Folder",
+                "help": "The script's language files: store/<script>/base/language"
+            }
         },
         "notify_emoticon_info": {
             "name": "Notification",

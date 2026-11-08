@@ -316,6 +316,7 @@ _G.menu = {
     set_value = set_value,
     set_menu_name = function(it, name) it.name = name end,
     set_help_text = function(it, help) it.help = help end,
+    set_list_action_options = function(it, options) it.options = options end,
     set_visible = function(it, visible) it.visible = visible end,
     set_command_names = function(it, names) it.commands = names end,
     -- Where the cursor was sent last (stand.focused)

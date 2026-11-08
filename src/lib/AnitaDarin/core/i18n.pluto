@@ -256,6 +256,78 @@ function module.set_language(code: ?string): void
     end
 end
 
+-- ─── Translations: made and read again while the script runs ─────────────────
+
+-- "de-de", "pt-br", "zh-cn": a language and its country, as the files are named
+local CODE_PATTERN = "^%l%l%l?%-%l%l$"
+
+-- @return Whether code is written as a language file's name ("de-de")
+function module.is_code(code: string): bool
+    return code:match(CODE_PATTERN) ~= nil
+end
+
+-- Reads every source's files again: a translation made or edited shows without restarting the script.
+-- Labels already in the menu get the new texts, the chosen language is put on them again
+function module.reload(): void
+    for _, source in ipairs(sources) do
+        source.languages = read_languages(source.dir)
+    end
+    labels = {}
+    for label, entry in pairs(made) do
+        for _, code in ipairs(translated_codes()) do
+            local text = find(code, entry.key)
+            -- A code Stand has no language for can't take translations: it's still there to be chosen
+            if text and pcall(lang.set_translate, stand_code(code)) then
+                lang.translate(label, text)
+            end
+        end
+    end
+    module.set_language(requested)
+end
+
+-- Starts a translation: <code>.json in every folder with strings (the script's, the loaded menu's,
+-- each module's), each a copy of that folder's from-language file to translate in place. The script's
+-- gets language_name, the name shown in the language list. A folder that has the code already is left
+-- as it is, so nothing translated is lost. The files are read again (reload) at the end
+-- @param code The new language's code, "de-de" (is_code)
+-- @param name Its name in the language list, "Deutsch"; "" or nil - the code
+-- @param from The language copied, English if nil
+-- @return How many files were made, or nil and why not: "code" (not a code like de-de), "exists"
+function module.create_language(code: string, name: ?string, from: ?string)
+    if not module.is_code(code) then
+        return nil, "code"
+    end
+    if module.has_language(code) then
+        return nil, "exists"
+    end
+    from = from or ENGLISH
+    local made_count = 0
+    for _, source in ipairs(sources) do
+        local strings = source.languages[from] or source.languages[ENGLISH]
+        if strings ~= nil and not filesystem.exists($"{source.dir}{code}.json") then
+            local copy = {}
+            for key, value in pairs(strings) do
+                copy[key] = value
+            end
+            -- Only where the language's name lives: the script's own strings, not a module's prefixed ones
+            if copy.language_name ~= nil then
+                copy.language_name = (name ~= nil and name ~= "") and name or code
+            end
+            if new JsonFile($"{source.dir}{code}.json"):write(copy) then
+                made_count += 1
+            end
+        end
+    end
+    module.reload()
+    return made_count, nil
+end
+
+-- The folder of the script's own strings, where a translation's main file goes
+function module.base_dir(): ?string
+    local first = sources[1]
+    return first and first.dir or nil
+end
+
 -- fn() runs after the shown language changed: labels follow by themselves, texts from text() don't
 function module.on_change(fn: function): void
     table.insert(listeners, fn)

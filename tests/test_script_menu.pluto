@@ -59,7 +59,7 @@ stand.equal(names_in(stand.root),
     "Profile: main | Display Name | Short Name | Settings | Profiles | Load Menu | Command Box | Open Folder | Update | Debug"
     .. " | Remove Game Notifications",
     "the section's layout")
-stand.equal(names_in(settings()), "Appearance | Language: Auto (Stand) | Script | Rename Script", "Settings")
+stand.equal(names_in(settings()), "Appearance | Language | Script | Rename Script", "Settings")
 local appearance = stand.find_item(settings(), "Appearance")
 stand.equal(names_in(appearance), "Notifications", "Appearance")
 local notifications = stand.find_item(appearance, "Notifications")
@@ -380,17 +380,38 @@ stand.check(all_visible(false), "turning debug mode off hides them again")
 
 -- ─── Language ────────────────────────────────────────────────────────────────
 
-local language = stand.find_item(settings(), "Language")
+local language_list = stand.child(settings(), "Language")
+stand.equal(names_in(language_list), "Language: Auto (Stand) | Translation | Create Translation | Reload Translations"
+    .. " | Open Translation Folder", "Language: the picker at the top, then the Translation divider and its items")
+local language = stand.find_item(language_list, "Language: ")
+stand.equal(language.kind, "list_action", "the language is picked from a list action")
+-- The picker's options as shown: labels in Stand's language, names as they are
+local function options_of(it): string
+    local names = {}
+    for _, option in ipairs(it.options) do
+        table.insert(names, type(option) == "number" and lang.get_localised(option) or option)
+    end
+    return table.concat(names, " | ")
+end
+local function option_index(it, name: string): ?int
+    for i, option in ipairs(it.options) do
+        local shown = type(option) == "number" and lang.get_localised(option) or option
+        if shown:find(name, 1, true) then
+            return i
+        end
+    end
+    return nil
+end
 -- The names are the files' language_name, whatever they're set to
 local function language_name(file)
     return stand.read_file($"{base}{file}"):match('"language_name"%s*:%s*"([^"]+)"')
 end
 local english_name, russian_name = language_name("en-us.json"), language_name("ru-ru.json")
-stand.equal(names_in(language), $"Auto (Stand) | {english_name} | {russian_name}", "languages: Auto, English first, then the others")
+stand.equal(options_of(language), $"Auto (Stand) | {english_name} | {russian_name}", "languages: Auto, English first, then the others")
 
 -- Stand in English takes no translations: the choice is kept but the script follows Stand, without errors
 stand.clear_logs()
-stand.click(stand.find_item(language, russian_name))
+stand.click(language, option_index(language, russian_name))
 stand.equal(profile.get("language"), "ru-ru", "the choice is kept in the profile")
 stand.check(stand.find_log("Stand is in English"), "with Stand in English it says why it can't")
 stand.equal(stand.name_of(language), $"Language: {russian_name} (not with Stand in English)", "the caption shows it's unavailable")
@@ -402,13 +423,70 @@ stand.language = "de"
 stand.frame()
 stand.equal(stand.name_of(language), $"Язык: {russian_name}", "with Stand in German the script shows in Russian")
 stand.check(find("Настройки") and type(find("Настройки").name) == "number", "names follow, the label stays English")
-stand.click(stand.find_item(language, "Авто"))
+stand.click(language, 1)
 stand.equal(stand.name_of(language), "Language: Auto (Stand)", "Auto follows Stand again (German has no file: English)")
 stand.language = "ru"
 stand.frame()
 stand.equal(stand.name_of(language), "Язык: Авто (Stand)", "on Auto, Stand switching to Russian remakes the captions")
 stand.language = "en"
 stand.frame()
+
+-- ─── Translation: Create Translation ─────────────────────────────────────────
+
+local create = stand.child(language_list, "Create Translation")
+stand.equal(names_in(create), "Language Code | Language Name | Translate From: " .. english_name .. " | Create",
+    "Create Translation: the code, the name, the language to start from, Create")
+local code_field = stand.child(create, "Language Code")
+stand.equal(code_field.value, "", "with Stand in English no code is suggested")
+menu.set_value(code_field, "De-DE ")
+menu.set_value(stand.child(create, "Language Name"), "Deutsch")
+stand.clear_logs()
+stand.click(stand.child(create, "Create"))
+local german = stand.read_file($"{base}de-de.json")
+stand.check(german ~= nil, "Create makes de-de.json in the script's language folder (the code tidied: lower case, no spaces)")
+stand.check(german and german:find('"language_name"%s*:%s*"Deutsch"'), "with the name given as its language_name")
+stand.check(german and german:find('"Language: %%s"'), "and the English text to translate")
+stand.check(stand.find_log("Translation de-de created, files: 1"), "it tells how many files were made")
+stand.check(options_of(language):find("Deutsch", 1, true), "the new language is in the picker at once")
+-- The same again: refused, the file kept
+stand.write_file($"{base}de-de.json", '{"language_name": "Deutsch", "profile": {"language": {"name": "Sprache: %s"}}}')
+stand.clear_logs()
+stand.click(stand.child(create, "Create"))
+stand.check(stand.find_log("There's a translation de-de already"), "a code there already is refused")
+stand.check(stand.read_file($"{base}de-de.json"):find("Sprache", 1, true), "and its file isn't touched")
+menu.set_value(code_field, "german")
+stand.clear_logs()
+stand.click(stand.child(create, "Create"))
+stand.check(stand.find_log("'german' isn't a language code"), "not a code like de-de: refused")
+-- Translate From: the new files start from the language picked
+local from = stand.find_item(create, "Translate From: ")
+stand.click(from, option_index(from, russian_name))
+stand.equal(stand.name_of(from), $"Translate From: {russian_name}", "Translate From shows the language picked")
+menu.set_value(code_field, "uk-ua")
+menu.set_value(stand.child(create, "Language Name"), "")
+stand.click(stand.child(create, "Create"))
+local ukrainian = stand.read_file($"{base}uk-ua.json")
+stand.check(ukrainian and ukrainian:find('"Язык: %%s"'), "translated from Russian: the Russian text to translate")
+stand.check(ukrainian and ukrainian:find('"language_name"%s*:%s*"uk%-ua"'), "no name given: the code is the name")
+
+-- Reload Translations: an edited file shows without restarting
+stand.language = "de"
+stand.frame()
+stand.click(language, option_index(language, "Deutsch"))
+stand.equal(stand.name_of(language), "Sprache: Deutsch", "the German file's text is shown")
+stand.write_file($"{base}de-de.json", '{"language_name": "Deutsch", "profile": {"language": {"name": "Die Sprache: %s"}}}')
+stand.click(stand.child(language_list, "Reload Translations"))
+stand.equal(stand.name_of(language), "Die Sprache: Deutsch", "Reload Translations: the edit shows")
+stand.click(language, 1)
+stand.language = "en"
+stand.frame()
+stand.click(stand.child(language_list, "Open Translation Folder"))
+local opened_folder = stand.toasts[#stand.toasts]
+stand.check(opened_folder:find("^open_folder ") and opened_folder:find("AnitaDarin\\base\\language\\", 1, true),
+    $"Open Translation Folder opens the script's language folder ({opened_folder})")
+os.remove($"{base}de-de.json")
+os.remove($"{base}uk-ua.json")
+Atdar.loader.load("core/i18n").reload()
 
 -- ─── Profiles (next to Settings) ────────────────────────────────────────
 
