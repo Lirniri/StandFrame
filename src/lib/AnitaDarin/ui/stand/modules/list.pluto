@@ -679,7 +679,8 @@ local function functions_of(entry: table, mod: table): void
         for _, fn in ipairs(list) do
             if not hidden[fn.name] then
                 fn.returns = source_parser.return_type(mod[fn.name])
-                fn.sig = arguments.signature(fn.params, source_parser.param_types(mod[fn.name]), fn.vararg)
+                fn.sig = arguments.signature(fn.params, source_parser.param_types(mod[fn.name]), fn.vararg,
+                    source_parser.param_defaults(mod[fn.name]))
                 table.insert(out, fn)
             end
         end

@@ -17,6 +17,9 @@
 --   Userdata     userdata: an expression (v3.new(1, 2, 3), entities.get_user_vehicle_as_handle())
 --   Text         string: the text as it is, without quotes
 --   Boolean      bool: true or false
+-- A field starts with a value: the default written for the parameter in the code (`speed: float = 1.5`), else
+-- one by the type - 0 for Number and Float Number, false for Boolean, 0, 0, 0 for 3D Vector; the other kinds
+-- start empty, and so does a parameter written as ?type (it may be left out). Empty is nil: not given.
 -- A function that takes more (...) or whose parameters aren't known (Stand's natives) has one field of
 -- Arguments at the end: several expressions separated by commas.
 -- The texts are kept by the caller, texts[i] for the i-th parameter and texts.rest for the Arguments field,
@@ -75,13 +78,29 @@ end
 -- The names and types as the signature the fields are made from
 -- @param names The parameters' names, in order, a method's self left out
 -- @param types name -> the type written for it (source.param_types)
--- @return { params = { { name, type } }, vararg }
-function module.signature(names: table, types: table, vararg: bool): table
+-- @param defaults name -> the default written for it (source.param_defaults)
+-- @return { params = { { name, type, default } }, vararg }
+function module.signature(names: table, types: table, vararg: bool, defaults: table = {}): table
     local params = {}
     for _, name in ipairs(names) do
-        table.insert(params, { name = name, type = types[name] })
+        table.insert(params, { name = name, type = types[name], default = defaults[name] })
     end
     return { params = params, vararg = vararg }
+end
+
+-- What a field of the kind starts with when the code writes no default
+local KIND_DEFAULT = { integer = "0", float = "0", boolean = "false", vector3 = "0, 0, 0" }
+
+-- @return The text a parameter's field starts with: its default in the code, else one by its type; nil for none
+function module.default_of(param: table): ?string
+    if param.default ~= nil then
+        return param.default
+    end
+    -- ?type: may be left out
+    if param.type ~= nil and param.type:sub(1, 1) == "?" then
+        return nil
+    end
+    return KIND_DEFAULT[module.kind_of(param.type)]
 end
 
 -- The signature of a function as the running code and its source give it. A C function (Stand's natives) says
@@ -96,7 +115,7 @@ function module.signature_of(fn, skip_self: ?bool): table
             table.insert(names, name)
         end
     end
-    return module.signature(names, source_parser.param_types(fn), info.isvararg)
+    return module.signature(names, source_parser.param_types(fn), info.isvararg, source_parser.param_defaults(fn))
 end
 
 -- "handle, coords, ...": the parameters' names, and ... when it takes more
@@ -122,9 +141,12 @@ local function trim(value: string): string
     return value:match("^%s*(.-)%s*$")
 end
 
--- One field's text as a value of the kind. Empty: nil
+-- One field's text as a value of the kind. Never typed: the field's start value (default_of). Empty: nil
 -- @return The value, or nil and what was wrong
 local function read_one(param: table, typed: ?string)
+    if typed == nil then
+        typed = module.default_of(param)
+    end
     if typed == nil or trim(typed) == "" then
         return nil
     end
@@ -234,7 +256,7 @@ end
 -- spec.about:     function(name) -> what the module says of the parameter, for the field's help (optional)
 function module.build(list: table, spec: table): void
     local sig, texts = spec.sig, spec.texts
-    local function field(name_label: int, index, help_key: string, about: ?string)
+    local function field(name_label: int, index, help_key: string, about: ?string, start: ?string)
         local help = text(help_key)
         if about ~= nil then
             help = $"{about}\n{help}"
@@ -248,12 +270,12 @@ function module.build(list: table, spec: table): void
             if spec.on_typed ~= nil and not NOT_USER_CLICKS[click_type] then
                 spec.on_typed()
             end
-        end, texts[index] or ""))
+        end, texts[index] or start or ""))
     end
     for i, param in ipairs(sig.params) do
         local kind = module.kind_of(param.type)
         list:divider(param.name)
-        field(label($"types.{kind}"), i, $"help.{kind}", spec.about and spec.about(param.name) or nil)
+        field(label($"types.{kind}"), i, $"help.{kind}", spec.about and spec.about(param.name) or nil, module.default_of(param))
     end
     if sig.vararg then
         -- Under the parameters it's the rest of them; alone it's all of them

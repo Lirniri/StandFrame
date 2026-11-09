@@ -845,6 +845,11 @@ local class Typed extends Module
         got = table.pack(whole, ratio, label, flag, pos, items, handler, thing, free, extra, ...)
         return true
     end
+    -- Defaults written in the code are what the fields start with
+    function pace(speed: float = 1.5, loud = false, name: ?string, count: int = 3)
+        got = table.pack(speed, loud, name, count)
+        return true
+    end
 end
 Atdar.modules.add(new Typed())
 -- Stand's v3 isn't in the test: a table does
@@ -871,7 +876,21 @@ local function mix_call(): void
 end
 -- Nothing typed: everything is nil
 mix_call()
-stand.check(got ~= nil and got[1] == nil and got[10] == nil, "nothing typed: the function gets nothing")
+-- The fields start with a value: 0 for a Number, false for a Boolean, 0, 0, 0 for a 3D Vector; a ?type, Text,
+-- Table, Function, Userdata and Argument * start empty
+stand.equal(mix_fields.whole.value, "0", "a Number starts with 0")
+stand.equal(mix_fields.flag.value, "false", "a Boolean starts with false")
+stand.equal(mix_fields.pos.value, "0, 0, 0", "a 3D Vector starts with 0, 0, 0")
+stand.check(mix_fields.ratio.value == "" and mix_fields.label.value == "" and mix_fields.items.value == ""
+    and mix_fields.free.value == "", "?float, Text, Table and Argument * start empty")
+stand.check(got ~= nil and got[1] == 0 and got[4] == false and got[5].x == 0 and got[5].z == 0,
+    "nothing typed: the function gets those values")
+stand.check(got[2] == nil and got[3] == nil and got[6] == nil and got[9] == nil, "and nothing for the empty ones")
+-- A field cleared by the user is not given, whatever it started with
+menu.set_value(mix_fields.whole, "")
+mix_call()
+stand.equal(got[1], nil, "a field cleared: not given")
+menu.set_value(mix_fields.whole, "0")
 -- Each kind read as what it takes
 menu.set_value(mix_fields.whole, "7")
 menu.set_value(mix_fields.ratio, "2.5")
@@ -913,6 +932,17 @@ for _, case in {
     stand.check(got == nil and stand.find_log(message), $"{name}: '{value}' is refused: {message}")
     menu.set_value(mix_fields[name], before)
 end
+-- A default written in the code is what the field starts with, whatever the type would give
+local pace_node = stand.find_item(stand.child(typed_entry, "Module Functions"), "pace(")
+local speed_field = field_under(pace_node, "speed")
+local loud_field = field_under(pace_node, "loud")
+local name_field = field_under(pace_node, "name")
+local count_field = field_under(pace_node, "count")
+stand.check(speed_field.value == "1.5" and loud_field.value == "false" and name_field.value == "" and count_field.value == "3",
+    "fields start with the code's defaults: 1.5, false, none for a ?type, 3")
+got = nil
+stand.click(stand.child(pace_node, "Call"))
+stand.check(got ~= nil and got[1] == 1.5 and got[2] == false and got[3] == nil and got[4] == 3, "and the function gets them")
 -- Call After Typing: a field typed by the user calls the function; Stand putting it back doesn't
 stand.click(stand.child(mix_node, "Call After Typing"))
 got = nil

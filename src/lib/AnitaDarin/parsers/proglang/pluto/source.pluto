@@ -9,6 +9,7 @@
 --
 --     Atdar.parsers.proglang.pluto.source.return_type(Atdar.natives.entity.vehicle.repair)  -- "bool"
 --     Atdar.parsers.proglang.pluto.source.param_types(Atdar.natives.entity.vehicle.repair)  -- { vehicle = "int" }
+--     Atdar.parsers.proglang.pluto.source.param_defaults(fn)  -- "function f(a: int = 5)" -> { a = "5" }
 
 -- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
 -- that's what a parser is for
@@ -149,6 +150,25 @@ function module.param_types(fn): table
         end
     end
     return types
+end
+
+-- The defaults written for a function's parameters ("function go(speed: float = 1.5, loud = false)"):
+-- { speed = "1.5", loud = "false" }, as the text written. A parameter with none, or with = nil, isn't in it
+-- @return The table (empty if nothing is written or the file can't be read)
+function module.param_defaults(fn): table
+    expect("param_defaults", "fn", fn, "function")
+    local defaults = {}
+    local inside = header_of(fn)
+    if inside == nil then
+        return defaults
+    end
+    for _, piece in ipairs(split_params(inside)) do
+        local name, written = piece:match("^%s*([%a_][%w_]*)[^=]*=%s*(.-)%s*$")
+        if name ~= nil and written ~= "" and written ~= "nil" then
+            defaults[name] = written
+        end
+    end
+    return defaults
 end
 
 return module

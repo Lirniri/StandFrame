@@ -70,6 +70,14 @@ stand.check(types.amount == "int" and types.ratio == "?float" and types.pos == "
 stand.equal(types.note, nil, "source.param_types: a parameter with no type isn't in it")
 stand.equal(next(pluto.source.param_types(params.none)), nil, "source.param_types: no parameters - empty")
 stand.equal(next(pluto.source.param_types(print)), nil, "source.param_types: a C function - empty")
+local param_defaults = pluto.source.param_defaults(params.go)
+stand.check(param_defaults.ratio == "0.5" and param_defaults.items == "{1, 2}", "source.param_defaults: the default as written, with or without a type")
+stand.check(param_defaults.amount == nil and param_defaults.note == nil, "source.param_defaults: none written - not in it")
+stand.write_file($"{dir}defaults.pluto", "local m = {}\nfunction m.go(a: int = 5, b = false, c: ?int = nil, d = v3.new(1, 2, 3)) end\nreturn m\n")
+local written = pluto.source.param_defaults(dofile($"{dir}defaults.pluto").go)
+stand.check(written.a == "5" and written.b == "false" and written.c == nil and written.d == "v3.new(1, 2, 3)",
+    "source.param_defaults: = nil isn't a default; an expression with commas stays whole")
+stand.equal(next(pluto.source.param_defaults(print)), nil, "source.param_defaults: a C function - empty")
 -- Stand's natives: the types are in comments, in front of function and of the names
 local NATIVES = "local N = {}\n"
     .. "N.PLAYER_PED_ID=--[[Ped (int)]] function()return 1 end\n"
@@ -168,6 +176,8 @@ check_error(error_of(|| -> pluto.source.return_type("count")),
     "[parsers/proglang/pluto/source] return_type: fn must be a function, got string", "source.return_type(\"count\")")
 check_error(error_of(|| -> pluto.source.param_types("count")),
     "[parsers/proglang/pluto/source] param_types: fn must be a function, got string", "source.param_types(\"count\")")
+check_error(error_of(|| -> pluto.source.param_defaults("count")),
+    "[parsers/proglang/pluto/source] param_defaults: fn must be a function, got string", "source.param_defaults(\"count\")")
 check_error(error_of(|| -> pluto.path.resolve(5)), "[parsers/proglang/pluto/path] resolve: typed must be a string, got number",
     "path.resolve(5)")
 check_error(error_of(|| -> command_box.sanitize(nil)), "[parsers/stand/command_box] sanitize: text must be a string, got nil",

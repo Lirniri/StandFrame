@@ -39,7 +39,9 @@ Settings > Debug > Modules, visible in debug mode (the "Debug Mode" checkbox is 
   (`1, 2, 3`), `table` is "Table", `function` is "Function" (the path of one), `userdata` is "Userdata". No type, or a
   type like `int|string`, is "Argument *". What goes in a field is written as in Lua: `5, true, "text"`,
   `v3.new(1, 2, 3)`, calls and natives (`entities.get_user_vehicle_as_handle()`). A word without quotes is text.
-  A field left empty is not given. A function with `...` has "Arguments" at the end for the rest.
+  A field starts with the default written in the code (`speed: float = 1.5`), or else with `0` for a number, `false`
+  for a boolean and `0, 0, 0` for a vector; the others, and a parameter written as `?type`, start empty. A field
+  cleared by hand is not given. A function with `...` has "Arguments" at the end for the rest.
 - **A changed file.** After an edit: `build.py sync`, open "Modules", and the module shows "· file changed". "Reload"
   (or "Reload Changed") reads the code again without restarting the script.
 

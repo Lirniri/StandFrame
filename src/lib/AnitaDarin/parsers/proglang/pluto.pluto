@@ -3,7 +3,7 @@
 -- Parsers of Pluto, the script's language, each in parsers/proglang/pluto/, loaded on first use:
 --   args   - arguments typed as in a call: parse() works them out, split() only cuts them
 --   name   - the words of a name in code: words("getHandle")
---   source - what the source says and the running code doesn't keep: return_type(fn), param_types(fn)
+--   source - what the source says and the running code doesn't keep: return_type(fn), param_types(fn), param_defaults(fn)
 --   path   - a path typed as in code (game.repair_vehicle, VehicleManager:get) to what it names: resolve(text)
 --
 --     Atdar.parsers.proglang.pluto.source.return_type(fn)
