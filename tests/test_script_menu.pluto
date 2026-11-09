@@ -340,6 +340,32 @@ local function all_visible(on)
 end
 stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
+-- Call Function: the name may have brackets, as it's written in a call: "name()" or "name(arguments)"
+local call_list = stand.find_item(debug_list, "Call Function")
+local function_name = stand.find_item(call_list, "Function Name")
+local call_button
+for _, child in call_list.children do
+    -- "Call" is also the divider above it
+    if child.kind == "action" and stand.name_of(child) == "Call" then
+        call_button = child
+    end
+end
+local called = {}
+Atdar.test_call = function(...) table.insert(called, table.pack(...)) return 7 end
+stand.clear_logs()
+function_name.on_change("test_call()", 0)
+stand.click(call_button)
+stand.frame()
+stand.equal(#called, 1, "a name with empty brackets is found and called")
+stand.equal(called[1].n, 0, "without arguments")
+function_name.on_change("test_call(5, true)", 0)
+stand.click(call_button)
+stand.frame()
+stand.equal(called[2] and called[2].n, 2, "the brackets' content is the arguments when the Arguments field is empty")
+stand.equal(called[2] and called[2][1], 5, "the first one a number")
+stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
+function_name.on_change("", 0)
+
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
 local modules_list = debug_list.children[8]
 stand.click(modules_list)

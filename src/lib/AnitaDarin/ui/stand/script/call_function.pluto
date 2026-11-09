@@ -64,10 +64,29 @@ local RESULT_KEY = "debug.call_function"
 -- Longer notices are cut to this many characters
 local MAX_NOTICE_CHARS = 200
 
+-- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them)
+local function split_call(name: string)
+    local path, inline = name:match("^(.-)%s*%((.*)%)%s*$")
+    if path == nil then
+        return name, nil
+    end
+    return path, inline
+end
+
+-- The arguments to call with: the Arguments field, or when it's empty what the name has in brackets
+local function call_args(typed: ?string, name: string): string
+    if typed ~= nil and typed ~= "" then
+        return typed
+    end
+    local _, inline = split_call(name)
+    return inline or ""
+end
+
 -- "game.repair_vehicle" -> the function (or table, or any value); "VehicleManager:get" -> the method and
 -- the owner to pass as self
 -- @return Whether there is something at the path, what it is, and its owner (nil for a plain path)
-local function resolve(path: string)
+local function resolve(typed: string)
+    local path = split_call(typed)
     local owner_path = path
     local method = nil
     local colon = path:find(":", 1, true)
@@ -156,7 +175,7 @@ local function call(spec: table): void
         deliver(spec, table.pack(true, value), false)
         return
     end
-    local args, count, err = args_parser.parse(spec.state.args or "")
+    local args, count, err = args_parser.parse(call_args(spec.state.args, name))
     if err ~= nil then
         log:error(text("bad_args"):format(name, err))
         return
@@ -251,7 +270,7 @@ local function start_loop(spec: table, every: ?int): void
             values.show_result(spec.key, table.pack(true, value))
             return true
         end
-        local args, count, err = args_parser.parse(state.args or "")
+        local args, count, err = args_parser.parse(call_args(state.args, name))
         if err ~= nil then
             end_loop(state, loop_run, "failed")
             log:error(text("bad_args"):format(name, err))
