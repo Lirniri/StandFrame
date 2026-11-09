@@ -572,11 +572,11 @@
       "sha256": "d2c0c762d9da93aa60e6da38c0a605c74fa660488708fa0de2374288b61530b3",
       "size": 70171
     },
-    "store/AnitaDarin/menu/Example/features/hello.pluto": {
+    "store/AnitaDarin/menu/Example/features/example/hello.pluto": {
       "sha256": "bae2320af242f35f409a42367966ae9ce684ed3a62d06cef53d0ec127f3112e1",
       "size": 364
     },
-    "store/AnitaDarin/menu/Example/features/ticker.pluto": {
+    "store/AnitaDarin/menu/Example/features/example/ticker.pluto": {
       "sha256": "71bda1c0a47750ab0be922294985ae9ad4d7f156397d99d00c560bc7057f7bda",
       "size": 491
     },
@@ -599,5 +599,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.3"
+  "version": "0.1.4"
 }
