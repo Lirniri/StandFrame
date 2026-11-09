@@ -108,6 +108,12 @@ end
 -- Yields: call it from a thread
 -- @return The plan, or nil and why not
 local function run_check()
+
+    -- Checked here too, for the reason to be shown in the user's language
+    if not updater.has_access() then
+        return nil, text("msg.no_access"):format(Atdar.name)
+    end
+
     local plan, err = updater.check(options())
 
     if plan == nil then

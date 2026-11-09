@@ -1067,6 +1067,7 @@
         "msg": {
             "busy": "A check or an update is already running",
             "check_failed": "Couldn't check for updates: %s",
+            "no_access": "the script has no internet access (turn off Disable Internet Access in Stand > Lua Scripts > %s)",
             "up_to_date": "The script is up to date (version %s)",
             "found": "Version %s is out: %d file(s) to change. Press Update to install it",
             "installing": "Updating: downloading %d file(s)",

@@ -2,6 +2,7 @@
 
     python build.py                 menu (as before)
     python build.py sync            copy the project into Stand
+    python build.py lean            clean, then copy only the script itself: no packs (store/<name>/menu)
     python build.py rebuild         clean, then sync: also drops files removed from the project
     python build.py clean           remove the installed script (keeps profiles and settings)
     python build.py clean --all     remove it with profiles and settings
@@ -35,6 +36,8 @@ SRC = pathlib.Path(__file__).resolve().parent / "src"
 SHARED_DIRS = ("lib", "store", "resources")
 # In store/<name>/: written by the script while it runs, never touched by sync or clean
 # (commands: the names, words and user commands made in the menu)
+# In store/<name>/: packs, left out of a lean install
+PACKS = ("menu",)
 USER_DATA = ("config.json", "profiles", "logs", "commands", "user")
 
 
@@ -79,8 +82,8 @@ def is_user_data(relative: pathlib.PurePath) -> bool:
     return bool(relative.parts) and relative.parts[0] in USER_DATA
 
 
-def install_plan(target: pathlib.Path, name: str) -> list:
-    """(source, destination, user_data) for every file of the project"""
+def install_plan(target: pathlib.Path, name: str, lean: bool = False) -> list:
+    """(source, destination, user_data) for every file of the project; lean leaves the packs out"""
     plan = [(SRC / f"{PROJECT_NAME}.pluto", target / f"{name}.pluto", False)]
     for shared in SHARED_DIRS:
         source_dir = SRC / shared / PROJECT_NAME
@@ -88,6 +91,8 @@ def install_plan(target: pathlib.Path, name: str) -> list:
             continue
         for source in sorted(p for p in source_dir.rglob("*") if p.is_file()):
             relative = source.relative_to(source_dir)
+            if lean and shared == "store" and relative.parts[0] in PACKS:
+                continue
             user_data = shared == "store" and is_user_data(relative)
             plan.append((source, target / shared / name / relative, user_data))
     return plan
@@ -97,10 +102,10 @@ def same_file(a: pathlib.Path, b: pathlib.Path) -> bool:
     return b.exists() and a.stat().st_size == b.stat().st_size and a.read_bytes() == b.read_bytes()
 
 
-def sync(target: pathlib.Path, name: str, quiet: bool = False) -> dict:
+def sync(target: pathlib.Path, name: str, quiet: bool = False, lean: bool = False) -> dict:
     """Copies changed files; user data that already exists is kept"""
     counts = {"copied": 0, "unchanged": 0, "kept": 0}
-    for source, destination, user_data in install_plan(target, name):
+    for source, destination, user_data in install_plan(target, name, lean):
         if user_data and destination.exists():
             counts["kept"] += 1
             continue
@@ -186,6 +191,7 @@ def menu(target: pathlib.Path, name: str) -> None:
         "3": ("Clean only (keeps profiles and settings)", lambda: clean(target, name)),
         "4": ("Show status", lambda: status(target, name)),
         "5": ("Watch src and update on every change", lambda: watch(target, name)),
+        "6": ("Clean and copy only the script (no packs)", lambda: (clean(target, name), sync(target, name, lean=True))),
     }
     while True:
         print(f"\n===== {name} Build =====")
@@ -203,7 +209,7 @@ def menu(target: pathlib.Path, name: str) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Installs the script into Stand's Lua Scripts folder")
-    parser.add_argument("command", nargs="?", choices=["sync", "rebuild", "clean", "status", "watch"])
+    parser.add_argument("command", nargs="?", choices=["sync", "rebuild", "lean", "clean", "status", "watch"])
     parser.add_argument("--name", help="install under this name")
     parser.add_argument("--target", type=pathlib.Path, help="Stand's Lua Scripts folder")
     parser.add_argument("--all", action="store_true", help="with clean: also remove profiles and settings")
@@ -218,6 +224,9 @@ def main(argv=None) -> int:
         elif args.command == "rebuild":
             clean(target, name)
             sync(target, name)
+        elif args.command == "lean":
+            clean(target, name)
+            sync(target, name, lean=True)
         elif args.command == "clean":
             clean(target, name, everything=args.all)
         elif args.command == "status":
