@@ -8,9 +8,9 @@
 --   (Show Keys is made by show_keys, in Debug > Languages)
 --   Translation Progress              - how far each translation has come (langprogress)
 --   Reload Translations               - the files read again (langreload)
---   Open Translation Folder           - store/<script>/base/language (langfolder)
+--   Open Translation Folder           - store/<script>/core/language (langfolder)
 --
--- Strings: base/language "profile.language" and "profile.translation"
+-- Strings: core/language "profile.language" and "profile.translation"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")

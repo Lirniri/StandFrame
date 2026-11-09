@@ -25,7 +25,7 @@ local function copy_tree(from: string, to: string): void
     end
 end
 copy_tree($"{stand.SRC}store/AnitaDarin/menu/AnitaDarin", $"{stand.store}AnitaDarin/menu/AnitaDarin")
-copy_tree($"{stand.SRC}store/AnitaDarin/base", $"{stand.store}AnitaDarin/base")
+copy_tree($"{stand.SRC}store/AnitaDarin/core", $"{stand.store}AnitaDarin/core")
 io.makedirs($"{stand.store}AnitaDarin/profiles")
 stand.write_file($"{stand.store}AnitaDarin/profiles/main.json", '{"auto_copy_menu": "AnitaDarin", "language": "ru-ru"}')
 
@@ -53,7 +53,7 @@ stand.check(io.exists($"{lib}ui\\stand\\menu_from_store\\main.pluto"), "its menu
 stand.check(io.exists($"{lib}features\\self\\godmode.pluto"), "its features are in core")
 stand.check(not io.exists($"{lib}ui\\stand\\menu_from_store\\old.pluto"), "the older copy's files are gone")
 stand.check(not io.exists($"{lib}language\\en-us.json"), "its translations in lib too")
-local core_languages = $"{Atdar.filesystem.paths.store}for_core\\menu\\languages\\"
+local core_languages = $"{Atdar.filesystem.paths.store}core\\menu\\language\\"
 stand.check(io.exists($"{core_languages}en-us.json") and io.exists($"{core_languages}ru-ru.json"), "the translations are in store")
 stand.check(stand.read_file($"{lib}ui\\stand\\menu_from_store\\.copied.json"):find('"AnitaDarin"', 1, true), "the new copy has a manifest")
 
@@ -257,7 +257,9 @@ stand.check(io.exists(scripts .. "AnitaDarin.pluto") and io.exists(lib), "after 
 delete_list.on_back()
 stand.frame()
 
--- By default profiles and settings stay: what build.py never touches either
+-- By default profiles and settings stay: what build.py never touches either, and the user folder too
+io.makedirs(stand.store .. "AnitaDarin/user/call_function")
+stand.write_file(stand.store .. "AnitaDarin/user/call_function/short_names.json", '{"ped": "PLAYER.PLAYER_PED_ID"}')
 stand.click(confirm)
 stand.clock += 1000
 stand.click(confirm)
@@ -267,6 +269,7 @@ stand.check(not io.exists(resources .. "AnitaDarin"), "resources/AnitaDarin is d
 stand.check(not io.exists(stand.store .. "AnitaDarin/menu"), "store files from the project are deleted")
 stand.check(io.exists(profiles .. "main.json") and io.exists(stand.store .. "AnitaDarin/config.json"),
     "profiles and config.json are kept by default")
+stand.check(io.exists(stand.store .. "AnitaDarin/user/call_function/short_names.json"), "so is the user folder: short names, saved functions")
 stand.check(stand.stopped, "the script stops after deleting itself")
 
 stand.check(Atdar.leaving, "and it's leaving: notifications go to Stand only now")

@@ -4,7 +4,7 @@
 -- debug mode, and the items put under the divider's visibility (debug_only).
 -- Light on purpose: ui/stand/modules/list - the list's items, the script's biggest file with the parsers
 -- it needs - loads only when the list is first opened, not at every start.
--- Strings: base/language "modules"
+-- Strings: core/language "modules"
 
 local i18n = Atdar.loader.load("core/i18n")
 

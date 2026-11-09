@@ -17,7 +17,7 @@ script's launchers in Lua Scripts and installs under the name it finds. A rename
 installed a second time. With nothing installed the name is AnitaDarin; with several installs
 --name picks one.
 
-User data in store/<name>/ - config.json, profiles/ and logs/ - is never overwritten or removed (except
+User data in store/<name>/ - config.json, profiles/, logs/, commands/ and user/ - is never overwritten or removed (except
 clean --all): the script writes it while it runs, the copies in src are only defaults for a first install.
 """
 
@@ -35,7 +35,7 @@ SRC = pathlib.Path(__file__).resolve().parent / "src"
 SHARED_DIRS = ("lib", "store", "resources")
 # In store/<name>/: written by the script while it runs, never touched by sync or clean
 # (commands: the names, words and user commands made in the menu)
-USER_DATA = ("config.json", "profiles", "logs", "commands")
+USER_DATA = ("config.json", "profiles", "logs", "commands", "user")
 
 
 class BuildError(Exception):

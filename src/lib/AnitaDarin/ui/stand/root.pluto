@@ -199,7 +199,7 @@ local function remove_builtin(): void
     rebuild_settings()
 end
 
--- Strings of the independent menu live in store/AnitaDarin/base/language/ under "menu_loader".
+-- Strings of the independent menu live in store/AnitaDarin/core/language/ under "menu_loader".
 -- label(): Stand label for item names and help, shown in Stand's language;
 -- text(): ready string in Stand's current language, for strings filled with format()
 -- Strings under "menu_loader"

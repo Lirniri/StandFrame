@@ -61,8 +61,8 @@ local BINARY = {
 }
 
 -- What the script writes while it runs, in store/<project>/: its config.json and whatever is in a
--- profiles, logs or commands folder (a pack's in store/<project>/menu/<pack>/ too)
-local USER_FOLDERS = { profiles = true, logs = true, commands = true }
+-- profiles, logs, commands or user folder (a pack's in store/<project>/menu/<pack>/ too)
+local USER_FOLDERS = { profiles = true, logs = true, commands = true, user = true }
 
 -- ─── Paths ───────────────────────────────────────────────────────────────────
 

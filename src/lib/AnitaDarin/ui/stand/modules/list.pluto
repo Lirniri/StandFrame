@@ -1,7 +1,7 @@
 -- Modules list in the script's settings section, shown only in debug mode: each module a list with its
 -- status, deps and error, Start / Restart / Stop / Reload, and under the Functions divider the module's own
 -- functions to call by hand (Module.functions_of): a list for each, with a field for every parameter by the type
--- the module's code says for it (ui/stand/core/arguments). Strings live in base/language under "modules".
+-- the module's code says for it (ui/stand/core/arguments). Strings live in core/language under "modules".
 -- Restart runs the same module again; Reload re-reads its file, so code changes apply
 --
 -- The list's items are made when it's opened and removed when the user goes back out of it, so nothing

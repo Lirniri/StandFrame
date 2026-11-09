@@ -4,7 +4,7 @@
 -- without a time limit, with or without on_start / on_stop around it, whatever the module's status.
 -- Each run is a table of its own: a newer run or Stop replaces it, and its tick handler ends then.
 -- Loaded with modules_menu, which binds what it knows of the list (bind).
--- Strings: base/language "modules"
+-- Strings: core/language "modules"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")

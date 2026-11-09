@@ -32,7 +32,7 @@
 -- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get)
 -- (parsers/proglang/pluto/path).
 -- The arguments of the Function Name's panel are one field, read as expressions (parsers/proglang/pluto/args).
--- Strings: base/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
+-- Strings: core/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
@@ -474,10 +474,10 @@ local main_state = {}
 -- Makes the items of the Functions list again; set by the list when it's built
 local show_added = nil
 
--- The user's own short names: store/<script>/for_core/ui/logic/stand/script/call_function/short_names.json,
+-- The user's own short names: store/<script>/user/call_function/short_names.json,
 -- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }; read when a name is looked for, so the
 -- file can be edited while the script runs
-local SHORT_NAMES_FILE = "for_core/ui/logic/stand/script/call_function/short_names.json"
+local SHORT_NAMES_FILE = "user/call_function/short_names.json"
 
 -- @param
 -- @return The file's short names, name -> path; empty when there's no file or it isn't an object of texts
@@ -621,13 +621,13 @@ local function build_by_name(node: table): void
     })
 end
 
--- The file the functions are saved in while Save Functions is on: store/<script>/call_functions.json,
+-- The file the functions are saved in while Save Functions is on: store/<script>/user/call_function/saved_functions.json,
 -- { "save": true, "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the
 -- fields. Switching Save Functions off leaves the file as it is ("save": false): what to do with it is the
 -- user's choice
 local function saved_file(): table
     local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-    return new JsonFile($"{Atdar.filesystem.paths.store}call_functions.json")
+    return new JsonFile($"{Atdar.filesystem.paths.store}user/call_function/saved_functions.json")
 end
 
 -- Writes the list to the file while Save Functions is on

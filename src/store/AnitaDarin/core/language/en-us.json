@@ -404,7 +404,7 @@
             "reloaded": "Translations reloaded",
             "folder": {
                 "name": "Open Translation Folder",
-                "help": "The script's language files: store/<script>/base/language"
+                "help": "The script's language files: store/<script>/core/language"
             }
         },
         "notify_emoticon_info": {
@@ -861,7 +861,7 @@
             },
             "short_names": {
                 "name": "Use Short Names",
-                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the one in the file store/<script>/for_core/ui/logic/stand/script/call_function/short_names.json ({\"ped\": \"PLAYER.PLAYER_PED_ID\"}), else the first one of that name in the script, then in Stand's tables. Off: the whole path",
+                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the one in the file store/<script>/user/call_function/short_names.json ({\"ped\": \"PLAYER.PLAYER_PED_ID\"}), else the first one of that name in the script, then in Stand's tables. Off: the whole path",
                 "many": "%s: %d functions have this name, the first is used"
             },
             "show_time": {
@@ -899,7 +899,7 @@
             },
             "save": {
                 "name": "Save Functions",
-                "help": "Keeps the list of functions in a file, store/<script>/call_functions.json, and puts it back at the next start. The paths only, not what's typed in the fields. Off: the file stays, it just isn't used"
+                "help": "Keeps the list of functions in a file, store/<script>/user/call_function/saved_functions.json, and puts it back at the next start. The paths only, not what's typed in the fields. Off: the file stays, it just isn't used"
             },
             "guide": {
                 "name": "Arguments Guide",

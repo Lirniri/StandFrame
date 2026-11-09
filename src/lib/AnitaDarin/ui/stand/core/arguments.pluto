@@ -24,7 +24,7 @@
 -- Arguments at the end: several expressions separated by commas.
 -- The texts are kept by the caller, texts[i] for the i-th parameter and texts.rest for the Arguments field,
 -- so they stay when the list is made again. A field left empty is nil.
--- Strings: base/language "arguments"
+-- Strings: core/language "arguments"
 
 local i18n = Atdar.loader.load("core/i18n")
 local commands = Atdar.loader.load("ui/stand/core/commands")

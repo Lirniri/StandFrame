@@ -8,10 +8,10 @@ stand.store = stand.tmpdir("script_menu_store")
 -- resources: a folder that doesn't exist yet, so Open Resource Folder has to make it
 local resources_root = stand.tmpdir("script_menu_resources")
 filesystem.resources_dir = || -> resources_root
-local base = $"{stand.store}AnitaDarin/base/language/"
+local base = $"{stand.store}AnitaDarin/core/language/"
 io.makedirs(base)
 for _, file in { "en-us.json", "ru-ru.json" } do
-    stand.write_file($"{base}{file}", stand.read_file($"{stand.SRC}store/AnitaDarin/base/language/{file}"))
+    stand.write_file($"{base}{file}", stand.read_file($"{stand.SRC}store/AnitaDarin/core/language/{file}"))
 end
 Atdar.filesystem = Atdar.loader.load("utils/filesystem")
 Atdar.profile = Atdar.loader.load("core/profile")
@@ -574,8 +574,8 @@ add_function.on_change("unique_short_fn", 0)
 stand.check(stand.find_log("'unique_short_fn' not found"), "with Use Short Names off a short name isn't looked for")
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.click(clear_all)
--- The user's own short names, from store/<script>/for_core/ui/logic/stand/script/call_function/short_names.json
-local names_dir = $"{stand.store}AnitaDarin/for_core/ui/logic/stand/script/call_function/"
+-- The user's own short names, from store/<script>/user/call_function/short_names.json
+local names_dir = $"{stand.store}AnitaDarin/user/call_function/"
 io.makedirs(names_dir)
 stand.write_file($"{names_dir}short_names.json", '{"mine": "test_deep.sub.unique_short_fn", "broken": "no.such.path", "bad": 5}')
 stand.clear_logs()
@@ -595,7 +595,7 @@ os.remove($"{names_dir}short_names.json")
 Atdar.test_deep, TEST_SHORT = nil, nil
 
 -- Save Functions: the list is kept in a file while it's on, and comes back when the menu is first made
-local saved_path = $"{stand.store}AnitaDarin/call_functions.json"
+local saved_path = $"{stand.store}AnitaDarin/user/call_function/saved_functions.json"
 Atdar.test_saved = function(a: int) end
 add_function.on_change("test_saved", 0)
 stand.check(not io.exists(saved_path), "Save Functions is off: nothing is written")
@@ -873,7 +873,7 @@ stand.language = "en"
 stand.frame()
 stand.click(stand.child(language_list, "Open Translation Folder"))
 local opened_folder = stand.toasts[#stand.toasts]
-stand.check(opened_folder:find("^open_folder ") and opened_folder:find("AnitaDarin\\base\\language\\", 1, true),
+stand.check(opened_folder:find("^open_folder ") and opened_folder:find("AnitaDarin\\core\\language\\", 1, true),
     $"Open Translation Folder opens the script's language folder ({opened_folder})")
 os.remove($"{base}de-de.json")
 os.remove($"{base}uk-ua.json")

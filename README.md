@@ -46,7 +46,7 @@ python build.py clean --all
 By default, files go to `%APPDATA%/Stand/Lua Scripts`. Pass `--target DIR` to use another folder and `--name NAME` to
 choose the installed script name. If multiple copies are installed, specify `--name`.
 
-`sync` preserves existing user data in `store/<name>/`: `config.json`, `profiles/`, `logs/`, and `commands/`.
+`sync` preserves existing user data in `store/<name>/`: `config.json`, `profiles/`, `logs/`, `commands/`, and `user/` (your own data, such as short names for Call Function).
 `rebuild` removes files that were deleted from the project, but keeps that data. The script can be renamed in its
 settings; the build helper detects the installed launcher and continues to use its name.
 

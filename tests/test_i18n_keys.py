@@ -13,7 +13,7 @@ SRC = TESTS.parent / "src"
 
 # (English file, prefix its keys are under)
 SOURCES = [
-    (SRC / "store/AnitaDarin/base/language/en-us.json", ""),
+    (SRC / "store/AnitaDarin/core/language/en-us.json", ""),
     (SRC / "store/AnitaDarin/menu/AnitaDarin/language/en-us.json", ""),
     (SRC / "lib/AnitaDarin/modules/VehicleManager/language/en-us.json", "module.VehicleManager."),
 ]

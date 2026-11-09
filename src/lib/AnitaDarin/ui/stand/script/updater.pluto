@@ -12,7 +12,7 @@
 -- Check For Updates and Update only say they aren't made yet; the settings are kept in the profile
 -- already, for when it is.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays, updaterbranch
--- Strings: base/language "updater_menu"
+-- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")

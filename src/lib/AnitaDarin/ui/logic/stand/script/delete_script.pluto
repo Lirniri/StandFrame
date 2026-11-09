@@ -7,7 +7,7 @@
 -- Not menu.show_warning: in the game it let the delete through without showing anything, whatever the
 -- click type. Not a toggle either: Stand keeps toggle states in its profile, so it could start on.
 -- Profiles and settings are kept unless switched off. Then the script deletes its files (core/installer) and stops.
--- Strings: base/language "script_menu" ("delete_script.*")
+-- Strings: core/language "script_menu" ("delete_script.*")
 
 local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")

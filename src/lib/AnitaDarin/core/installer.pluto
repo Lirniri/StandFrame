@@ -88,10 +88,10 @@ end
 local remove_path = io.remove or os.remove
 
 -- Whether a path inside store/<name>/ is the user's data, written by the script while it runs:
--- config.json (and its .bak) and profiles/. Same rule as build.py
+-- config.json (and its .bak), profiles/ and user/ (the user's own data: short names, saved functions)
 local function is_user_data(relative: string): bool
     local first = relative:match("^[\\/]*([^\\/]+)")
-    return first == "profiles" or (first ~= nil and first:match("^config%.json") ~= nil)
+    return first == "profiles" or first == "user" or (first ~= nil and first:match("^config%.json") ~= nil)
 end
 
 -- Deletes a folder with everything in it: files first, then the folders from the deepest up.
@@ -127,7 +127,7 @@ local function remove_tree(dir: string, keep: ?function = nil): (int, bool)
 end
 
 -- Deletes the script: its launcher and its lib, store and resources folders. keep_user_data keeps
--- the profiles and config.json in store (what build.py never touches either), so a reinstall finds them.
+-- the profiles, user/ and config.json in store (what build.py never touches either), so a reinstall finds them.
 -- Can't be undone; the menu asks first. The script keeps running from memory until stop()
 -- @return true and the number of deleted files, or false and a reason
 function module.delete(keep_user_data: bool = true): (bool, any)

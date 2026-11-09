@@ -14,7 +14,7 @@
 -- The first time there's one, as an example: settingsatdar, opening the script's settings.
 -- Each is kept in store/<script>/commands/user/<name>.json { "commands": [...], "help": "..." }, shared by
 -- every profile; the commands folder is the user's (build.py and the updater leave it).
--- Strings: base/language "script_menu.user_commands"
+-- Strings: core/language "script_menu.user_commands"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")

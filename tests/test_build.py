@@ -71,7 +71,13 @@ log_file.write_text("[12:00:00] a line", encoding="utf-8")
 user_command = target / "store" / "AnitaDarin" / "commands" / "user" / "ready.json"
 user_command.parent.mkdir(parents=True, exist_ok=True)
 user_command.write_text('{"commands": ["godmode on"]}', encoding="utf-8")
+own_names = target / "store" / "AnitaDarin" / "user" / "call_function" / "short_names.json"
+own_names.parent.mkdir(parents=True, exist_ok=True)
+own_names.write_text('{"ped": "PLAYER.PLAYER_PED_ID"}', encoding="utf-8")
+run("sync", "--target", str(target))
+check("PLAYER_PED_ID" in own_names.read_text(encoding="utf-8"), "sync keeps the user folder: short names, saved functions")
 run("clean", "--target", str(target))
+check(own_names.exists(), "clean keeps the user folder")
 check(log_file.exists(), "clean keeps the script's log files")
 check(user_command.exists(), "clean keeps the commands folder: names, words and user commands")
 check(not (target / "AnitaDarin.pluto").exists() and not (target / "lib" / "AnitaDarin").exists(), "clean removes the script")

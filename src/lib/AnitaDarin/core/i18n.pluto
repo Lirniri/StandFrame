@@ -2,7 +2,7 @@
 -- profiles store the English names (like Stand's own items) whatever language is shown.
 --
 -- Strings come from <source>/<language>.json files. The script's own strings live in
--- store/AnitaDarin/base/language/; a loaded menu adds its own folder on top (add_source) and takes it away on unload.
+-- store/AnitaDarin/core/language/; a loaded menu adds its own folder on top (add_source) and takes it away on unload.
 -- Keys are dot paths into nested JSON: "menu.self.godmode" -> { "menu": { "self": { "godmode": "..." } } }
 -- en-us.json holds the English text, which is the label's identity; other files are its translations.
 
@@ -305,7 +305,7 @@ function module.watch_path(ref, label): bool
 end
 
 -- @return The file the string at key is in, in the language shown (English when that language doesn't have
--- it), from Lua Scripts on: store/AnitaDarin/base/language/ru-ru.json; nil if no file has it
+-- it), from Lua Scripts on: store/AnitaDarin/core/language/ru-ru.json; nil if no file has it
 function module.file_of(key: string): ?string
     local shown = forced or current_code() or ENGLISH
     for _, code in ipairs({ shown, ENGLISH }) do
@@ -597,6 +597,6 @@ function module.get(key: string)
 end
 
 -- The script's own strings (independent menu and the rest), always there
-module.add_source($"{Atdar.filesystem.paths.store}base\\language\\", true)
+module.add_source($"{Atdar.filesystem.paths.store}core\\language\\", true)
 
 return module
