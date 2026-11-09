@@ -36,7 +36,8 @@ rebuild()
 -- The Modules list's items (the biggest file, with its parsers) aren't loaded with the section
 local MODULES_MENU = "AnitaDarin/ui/stand/modules/list"
 stand.equal(package.loaded[MODULES_MENU], nil, "the section is made without loading ui/stand/modules/list")
-stand.equal(package.loaded["AnitaDarin/parsers/proglang/pluto/args"], nil, "nor the parsers it needs")
+-- (Call Function's panel is made with the section, with the parsers of values: the Modules list's own one isn't)
+stand.equal(package.loaded["AnitaDarin/parsers/proglang/pluto/name"], nil, "nor the parser it needs")
 
 local function names_in(node)
     local names = {}
@@ -252,8 +253,8 @@ stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin d
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
-    "Debug Mode | Load Timing | Reload Natives | Logs | Options from other menus | Settings | Debug | Modules"
-    .. " | Delete Script", "Debug")
+    "Debug Mode | Load Timing | Reload Natives | Logs | Options from other menus | Settings | Debug | Call Function"
+    .. " | Modules | Delete Script", "Debug")
 -- The divider is called Logs too: the list is the one that opens
 local logs_list
 for _, child in find("Debug").children do
@@ -329,22 +330,28 @@ stand.click(stand.find_item(debug_row, "Reset Name"))
 stand.equal(stand.name_of(debug_row), "debug", "Reset Name gives it back")
 stand.check(not io.exists(script_names), "with no custom names left the file goes")
 
--- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
+-- At the bottom of Debug, only in debug mode: the Debug divider, Call Function, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9] }
+local debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
     end
     return true
 end
-stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
+stand.check(all_visible(false), "divider, Call Function, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
--- Call Function: the name may have brackets, as it's written in a call: "name()" or "name(arguments)"
+-- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-local function_name = stand.find_item(call_list, "Function Name")
+stand.equal(names_in(call_list), "Call A Function | Functions | Settings | Notice In Stand", "Call Function: two lists, then the settings")
+stand.equal(stand.child(call_list, "Settings").kind, "divider", "Settings is a divider")
+stand.equal(stand.child(call_list, "Notice In Stand").value, true, "Notice In Stand is on by default")
+-- Call A Function: the name may have brackets, as it's written in a call: "name()" or "name(arguments)"
+local by_name = stand.child(call_list, "Call A Function")
+local function_name = stand.child(by_name, "Function Name")
+stand.check(stand.child(by_name, "Notice In Stand") == nil, "the Notice In Stand toggle isn't in Call A Function any more")
 local call_button
-for _, child in call_list.children do
+for _, child in by_name.children do
     -- "Call" is also the divider above it
     if child.kind == "action" and stand.name_of(child) == "Call" then
         call_button = child
@@ -364,10 +371,110 @@ stand.frame()
 stand.equal(called[2] and called[2].n, 2, "the brackets' content is the arguments when the Arguments field is empty")
 stand.equal(called[2] and called[2][1], 5, "the first one a number")
 stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
+-- The setting is a switch that other lists read: it's on, can be turned off and on again
+stand.click(stand.child(call_list, "Notice In Stand"))
+stand.equal(stand.child(call_list, "Notice In Stand").value, false, "Notice In Stand can be turned off")
+stand.click(stand.child(call_list, "Notice In Stand"))
 function_name.on_change("", 0)
 
+-- Functions: Add puts a path in the list. One that takes arguments is a list with a field for each, one that
+-- takes none is a button; each is named with its number. Clear takes one out by it
+local functions_list = stand.child(call_list, "Functions")
+local add_function = stand.child(functions_list, "Add")
+local clear_one = stand.child(functions_list, "Clear")
+local clear_all = stand.child(functions_list, "Clear All")
+stand.check(add_function and add_function.kind == "text_input" and clear_one and clear_one.kind == "text_input"
+    and clear_all and clear_all.kind == "action", "Functions: Add and Clear are fields, Clear All a button")
+local function added_names(): string
+    local names = {}
+    for i = 5, #functions_list.children do
+        table.insert(names, stand.name_of(functions_list.children[i]))
+    end
+    return table.concat(names, " | ")
+end
+stand.equal(names_in(functions_list), "Add | Clear | Clear All | Functions", "Add, Clear, Clear All, the Functions divider; nothing under it at first")
+stand.equal(functions_list.children[4].kind, "divider", "the Functions divider is under Clear All")
+local typed_calls = {}
+Atdar.test_typed = function(count: int, name: string, ...) table.insert(typed_calls, table.pack(count, name, ...)) return count end
+local plain_calls = 0
+Atdar.test_plain = function(): int plain_calls += 1 return 1 end
+NATIVE_TEST = { GET_THING = function(...) return 5 end }
+stand.clear_logs()
+add_function.on_change("test_missing", 0)
+stand.check(stand.find_log("'test_missing' not found") and added_names() == "", "a path that leads nowhere isn't added")
+add_function.on_change("test_typed(1, 2)", 0)
+stand.equal(added_names(), "1: test_typed(count, name, ...)", "a function with parameters is added with its number and its parameters, brackets cut")
+add_function.on_change("test_plain", 0)
+add_function.on_change("NATIVE_TEST.GET_THING", 0)
+stand.equal(added_names(), "1: test_typed(count, name, ...) | 2: test_plain: int | 3: GET_THING(...)",
+    "a native's namespace is left out of the name; none: the return type written; ... for what's not said of the arguments")
+stand.clear_logs()
+add_function.on_change("test_plain", 0)
+stand.check(stand.find_log("is in the list already") and #functions_list.children == 7, "the same path twice: once")
+add_function.on_change("test_plain", 4)
+add_function.on_change("", 0)
+stand.equal(#functions_list.children, 7, "Stand putting the field back adds nothing, nor does an empty one")
+local typed_item = stand.child(functions_list, "1: test_typed(count, name, ...)")
+local plain_item = stand.child(functions_list, "2: test_plain: int")
+stand.equal(plain_item.kind, "action", "a function without parameters is a button")
+stand.equal(typed_item.kind, "list", "one with parameters is a list")
+stand.equal(stand.child(functions_list, "3: GET_THING(...)").kind, "list", "a function of any arguments (...) is a list: Stand's natives say nothing of theirs")
+stand.equal(stand.name_of(typed_item.children[1]) .. " | " .. stand.name_of(typed_item.children[2]), "count | Number",
+    "its first parameter: a divider and a Number field, int being written")
+stand.equal(stand.name_of(typed_item.children[3]) .. " | " .. stand.name_of(typed_item.children[4]), "name | Text", "the next: Text")
+stand.equal(stand.name_of(typed_item.children[5]) .. " | " .. stand.name_of(typed_item.children[6]), "... | Arguments", "and the rest")
+stand.check(stand.child(typed_item, "Call") ~= nil and stand.child(typed_item, "Loop") ~= nil, "then the panel: Call, Loop...")
+stand.check(stand.child(typed_item, "Notice In Stand") == nil, "without the Notice In Stand toggle: it's in the settings")
+stand.click(plain_item)
+stand.frame()
+stand.equal(plain_calls, 1, "the button calls the function")
+menu.set_value(typed_item.children[2], "4")
+menu.set_value(typed_item.children[4], "hello there")
+menu.set_value(typed_item.children[6], "true, 9")
+stand.click(stand.child(typed_item, "Call"))
+stand.frame()
+stand.check(#typed_calls == 1 and typed_calls[1][1] == 4 and typed_calls[1][2] == "hello there" and typed_calls[1][3] == true
+    and typed_calls[1][4] == 9, "Call passes what's typed in the fields, in order")
+menu.set_value(typed_item.children[2], "x")
+stand.clear_logs()
+stand.click(stand.child(typed_item, "Call"))
+stand.frame()
+stand.check(#typed_calls == 1 and stand.find_log("count: a whole number is needed"), "a wrong value is told, nothing is called")
+menu.set_value(typed_item.children[2], "4")
+-- Clear takes one out by its number, the others are numbered again and keep what's typed
+stand.clear_logs()
+clear_one.on_change("7", 0)
+stand.check(stand.find_log("There's no function number '7'") and #functions_list.children == 7, "a number with no function is told")
+clear_one.on_change("x", 0)
+stand.equal(#functions_list.children, 7, "so is what isn't a number")
+clear_one.on_change("1", 4)
+stand.equal(#functions_list.children, 7, "Stand putting the field back takes nothing out")
+menu.set_value(stand.child(functions_list, "3: GET_THING(...)").children[1], "5")
+clear_one.on_change("1", 0)
+stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...)", "Clear: the function gone, the others numbered again")
+stand.equal(stand.child(functions_list, "2: GET_THING(...)").children[1].value, "5", "the others keep what's typed in their fields")
+add_function.on_change("test_typed", 0)
+stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "one added again goes to the end")
+stand.click(clear_all)
+stand.equal(names_in(functions_list), "Add | Clear | Clear All | Functions", "Clear All takes them all out")
+Atdar.test_plain, NATIVE_TEST = nil, nil
+
+-- Made again (the section being built again): the functions added and what's typed in their fields stay
+Atdar.test_typed = function(count: int, name: string) end
+add_function.on_change("test_typed", 0)
+menu.set_value(stand.child(functions_list, "1: test_typed(count, name)").children[2], "6")
+rebuild()
+debug_list = find("Debug")
+debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
+call_list = stand.find_item(debug_list, "Call Function")
+functions_list = stand.child(call_list, "Functions")
+local rebuilt_item = stand.child(functions_list, "1: test_typed(count, name)")
+stand.check(rebuilt_item ~= nil and rebuilt_item.children[2].value == "6", "rebuilt: the function and the text in its field are kept")
+stand.click(stand.child(functions_list, "Clear All"))
+Atdar.test_typed = nil
+
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
-local modules_list = debug_list.children[8]
+local modules_list = debug_list.children[9]
 stand.click(modules_list)
 stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules/list")
 stand.check(#modules_list.children > 0, "and makes the list's items")

@@ -31,11 +31,15 @@ Settings > Debug > Modules, visible in debug mode (the "Debug Mode" checkbox is 
   and the others, and the base functions as a section. It's kept after "Reload".
 - **Base Functions** (a list; with categories disabled, a section): `on_start()` and `on_stop()` as buttons; `on_tick()`
   as a list for running the loop by hand (with init, loop only, for a while) and its status.
-- **Module functions:** for each function of the class, a list with "Arguments" (if it has parameters), "Call", "Call
-  When Opened", "Call When Hovered", "Loop", "Loop With Interval" and "Stop". A call's result arrives as a notification,
-  loops draw theirs on screen, tables can be expanded.
-- **Arguments** are written as in Lua: `5, true, "text", v3.new(1, 2, 3)`, calls and natives
-  (`entities.get_user_vehicle_as_handle()`). A word without quotes is text.
+- **Module functions:** for each function of the class, a list with a field for each parameter (if it has any), "Call",
+  "Call When Opened", "Call When Hovered", "Loop", "Loop With Interval" and "Stop". A call's result arrives as a
+  notification, loops draw theirs on screen, tables can be expanded.
+- **Arguments:** each parameter is a divider with its name and a field named by the type written in the code:
+  `int` is "Number", `float` is "Float Number", `string` is "Text", `bool` is "Boolean", `vector3` is "3D Vector"
+  (`1, 2, 3`), `table` is "Table", `function` is "Function" (the path of one), `userdata` is "Userdata". No type, or a
+  type like `int|string`, is "Argument *". What goes in a field is written as in Lua: `5, true, "text"`,
+  `v3.new(1, 2, 3)`, calls and natives (`entities.get_user_vehicle_as_handle()`). A word without quotes is text.
+  A field left empty is not given. A function with `...` has "Arguments" at the end for the rest.
 - **A changed file.** After an edit: `build.py sync`, open "Modules", and the module shows "· file changed". "Reload"
   (or "Reload Changed") reads the code again without restarting the script.
 
@@ -73,9 +77,9 @@ parent:__construct({
 | Part | What it does |
 |---|---|
 | `functions.<name>.help` | The function's description, in its list's tooltip |
-| `functions.<name>.params` | What each parameter means. Shown in the tooltip of the list and of "Arguments" |
+| `functions.<name>.params` | What each parameter means. Shown in the tooltip of the list and of the parameter's field |
 | `functions.<name>.live` | `true`: while the function's list is open, it's called 4 times a second and "Variable" shows the current value; `false`: only when called. Without it, functions with the words `get`, `is`, `has`, `can` are called by themselves |
-| `functions.<name>.args` | Text in "Arguments" until something else is typed. Written like arguments in the menu: Lua expressions |
+| `functions.<name>.args` | Text in the fields until something else is typed: the arguments in one line, as in a call, the first for the first parameter and so on. Lua expressions |
 | `groups` | Dividers with your own names. Functions go under them in the given order, `_` / `__` ones too. The rest stay under "Functions", "Internal Functions" and "Private Functions" |
 | `hide` | Names of functions and variables (module fields) that won't be in the menu |
 | `categories` | Words for lists by name (see below): add words to an existing list by its `key`, or make your own list with `name` |

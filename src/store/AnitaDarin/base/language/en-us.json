@@ -522,7 +522,7 @@
             "done": "%s = %s"
         },
         "call": {
-            "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. — in the help: not given",
+            "help": "Each argument has its own field, by the type the module's code says for it. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given",
             "button": {
                 "help": "Calls the function once; what it gives shows in a notification and on the Variable line"
             },
@@ -535,13 +535,13 @@
             "bad_args": "%s: bad arguments: %s",
             "guide": {
                 "name": "Arguments Guide",
-                "help": "Sends to Stand how to write the functions' arguments in the Arguments field"
+                "help": "Sends to Stand how to write the functions' arguments in the argument fields"
             }
         },
         "loop": {
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
             "args": "Arguments",
-            "args_extra": "left over: %s",
+            "settings": "Call Settings",
             "call_on_enter": {
                 "name": "Call After Typing",
                 "help": "Calls the function as soon as the Arguments are typed in"
@@ -648,6 +648,43 @@
             "table_of_userdata": "table of Stand objects",
             "table_of_thread": "table of threads",
             "table_of_nil": "table"
+        }
+    },
+    "arguments": {
+        "types": {
+            "any": "Argument *",
+            "function": "Function",
+            "integer": "Number",
+            "float": "Float Number",
+            "vector3": "3D Vector",
+            "table": "Table",
+            "userdata": "Userdata",
+            "string": "Text",
+            "boolean": "Boolean"
+        },
+        "help": {
+            "any": "An expression: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Empty: not given",
+            "function": "The path of a function: game.repair_vehicle, VehicleManager:get. Empty: not given",
+            "integer": "A whole number, or an expression that gives one: 5, PLAYER.PLAYER_PED_ID(). Empty: not given",
+            "float": "A number, with a fraction or without: 2.5, or an expression that gives one. Empty: not given",
+            "vector3": "Three numbers: 1, 2, 3, or an expression that gives a vector: v3.new(1, 2, 3). Empty: not given",
+            "table": "Values separated by commas, or an expression that gives a table. Empty: not given",
+            "userdata": "An expression that gives a Stand object: v3.new(1, 2, 3). Empty: not given",
+            "string": "The text as it is, without quotes. Empty: not given",
+            "boolean": "true or false. Empty: not given"
+        },
+        "rest": {
+            "name": "Arguments",
+            "help": "Any more arguments, as expressions separated by commas: 5, true, \"text\". Empty: none"
+        },
+        "errors": {
+            "bad": "%s: %s",
+            "not_function": "%s: there's no function '%s'",
+            "vector": "%s: three numbers are needed: 1, 2, 3",
+            "one_value": "%s: one value is needed",
+            "integer": "%s: a whole number is needed",
+            "number": "%s: a number is needed",
+            "boolean": "%s: true or false is needed"
         }
     },
     "script_menu": {
@@ -800,6 +837,10 @@
         "call_function": {
             "name": "Call Function",
             "help": "Calls any function of the script by name, with arguments",
+            "by_name": {
+                "name": "Call A Function",
+                "help": "Calls a function, or reads a table or a variable, by the name typed here, with arguments"
+            },
             "function": {
                 "name": "Function Name",
                 "help": "A path from Atdar with dots: game.repair_vehicle. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get"
@@ -819,6 +860,34 @@
             "stand": {
                 "name": "Notice In Stand",
                 "help": "The result comes as a Stand notification, not in the game's feed"
+            },
+            "settings": {
+                "divider": "Settings"
+            },
+            "functions": {
+                "name": "Functions",
+                "help": "Functions kept in a list, each with a field for every argument. Add puts one in, Clear takes one out by its number"
+            },
+            "add": {
+                "name": "Add",
+                "help": "Type the path of a function to put it in the list: game.repair_vehicle, PLAYER.PLAYER_PED_ID. One that takes arguments gets a field for each of them, one that takes none is a button",
+                "already": "%s is in the list already",
+                "done": "%d: %s added"
+            },
+            "clear": {
+                "name": "Clear",
+                "help": "Type the number of a function (it's before the name) to take it out of the list; the others are numbered again",
+                "none": "There's no function number '%s'",
+                "done": "%d: %s taken out"
+            },
+            "clear_all": {
+                "name": "Clear All",
+                "help": "Takes every function out of the list",
+                "done": "The list of functions is cleared"
+            },
+            "added": {
+                "help": "A field for each argument by the type the code says, then Call, Call After, Loop...",
+                "button_help": "Calls the function; a table or a variable is read. What it gives is in the notice"
             },
             "call": {
                 "divider": "Call",

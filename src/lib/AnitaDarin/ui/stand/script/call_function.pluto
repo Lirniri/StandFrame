@@ -3,26 +3,36 @@
 -- Debug > Call Function: calls any function of the script by its name, with typed arguments, or reads
 -- a table or a variable by its name.
 --
---   Call Function >   Function Name, then the panel (below)
+--   Call Function >   Call A Function (list): Function Name, then the panel (below)
+--                     Functions (list): Add, Clear, Clear All, the Functions divider, then the functions added,
+--                     each with its number
+--                     Settings (divider), Notice In Stand
+--
+-- An added function is named by its number and its path, a native's namespace (PLAYER.) left out, then
+-- what it takes and gives: "1: PLAYER_PED_ID: int" (no arguments), "2: get(handle, ...): bool" (the arguments'
+-- names in brackets; the return type is there when the code writes one: void for nothing). One that
+-- takes arguments is a list: a field for each of its parameters by the type the code says
+-- (ui/stand/core/arguments), then the panel. One that takes none is a button that calls it. Clear takes
+-- the number of one out; the numbers follow the order of the list.
 --
 -- The panel (module.panel) is the same in every list that calls a function: this one, and the functions
 -- found in a table of a Value list (Call Functions In Tables, ui/stand/modules/values):
 --
 --   in the order of a function in the Modules list:
---   Call After Typing Function (this list only), Arguments, Call After Typing Arguments,
---   Notice In Stand (this list only), Call, Call After (ms), Call When Opened, Call When Hovered,
+--   Call After Typing Function (Call A Function only), Arguments, Call After Typing Arguments,
+--   Call, Call After (ms), Call When Opened, Call When Hovered,
 --   the Variable line and, for a table, the Value list, then Table Depth, Call Functions In Tables,
 --   Change Variable Values (these three while the result is a table), the Loop Status line,
 --   Loop, Loop With Interval
 --
 -- The name is a path from Atdar with dots (game.repair_vehicle, game.some_table). A module's name may come
--- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get).
--- The arguments are read like the Arguments of a module function (parsers/proglang/pluto/args).
+-- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get)
+-- (parsers/proglang/pluto/path).
+-- The arguments of the Function Name's panel are one field, read as expressions (parsers/proglang/pluto/args).
 -- Strings: base/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
-local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 
 local log = new Logger("CallFunction")
 
@@ -44,19 +54,17 @@ end
 local stopping = false
 util.on_stop(function() stopping = true end)
 
--- The value one step down a path: a module of the manager at the root, else a field
-local function step(current, key: string)
-    if current == Atdar and Atdar.modules ~= nil and Atdar.modules.has(key) then
-        return Atdar.modules.get(key)
-    end
-    if type(current) ~= "table" then
-        return nil
-    end
-    local ok, value = pcall(function() return current[key] end)
-    if not ok then
-        return nil
-    end
-    return value
+-- The parsers and the argument fields are loaded when the list is first used, not with the script's section
+local function args_parser(): table
+    return Atdar.loader.load("parsers/proglang/pluto/args")
+end
+
+local function path_parser(): table
+    return Atdar.loader.load("parsers/proglang/pluto/path")
+end
+
+local function arguments(): table
+    return Atdar.loader.load("ui/stand/core/arguments")
 end
 
 -- The key the result of this list is kept under (its Variable line and Value list)
@@ -64,63 +72,25 @@ local RESULT_KEY = "debug.call_function"
 -- Longer notices are cut to this many characters
 local MAX_NOTICE_CHARS = 200
 
--- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them)
-local function split_call(name: string)
-    local path, inline = name:match("^(.-)%s*%((.*)%)%s*$")
-    if path == nil then
-        return name, nil
-    end
-    return path, inline
-end
-
 -- The arguments to call with: the Arguments field, or when it's empty what the name has in brackets
 local function call_args(typed: ?string, name: string): string
     if typed ~= nil and typed ~= "" then
         return typed
     end
-    local _, inline = split_call(name)
+    local _, inline = path_parser().split(name)
     return inline or ""
 end
 
--- "game.repair_vehicle" -> the function (or table, or any value); "VehicleManager:get" -> the method and
--- the owner to pass as self
--- @return Whether there is something at the path, what it is, and its owner (nil for a plain path)
-local function resolve(typed: string)
-    local path = split_call(typed)
-    local owner_path = path
-    local method = nil
-    local colon = path:find(":", 1, true)
-    if colon ~= nil then
-        owner_path = path:sub(1, colon - 1)
-        method = path:sub(colon + 1)
+-- The arguments to call with: from the fields of the parameters when the panel has them (spec.sig), else
+-- what is typed in the Arguments field
+-- @return The arguments, how many there are, and what was wrong
+local function read_args(spec: table, name: string)
+    local state = spec.state
+    if spec.sig ~= nil then
+        state.texts ??= {}
+        return arguments().read(spec.sig, state.texts)
     end
-    local current = Atdar
-    local first = true
-    for key in owner_path:gmatch("[^%.]+") do
-        local was_first = first
-        first = false
-        -- "Atdar.name" is the same as "name"
-        if was_first and key == "Atdar" then
-            continue
-        end
-        local next_value = step(current, key)
-        -- The first word that Atdar doesn't have: a global (util, menu, ...)
-        if next_value == nil and was_first then
-            next_value = _G[key]
-        end
-        current = next_value
-        if current == nil then
-            return false
-        end
-    end
-    if method == nil then
-        return true, current
-    end
-    local fn = step(current, method)
-    if type(fn) ~= "function" then
-        return false
-    end
-    return true, fn, current
+    return args_parser().parse(call_args(state.args, name))
 end
 
 -- Runs a function with the arguments (the owner first when it's a method), the results packed
@@ -149,8 +119,8 @@ local function deliver(spec: table, results: table, was_call: bool): void
     if cut ~= nil then
         message = message:sub(1, cut - 1) .. "..."
     end
-    -- In Stand (not the game's feed) when its toggle is on
-    if spec.state.stand then
+    -- In Stand (not the game's feed) when the Notice In Stand setting is on
+    if spec.in_stand ~= nil and spec.in_stand() then
         log:notify(message, "stand")
         return
     end
@@ -175,7 +145,7 @@ local function call(spec: table): void
         deliver(spec, table.pack(true, value), false)
         return
     end
-    local args, count, err = args_parser.parse(call_args(spec.state.args, name))
+    local args, count, err = read_args(spec, name)
     if err ~= nil then
         log:error(text("bad_args"):format(name, err))
         return
@@ -270,7 +240,7 @@ local function start_loop(spec: table, every: ?int): void
             values.show_result(spec.key, table.pack(true, value))
             return true
         end
-        local args, count, err = args_parser.parse(call_args(state.args, name))
+        local args, count, err = read_args(spec, name)
         if err ~= nil then
             end_loop(state, loop_run, "failed")
             log:error(text("bad_args"):format(name, err))
@@ -300,12 +270,15 @@ end
 -- Makes the panel in list, from the Argument on.
 -- spec.key:             the key the result is kept under (values.show_result)
 -- spec.state:           a table kept by the caller between buildings: args, on_enter, on_enter_name, on_open,
---                       on_focus, stand, and the loop; it starts as {} (stand: true for a Notice In Stand default)
+--                       on_focus and the loop; it starts as {}
 -- spec.name:            function() -> the function's name for the notices
 -- spec.target:          function() -> found, value, owner: what to call or read (owner: the self of a method)
--- spec.args_command:    the command of the Argument field (Stand's text fields need one)
+-- spec.args_command:    the command of the Argument field (Stand's text fields need one); with spec.sig the
+--                       base of the commands of the parameters' fields ("<base>_1", "<base>_rest")
+-- spec.sig:             the function's signature (ui/stand/core/arguments): a field for each parameter instead of
+--                       the one Argument field (nil: the one field)
 -- spec.with_name:       Call After Typing Function is there (a list with a Function Name field)
--- spec.with_stand:      Notice In Stand is there
+-- spec.in_stand:        function() -> whether the notices go to Stand, not the game's feed (nil: the feed)
 -- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
 -- @return { call = function(), opened = function(), name_typed = function() }: Call, what the list does when
 --         opened, and what a Function Name field does when typed
@@ -313,7 +286,7 @@ function module.panel(list: table, spec: table): table
     local state = spec.state
     local values = Atdar.loader.load("ui/stand/modules/values")
 
-    -- The same order as a function in the Modules list: Arguments, Call, Call After, Call When Opened / Hovered,
+    -- The same order as a function in the Modules list: Arguments, the Call Settings divider, Call, Call After, Call When Opened / Hovered,
     -- the Variable line with its Value list and Table settings, the loop's status, Loop, Loop With Interval
     if spec.with_name then
         list:toggle(label("on_enter_name.name"), function(on)
@@ -321,25 +294,36 @@ function module.panel(list: table, spec: table): table
         end, {}, label("on_enter_name.help"), state.on_enter_name == true)
     end
 
-    list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
-            return
-        end
-        state.args = value
-        if state.on_enter then
-            call(spec)
-        end
-    end, label("args.help"), state.args or "")
+    if spec.sig ~= nil then
+        -- A field for each parameter, by its type
+        state.texts ??= {}
+        arguments().build(list, {
+            sig = spec.sig,
+            texts = state.texts,
+            command = function(index) return $"{spec.args_command}_{index}" end,
+            on_typed = function()
+                if state.on_enter then
+                    call(spec)
+                end
+            end,
+        })
+    else
+        list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
+            if stopping or NOT_USER_CLICKS[click_type] then
+                return
+            end
+            state.args = value
+            if state.on_enter then
+                call(spec)
+            end
+        end, label("args.help"), state.args or "")
+    end
 
+    -- The settings of calling, under the arguments
+    list:divider(mlabel("loop.settings"))
     list:toggle(label("on_enter.name"), function(on)
         state.on_enter = on
     end, {}, label("on_enter.help"), state.on_enter == true)
-
-    if spec.with_stand then
-        list:toggle(label("stand.name"), function(on)
-            state.stand = on
-        end, {}, label("stand.help"), state.stand == true)
-    end
 
     list:action(mlabel("loop.call"), function()
         call(spec)
@@ -449,14 +433,66 @@ end
 
 -- ─── The list ────────────────────────────────────────────────────────────────
 
--- What is typed in the list, kept while the script runs (the menu being built again keeps it)
-local main_state = { stand = true }
+-- What is typed in the Call A Function list, kept while the script runs (the menu being built again keeps it)
+local main_state = {}
+-- The Notice In Stand setting
+local settings = { stand = true }
+-- The functions of the Functions list, in order: { id, path, state }, state as the panel keeps it
+local added = {}
+-- The number of the last function added: each has its own commands and result, never used twice
+local last_id = 0
 
--- Makes the list in node
--- @return The list's handle
-function module.build(node: table): any
+local function in_stand(): bool
+    return settings.stand
+end
+
+-- One added function in list: a list with its parameters' fields and the panel when it takes arguments,
+-- a button that calls it when it takes none (or is a table or a variable, which the button reads).
+-- Named with its number in the list, the arguments and the return type
+local function add_item(list: table, entry: table, number: int): void
+    local paths = path_parser()
+    local short = paths.short_name(entry.path)
+    local found, value, owner = paths.resolve(entry.path)
+    local sig = nil
+    local returns = nil
+    if found and type(value) == "function" then
+        sig = arguments().signature_of(value, owner ~= nil)
+        returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
+    end
+    local name = $"{number}: {short}"
+    if sig ~= nil and arguments().has_fields(sig) then
+        name = $"{name}({arguments().params_text(sig)})"
+    end
+    if returns ~= nil then
+        name = $"{name}: {returns}"
+    end
+    local spec = {
+        key = $"debug.call_function.{entry.id}",
+        state = entry.state,
+        name = || -> short,
+        -- (a lambda would give only the first of the three values)
+        target = function() return paths.resolve(entry.path) end,
+        args_command = $"debugaddedfunc{entry.id}",
+        sig = sig,
+        in_stand = in_stand,
+    }
+    if sig == nil or not arguments().has_fields(sig) then
+        list:action(name, || -> call(spec), {}, label("added.button_help"))
+        return
+    end
     local panel = nil
-    local list = node:list(label("name"), {}, label("help"), nil, function()
+    local node = list:list(name, {}, label("added.help"), nil, function()
+        if panel ~= nil then
+            panel.opened()
+        end
+    end)
+    panel = module.panel(node, spec)
+end
+
+-- The Call A Function list: the function typed by its name, with the panel
+local function build_by_name(node: table): void
+    local panel = nil
+    local list = node:list(label("by_name.name"), {}, label("by_name.help"), nil, function()
         if panel ~= nil then
             panel.opened()
         end
@@ -482,13 +518,98 @@ function module.build(node: table): any
         key = RESULT_KEY,
         state = main_state,
         name = function() return main_state.name or "" end,
-        target = function() return resolve(main_state.name or "") end,
+        target = function() return path_parser().resolve(main_state.name or "") end,
         args_command = "debugcallfuncargs",
         with_name = true,
-        with_stand = true,
+        in_stand = in_stand,
         kept = true,
     })
+end
 
+-- The Functions list: Add, Clear, Clear All, the Functions divider, then the functions added
+local function build_functions(node: table): void
+    local list = node:list(label("functions.name"), {}, label("functions.help"))
+    local first = nil
+
+    -- The items of the functions made again, with the numbers they have now
+    local function show_added(): void
+        list:clear_from(first)
+        for number, entry in ipairs(added) do
+            add_item(list, entry, number)
+        end
+    end
+
+    list:text_input(label("add.name"), { "debugaddfunction" }, function(value, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        -- The brackets, if it was typed as a call, aren't part of the path
+        local path = path_parser().split(value:match("^%s*(.-)%s*$"))
+        if path == "" then
+            return
+        end
+        if not path_parser().resolve(path) then
+            log:warn(text("not_found"):format(path))
+            return
+        end
+        for _, entry in ipairs(added) do
+            if entry.path == path then
+                log:notify(text("add.already"):format(path))
+                return
+            end
+        end
+        last_id += 1
+        local entry = { id = last_id, path = path, state = {} }
+        table.insert(added, entry)
+        add_item(list, entry, #added)
+        log:notify(text("add.done"):format(#added, path_parser().short_name(path)))
+    end, label("add.help"), "")
+
+    -- The number of the function to take out
+    list:text_input(label("clear.name"), { "debugclearfunction" }, function(value, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+        local typed = value:match("^%s*(.-)%s*$")
+        if typed == "" then
+            return
+        end
+        local number = math.tointeger(tonumber(typed))
+        if number == nil or added[number] == nil then
+            log:warn(text("clear.none"):format(typed))
+            return
+        end
+        local entry = table.remove(added, number)
+        show_added()
+        log:notify(text("clear.done"):format(number, path_parser().short_name(entry.path)))
+    end, label("clear.help"), "")
+
+    list:action(label("clear_all.name"), function()
+        if #added == 0 then
+            return
+        end
+        added = {}
+        show_added()
+        log:notify(text("clear_all.done"))
+    end, {}, label("clear_all.help"))
+
+    list:divider(label("functions.name"))
+    first = #list.children + 1
+    for number, entry in ipairs(added) do
+        add_item(list, entry, number)
+    end
+end
+
+-- Makes the list in node
+-- @return The list's handle
+function module.build(node: table): any
+    local list = node:list(label("name"), {}, label("help"))
+    build_by_name(list)
+    build_functions(list)
+    list:divider(label("settings.divider"))
+    list:toggle(label("stand.name"), function(on)
+        settings.stand = on
+    end, {}, label("stand.help"), settings.stand)
     return list.handle
 end
 

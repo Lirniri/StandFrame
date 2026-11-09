@@ -1,10 +1,14 @@
 -- lib/AnitaDarin/parsers/proglang/pluto/source.pluto
 --
--- What the running code doesn't keep but its source file says: a function's return type.
--- Type hints are gone once Pluto compiles the code, so they're read from the file, at the line
+-- What the running code doesn't keep but its source file says: a function's return type and the types of its
+-- parameters. Type hints are gone once Pluto compiles the code, so they're read from the file, at the line
 -- debug.getinfo gives for the function.
+-- Stand's natives (util.require_natives) have their types in comments instead, which are read the same way:
+--     PLAYER_PED_ID=--[[Ped (int)]] function()...      -- returns "int"
+--     WAIT=--[[void]] function(--[[int]] ms)...         -- returns "void", ms is "int"
 --
 --     Atdar.parsers.proglang.pluto.source.return_type(Atdar.natives.entity.vehicle.repair)  -- "bool"
+--     Atdar.parsers.proglang.pluto.source.param_types(Atdar.natives.entity.vehicle.repair)  -- { vehicle = "int" }
 
 -- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
 -- that's what a parser is for
@@ -42,11 +46,11 @@ local function lines_of(path: string)
     return lines
 end
 
--- The return type written after a function's parameters ("function name(a, b): bool" -> "bool"),
--- the parameters may take a few lines
--- @return The type, or nil if none is written or the file can't be read (lambdas and C functions have none)
-function module.return_type(fn): ?string
-    expect("return_type", "fn", fn, "function")
+-- A function's header as written: the parameters in brackets and what follows them ("(a: int, b) : bool").
+-- The header may take a few lines
+-- @return The parameters' text without the brackets, the text after them, and the text before "function" on
+-- its line; nil if the source can't be found (lambdas and C functions have none)
+local function header_of(fn)
     local info = debug.getinfo(fn, "S")
     if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
         return nil
@@ -58,12 +62,93 @@ function module.return_type(fn): ?string
     local joined = ""
     for i = info.linedefined, math.min(info.linedefined + 5, #lines) do
         joined ..= lines[i] .. " "
-        local after = joined:match("function[^(]*%b()(.*)")
-        if after ~= nil then
-            return after:match("^%s*:%s*([%w_?|%.]+)")
+        local before, inside, rest = joined:match("^(.-)function[^(]*(%b())(.*)")
+        if inside ~= nil then
+            return inside:sub(2, -2), rest, before
         end
     end
     return nil
+end
+
+-- A type written in a comment of a native: "Ped (int)" -> "int", "BOOL (bool)" -> "bool", "void" and "float" as they are
+local function comment_type(text: string): string
+    local inner = text:match("%(([%w_]+)%)")
+    return inner or text:match("^%s*(.-)%s*$")
+end
+
+-- The return type written after a function's parameters ("function name(a, b): bool" -> "bool"),
+-- the parameters may take a few lines; or, for a native, in the comment in front of "function"
+-- @return The type, or nil if none is written or the file can't be read (lambdas and C functions have none)
+function module.return_type(fn): ?string
+    expect("return_type", "fn", fn, "function")
+    local _, after, before = header_of(fn)
+    if after == nil then
+        return nil
+    end
+    local written = after:match("^%s*:%s*([%w_?|%.]+)")
+    if written ~= nil then
+        return written
+    end
+    local commented = before:match("%-%-%[%[([^%]]-)%]%]%s*$")
+    if commented ~= nil then
+        return comment_type(commented)
+    end
+    return nil
+end
+
+-- The parameters' text cut at the commas outside brackets, braces and quotes ("a: int, b = f(1, 2)" -> 2 pieces)
+local function split_params(text: string): table
+    local pieces = {}
+    local depth, quote, start = 0, nil, 1
+    for i = 1, #text do
+        local c = text:sub(i, i)
+        if quote ~= nil then
+            if c == quote then
+                quote = nil
+            end
+        elseif c == '"' or c == "'" then
+            quote = c
+        elseif c == "(" or c == "{" or c == "[" then
+            depth += 1
+        elseif c == ")" or c == "}" or c == "]" then
+            depth -= 1
+        elseif c == "," and depth == 0 then
+            table.insert(pieces, text:sub(start, i - 1))
+            start = i + 1
+        end
+    end
+    table.insert(pieces, text:sub(start))
+    return pieces
+end
+
+-- The types written for a function's parameters ("function add(amount: int, note: ?string, any)"):
+-- { amount = "int", note = "?string" }; a native's are in comments in front of the names. A parameter with
+-- no type isn't in it
+-- @return The table (empty if nothing is written or the file can't be read)
+function module.param_types(fn): table
+    expect("param_types", "fn", fn, "function")
+    local types = {}
+    local inside = header_of(fn)
+    if inside == nil then
+        return types
+    end
+    for _, piece in ipairs(split_params(inside)) do
+        -- "name: type" or "name: type = default"
+        local name, type_text = piece:match("^%s*([%a_][%w_]*)%s*:%s*([^=]*)")
+        if name ~= nil then
+            type_text = type_text:match("^(.-)%s*$")
+            if type_text ~= "" then
+                types[name] = type_text
+            end
+        else
+            -- A native's: "--[[int]] name"
+            local commented, native_name = piece:match("^%s*%-%-%[%[([^%]]-)%]%]%s*([%a_][%w_]*)")
+            if native_name ~= nil then
+                types[native_name] = comment_type(commented)
+            end
+        end
+    end
+    return types
 end
 
 return module

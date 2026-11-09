@@ -5,8 +5,8 @@
 --
 --   functions = { <name> = {
 --       help = "...",                  -- the function's description (its list's help)
---       params = { <param> = "..." },  -- what each parameter is, shown under it and on Arguments
---       args = "...",                  -- what's in Arguments until something else is typed (Lua, as typed)
+--       params = { <param> = "..." },  -- what each parameter is, shown on its field
+--       args = "...",                  -- what's in the fields until something else is typed (one line, as in a call)
 --       live = true,                   -- called by itself while its list is open, the Variable line kept
 --                                      -- up to date (by default: names with get, is, has, can)
 --   } }

@@ -1,0 +1,98 @@
+-- lib/AnitaDarin/parsers/proglang/pluto/path.pluto
+--
+-- A path typed as in code, worked out into what it names: a function, a table, any value the script can reach.
+--
+--     local path = Atdar.parsers.proglang.pluto.path
+--     path.resolve("game.repair_vehicle")      -- true, the function
+--     path.resolve("VehicleManager:get")        -- true, the method, its module (the self to call it with)
+--     path.resolve("PLAYER.PLAYER_PED_ID()")    -- true, the native (the brackets are cut: see split)
+--     path.short_name("PLAYER.PLAYER_PED_ID")   -- "PLAYER_PED_ID"
+--
+-- The path starts at Atdar with dots (game.repair_vehicle); a module's name may come first (VehicleManager.get);
+-- the first word that Atdar doesn't have is a global (util, menu, PLAYER, ...). With a colon the function is
+-- a method of what's before it (VehicleManager:get).
+
+-- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
+-- that's what a parser is for
+local expect = Atdar.loader.load("core/check").expecter("parsers/proglang/pluto/path")
+
+local module = {}
+
+-- The value one step down a path: a module of the manager at the root, else a field
+local function step(current, key: string)
+    if current == Atdar and Atdar.modules ~= nil and Atdar.modules.has(key) then
+        return Atdar.modules.get(key)
+    end
+    if type(current) ~= "table" then
+        return nil
+    end
+    local ok, value = pcall(function() return current[key] end)
+    if not ok then
+        return nil
+    end
+    return value
+end
+
+-- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them)
+-- @return The path, and the text in the brackets
+function module.split(name: string)
+    expect("split", "name", name, "string")
+    local path, inline = name:match("^(.-)%s*%((.*)%)%s*$")
+    if path == nil then
+        return name, nil
+    end
+    return path, inline
+end
+
+-- "game.repair_vehicle" -> the function (or table, or any value); "VehicleManager:get" -> the method and
+-- the owner to pass as self. Brackets at the end are not part of the path
+-- @return Whether there is something at the path, what it is, and its owner (nil for a plain path)
+function module.resolve(typed: string)
+    expect("resolve", "typed", typed, "string")
+    local path = module.split(typed)
+    local owner_path = path
+    local method = nil
+    local colon = path:find(":", 1, true)
+    if colon ~= nil then
+        owner_path = path:sub(1, colon - 1)
+        method = path:sub(colon + 1)
+    end
+    local current = Atdar
+    local first = true
+    for key in owner_path:gmatch("[^%.]+") do
+        local was_first = first
+        first = false
+        -- "Atdar.name" is the same as "name"
+        if was_first and key == "Atdar" then
+            continue
+        end
+        local next_value = step(current, key)
+        -- The first word that Atdar doesn't have: a global (util, menu, ...)
+        if next_value == nil and was_first then
+            next_value = _G[key]
+        end
+        current = next_value
+        if current == nil then
+            return false
+        end
+    end
+    if method == nil then
+        return true, current
+    end
+    local fn = step(current, method)
+    if type(fn) ~= "function" then
+        return false
+    end
+    return true, fn, current
+end
+
+-- The name of a path to show: Stand's natives are in a namespace of capitals (PLAYER.PLAYER_PED_ID), which
+-- is left out; any other path stays as it is (game.repair_vehicle, VehicleManager:get). Brackets are cut
+function module.short_name(typed: string): string
+    expect("short_name", "typed", typed, "string")
+    local path = module.split(typed)
+    local rest = path:match("^[A-Z][A-Z0-9_]*%.(.+)$")
+    return rest or path
+end
+
+return module

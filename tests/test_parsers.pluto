@@ -1,4 +1,4 @@
--- parsers/: text into values - color, json, proglang.pluto (args, name, source), stand.command_box -
+-- parsers/: text into values - color, json, proglang.pluto (args, name, source, path), stand.command_box -
 -- and the facades
 local stand = require("stand")
 stand.boot()
@@ -61,6 +61,56 @@ local typed = dofile($"{dir}typed.pluto")
 stand.equal(pluto.source.return_type(typed.count), "int", "source.return_type: written after parameters on another line")
 stand.equal(pluto.source.return_type(typed.plain), nil, "source.return_type: none written - nil")
 stand.equal(pluto.source.return_type(print), nil, "source.return_type: a C function - nil")
+-- The types of the parameters: only those written; defaults, ?, | and parameters on other lines are read
+stand.write_file($"{dir}params.pluto", "local m = {}\nfunction m.go(amount: int, note, ratio: ?float = 0.5,\n    pos: vector3|string, items: table = {1, 2}, ...) end\nfunction m.none() end\nreturn m\n")
+local params = dofile($"{dir}params.pluto")
+local types = pluto.source.param_types(params.go)
+stand.check(types.amount == "int" and types.ratio == "?float" and types.pos == "vector3|string" and types.items == "table",
+    "source.param_types: the type written for each parameter, without its default")
+stand.equal(types.note, nil, "source.param_types: a parameter with no type isn't in it")
+stand.equal(next(pluto.source.param_types(params.none)), nil, "source.param_types: no parameters - empty")
+stand.equal(next(pluto.source.param_types(print)), nil, "source.param_types: a C function - empty")
+-- Stand's natives: the types are in comments, in front of function and of the names
+local NATIVES = "local N = {}\n"
+    .. "N.PLAYER_PED_ID=--[[Ped (int)]] function()return 1 end\n"
+    .. "N.IS_IT=--[[BOOL (bool)]] function(--[[int]] entity, --[[float]] seconds)return true end\n"
+    .. "N.WAIT=--[[void]] function(--[[int]] ms)return 0 end\n"
+    .. "N.NAME=--[[string]] function()return '' end\n"
+    .. "N.WHERE=--[[Vector3 (vector3)]] function()return 0 end\n"
+    .. "return N\n"
+stand.write_file($"{dir}natives.pluto", NATIVES)
+local natives = dofile($"{dir}natives.pluto")
+stand.equal(pluto.source.return_type(natives.PLAYER_PED_ID), "int", "source.return_type: a native's Ped (int) is int")
+stand.equal(pluto.source.return_type(natives.IS_IT), "bool", "source.return_type: BOOL (bool) is bool")
+stand.equal(pluto.source.return_type(natives.WAIT), "void", "source.return_type: void")
+stand.equal(pluto.source.return_type(natives.NAME), "string", "source.return_type: string")
+stand.equal(pluto.source.return_type(natives.WHERE), "vector3", "source.return_type: Vector3 (vector3) is vector3")
+local native_types = pluto.source.param_types(natives.IS_IT)
+stand.check(native_types.entity == "int" and native_types.seconds == "float", "source.param_types: a native's parameters from the comments")
+
+-- ─── path ────────────────────────────────────────────────────────────────────
+
+Atdar.test_path = { fn = || -> 1, nested = { fn = || -> 2 }, value = 7 }
+local found, fn = pluto.path.resolve("test_path.nested.fn")
+stand.check(found and fn() == 2, "path.resolve: a path from Atdar with dots")
+found, fn = pluto.path.resolve("Atdar.test_path.fn")
+stand.check(found and fn() == 1, "path.resolve: Atdar. in front is the same")
+found, fn = pluto.path.resolve("math.floor")
+stand.check(found and fn(2.5) == 2, "path.resolve: the first word Atdar hasn't is a global")
+found, fn = pluto.path.resolve("test_path.fn()")
+stand.check(found and fn() == 1, "path.resolve: brackets at the end aren't part of the path")
+local method_found, method, owner = pluto.path.resolve("test_path:fn")
+stand.check(method_found and owner == Atdar.test_path and method() == 1, "path.resolve: a colon gives the method and its owner")
+stand.equal(pluto.path.resolve("test_path.missing"), false, "path.resolve: nothing there - false")
+stand.equal(pluto.path.resolve("test_path:value"), false, "path.resolve: a colon after something that isn't a function - false")
+local path_text, inline = pluto.path.split("game.set_speed(5, true)")
+stand.check(path_text == "game.set_speed" and inline == "5, true", "path.split: the path and what's in the brackets")
+stand.equal(select("#", pluto.path.split("game.go")), 2, "path.split: no brackets - the path, nil")
+stand.equal(pluto.path.short_name("PLAYER.PLAYER_PED_ID"), "PLAYER_PED_ID", "path.short_name: a native's namespace is left out")
+stand.equal(pluto.path.short_name("ENTITY.GET_ENTITY_COORDS()"), "GET_ENTITY_COORDS", "path.short_name: and the brackets")
+stand.equal(pluto.path.short_name("game.repair_vehicle"), "game.repair_vehicle", "path.short_name: another path stays whole")
+stand.equal(pluto.path.short_name("VehicleManager:get"), "VehicleManager:get", "path.short_name: a method too")
+Atdar.test_path = nil
 
 -- ─── stand.command_box ───────────────────────────────────────────────────────
 
@@ -103,6 +153,10 @@ check_error(error_of(|| -> pluto.name.words({})), "[parsers/proglang/pluto/name]
     "name.words({})")
 check_error(error_of(|| -> pluto.source.return_type("count")),
     "[parsers/proglang/pluto/source] return_type: fn must be a function, got string", "source.return_type(\"count\")")
+check_error(error_of(|| -> pluto.source.param_types("count")),
+    "[parsers/proglang/pluto/source] param_types: fn must be a function, got string", "source.param_types(\"count\")")
+check_error(error_of(|| -> pluto.path.resolve(5)), "[parsers/proglang/pluto/path] resolve: typed must be a string, got number",
+    "path.resolve(5)")
 check_error(error_of(|| -> command_box.sanitize(nil)), "[parsers/stand/command_box] sanitize: text must be a string, got nil",
     "command_box.sanitize(nil)")
 check_error(error_of(|| -> command_box.bases("godmode")),

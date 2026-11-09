@@ -179,16 +179,29 @@ counter.label = nil
 counter.items = nil
 local add_node = stand.child(stand.child(counter_functions, "Add"), "add(amount, note)")
 stand.equal(add_node.kind, "list", "with parameters: a list too")
-stand.equal(names_in(add_node), "Arguments | Call After Typing | Call | Call After | Call When Opened | Call When Hovered"
-    .. " | Variable: — | Loop Status: stopped | Loop | Loop With Interval", "with the Arguments field on top")
-local add_args = stand.child(add_node, "Arguments")
-stand.equal(add_args.kind, "text_input", "Arguments is a text field")
+stand.equal(names_in(add_node), "amount | Argument * | note | Argument * | Call Settings | Call After Typing | Call | Call After | Call When Opened"
+    .. " | Call When Hovered | Variable: — | Loop Status: stopped | Loop | Loop With Interval",
+    "a divider with the parameter's name and a field for each, on top")
+-- The field under a parameter's divider
+local function field_under(node, param: string)
+    for i, child in node.children do
+        if child.kind == "divider" and stand.name_of(child) == param then
+            return node.children[i + 1]
+        end
+    end
+    return nil
+end
+local add_args = field_under(add_node, "amount")
+local add_note = field_under(add_node, "note")
+stand.equal(add_args.kind, "text_input", "a parameter's field is a text field")
+stand.equal(stand.name_of(add_args), "Argument *", "named by what it takes: no type written, so Argument *")
 -- Its command: the module's number, then the function's among all of its functions by name
--- (_hidden, add, broken, reset: "_" sorts first)
-stand.check(add_args.commands[1]:find("moduleargsfor3_2$") ~= nil, $"a short command: {add_args.commands[1]}")
+-- (_hidden, add, broken, reset: "_" sorts first), then the parameter's
+stand.check(add_args.commands[1]:find("moduleargsfor3_2_1$") ~= nil, $"a short command: {add_args.commands[1]}")
+stand.check(add_note.commands[1]:find("moduleargsfor3_2_2$") ~= nil, $"the next parameter's: {add_note.commands[1]}")
 local reset_node = stand.child(counter_functions, "reset()")
 stand.equal(reset_node.kind, "list", "without: a list")
-stand.equal(names_in(reset_node), "Call | Call After | Call When Opened | Call When Hovered | Variable: —"
+stand.equal(names_in(reset_node), "Call Settings | Call | Call After | Call When Opened | Call When Hovered | Variable: —"
     .. " | Loop Status: stopped | Loop | Loop With Interval",
     "Call, Call After, Call When Opened / Hovered, what it gave last, the loop's status above Loop and Loop With Interval")
 -- Call After: once, after the ms picked
@@ -202,7 +215,8 @@ counter.count = 0
 stand.equal(stand.child(reset_node, "Loop").kind, "toggle", "Loop is a toggle")
 
 stand.clear_logs()
-menu.set_value(add_args, '5, "a, b"')
+menu.set_value(add_args, "5")
+menu.set_value(add_note, '"a, b"')
 stand.equal(counter.count, 0, "typing the arguments calls nothing")
 stand.click(stand.child(add_node, "Call"))
 stand.equal(counter.count, 5, "the arguments are passed: a number")
@@ -434,11 +448,20 @@ local nested, nested_count = modules_menu_args("FAKE.add(FAKE.pair()), FAKE.pair
 stand.check(nested_count == 3 and nested[1] == 3 and nested[2] == 1 and nested[3] == "adder",
     "calls inside calls; a call that isn't last gives its first value; a bare word is text")
 stand.clear_logs()
-menu.set_value(add_args, "FAKE.add(1, 1), FAKE.handle()")
+menu.set_value(add_args, "FAKE.add(1, 1)")
+menu.set_value(add_note, "FAKE.handle()")
 stand.click(stand.child(add_node, "Call"))
-stand.equal(counter.count, 2, "a call in the field's arguments reaches the function")
+stand.equal(counter.count, 2, "a call in a field reaches the function")
+stand.check(stand.find_item(add_node, "Variable: 2, 501") ~= nil, "each field is one argument")
+-- A field with two values isn't one argument
+menu.set_value(add_args, "1, 2")
+stand.clear_logs()
+stand.click(stand.child(add_node, "Call"))
+stand.check(stand.find_log("amount: one value is needed"), "two values in a field are told")
+stand.equal(counter.count, 2, "and nothing is called")
 -- A loop works the arguments out at each call
 menu.set_value(add_args, "1")
+menu.set_value(add_note, "")
 stand.click(stand.child(add_node, "Loop"))
 stand.frame(3)
 stand.equal(counter.count, 5, "a loop passes the arguments at each call")
@@ -485,6 +508,7 @@ counter.count = 2
 menu.set_value(add_args, "missing.call()")
 stand.click(stand.child(add_node, "Call"))
 stand.check(stand.find_log("bad arguments"), "arguments that fail are told, nothing is called")
+stand.check(stand.find_log("amount:"), "with the parameter they're typed for")
 stand.equal(counter.count, 2, "and the function isn't called")
 _G.load = saved_load
 
@@ -721,22 +745,30 @@ stand.equal(names_in(stand.child(garage_fns, "Shop")), "buy_car(): void", "a cat
 local park_node = stand.child(garage_fns, "park(handle): int")
 stand.check(park_node.help:find("Parks a vehicle", 1, true) and park_node.help:find("handle - the vehicle's handle", 1, true),
     "the function's help and its parameters' from the module")
-local park_args = stand.child(park_node, "Arguments")
+local park_args = field_under(park_node, "handle")
+stand.equal(stand.name_of(park_args), "Number", "handle: int is a Number field")
 stand.equal(park_args.value, "42", "the module's default arguments are in the field")
-stand.equal(park_args.help, "\nhandle: 42 (the vehicle's handle)", "each parameter by name with its argument and what it is, from a new line")
-menu.set_value(park_args, "7")
-stand.equal(park_args.help, "\nhandle: 7 (the vehicle's handle)", "typed: the help follows")
-menu.set_value(park_args, "")
-stand.equal(park_args.help, "\nhandle: — (the vehicle's handle)", "none typed: the parameter without one, marked —")
-menu.set_value(park_args, 'f(1, 2), "a, b"')
-stand.equal(park_args.help, '\nhandle: f(1, 2) (the vehicle\'s handle)\nleft over: "a, b"',
-    "commas inside brackets and quotes don't split; more than its parameters: left over")
+stand.check(park_args.help:find("the vehicle's handle", 1, true) == 1, "its help starts with what the module says of the parameter")
+-- Default arguments written for several parameters go to them in order, the rest to Arguments
+local defaults = Atdar.loader.load("ui/stand/core/arguments").texts_from(
+    { params = { { name = "a" }, { name = "b" } }, vararg = true }, 'f(1, 2), "x, y", 7, 8')
+stand.check(defaults[1] == "f(1, 2)" and defaults[2] == '"x, y"' and defaults.rest == "7, 8",
+    "default arguments: commas inside brackets and quotes don't split; more than its parameters: the rest")
+-- A Number takes a whole number
+menu.set_value(park_args, "2.5")
+stand.clear_logs()
+stand.click(stand.child(park_node, "Call"))
+stand.check(stand.find_log("handle: a whole number is needed"), "a Number field refuses a fraction")
+menu.set_value(park_args, "8")
+stand.clear_logs()
+stand.click(stand.child(park_node, "Call"))
+stand.check(stand.find_log("park(handle) -> 8"), "and takes a whole one")
 menu.set_value(park_args, "42")
 -- Arguments Guide: how to write them, as a notice in Stand
 stand.toasts = {}
 stand.click(stand.child(garage_entry, "Arguments Guide"))
-stand.check(stand.toasts[#stand.toasts]:find("Arguments separated by commas", 1, true), "Arguments Guide tells it in Stand")
-stand.check(stand.toasts[#stand.toasts]:find("— in the help: not given", 1, true), "and what — in the help means")
+stand.check(stand.toasts[#stand.toasts]:find("Each argument has its own field", 1, true), "Arguments Guide tells it in Stand")
+stand.check(stand.toasts[#stand.toasts]:find("An empty field is not given", 1, true), "and what an empty field means")
 stand.clear_logs()
 stand.click(stand.child(park_node, "Call"))
 stand.check(stand.find_log("park(handle) -> 42"), "and Call uses them")
@@ -805,5 +837,92 @@ local i18n = Atdar.loader.load("core/i18n")
 stand.equal(i18n.text("modules.refresh.name"), "Refresh", "its keys don't reach the script's strings")
 stand.equal(i18n.text("hello", "none"), "none", "nor are they there without its prefix")
 stand.equal(new Module({ name = "talker_in_code" }):text("hello", "Hi"), "Hi", "a module made in code: the English given")
+
+-- ─── Arguments by type: a field for each parameter, named by what it takes ───────
+
+-- What the last call of mix got
+local got = nil
+local class Typed extends Module
+    function __construct() parent:__construct({ name = "typed" }) end
+    function mix(whole: int, ratio: ?float, label: string, flag: bool, pos: vector3, items: table, handler: function,
+            thing: userdata, free, extra: int|string, ...)
+        got = table.pack(whole, ratio, label, flag, pos, items, handler, thing, free, extra, ...)
+        return true
+    end
+end
+Atdar.modules.add(new Typed())
+-- Stand's v3 isn't in the test: a table does
+_G.v3 = { new = |x, y, z| -> { x = x, y = y, z = z } }
+stand.back(list)
+stand.click(list)
+local typed_entry = stand.find_item(list, "typed: ")
+local mix_node = stand.find_item(stand.child(typed_entry, "Module Functions"), "mix(")
+stand.equal(names_in(mix_node):match("^(.-) | Call Settings"),
+    "whole | Number | ratio | Float Number | label | Text | flag | Boolean | pos | 3D Vector | items | Table | handler | Function"
+    .. " | thing | Userdata | free | Argument * | extra | Argument * | ... | Arguments",
+    "each parameter: its name, then a field named by its type; int|string is no one type; ... is Arguments at the end")
+local mix_fields = {}
+for _, name in { "whole", "ratio", "label", "flag", "pos", "items", "handler", "thing", "free", "extra" } do
+    mix_fields[name] = field_under(mix_node, name)
+end
+local mix_rest = field_under(mix_node, "...")
+stand.check(mix_fields.whole.commands[1]:find("moduleargsfor%d+_%d+_1$") and mix_rest.commands[1]:find("_rest$"),
+    "commands: a number for each parameter, rest for Arguments")
+local function mix_call(): void
+    got = nil
+    stand.clear_logs()
+    stand.click(stand.child(mix_node, "Call"))
+end
+-- Nothing typed: everything is nil
+mix_call()
+stand.check(got ~= nil and got[1] == nil and got[10] == nil, "nothing typed: the function gets nothing")
+-- Each kind read as what it takes
+menu.set_value(mix_fields.whole, "7")
+menu.set_value(mix_fields.ratio, "2.5")
+menu.set_value(mix_fields.label, 'a "b", c')
+menu.set_value(mix_fields.flag, "true")
+menu.set_value(mix_fields.pos, "1, 2, 3")
+menu.set_value(mix_fields.items, "4, 5, 6")
+menu.set_value(mix_fields.handler, "math.floor")
+menu.set_value(mix_fields.thing, "v3.new(7, 8, 9)")
+menu.set_value(mix_fields.free, "nothing quoted")
+menu.set_value(mix_fields.extra, "x")
+menu.set_value(mix_rest, '"more", 10')
+mix_call()
+stand.check(got ~= nil and got[1] == 7 and got[2] == 2.5, "Number and Float Number: numbers")
+stand.equal(got[3], 'a "b", c', "Text: as typed, quotes and commas included")
+stand.equal(got[4], true, "Boolean: true")
+stand.check(got[5].x == 1 and got[5].y == 2 and got[5].z == 3, "3D Vector: three numbers make a vector")
+stand.check(got[6][1] == 4 and got[6][3] == 6 and #got[6] == 3, "Table: the values separated by commas")
+stand.equal(got[7], math.floor, "Function: the function at the path")
+stand.check(got[8].x == 7 and got[8].z == 9, "Userdata: an expression")
+stand.equal(got[9], "nothing quoted", "Argument *: an expression, a word is text")
+stand.check(got[10] == "x" and got[11] == "more" and got[12] == 10, "Arguments: more, after the parameters")
+-- A 3D Vector can be an expression too
+menu.set_value(mix_fields.pos, "v3.new(4, 5, 6)")
+mix_call()
+stand.equal(got[5].y, 5, "3D Vector: an expression that gives one")
+-- Wrong values are told, nothing is called
+for _, case in {
+    { "whole", "x", "whole: a whole number is needed" },
+    { "ratio", "x", "ratio: a number is needed" },
+    { "flag", "5", "flag: true or false is needed" },
+    { "pos", "1, 2", "pos: three numbers are needed" },
+    { "handler", "no.such.thing", "handler: there's no function 'no.such.thing'" },
+} do
+    local name, value, message = case[1], case[2], case[3]
+    local before = mix_fields[name].value
+    menu.set_value(mix_fields[name], value)
+    mix_call()
+    stand.check(got == nil and stand.find_log(message), $"{name}: '{value}' is refused: {message}")
+    menu.set_value(mix_fields[name], before)
+end
+-- Call After Typing: a field typed by the user calls the function; Stand putting it back doesn't
+stand.click(stand.child(mix_node, "Call After Typing"))
+got = nil
+mix_fields.whole.on_change("3", 4)
+stand.equal(got, nil, "Stand's own change of a field calls nothing")
+mix_fields.whole.on_change("3", 0)
+stand.check(got ~= nil and got[1] == 3, "typing in a field calls the function")
 
 stand.finish()
