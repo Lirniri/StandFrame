@@ -235,12 +235,17 @@ function module.is_up_to_date(plan: table): bool
     return #plan.download == 0 and #plan.remove == 0
 end
 
+-- Whether the script may use the internet (Stand's Disable Internet Access is off)
+function module.has_access(): bool
+    return async_http.have_access == nil or async_http.have_access()
+end
+
 -- Downloads the release's manifest and compares it with the installed files. Yields: call it from a thread
 -- @param opts Over DEFAULTS: name (the script's name, Atdar.name), scripts_dir, repo, branch, ...
 -- @return The plan (see plan), or nil and why not
 function module.check(opts: ?table)
     local o = options(opts)
-    if async_http.have_access ~= nil and not async_http.have_access() then
+    if not module.has_access() then
         return nil, $"the script has no internet access (turn off Disable Internet Access in Stand > Lua Scripts > {o.name})"
     end
     local body, err = module.fetch(o.host, raw_path(o, o.manifest), o.timeout)

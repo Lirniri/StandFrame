@@ -336,7 +336,7 @@ local function auto_copy(): void
         end
     end
     if not info then
-        log:warn($"menu '{id}' to copy to core isn't in store")
+        log:warn(i18n.text("menu_loader.auto_copy.not_in_store"):format(id))
         return
     end
     local manifest = builder.read_core_manifest(paths.lib)

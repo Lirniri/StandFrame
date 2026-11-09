@@ -212,6 +212,12 @@ end
 -- @return Info of every folder in packs_dir that has an info.json with a name, sorted by name
 function module.find_packs(packs_dir: string): table
     local packs = {}
+
+    -- A lean install has no packs folder, list_files fails on it
+    if not filesystem.is_dir(packs_dir) then
+        return packs
+    end
+
     for _, path in ipairs(filesystem.list_files(packs_dir)) do
         if filesystem.is_dir(path) then
             local info = read_json($"{path}\\info.json")
