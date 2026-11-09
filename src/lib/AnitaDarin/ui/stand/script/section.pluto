@@ -16,7 +16,7 @@
 -- Strings: base/language "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
-local delete_script_logic = Atdar.loader.load("ui/logic/script/delete_script")
+local delete_script_logic = Atdar.loader.load("ui/logic/stand/script/delete_script")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/core/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
