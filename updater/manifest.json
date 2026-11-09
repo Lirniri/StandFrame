@@ -477,8 +477,8 @@
       "size": 17116
     },
     "lib/AnitaDarin/ui/stand/script/updater.pluto": {
-      "sha256": "9a460270f1cb0a1e861fe30c4e9ce488ee821e70979ddab0cafa4b217af52334",
-      "size": 6428
+      "sha256": "fe308ad53161fa962da887b861e0479adf8a4a82fbfe18b3a72422d4520ab012",
+      "size": 6762
     },
     "lib/AnitaDarin/ui/stand/script/user_commands.pluto": {
       "sha256": "5d3e6c2a425f52f006985c46c2fa429718bc0328e15f2f49388d52456ccc7caf",
@@ -663,5 +663,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.1"
+  "version": "0.1.2"
 }
