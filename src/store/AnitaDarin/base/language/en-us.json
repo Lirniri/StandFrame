@@ -892,7 +892,7 @@
             "guide": {
                 "name": "Arguments Guide",
                 "help": "Sends to Stand how to write the functions' arguments in the argument fields",
-                "text": "Each argument has its own field, by the type the module's code says for it. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given"
+                "text": "Each argument has its own field, by the type written for it in the code. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given"
             },
             "added": {
                 "help": "A field for each argument by the type the code says, then Call, Call After, Loop...",
