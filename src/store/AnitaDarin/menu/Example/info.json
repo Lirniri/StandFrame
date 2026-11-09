@@ -1,0 +1,10 @@
+{
+    "requires": "0.1.0",
+
+    "id": "Example",
+    "name": "Example",
+    "shortname": "Example",
+    "prefix": "example",
+    "author": "Rilesar",
+    "version": "0.1.0"
+}

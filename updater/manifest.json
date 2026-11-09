@@ -572,6 +572,26 @@
       "sha256": "d2c0c762d9da93aa60e6da38c0a605c74fa660488708fa0de2374288b61530b3",
       "size": 70171
     },
+    "store/AnitaDarin/menu/Example/features/hello.pluto": {
+      "sha256": "bae2320af242f35f409a42367966ae9ce684ed3a62d06cef53d0ec127f3112e1",
+      "size": 364
+    },
+    "store/AnitaDarin/menu/Example/features/ticker.pluto": {
+      "sha256": "71bda1c0a47750ab0be922294985ae9ad4d7f156397d99d00c560bc7057f7bda",
+      "size": 491
+    },
+    "store/AnitaDarin/menu/Example/info.json": {
+      "sha256": "8d1fb6cc09a83d6037e66d042238ca15126ad5c2ab161e03ad3951e669f3df63",
+      "size": 175
+    },
+    "store/AnitaDarin/menu/Example/menu/stand/items.pluto": {
+      "sha256": "fa50fdbf06df8f96141ec9ad82fce0d34a2c6f13b373a8b1032c621ac1020602",
+      "size": 438
+    },
+    "store/AnitaDarin/menu/Example/menu/stand/main.pluto": {
+      "sha256": "47a375d29e93c70342f77ba88d5a6a08079f4d7f4d2e1af4bf0fd6b6d3889dd6",
+      "size": 271
+    },
     "store/AnitaDarin/menu/example.pluto": {
       "sha256": "a29d240347cb9ba7bfe44c776cdd90a3325df658c0d8b64d1998d11f2b6b1438",
       "size": 440
@@ -579,5 +599,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.2"
+  "version": "0.1.3"
 }

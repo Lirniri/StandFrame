@@ -1,0 +1,51 @@
+-- store/AnitaDarin/menu/Example: found as a pack, copied to core, its menu builds and its features work.
+-- The script's lib and store are temp folders here, so nothing is written into src
+local stand = require("stand")
+stand.boot()
+for _, name in { "util", "filesystem", "lang", "color", "menu", "memory" } do
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
+end
+Atdar.profile = { get = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
+Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
+Atdar.features = Atdar.loader.load("features/registry")
+
+local builder = Atdar.loader.load("ui/stand/core/menu_builder")
+local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
+
+local info = nil
+for _, pack in ipairs(builder.find_loadable_packs($"{stand.SRC}store/AnitaDarin/menu\\")) do
+    if pack.folder == "Example" then
+        info = pack
+    end
+end
+stand.check(info ~= nil, "the Example pack is found")
+stand.equal(#info.feature_files, 2, "with its two features")
+
+-- Copy to core: into a temp lib and store
+local scripts = stand.tmpdir("example_pack")
+local lib = $"{scripts}lib\\AnitaDarin\\"
+local store = $"{scripts}store\\AnitaDarin\\"
+local ok, copied = builder.copy_pack_to_core(info, lib, store)
+stand.check(ok, $"copies to core ({tostring(copied)})")
+stand.equal(copied, 4, "two features and two menu files")
+stand.check(builder.core_copy_is_current(info, lib, store), "the copy is the pack")
+
+-- The copy is what runs: features first, then the menu
+stand.equal(builder.load_feature_files(builder.find_feature_files($"{lib}features\\")), 2, "the copied features load")
+local root = new MenuNode(stand.root):list("Menu")
+stand.check(builder.build_menu(root, $"{lib}ui\\stand\\menu_from_store\\"), "the copied menu builds")
+local list = stand.child(root.handle, "Example")
+stand.check(list and stand.find_item(list, "Say Hello") and stand.find_item(list, "Example Toggle"), "with its two items")
+
+stand.clear_logs()
+stand.click(stand.find_item(list, "Say Hello"))
+stand.check(stand.find_log("Hello from the Example menu"), "Say Hello notifies")
+stand.click(stand.find_item(list, "Example Toggle"))
+stand.check(stand.find_log("Example toggle is on"), "the toggle notifies when on")
+
+-- Removing it takes out exactly what was copied
+stand.check(builder.remove_copied_core(lib, store), "the copy is removed")
+stand.check(not io.exists($"{lib}features\\hello.pluto"), "its files are gone")
+
+stand.finish()

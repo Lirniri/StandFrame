@@ -1,0 +1,20 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("Example")
+
+-- A toggle: on_enable runs when it's switched on, on_disable when it's switched off
+return Atdar.features.add(new Feature({
+    id = "example.ticker",
+    kind = "toggle",
+
+    on_enable = function(self)
+        log:notify("Example toggle is on")
+    end,
+
+    on_disable = function(self)
+        log:notify("Example toggle is off")
+    end,
+}))
