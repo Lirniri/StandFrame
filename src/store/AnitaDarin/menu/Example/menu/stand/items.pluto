@@ -1,0 +1,9 @@
+local features = Atdar.features
+
+return {
+    build = function(node, ctx)
+        local list = node:list("Example", { "example" }, "A small menu pack to copy to core and build on")
+        list:add_feature(features.get("example.hello"), "Say Hello", { "examplehello" }, "Shows a notification")
+        list:add_feature(features.get("example.ticker"), "Example Toggle", { "exampletoggle" }, "Notifies when switched on and off")
+    end,
+}

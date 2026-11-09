@@ -1,0 +1,16 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("Example")
+
+-- An action: runs once per click
+return Atdar.features.add(new Feature({
+    id = "example.hello",
+    kind = "action",
+
+    on_trigger = function(self)
+        log:notify("Hello from the Example menu :)")
+    end,
+}))

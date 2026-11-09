@@ -1,0 +1,9 @@
+-- The pack's Stand menu: main.pluto builds it, other files of this folder are loaded with ctx.load(name)
+local features = Atdar.features
+
+return {
+    build = function(node, ctx)
+        node:divider("Example Pack")
+        ctx.load("items").build(node, ctx)
+    end,
+}
