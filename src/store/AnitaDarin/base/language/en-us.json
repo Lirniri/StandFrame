@@ -349,6 +349,11 @@
                 "name": "Create",
                 "help": "Makes the files; ones there already stay as they are"
             },
+            "show_keys": {
+                "name": "Show Keys",
+                "help": "Shows each string's key instead of its text, to see which key is which while translating",
+                "unavailable": "Stand is in English, so the keys can't be shown: the script follows Stand's texts. Works while Stand is in another language"
+            },
             "progress": {
                 "name": "Translation Progress",
                 "help": "How much of each translation is done; the strings left go to Stand's log, key by key. A string the same as the English one counts as not translated",
@@ -573,6 +578,9 @@
     },
     "script_menu": {
         "stub": "Not made yet",
+        "divider": {
+            "options_from_other_menu": "Options from other menus"
+        },
         "unload": {
             "name": "Unload",
             "help": "Takes the loaded menu out of the script; Load Menu brings one back",
@@ -691,6 +699,15 @@
             "help": "Debug mode, the script's modules and the script itself"
         },
         "logs": "Logs",
+        "logs_help": "The script's log: the name in its lines, how long the files are kept, when they are written, clearing them",
+        "settings": {
+            "name": "Settings",
+            "help": "The script's own settings, whichever menu is loaded",
+            "languages": {
+                "name": "Languages",
+                "help": "What helps with translating the script"
+            }
+        },
         "clear_log": {
             "name": "Clear Current Log File",
             "help": "Removes today's log file only; the other days stay. The next line starts it again",

@@ -5,6 +5,7 @@
 --   Language: Auto (Stand)            - the language picked: Auto follows Stand's (lang)
 --   ── Translation ──
 --   Create Translation >              - code, name, the language to start from, Create (langcode ... langcreate)
+--   (Show Keys is made by show_keys, in Debug > Languages)
 --   Translation Progress              - how far each translation has come (langprogress)
 --   Reload Translations               - the files read again (langreload)
 --   Open Translation Folder           - store/<script>/base/language (langfolder)
@@ -127,6 +128,17 @@ local function create_translation(list: table): void
         refresh_languages()
         log:success(text("translation.created"):format(draft.code, count))
     end, { "langcreate" }, label("translation.create_button.help"))
+end
+
+-- Show Keys: each string's key instead of its text, to see which key is which while translating. Not with
+-- Stand in English (i18n says so): the switch goes back off. section puts it in Debug > Languages
+function module.show_keys(node: table): void
+    local keys_ref
+    keys_ref = node:toggle(label("translation.show_keys.name"), function(on)
+        if not i18n.set_show_keys(on) then
+            pcall(menu.set_value, keys_ref, false)
+        end
+    end, { "langkeys" }, label("translation.show_keys.help"))
 end
 
 -- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is

@@ -17,6 +17,7 @@ Atdar.filesystem = Atdar.loader.load("utils/filesystem")
 Atdar.profile = Atdar.loader.load("core/profile")
 Atdar.modules = Atdar.loader.load("core/module_manager")
 local profile = Atdar.profile
+local i18n = Atdar.loader.load("core/i18n")
 local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
 local script_menu = Atdar.loader.load("ui/stand/script/section")
 local profiles_dir = $"{stand.store}AnitaDarin/profiles/"
@@ -251,10 +252,21 @@ stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin d
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
-    "Debug Mode | Load Timing | Reload Natives | Logs | Name In Logs: "
-    .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
-    .. " | Keep Logs (Days) | Write Info At Once | Clear Current Log File | Clear All Log Files | Debug | Modules"
+    "Debug Mode | Load Timing | Reload Natives | Logs | Options from other menus | Settings | Debug | Modules"
     .. " | Delete Script", "Debug")
+-- The divider is called Logs too: the list is the one that opens
+local logs_list
+for _, child in find("Debug").children do
+    if stand.name_of(child) == "Logs" and child.kind == "list" then
+        logs_list = child
+    end
+end
+stand.equal(names_in(logs_list), "Name In Logs: "
+    .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
+    .. " | Keep Logs (Days) | Write Info At Once | Clear Current Log File | Clear All Log Files", "Debug > Logs")
+local debug_settings = stand.child(find("Debug"), "Settings")
+stand.equal(names_in(debug_settings), "Languages", "Debug > Settings")
+stand.equal(names_in(stand.child(debug_settings, "Languages")), "Show Keys", "Debug > Settings > Languages")
 stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
@@ -319,7 +331,7 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[10], debug_list.children[11], debug_list.children[12] }
+local debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
@@ -329,7 +341,7 @@ end
 stand.check(all_visible(false), "divider, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
-local modules_list = debug_list.children[11]
+local modules_list = debug_list.children[8]
 stand.click(modules_list)
 stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules/list")
 stand.check(#modules_list.children > 0, "and makes the list's items")
@@ -441,6 +453,29 @@ stand.equal(stand.name_of(language), "Language: Auto (Stand)", "Auto follows Sta
 stand.language = "ru"
 stand.frame()
 stand.equal(stand.name_of(language), "Язык: Авто (Stand)", "on Auto, Stand switching to Russian remakes the captions")
+stand.language = "en"
+stand.frame()
+
+-- Show Keys: each string's key instead of its text. Like a chosen language, not with Stand in English:
+-- it says why and the switch goes back off
+local show_keys = stand.find_item(find("Debug"), "Show Keys")
+stand.equal(show_keys.kind, "toggle", "Show Keys is a switch")
+stand.clear_logs()
+stand.click(show_keys)
+stand.check(stand.find_log("Stand is in English, so the keys can't be shown"), "with Stand in English it says why it can't")
+stand.equal(show_keys.value, false, "and the switch is back off")
+stand.equal(i18n.get_show_keys(), false, "nothing was changed")
+-- With Stand in another language the keys replace the texts, items already in the menu too
+stand.language = "ru"
+stand.frame()
+stand.click(show_keys)
+stand.equal(i18n.get_show_keys(), true, "with Stand in Russian the keys are on")
+stand.equal(stand.name_of(show_keys), "profile.translation.show_keys.name", "an item shows its key")
+stand.equal(stand.name_of(language), "profile.language.name", "a caption made with text() shows its key too")
+stand.click(show_keys)
+stand.equal(i18n.get_show_keys(), false, "switched off")
+stand.equal(stand.name_of(show_keys), "Отображать ключи", "the texts are back")
+stand.equal(stand.name_of(language), "Язык: Авто (Stand)", "the captions as well")
 stand.language = "en"
 stand.frame()
 

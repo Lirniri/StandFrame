@@ -36,20 +36,26 @@ local function branch_caption(): string
     return text("branch.name"):format(Atdar.profile.get("update_branch") or "main")
 end
 
+local function branch_options(): table
+    local options = {}
+    for _, branch in ipairs(BRANCHES) do
+        table.insert(options, text($"branch.{branch}"))
+    end
+    return options
+end
+
+-- The branch picker made by build
+local view = { branch = nil }
+
 function module.build(node: table): table
     local profile = Atdar.profile
     local list = node:list(label("name"), { "updater" }, label("help"))
     stub(list, "check", "updatercheck")
     -- The branch updates come from, its name in the item: "Update Branch: main"
-    local options = {}
-    for _, branch in ipairs(BRANCHES) do
-        table.insert(options, text($"branch.{branch}"))
-    end
-    local branch_ref = nil
-    branch_ref = list:list_action(branch_caption(), options, function(index)
+    view.branch = list:list_action(branch_caption(), branch_options(), function(index)
         local branch = BRANCHES[index]
         profile.set("update_branch", branch)
-        pcall(menu.set_menu_name, branch_ref, branch_caption())
+        pcall(menu.set_menu_name, view.branch, branch_caption())
         log:notify(text("branch.set"):format(branch))
     end, { "updaterbranch" }, label("branch.help"))
 
@@ -74,5 +80,15 @@ function module.build(node: table): table
 
     return list
 end
+
+-- The caption and the options are texts in the shown language (or the keys, Show Keys), so they're made
+-- again when it changes. The picker may belong to a section already removed: a failed update is skipped
+i18n.on_change(function()
+    if view.branch == nil then
+        return
+    end
+    pcall(menu.set_menu_name, view.branch, branch_caption())
+    pcall(menu.set_list_action_options, view.branch, branch_options())
+end)
 
 return module

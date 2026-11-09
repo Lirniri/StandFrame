@@ -32,6 +32,8 @@ local forced = nil
 -- What set_language() was last asked for; applied again when Stand's language changes,
 -- e.g. it couldn't be shown with Stand in English and now Stand isn't
 local requested = nil
+-- Show each string's key instead of its text (set_show_keys): a translator sees which key is which
+local show_keys = false
 -- Called after the shown language changed (on_change), e.g. to rebuild texts made with text()
 local listeners = {}
 
@@ -158,6 +160,9 @@ end
 local function apply_current(label: int, key: string, english: string): void
     local code = forced or current_code()
     local text = code and find(code, key) or english
+    if show_keys then
+        text = key
+    end
     -- Fails for English (see can_choose_language); then there's nothing to put
     if pcall(lang.set_translate, lang.get_current()) then
         lang.translate(label, text)
@@ -256,7 +261,7 @@ function module.label(key: string, fallback: ?string = nil): int
     if text and pcall(lang.set_translate, stand_code(code)) then
         lang.translate(label, text)
     end
-    if forced then
+    if forced or show_keys then
         apply_current(label, key, english)
     end
 
@@ -332,6 +337,32 @@ function module.set_language(code: ?string): void
     for _, fn in ipairs(listeners) do
         fn()
     end
+end
+
+-- Shows each string's key instead of its text, or the texts again. Like a chosen language it goes through
+-- Stand's translations, so it can't be shown with Stand in English. Applies to items already in the menu too
+-- @return false when it can't be shown (nothing changes), otherwise true
+function module.set_show_keys(on: bool): bool
+    local can_choose = module.can_choose_language()
+    if on and not can_choose then
+        log:warn(module.text("profile.translation.show_keys.unavailable"))
+        return false
+    end
+    show_keys = on
+    if can_choose then
+        for label, entry in pairs(made) do
+            apply_current(label, entry.key, entry.english)
+        end
+    end
+    for _, fn in ipairs(listeners) do
+        fn()
+    end
+    return true
+end
+
+-- @return Whether keys are shown instead of texts
+function module.get_show_keys(): bool
+    return show_keys
 end
 
 -- ─── Translations: made and read again while the script runs ─────────────────
@@ -449,7 +480,7 @@ util.create_tick_handler(function()
     if current ~= stand_language then
         stand_language = current
         ensure_translated()
-        if requested then
+        if requested or show_keys then
             module.set_language(requested)
         else
             -- Labels follow Stand by themselves; texts made with text() have to be made again

@@ -9,7 +9,9 @@
 --   Command Box >   Command Prefix, Separator, Found Commands
 --   Open Folder >   Lib, Resources, Store
 --   Update >        Check For Updates, Update (updater_menu, a stub for now)
---   Debug >         Debug Mode, then at the bottom in debug mode only:
+--   Debug >         Debug Mode, Load Timing, Reload Natives, ── Logs ──, Logs > (Name In Logs, Keep Logs,
+--                   Write Info At Once, Clear Current Log File, Clear All Log Files), Languages > (Show Keys),
+--                   then at the bottom in debug mode only:
 --                   ── Debug ──, Call Function, Modules, Delete Script (asks first)
 --
 -- Stand adds every item at the end of its list, so the order of the calls below is the order in the menu.
@@ -337,11 +339,15 @@ function module.build(section: table, opts: table): void
 
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)
-    debug:divider(label("logs"))
-    profile_menu.log_name(debug)
-    profile_menu.log_keep_days(debug)
-    profile_menu.log_info_at_once(debug)
-    clear_logs(debug)
+    local logs = debug:list(label("logs"), {}, label("logs_help"))
+    debug:divider(label("divider.options_from_other_menu"))
+    profile_menu.log_name(logs)
+    profile_menu.log_keep_days(logs)
+    profile_menu.log_info_at_once(logs)
+    clear_logs(logs)
+    local from_other_menu__settings = debug:list(label("settings.name"), {}, label("settings.help"))
+    local languages = from_other_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))
+    language_menu.show_keys(languages)
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_place.build(debug, call_function.build)
     modules_place.debug_only(delete_script(debug))
