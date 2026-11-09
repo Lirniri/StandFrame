@@ -124,6 +124,12 @@ stand.check(installed_text and installed_text:find("\n%s+\"version\""), "written
 plan = updater.check(opts)
 stand.check(updater.is_up_to_date(plan), "checked again: up to date")
 
+-- Files that match the release without an update (build.py): remember puts the version down
+os.remove($"{ls}store\\Renamed\\updater\\installed.json")
+stand.equal(updater.installed(opts), nil, "nothing installed by an update yet")
+updater.remember(plan)
+stand.equal(updater.installed(opts).version, "0.1.0", "an up-to-date check remembers the version")
+
 -- ─── Next release: a file gone ───────────────────────────────────────────────
 
 served = {}

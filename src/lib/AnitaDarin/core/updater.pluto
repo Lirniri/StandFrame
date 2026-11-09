@@ -257,6 +257,23 @@ function module.check(opts: ?table)
     return module.plan(manifest, o), nil
 end
 
+-- Remembers the release as installed when the plan has nothing to do: the files already match it (an install
+-- by build.py, or a copy of the release), so the version is known and the next update knows what to remove
+function module.remember(plan: table): void
+
+    if not module.is_up_to_date(plan) then
+        return
+    end
+
+    local installed = module.installed(plan.opts)
+
+    if installed ~= nil and installed.version == plan.version then
+        return
+    end
+
+    installed_file(plan.opts):write({ version = plan.version, files = plan.manifest.files })
+end
+
 -- Carries the plan out: downloads its files and checks each against the manifest; only when all came
 -- right writes them (first next to their places, then over them) and removes the old ones, then
 -- remembers the release as installed. Yields: call it from a thread. Restart the script after it
