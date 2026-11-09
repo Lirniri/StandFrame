@@ -210,6 +210,9 @@ local function update_fields(): bool
     if view.debug and not pcall(menu.set_value, view.debug, Atdar.profile.get("debug") == true) then
         ok = false
     end
+    if view.stop_on_change and not pcall(menu.set_value, view.stop_on_change, Atdar.profile.get("stop_on_change") == true) then
+        ok = false
+    end
     if view.load_timing and not pcall(menu.set_value, view.load_timing, Atdar.profile.get("load_timing") == true) then
         ok = false
     end
@@ -684,6 +687,19 @@ function module.debug(node: table): void
             Atdar.profile.set("debug", on)
         end
     end, { "debug" }, label("debug.help"), Atdar.profile.get("debug") == true)
+
+    -- The script stops by itself when its files change on disk (core/file_watch)
+    view.stop_on_change = node:toggle(label("stop_on_change.name"), function(on)
+        -- Stand also calls this at every start, restoring the state from its own profile:
+        -- the notice is only for a real switch on
+        if updating or Atdar.profile.get("stop_on_change") == on then
+            return
+        end
+        Atdar.profile.set("stop_on_change", on)
+        if on then
+            log:notify(text("stop_on_change.on"))
+        end
+    end, { "stoponchange" }, label("stop_on_change.help"), Atdar.profile.get("stop_on_change") == true)
 
     -- Works without debug mode too: it only adds lines to the log
     view.load_timing = node:toggle(label("load_timing.name"), function(on)

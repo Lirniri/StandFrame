@@ -1,0 +1,64 @@
+-- core/file_watch: with Stop After Changes on, the script stops when its files change on disk
+local stand = require("stand")
+stand.boot()
+
+-- A script folder of its own: lib/AnitaDarin/ and the launcher next to it
+local root = stand.tmpdir("file_watch")
+local lib = $"{root}lib/AnitaDarin/"
+io.makedirs(lib)
+stand.write_file($"{lib}a.pluto", "one")
+stand.write_file($"{root}AnitaDarin.pluto", "launcher")
+
+local values = { stop_on_change = false }
+Atdar.profile = { get = |key| -> values[key], on_change = || -> nil, log_name = || -> "AnitaDarin" }
+-- The notice is read from the real language file; only the folders it watches are the temp ones
+Atdar.filesystem = Atdar.loader.load("utils/filesystem")
+local watch = Atdar.loader.load("core/file_watch")
+Atdar.filesystem.paths = { scripts = root, lib = lib }
+
+-- Looks at the files once, a second after the last look
+local function look(): bool
+    util.yield(1000)
+    return watch.check()
+end
+
+-- Off: nothing is watched, whatever changes
+stand.write_file($"{lib}a.pluto", "two")
+stand.equal(look(), false, "off: a change doesn't stop the script")
+stand.equal(stand.stopped, nil, "off: and it isn't stopped")
+
+-- On: the files as they are now are the ones compared with
+values.stop_on_change = true
+stand.equal(look(), false, "switching on takes the files as they are")
+stand.equal(look(), false, "nothing changed: no stop")
+stand.equal(stand.stopped, nil, "nothing changed: not stopped")
+
+-- Less than a second after the last look nothing is looked at
+stand.write_file($"{lib}a.pluto", "three, longer")
+util.yield(100)
+stand.equal(watch.check(), false, "within a second it doesn't look yet")
+
+-- A written file stops the script and says which one
+stand.clear_logs()
+stand.toasts = {}
+stand.equal(look(), true, "a written file is a change")
+stand.check(stand.stopped, "the script is stopped")
+stand.check(stand.find_log("a.pluto changed on disk"), "and the file is named in the log")
+stand.equal(look(), true, "once stopping it stays so")
+
+-- A new file, a removed file and the launcher count too
+for _, change in ipairs({
+    { "a new file", || -> stand.write_file($"{lib}b.pluto", "new") },
+    { "a removed file", || -> os.remove($"{lib}b.pluto") },
+    { "the launcher", || -> stand.write_file($"{root}AnitaDarin.pluto", "launcher, changed") },
+}) do
+    stand.stopped = nil
+    watch.reset()
+    values.stop_on_change = true
+    look()
+    stand.equal(stand.stopped, nil, $"{change[1]}: not stopped before the change")
+    change[2]()
+    stand.equal(look(), true, $"{change[1]} stops the script")
+end
+
+stand.finish()

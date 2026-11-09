@@ -47,6 +47,9 @@ Atdar.modules = Atdar.loader.load("core/module_manager")
 Atdar.modules.load_dir($"{Atdar.filesystem.paths.lib}modules\\")
 Atdar.modules.start()
 
+-- Stops the script when its own files change on disk, if the profile's Stop After Changes is on
+Atdar.file_watch = Atdar.loader.load("core/file_watch")
+
 -- Features register themselves in Atdar.features; the menu looks them up by id.
 -- Which features get loaded depends on the menu: built-in ones or the chosen pack's
 Atdar.features = Atdar.loader.load("features/registry")

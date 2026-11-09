@@ -24,6 +24,7 @@ What's checked:
 | `test_loader` | `loader.load` survives broken files; `loader.auto` reaches every file in `natives` |
 | `test_natives` | natives as functions: `entity`, `ped` and its parts, `vehicle`, `player`, `hud.blip`; the `hud_color` and `feed_picture` tables |
 | `test_feature` | Feature's option checks, hook order, switching off on error, repeated clicks |
+| `test_file_watch` | Stop After Changes: off watches nothing, a written, added or removed file (and the launcher) stops the script, once a second |
 | `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk |
 | `test_modules_menu` | the modules menu: visibility in debug mode, actions, translation |
 | `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming |

@@ -305,6 +305,12 @@
             "name": "Debug Mode",
             "help": "Show debug-level log lines in the Stand console and notifications"
         },
+        "stop_on_change": {
+            "name": "Stop After Changes",
+            "help": "Stops the script when its own files (lib/<script> and the launcher) change on disk, e.g. after a new build is copied in, so it can be started again with the changes. Files changed before this is switched on don't count",
+            "on": "The script stops when its files change on disk",
+            "stopped": "%s changed on disk: the script stops, start it again"
+        },
         "load_timing": {
             "name": "Load Timing",
             "help": "Writes each script file's load time to Stand's log as it loads, and a full report at every start. Works without Debug Mode",
@@ -866,6 +872,9 @@
                     "bad_name": "A file name has letters, digits, _ and - only",
                     "exists": "There's a file with this name already"
                 },
+                "functions": {
+                    "divider": "Функции"
+                },
                 "files": {
                     "divider": "Files"
                 },
@@ -911,7 +920,7 @@
             },
             "short_names": {
                 "name": "Use Short Names",
-                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the one in the file store/<script>/user/call_function/short_names.json ({\"ped\": \"PLAYER.PLAYER_PED_ID\"}), else the first one of that name in the script, then in Stand's tables. Off: the whole path",
+                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A short name can also be typed in Function Name and Add: the entry from store/<script>/user/call_function/short_names.json is used first (for example, {\"ped\": \"PLAYER.PLAYER_PED_ID\"}); otherwise the first matching function is used, first in the script and then in Stand's tables. Off: the full path.",
                 "many": "%s: %d functions have this name, the first is used"
             },
             "registry": {

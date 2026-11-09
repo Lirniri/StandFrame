@@ -2,6 +2,9 @@
 -- Keep it cheap, and react only when something changes: a notification here without a check
 -- would show every frame. A module without on_tick costs nothing per frame
 --
+-- skip_first_tick defers the first tick after startup or restart by one frame. Use it when a tick
+-- needs game natives that may not be ready during the script's initial startup.
+--
 -- If on_tick throws an error, the module is marked failed, on_stop runs to clean up,
 -- and it stops ticking. Start it again from the Modules menu
 
@@ -9,7 +12,10 @@ local Module = Atdar.loader.load("core/module")
 
 local class SessionWatch extends Module
     function __construct()
-        parent:__construct({ name = "example.session_watch" })
+        parent:__construct({
+            name = "example.session_watch",
+            skip_first_tick = true,
+        })
         self.online = false
     end
 
@@ -23,7 +29,12 @@ local class SessionWatch extends Module
             return -- nothing changed, nothing to do
         end
         self.online = online
-        self.log:notify(online ? "joined an online session" : "left the online session")
+        if online then
+            local player_id = Atdar.natives.player.get_id()
+            self.log:notify($"player {player_id} joined an online session")
+        else
+            self.log:notify("left the online session")
+        end
     end
 end
 

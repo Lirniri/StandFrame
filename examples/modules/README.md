@@ -9,7 +9,7 @@ What the user switches on and off in the menu is a `Feature`, not a module (see 
 |---|---|
 | `01_basic.pluto` | The simplest module: a table of options, `on_start` / `on_stop` |
 | `02_class.pluto` | A module class: its own state and a function for other modules |
-| `03_tick.pluto` | `on_tick` every frame, reacting only to changes |
+| `03_tick.pluto` | `on_tick` every frame, reacting only to changes; `skip_first_tick` for game natives that aren't ready during startup |
 | `04_deps.pluto` | Depending on another module (`deps`) and calling its function through `self:get` |
 | `05_menu_functions.pluto` | A module's functions in the debug menu, return types, internal `_functions`, files in the module's folder |
 | `06_debug_display.pluto` | Setting up how a module looks in the debug menu: descriptions, default arguments, groups, hiding |
@@ -157,6 +157,8 @@ node:action(self:label("park", "Park"), ...)                                    
 
 - `name` is unique among all modules. A repeated name is an error when the file loads.
 - Override only the hooks `on_start`, `on_stop`, `on_tick`. Don't touch the `start`, `stop`, `tick` methods.
+- Set `skip_first_tick = true` when `on_tick` needs game natives that may not be ready during startup. The first tick
+  after each start or restart is then skipped; the module resumes ticking on the following frame.
 - An error in a hook doesn't bring the script down: the module gets the "error" status, and the error's text is in its
   tooltip in the "Modules" menu.
 - Don't call `notify` in `on_tick` without a check: the notification would appear 60 times a second.

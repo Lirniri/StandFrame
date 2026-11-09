@@ -143,6 +143,8 @@ local function fill_table(node: table, context: table, tbl: table): void
             node:readonly_name(label("empty"))
         end
 
+        node:divider(label("functions.divider"))
+
         -- @param
         -- @return
         for _, entry in ipairs(entries) do

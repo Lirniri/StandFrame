@@ -23,6 +23,7 @@ local DEFAULTS = {
     command_box_user_separator = "",
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
+    stop_on_change = false,     -- stop the script when its files change on disk (core/file_watch)
     load_timing = false,        -- log how long each file takes to load, and the report at start (core/loader)
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
     -- Every log line on disk at once; otherwise warnings and errors only, the rest within a second
