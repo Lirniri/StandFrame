@@ -2,6 +2,7 @@
 -- Meant for development: after build.py copies a new version in, the script stops and is started again by hand.
 -- Files are compared by write time and size, looked at once a second, and only while the setting is on:
 -- what changed before it was switched on doesn't count.
+-- The folder is listed in full only every RESCAN_MS (to find added files); in between only the known files are looked at.
 -- The script stops only when the files have been quiet for QUIET_MS: a build copying many files takes a while,
 -- and stopping on the first one would have the script start again on half-copied files
 
@@ -12,8 +13,11 @@ local log = new Logger("FileWatch")
 
 local module = {}
 
--- How often the files are looked at, ms
+-- How often the known files are looked at, ms
 local CHECK_MS = 1000
+
+-- How often the whole folder is listed again to find added files, ms
+local RESCAN_MS = 5000
 
 -- How long the files must stay unchanged after the last change before the script stops, ms
 local QUIET_MS = 2000
@@ -21,20 +25,17 @@ local QUIET_MS = 2000
 -- path -> "write time:size" of the files when the setting was switched on; nil while it is off
 local snapshot = nil
 local last_check = 0
+local last_scan = 0
 local stopping = false
 -- The first file that changed since the files were quiet, and when the last change was seen
 local pending = nil
 local last_change = 0
 
-
 -- One file's stamp: changes when the file is written or its size changes
--- @param path: string
--- @return string
 local function stamp(path: string): string
+
     local ok_time, written = pcall(io.writetime, path)
     local ok_size, size = pcall(io.filesize, path)
-    -- variable: "ok_time" is bool
-    -- variable: "ok_size" is bool
 
     if not ok_time then
         written = 0
@@ -44,23 +45,17 @@ local function stamp(path: string): string
     end
 
     return $"{written}:{size}"
-    -- what returns: the stamp
 end
 
-
--- Every file of the script: its lib folder and the launcher next to the other scripts
--- @return table path -> stamp
+-- Every file of the script (its lib folder and the launcher next to the other scripts) with its stamp
 local function take_snapshot(): table
+
     local result = {}
     local paths = Atdar.filesystem.paths
     local launcher = $"{paths.scripts}{Atdar.name}.pluto"
-    -- table: result is only string/string
-    -- variable: "launcher" is string
 
     local ok, files = pcall(io.listdir, paths.lib, true)
     if ok then
-        -- @param
-        -- @return
         for _, path in files do
             if io.isfile(path) then
                 result[path] = stamp(path)
@@ -73,45 +68,46 @@ local function take_snapshot(): table
     end
 
     return result
-    -- what returns: the files and their stamps
 end
 
+-- Stamps of the files already known, without listing the folder. Removed files are left out, added ones are not seen
+local function refresh_snapshot(known: table): table
 
--- The first file that differs from the snapshot: written, added or removed
--- @param before: table
--- @param now: table
--- @return ?string
-local function find_change(before: table, now: table): ?string
-    -- @param
-    -- @return
-    for path, value in now do
-        if before[path] ~= value then
-            return path
-            -- what returns: the changed or new file
+    local result = {}
+
+    for path in known do
+        if io.exists(path) then
+            result[path] = stamp(path)
         end
     end
 
-    -- @param
-    -- @return
+    return result
+end
+
+-- The first file that differs from the snapshot: written, added or removed
+local function find_change(before: table, now: table): ?string
+
+    for path, value in now do
+        if before[path] ~= value then
+            return path
+        end
+    end
+
     for path in before do
         if now[path] == nil then
             return path
-            -- what returns: the removed file
         end
     end
 
     return nil
-    -- what returns: nothing changed
 end
 
-
 -- Stops the script; the notice is for the user to start it again
--- @param path: string
--- @return void
 local function stop_for(path: string): void
-    stopping = true
+
     local short = path:gsub("\\", "/")
-    -- variable: "short" is string
+
+    stopping = true
 
     log:notify(i18n.text("profile.stop_on_change.stopped"):format(short:match("[^/]+$") or short))
     util.create_thread(function()
@@ -120,41 +116,45 @@ local function stop_for(path: string): void
     end)
 end
 
-
 -- One look at the files, at most once in CHECK_MS. Public for the tests; the tick handler below calls it
--- @return bool true if the script is stopping
+-- @return Whether the script is stopping
 function module.check(): bool
+
+    local now = util.current_time_millis()
+    local current
+    local changed
+
     if stopping then
         return true
-        -- what returns: already stopping
     end
 
     if Atdar.profile.get("stop_on_change") ~= true then
         snapshot = nil
         pending = nil
         return false
-        -- what returns: the setting is off
     end
 
-    local now = util.current_time_millis()
-    -- variable: "now" is number
-
+    -- Just switched on: the files as they are now are the ones to compare with
     if snapshot == nil then
         snapshot = take_snapshot()
         last_check = now
+        last_scan = now
         return false
-        -- what returns: just switched on, the files as they are now are the ones to compare with
     end
 
     if now - last_check < CHECK_MS then
         return false
-        -- what returns: not time yet
     end
     last_check = now
 
-    local current = take_snapshot()
-    local changed = find_change(snapshot, current)
-    -- variable: "changed" is ?string
+    if now - last_scan >= RESCAN_MS then
+        current = take_snapshot()
+        last_scan = now
+    else
+        current = refresh_snapshot(snapshot)
+    end
+
+    changed = find_change(snapshot, current)
 
     -- Still changing: wait, and compare with the files as they are now
     if changed ~= nil then
@@ -162,24 +162,21 @@ function module.check(): bool
         pending = pending or changed
         last_change = now
         return false
-        -- what returns: a file changed, waiting for the files to be quiet
     end
 
     if pending == nil or now - last_change < QUIET_MS then
         return false
-        -- what returns: nothing changed, or not quiet for long enough yet
     end
 
     stop_for(pending)
     return true
-    -- what returns: the files changed and are quiet again, the script is stopping
 end
 
 -- Forgets the snapshot and the stop, as if the script had just started. For the tests
--- @return void
 function module.reset(): void
     snapshot = nil
     last_check = 0
+    last_scan = 0
     stopping = false
     pending = nil
     last_change = 0
