@@ -1038,6 +1038,11 @@
             "remove": "Remove: %s",
             "more": "...and %d more"
         },
+        "check_divider": "Check",
+        "on_start": {
+            "name": "Check On Start",
+            "help": "Checks for a new version every time the script starts. Not while Check For Updates Every is 0"
+        },
         "check": {
             "name": "Check For Updates",
             "help": "Finds out whether a new version of the script is out"

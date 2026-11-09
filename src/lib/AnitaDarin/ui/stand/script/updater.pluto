@@ -5,7 +5,9 @@
 --   Available Version: not checked (read-only)
 --   Last Check: never              (read-only, profile: update_last_check)
 --   Changes                        (what the available version changes)
+--   ── Check ──
 --   Check For Updates
+--   Check On Start                 (profile: update_check_on_start)
 --   Update Branch: main            (profile: update_branch)
 --   ── Update ──
 --   Update
@@ -16,7 +18,7 @@
 -- The work is done by core/update_manager (check, install, the automatic check); the menu only starts it
 -- in a thread and shows what it found.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
--- updaterbranch, updaterbefore, updaterchanges
+-- updaterbranch, updaterbefore, updaterchanges, updaterstart
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -123,7 +125,15 @@ function module.build(node: table): table
     refresh_info()
     manager.on_change(refresh_info)
     list:action(label("changes.name"), show_changes, { "updaterchanges" }, label("changes.help"))
+    list:divider(label("check_divider"))
     threaded(list, "check", "updatercheck", manager.check)
+    list:toggle(label("on_start.name"), function(on)
+        -- Stand also calls it at every start: only a real change is saved
+        if profile.get("update_check_on_start") == on then
+            return
+        end
+        profile.set("update_check_on_start", on)
+    end, { "updaterstart" }, label("on_start.help"), profile.get("update_check_on_start") ~= false)
     -- The branch updates come from, its name in the item: "Update Branch: main"
     view.branch = list:list_action(branch_caption(), branch_options(), function(index)
         local branch = BRANCHES[index]

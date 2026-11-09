@@ -26,6 +26,10 @@ local DAY = 86400
 -- How often the automatic check looks whether it's due, ms
 local AUTO_TICK = 3600000
 
+-- Whether the automatic check is on (can_start_auto), and whether its thread is alive
+module.auto_check = false
+local auto_running = false
+
 -- Called after a check or an install, for the menu to show the new state
 local listeners = {}
 
@@ -200,10 +204,11 @@ function module.install_and_restart(): void
     end
 end
 
--- One round of the automatic check: checks when due, installs what it found if auto_update is on
-local function auto_round(): void
+-- One round of the automatic check: checks when due (or at once with force), installs what it found
+-- if auto_update is on
+local function auto_round(force: bool): void
 
-    if not module.is_check_due() then
+    if not force and not module.is_check_due() then
         return
     end
 
@@ -218,16 +223,46 @@ local function auto_round(): void
     end
 end
 
--- Starts the thread of the automatic check: a round soon after the start, then every AUTO_TICK
-function module.start_auto(): void
+-- Whether the automatic check is on
+function module.is_started_auto(): bool
+    return module.auto_check
+end
+
+-- Starts the thread of the automatic check: a round soon after the start, then every AUTO_TICK.
+-- It ends by itself once the check is switched off
+local function run_auto(): void
+    auto_running = true
+
     util.create_thread(function()
         util.yield(10000) -- the script is still starting
 
-        while true do
-            auto_round()
+        -- The first round is at the start: Check On Start asks for a check whether it's due or not.
+        -- 0 days means never, so it asks for nothing then
+        local first = Atdar.profile.get("update_check_on_start") ~= false and (Atdar.profile.get("update_check_days") or 0) ~= 0
+
+        while module.auto_check do
+            auto_round(first)
+            first = false
             util.yield(AUTO_TICK)
         end
+
+        auto_running = false
     end)
+end
+
+-- Switches the automatic check on or off at any time. When it's on, the interval and auto_update
+-- of the profile decide what a round does
+function module.can_start_auto(toggle: bool): void
+    module.auto_check = toggle
+
+    if toggle and not auto_running then
+        run_auto()
+    end
+end
+
+-- Called at the script's start: the automatic check is on
+function module.start_auto(): void
+    module.can_start_auto(true)
 end
 
 return module
