@@ -58,15 +58,15 @@
     },
     "lib/AnitaDarin/core/profile.pluto": {
       "sha256": "c5160df042789d0aca42932c69f233d0327ecb389fa77c744d9ab5e4e4072b34",
-      "size": 15881
+      "size": 15465
     },
     "lib/AnitaDarin/core/update_manager.pluto": {
-      "sha256": "b752bca77c3b31561197979a316cec85023dca5cfb2499df4a5a357fbf16d852",
-      "size": 7915
+      "sha256": "f7b30494c8084b52aa72e82e3a26e5cb2fbf942da42d7b5d11f8fe2a68e7d68f",
+      "size": 7760
     },
     "lib/AnitaDarin/core/updater.pluto": {
-      "sha256": "12c70db5957e9da4aa5fd614221bb0dcc17e8f000c95b253dd0e0cd2e3c41205",
-      "size": 14053
+      "sha256": "128c64dd78d0917f53eaf8f4e05cdbd8ef78fa783c650ff80f22e6c004fadedf",
+      "size": 13814
     },
     "lib/AnitaDarin/features/feature.pluto": {
       "sha256": "c6e6ddbaf130daba65a66786247367aa69ffbaa8fec838a34338afe766c4678d",
@@ -470,7 +470,7 @@
     },
     "lib/AnitaDarin/ui/stand/script/profile.pluto": {
       "sha256": "17f8f3622ba6b0c0763c0b3baa4b29717b4836bce36179459b4ef97f0b8f8986",
-      "size": 37148
+      "size": 36356
     },
     "lib/AnitaDarin/ui/stand/script/section.pluto": {
       "sha256": "a49f9009c67903abc1a3abdaef9ac990a2ee477f97c99f106295f6e4c882330b",
@@ -565,12 +565,12 @@
       "size": 1219
     },
     "store/AnitaDarin/core/language/en-us.json": {
-      "sha256": "a9c7cb5c3f7d2641c8ec49ccaca5cb7a1f6c6a47850bea9da36c750d7dcf98af",
-      "size": 52492
+      "sha256": "e44d8f31e79229bbb2171b4403a875e515d73e6feabfdf81566f061cdf7589c2",
+      "size": 51593
     },
     "store/AnitaDarin/core/language/ru-ru.json": {
-      "sha256": "030e4b3a887480cda4da86ebf1248a37019bcf9d494855a352bc7c33692d6e33",
-      "size": 72923
+      "sha256": "149ece70324f197ecfb0aa6b4412ba5b0cd38dd7b853233384800df82370e809",
+      "size": 72183
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/godmode.pluto": {
       "sha256": "46b59ac53ddcbc2a07b3b83c6e6657d1485dfad584605fcea76cd713f3aac6bd",
@@ -683,5 +683,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.7"
+  "version": "0.1.8"
 }
