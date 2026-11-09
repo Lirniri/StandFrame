@@ -57,12 +57,12 @@
       "size": 12020
     },
     "lib/AnitaDarin/core/profile.pluto": {
-      "sha256": "6497a11d2b84bb4f7dea35d6efe4ddcb7be7a6ffd4ee1f103cf2b00fbd3d5e24",
-      "size": 15258
+      "sha256": "01342e2984ee3651d37b44d9ca7fac9e5f997270e2759d0a07f34f2d99185d94",
+      "size": 15348
     },
     "lib/AnitaDarin/core/update_manager.pluto": {
-      "sha256": "2ea5373c3ec5d04d60b3a024acddd80e64b81e5b472165cef409730388db9106",
-      "size": 6301
+      "sha256": "a4bebc22c72a297c34951e6310525d65f41de9057fdce266d54da2eda7a8ee3a",
+      "size": 7471
     },
     "lib/AnitaDarin/core/updater.pluto": {
       "sha256": "039c1f3278e1b1bbfb8d270fb15e332b6eb6ffee54e76f7a6682c8672a672972",
@@ -477,8 +477,8 @@
       "size": 17058
     },
     "lib/AnitaDarin/ui/stand/script/updater.pluto": {
-      "sha256": "fe308ad53161fa962da887b861e0479adf8a4a82fbfe18b3a72422d4520ab012",
-      "size": 6587
+      "sha256": "f1b682e168f7c17a24ef5069467986cf01085928acf31a4ce963f419a9d6ecbf",
+      "size": 7103
     },
     "lib/AnitaDarin/ui/stand/script/user_commands.pluto": {
       "sha256": "5d3e6c2a425f52f006985c46c2fa429718bc0328e15f2f49388d52456ccc7caf",
@@ -565,12 +565,12 @@
       "size": 1219
     },
     "store/AnitaDarin/core/language/en-us.json": {
-      "sha256": "175a4d31d8f78177d4757f12a403cef9856f518b18137d8657f5de9ddc0411df",
-      "size": 50327
+      "sha256": "e177cfb390e877f78ef14dec67b419bf0a5984778a64cf50cf0b230c225ef384",
+      "size": 50548
     },
     "store/AnitaDarin/core/language/ru-ru.json": {
-      "sha256": "d2c0c762d9da93aa60e6da38c0a605c74fa660488708fa0de2374288b61530b3",
-      "size": 70171
+      "sha256": "56d0af04b0ed4839967c512d3c9f7a669d4ed5af8bad83c312c737f79681342b",
+      "size": 70529
     },
     "store/AnitaDarin/menu/Example/features/example/hello.pluto": {
       "sha256": "bae2320af242f35f409a42367966ae9ce684ed3a62d06cef53d0ec127f3112e1",
@@ -599,5 +599,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.4"
+  "version": "0.1.5"
 }
