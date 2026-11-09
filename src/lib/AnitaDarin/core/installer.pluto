@@ -7,22 +7,7 @@ local log = new Logger("Installer")
 
 local module = {}
 
--- How long restart_as waits for Stand to see the renamed script, ms
-local WAIT_FOR_COMMAND = 10000
-
--- Whether Stand has the command now
-local function command_exists(command: string): bool
-
-    local ok, ref = pcall(menu.ref_by_command_name, command)
-
-    if not ok or ref == nil then
-        return false
-    end
-
-    return menu.is_ref_valid(ref)
-end
-
--- Letters, digits and _: the name is a file name and becomes Stand's command startlua<name> (lowercase)
+-- Letters, digits and _: the name is a file name and becomes Stand's command startlua<name>
 function module.valid_name(name: string): bool
     return name:match("^[%w_]+$") ~= nil
 end
@@ -99,38 +84,6 @@ function module.restart(): void
     end)
 end
 
-
--- Starts the script under a new name, then stops this copy. restart_script can't do it after a rename (it starts
--- the old file, which is gone), and a stopped script can't start anything, so the new one is started first:
--- Stand makes startlua<name> (the name in lowercase) once it sees the renamed file, which may take a moment, so it's waited for
--- (WAIT_FOR_COMMAND ms). Without it the script just stops and has to be started by hand
--- @return Nothing; it works in a thread
-function module.restart_as(name: string): void
-    util.create_thread(function()
-
-        local command = $"startlua{name:lower()}"
-        local waited = 0
-
-        util.yield()
-
-        -- Stand doesn't see the renamed file by itself: opening its Lua Scripts list makes it look again
-        pcall(menu.trigger_commands, "stand")
-
-        while waited < WAIT_FOR_COMMAND and not command_exists(command) do
-            util.yield(500)
-            waited += 500
-        end
-
-        if command_exists(command) then
-            menu.trigger_commands(command)
-            util.yield(1000) -- the new copy is starting, the old one gives way
-        else
-            log:warn($"{command} didn't appear in Stand, start the script by hand")
-        end
-
-        util.stop_script()
-    end)
-end
 
 -- Pluto's io.remove also removes (empty) folders; plain Lua's os.remove can't on Windows
 local remove_path = io.remove or os.remove
