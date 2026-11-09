@@ -600,8 +600,8 @@ local no_categories = {}
 local categories = {
     { key = "add", name = label("categories.add"), words = { add = true } },
     { key = "getters", name = label("categories.getters"), words = { get = true } },
-    { key = "setters", name = label("categories.setters"), words = { set = true } },
-    { key = "checks", name = label("categories.checks"), words = { is = true, has = true, can = true } },
+    { key = "setters", name = label("categories.setters"), words = { set = true, can = true} },
+    { key = "checks", name = label("categories.checks"), words = { is = true, has = true } },
     { key = "loading", name = label("categories.loading"), words = { load = true } },
     { key = "saving", name = label("categories.saving"), words = { save = true } },
     -- remove: takes it out of a list (forgets it), the thing stays; delete: destroys it

@@ -251,6 +251,7 @@ Module = class
         return new JsonFile($"{dir}{file_name}.json")
     end
 
+    -- Public methods
     function on_start(): void
         -- body
     end
