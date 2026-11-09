@@ -3,11 +3,13 @@
 local stand = require("stand")
 stand.boot()
 Atdar.util = Atdar.loader.load("utils/util")
+Atdar.util.game = Atdar.loader.load("utils/util/game")
 Atdar.natives = Atdar.loader.auto({}, "natives")
 local entity = Atdar.natives.entity
 local ped = Atdar.natives.entity.ped
 local vehicle = Atdar.natives.entity.vehicle
 local player = Atdar.natives.player
+local user = Atdar.util.game.players.user
 
 -- A fake game: the local player is id 0 with ped 100
 local game = { player = 0, ped = 100, health = {}, max_health = {}, dead = {}, in_vehicle = {}, calls = {} }
@@ -74,7 +76,7 @@ game.in_vehicle[100] = nil
 
 -- ─── vehicle ─────────────────────────────────────────────────────────────────
 
-stand.check(vehicle.is_exist(501) and not vehicle.is_exist(100), "vehicle.is_exist: an existing entity that's a vehicle")
+stand.check(vehicle.does_exist(501) and not vehicle.does_exist(100), "vehicle.does_exist: an existing entity that's a vehicle")
 -- create: with is_network the game's native and its flags, without it Stand's entities.create_vehicle
 VEHICLE.CREATE_VEHICLE = function(model, x, y, z, heading, network, host, p7)
     call("CREATE_VEHICLE", model, x, y, z, heading, tostring(network), tostring(host), tostring(p7))
@@ -112,12 +114,12 @@ stand.equal(last_call(), "GET_MAX_WANTED_LEVEL 0", "with no arguments: the nativ
 
 game.health[100] = 10
 game.dead[100] = true
-player.user.restore_health()
+user.restore_health()
 stand.equal(game.health[100], 10, "user.restore_health leaves a dead ped alone")
 game.dead[100] = nil
-player.user.restore_health()
+user.restore_health()
 stand.equal(game.health[100], 200, "and restores a living one")
-player.user.restore_armor()
+user.restore_armor()
 stand.equal(last_call(), "SET_PED_ARMOUR 100 100", "user.restore_armor: the player's max armor")
 
 -- ─── hud.blip and the waypoint ───────────────────────────────────────────────

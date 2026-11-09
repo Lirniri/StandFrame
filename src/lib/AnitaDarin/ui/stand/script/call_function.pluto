@@ -615,7 +615,7 @@ local function build_functions(node: table): void
         end
     end
 
-    list:text_input(label("add.name"), { "debugaddfunction" }, function(value, click_type)
+    list:text_input(label("add.name"), { "debugaddfunc" }, function(value, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end

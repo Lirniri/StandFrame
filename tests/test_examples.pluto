@@ -1,7 +1,7 @@
 -- examples/: the examples run as written, so they stay correct when the code changes
 local stand = require("stand")
 stand.boot()
-for _, name in { "util", "filesystem", "lang", "color", "menu" } do
+for _, name in { "util", "filesystem", "lang", "color", "menu", "memory" } do
     Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
 -- A stand-in profile: the real one would save a profile file into src/store

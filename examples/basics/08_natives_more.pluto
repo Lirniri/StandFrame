@@ -9,9 +9,9 @@ local ped = natives.player.get_ped_id()
 -- ─── Handles and pointers ────────────────────────────────────────────────────
 
 -- A handle is what natives take, a pointer is what Stand's entities.* and memory work with
-local pointer = natives.entity.handle_to_pointer(ped)      -- nil when there's none
+local pointer = Atdar.memory.handle_to_pointer(ped)      -- nil when there's none
 if pointer ~= nil then
-    util.log($"back to the handle: {tostring(natives.entity.pointer_to_handle(pointer))}")
+    util.log($"back to the handle: {tostring(Atdar.memory.pointer_to_handle(pointer))}")
 end
 
 -- Every vehicle around, as handles; get_all(true) gives pointers
