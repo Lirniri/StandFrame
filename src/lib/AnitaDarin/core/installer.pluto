@@ -73,16 +73,17 @@ function module.rename(new_name: string): (bool, string, ?string)
     return true, ""
 end
 
--- Starts the script under its new name and stops this copy.
--- Stand may not see the renamed file until its script list refreshes, so the notice says how to start it by hand.
--- (Going through Lua Scripts in the menu to wait for the new file didn't help: Stand doesn't start it either)
-function module.restart_as(new_name: string): void
+-- Starts the script again under the same name: util.restart_script stops this copy and runs it anew.
+-- A startlua<name> command can't do it: while the script runs Stand has no such command (it has stoplua<name>).
+-- Not for a rename: it starts the file the script was started from, and that one is gone then (see stop:
+-- the notice says to start the renamed script by hand, as Stand may not see its file until the list refreshes)
+function module.restart(): void
     util.create_thread(function()
-        menu.trigger_commands($"startlua{new_name:lower()}")
         util.yield()
-        util.stop_script()
+        util.restart_script()
     end)
 end
+
 
 -- Pluto's io.remove also removes (empty) folders; plain Lua's os.remove can't on Windows
 local remove_path = io.remove or os.remove

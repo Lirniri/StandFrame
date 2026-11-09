@@ -60,15 +60,22 @@ Logger.flush()
 stand.check(#filesystem.list_files(Atdar.log_dir) >= before and stand.read_file(filesystem.list_files(Atdar.log_dir)[1]):find("written again", 1, true),
     "resume_file() writes the file again")
 
--- ─── restart_as: asks Stand to start the new name, then stops this copy ──────
+-- ─── restart: util.restart_script, no startlua command (it doesn't exist while the script runs) ──
 
 local real_trigger = menu.trigger_commands
 local asked = nil
 menu.trigger_commands = function(command) asked = command end
-stand.stopped = false
-installer.restart_as("Renamed")
+stand.restarted = false
+installer.restart()
 menu.trigger_commands = real_trigger
-stand.equal(asked, "startluarenamed", "restart_as asks Stand to start the renamed script")
-stand.check(stand.stopped, "and stops this copy")
+stand.check(stand.restarted, "restart restarts the script")
+stand.equal(asked, nil, "without asking Stand for a startlua command")
+
+-- ─── stop: after a rename the script only stops, restart_script would look for the old file ──
+
+stand.restarted = false
+stand.stopped = false
+installer.stop()
+stand.check(stand.stopped and not stand.restarted, "stop stops the script without restarting it")
 
 stand.finish()

@@ -200,7 +200,7 @@ end
 -- Installs and starts the script again when it was updated. Yields: call it from a thread
 function module.install_and_restart(): void
     if module.install() == "installed" then
-        installer.restart_as(Atdar.name)
+        installer.restart()
     end
 end
 

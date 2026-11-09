@@ -172,6 +172,7 @@ _G.util = {
     -- Runs the thread right away, to its end
     create_thread = |fn| -> fn(),
     stop_script = function() stand.stopped = true end,
+    restart_script = function() stand.restarted = true end,
     joaat = joaat,
     open_folder = |path| -> table.insert(stand.toasts, $"open_folder {path}"),
     draw_debug_text = |line| -> table.insert(stand.debug_texts, line),

@@ -746,7 +746,7 @@ function module.rename(node: table): void
                 return
             end
             log:notify(text("rename.done"):format(value, value))
-            installer.restart_as(value)
+            installer.stop()
         end)
         if not shown then
             log:debug($"rename to '{value}' not asked: the script is stopping")
