@@ -28,7 +28,7 @@ local DEFAULTS = {
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
     -- Every log line on disk at once; otherwise warnings and errors only, the rest within a second
     log_info_at_once = false,
-    auto_copy_menu = "AnitaDarin",        -- folder of a menu pack in store, copied to core at every start; "" = off
+    auto_copy_menu = "",        -- folder of a menu pack in store, copied to core at every start; "" = off
     auto_update = false,        -- a new version found by a check is installed by itself (updater_menu)
     update_check_days = 1,      -- check for a new version once in this many days; 0 = never
     update_branch = "main",     -- the repo's branch updates come from: "main" (releases) | "experiment" (newest)

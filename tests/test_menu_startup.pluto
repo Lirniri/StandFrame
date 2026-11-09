@@ -4,6 +4,12 @@
 local stand = require("stand")
 stand.boot()
 
+-- The pack isn't in every branch (main has none): nothing to test then
+if not io.isdir($"{stand.SRC}store/AnitaDarin/menu/AnitaDarin") then
+    print("test_menu_startup: 0 passed, 0 failed (skipped: no AnitaDarin menu pack in store)")
+    os.exit(0)
+end
+
 -- Where the copy goes: <scripts>/lib/AnitaDarin/. The code itself still loads from src (package.path)
 local scripts = stand.tmpdir("startup_scripts")
 local lib = $"{scripts}lib\\AnitaDarin\\"
