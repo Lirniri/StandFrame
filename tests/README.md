@@ -38,7 +38,7 @@ What's checked:
 | `test_i18n` | strings from language files through Stand labels, layers of sources |
 | `test_i18n_keys.py` | every key written out in the code (`lang.translate`, `i18n.label`/`text`, `label`/`text` of a scope) is in the English files |
 | `test_streaming` | loading each kind of asset (and `texture_dict`, `model`), `request(false)`, timeouts |
-| `test_examples` | the examples run as written: modules, features, the pack, `basics`, `menu/helpers`; every function the natives examples call exists |
+| `test_examples` | runs modules, features, the pack, `menu/helpers`, and `basics/06_check` plus `basics/07_parsers_and_colors` against stubs; checks the wrapper names used by the native examples |
 | `test_check` | `core/check`: `expecter` for function arguments and `validator` for options; errors from `Module` and `Feature` point at the line with the options, through `extends` too |
 | `test_parsers` | `parsers/`: hex colour (`color`), strict JSON (`json`); Pluto in `proglang.pluto`: arguments (`args`), words of a name (`name`), types from the source (`source`), paths (`path`); Stand command names (`stand.command_box`); the facades |
 | `test_updater` / `test_updater_manifest.py` | the updater from `updater/` on a fake GitHub, and the manifest generator |

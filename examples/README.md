@@ -41,4 +41,6 @@ English and Russian.
 2. `python build.py sync` copies the project to Stand (`%APPDATA%/Stand/Lua Scripts`).
 3. Restart the script in Stand; a module can simply be reloaded with "Reload" in Settings > Debug > Modules.
 
-`python tests/run.py` checks the examples' syntax along with the rest of the code, and runs most of them.
+`python tests/run.py` checks every example's syntax. `test_examples` also runs the module, feature, pack and menu-helper
+examples, plus basics `06_check` and `07_parsers_and_colors`, against Stand stubs. The native examples' wrapper names
+are checked, but their game calls aren't run; the other basics examples are syntax-checked only.

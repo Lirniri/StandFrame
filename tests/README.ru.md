@@ -12,7 +12,8 @@ python tests/run.py -v       показать вывод и у прошедши�
 
 Что проверяется:
 
-1. **syntax** — `plutoc` разбирает каждый `.pluto` в `src`, `examples` и `tests` (со строкой `pluto_use`, как в лаунчере).
+1. **syntax** — `plutoc` разбирает каждый `.pluto` в `src`, `examples`, `tests` и `updater` (со строкой `pluto_use`,
+   как в лаунчере).
 2. **natives** — каждый вызов `ПРОСТРАНСТВО.НАТИВ(...)` в `src` есть в дампе нативов
    `experiments/natives-3407a/init.lua`. Дамп не хранится в git; если его нет, шаг пропускается.
 3. **tests** — каждый `tests/test_*.pluto` запускается отдельным процессом `pluto`.
@@ -36,7 +37,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_i18n` | строки из языковых файлов через метки Stand, слои источников |
 | `test_i18n_keys.py` | каждый ключ, написанный в коде (`lang.translate`, `i18n.label`/`text`, `label`/`text` из scope), есть в английских файлах |
 | `test_streaming` | загрузку ассетов каждого типа (и `texture_dict`, `model`), `request(false)`, таймауты |
-| `test_examples` | примеры работают как написаны: модули, фичи, пакет, `basics`, `menu/helpers`; все функции, которые вызывают примеры нативов, существуют |
+| `test_examples` | запускает на заглушках модули, фичи, пакет, `menu/helpers`, `basics/06_check` и `basics/07_parsers_and_colors`; проверяет имена обёрток, используемые примерами нативов |
 | `test_check` | `core/check`: `expecter` для аргументов функций и `validator` для опций; ошибки `Module` и `Feature` указывают на строку, где написаны опции, и через `extends` тоже |
 | `test_parsers` | `parsers/`: hex-цвет (`color`), строгий JSON (`json`); Pluto в `proglang.pluto`: аргументы (`args`), слова имени (`name`), типы из исходника (`source`), пути (`path`); имена команд Stand (`stand.command_box`); фасады |
 | `test_updater` / `test_updater_manifest.py` | обновлялка из `updater/` на фейковом GitHub и генератор манифеста |

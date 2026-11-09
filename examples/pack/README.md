@@ -40,7 +40,7 @@ and pick the pack in the menu.
 - **Feature `id`s** are unique among all loaded features. The convention is to start with the pack's name:
   `examplepack.self.heal`.
 - **Translation keys** had better start with the pack's name too, so they don't clash with the script's strings.
-- **The pack's commands** (`{ "epheal" }`) get the script's prefix. The user can rename them; the names are saved in
-  `commands.json` in the pack's folder.
+- **The pack's commands** (`{ "epheal" }`) get the menu command prefix. The user can rename them and add aliases;
+  each item's settings are saved in the pack's `commands/` folder.
 - **An error in one file** doesn't bring the pack down: a feature file with an error is skipped, and the error goes to
   the log. `features.get` won't find a skipped feature, so check `Atdar.features.has(id)` for optional ones.

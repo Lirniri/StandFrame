@@ -5,6 +5,9 @@
 The script's updater. For now it stands apart: the script doesn't load it. It grows with the project and will be
 connected later.
 
+The script's Settings menu already has an Update section, but its check and install actions are placeholders. The
+automatic-update toggle and interval currently save profile settings only; they do not call this updater.
+
 | File | What it does |
 |---|---|
 | [updater.pluto](updater.pluto) | The updater for Stand: compares installed files with the release, downloads changed ones, removes dropped ones |

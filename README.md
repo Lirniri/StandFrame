@@ -2,57 +2,81 @@
 
 **English** | [Русский](README.ru.md)
 
-A script for [Stand](https://stand.sh) (GTA V) written in Pluto: a menu built from pluggable packs, modules with their
-own debugging right in the menu, profiles, translations, and a command box with commands of your own.
+StandFrame is a script for [Stand](https://stand.sh) (GTA V), written in Pluto. It provides a reusable script
+foundation and an in-game menu with profiles, translations, configurable commands, notifications, and debugging tools
+for modules.
 
-## Features
+## What is implemented
 
-- **Menu packs.** The built-in menu or any pack from `store/<script>/menu/`, with its own features, menu and
-  translations. A pack can be copied into the core, and then it loads on every start.
-- **Modules.** Internal parts of the script with dependencies, start and stop. Debug has a list for each module:
-  status, reload from disk, calling any function with arguments, loops, variable values.
-- **Profiles**, like Stand's: several sets of settings, saving, autosave, reset.
-- **Translations.** Stand's language or one of your own; create a translation into a new language right from the menu,
-  see its progress, reload it without restarting.
-- **Command box.** Custom prefixes, renaming any command, extra words, and user commands: a name that runs a chain of
-  other commands.
-- **Notifications** in Stand or in the game's feed: colours, a picture, emoji by type.
-- **Log**, one file per day, with the load time of every file measured.
+- **Menu packs.** Load a menu pack from `store/<script>/menu/`, or copy one into the script's core from the menu.
+  Packs can provide their own features, menu layout, translations, and command names.
+- **Features and modules.** Features are menu actions, toggles, and loops. Modules are script services that start
+  independently and can declare dependencies. In debug mode, inspect modules, call their functions, and reload changed
+  files.
+- **Profiles.** Create, save, load, delete, and optionally autosave sets of settings.
+- **Translations.** Follow Stand's language or select another available language. Create translation files, check
+  translation progress, and reload language files without restarting.
+- **Command box.** Configure command prefixes and separators, rename script and menu commands, add aliases, and create
+  user commands that run a sequence of Stand commands.
+- **Notifications and logs.** Choose where notifications appear and configure game-feed style, picture, colours, and
+  per-level emoji. Logs are written to daily files.
 
-## Installation
+The built-in menu is still in development. Its current feature items include self/player options (such as god mode,
+movement and health/armour/stamina actions) and a vehicle action; some menu sections are present as scaffolding and
+don't yet contain features. The updater engine is also separate from the running script: the Update menu entries are
+placeholders and do not install updates yet. See [updater/README.md](updater/README.md).
 
-You need Python 3. The script is copied to Stand's Lua Scripts folder (`%APPDATA%/Stand/Lua Scripts`):
+## Install and run
 
+Requirements: Python 3 for the build helper, and [Stand](https://stand.sh) to run the script. The project targets Pluto
+0.13.2.
+
+From the repository root:
+
+```text
+python build.py sync       copy or update the project in Stand
+python build.py watch      sync now and after changes in src (Ctrl+C to stop)
+python build.py rebuild    remove installed code, then copy the current project
+python build.py status     show the detected installation
+python build.py clean      remove installed code but keep user data
+python build.py clean --all
+                           also remove profiles, settings, logs, and saved commands
 ```
-python build.py sync       copy the project to Stand
-python build.py watch      copy after every change in src
-python build.py rebuild    clean and copy again (gets rid of deleted files)
-python build.py status     show what is installed
-```
 
-Profiles, settings, logs and your commands (`store/<script>/config.json`, `profiles/`, `logs/`, `commands/`) are left
-alone by copying and cleaning. The script can be renamed right in the menu; `build.py` finds it under the new name.
+By default, files go to `%APPDATA%/Stand/Lua Scripts`. Pass `--target DIR` to use another folder and `--name NAME` to
+choose the installed script name. If multiple copies are installed, specify `--name`.
 
-## Layout
+`sync` preserves existing user data in `store/<name>/`: `config.json`, `profiles/`, `logs/`, and `commands/`.
+`rebuild` removes files that were deleted from the project, but keeps that data. The script can be renamed in its
+settings; the build helper detects the installed launcher and continues to use its name.
 
-| Folder | What's inside |
+After syncing, start or restart the script in Stand. In the script's Settings section, choose a profile and language,
+configure notifications and command names, and use Load Menu to select or copy a menu pack.
+
+## Project layout
+
+| Path | Purpose |
 |---|---|
-| `src/AnitaDarin.pluto` | Launcher: the script's name from the file name, then `lib/<script>/bootstrap` |
-| `src/lib/AnitaDarin/core/` | The foundation: loader, log, profiles, translations, modules, checks (`check`), files |
-| `src/lib/AnitaDarin/natives/` | Game natives as functions, by section: `Atdar.natives.entity.vehicle.repair(handle)` |
-| `src/lib/AnitaDarin/parsers/` | Reading text: arguments, colours, JSON, Stand command names |
-| `src/lib/AnitaDarin/ui/stand/` | The menu: the script's section, profiles, module debugging, the command box |
-| `src/lib/AnitaDarin/modules/` | Modules, such as `VehicleManager` |
-| `src/store/AnitaDarin/` | Data: translations (`base/language`), menu packs (`menu/`) |
-| `examples/` | Step-by-step examples of everything, with explanations: [examples/README.md](examples/README.md) |
-| `tests/` | Tests that run outside the game: [tests/README.md](tests/README.md) |
-| `updater/` | The updater, not connected to the script yet: [updater/README.md](updater/README.md) |
+| `src/AnitaDarin.pluto` | Launcher; uses its file name to locate the matching library and data folders |
+| `src/lib/AnitaDarin/core/` | Loader, profiles, translations, logging, filesystem, checks, and module management |
+| `src/lib/AnitaDarin/features/` | Feature implementation and registry |
+| `src/lib/AnitaDarin/modules/` | Built-in modules, including `VehicleManager` |
+| `src/lib/AnitaDarin/natives/` | Game native wrappers, grouped by namespace |
+| `src/lib/AnitaDarin/parsers/` | Parsers for colours, JSON, Pluto source, and Stand command names |
+| `src/lib/AnitaDarin/ui/stand/` | Stand menu, settings, profiles, command box, and module debugging |
+| `src/store/AnitaDarin/` | Default data and the built-in menu pack |
+| `examples/` | Guided examples for core APIs, features, modules, menus, and packs |
+| `tests/` | Tests against Stand API stubs |
+| `updater/` | Standalone updater engine and release-manifest generator; not yet wired into the script |
 
-## Development
+## Development and tests
 
+Install Pluto 0.13.2 (`pluto` and `plutoc` available on `PATH`), then run:
+
+```text
+python tests/run.py
 ```
-python tests/run.py        syntax, natives and every test against the Stand stubs
-```
 
-Requires [Pluto](https://pluto-lang.org) to be installed. The `experiment` branch is for work in progress, `main` is
-for what has been tested.
+The runner checks Pluto syntax, validates native names when the local natives dump is available, and runs the
+Pluto and Python tests. To run only tests whose filename contains a word, pass it after the script, for example
+`python tests/run.py json`. See [tests/README.md](tests/README.md) and [examples/README.md](examples/README.md).
