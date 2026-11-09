@@ -111,6 +111,7 @@ local function run_check()
     end
 
     module.plan = plan
+    updater.remember(plan)
     Atdar.profile.set("update_last_check", os.time())
     return plan, nil
 end
