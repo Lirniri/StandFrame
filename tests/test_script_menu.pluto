@@ -510,7 +510,13 @@ local fresh_handle = fresh.build(new MenuNode(stand.root))
 stand.check(stand.find_item(fresh_handle, "1: test_saved(a)") ~= nil, "the functions come back from the file")
 stand.equal(stand.find_item(fresh_handle, "Save Functions").value, true, "with Save Functions on")
 stand.click(stand.child(functions_list, "Save Functions"))
-stand.check(not io.exists(saved_path), "off: the file is removed")
+stand.check(io.exists(saved_path) and stand.read_file(saved_path):find("test_saved", 1, true), "off: the file stays")
+stand.check(stand.read_file(saved_path):find('"save": false', 1, true), "marked as not used")
+-- At the next start with it off: the list isn't taken from the file, the switch is off
+package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
+local off_handle = Atdar.loader.load("ui/stand/script/call_function").build(new MenuNode(stand.root))
+stand.equal(stand.find_item(off_handle, "Save Functions").value, false, "the next start: Save Functions is off")
+stand.check(stand.find_item(off_handle, "test_saved") == nil, "and the file's list isn't used")
 stand.click(clear_all)
 Atdar.test_saved = nil
 

@@ -557,7 +557,9 @@ local function build_by_name(node: table): void
 end
 
 -- The file the functions are saved in while Save Functions is on: store/<script>/call_functions.json,
--- { "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the fields
+-- { "save": true, "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the
+-- fields. Switching Save Functions off leaves the file as it is ("save": false): what to do with it is the
+-- user's choice
 local function saved_file(): table
     local JsonFile = Atdar.loader.load("core/filesystem/json/file")
     return new JsonFile($"{Atdar.filesystem.paths.store}call_functions.json")
@@ -572,23 +574,23 @@ local function save_added(): void
     for _, entry in ipairs(added) do
         table.insert(paths, entry.path)
     end
-    saved_file():write({ functions = paths })
+    saved_file():write({ save = true, functions = paths })
 end
 
--- The functions of the file, put in the list; once, when the menu is first made (the file is there while
--- Save Functions was on)
+-- The Save Functions setting and, when it's on, the functions of the file, put in the list; once, when the menu
+-- is first made
 local loaded = false
 local function load_saved(): void
     if loaded then
         return
     end
     loaded = true
-    local file = saved_file()
-    if not file:exists() then
+    local data = saved_file():read() or {}
+    settings.save = data.save == true
+    if not settings.save then
         return
     end
-    settings.save = true
-    for _, path in ipairs((file:read() or {}).functions or {}) do
+    for _, path in ipairs(data.functions or {}) do
         if type(path) == "string" then
             last_id += 1
             table.insert(added, { id = last_id, path = path, state = {} })
@@ -670,7 +672,8 @@ local function build_functions(node: table): void
         log:notify(text("clear_all.done"))
     end, {}, label("clear_all.help"))
 
-    -- On: the list is kept in a file and comes back at the next start; off: the file is removed
+    -- On: the list is kept in a file and comes back at the next start; off: the file stays as it was, with
+    -- "save" false, so the next start doesn't use it
     list:toggle(label("save.name"), function(on)
         if stopping or settings.save == on then
             return
@@ -680,7 +683,12 @@ local function build_functions(node: table): void
             save_added()
             return
         end
-        saved_file():remove()
+        local file = saved_file()
+        local data = file:read()
+        if data ~= nil then
+            data.save = false
+            file:write(data)
+        end
     end, {}, label("save.help"), settings.save)
 
     list:divider(label("functions.name"))

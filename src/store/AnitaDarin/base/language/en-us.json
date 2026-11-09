@@ -887,7 +887,7 @@
             },
             "save": {
                 "name": "Save Functions",
-                "help": "Keeps the list of functions in a file, store/<script>/call_functions.json, and puts it back at the next start. The paths only, not what's typed in the fields. Off: the file is removed"
+                "help": "Keeps the list of functions in a file, store/<script>/call_functions.json, and puts it back at the next start. The paths only, not what's typed in the fields. Off: the file stays, it just isn't used"
             },
             "guide": {
                 "name": "Arguments Guide",
