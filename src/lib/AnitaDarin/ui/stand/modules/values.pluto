@@ -370,7 +370,7 @@ end
 
 -- Fields every module has (Module's own): not the module's variables
 local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true, debug = true,
-    _language_loaded = true }
+    _language_loaded = true, skip_first_tick = true, _skip_tick = true }
 
 
 -- The module's own fields (set in its __construct or later), sorted by name: { name, value }.

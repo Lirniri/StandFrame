@@ -42,6 +42,25 @@ local fine = new Module({ name = "with_debug", debug = { hide = { "x" } } })
 stand.equal(fine.debug.hide[1], "x", "a right one is kept as self.debug")
 stand.equal(next(new Module({ name = "no_debug" }).debug), nil, "none given: an empty table")
 
+-- skip_first_tick: the first tick after every start is skipped
+stand.check(not pcall(|| -> new Module({ name = "bad_skip", skip_first_tick = "yes" })), "skip_first_tick must be a boolean")
+local skip_ticks = 0
+local skipper = new Module({ name = "skipper", skip_first_tick = true, on_tick = function() skip_ticks += 1 end })
+skipper:start()
+skipper:tick()
+stand.equal(skip_ticks, 0, "skip_first_tick: the first tick does nothing")
+skipper:tick()
+stand.equal(skip_ticks, 1, "and the next one runs")
+skipper:stop()
+skipper:start()
+skipper:tick()
+stand.equal(skip_ticks, 1, "skipped again after every start")
+local no_skip_ticks = 0
+local no_skip = new Module({ name = "no_skip", on_tick = function() no_skip_ticks += 1 end })
+no_skip:start()
+no_skip:tick()
+stand.equal(no_skip_ticks, 1, "without it the first tick runs")
+
 -- file_changed: whether the file differs from the code running
 stand.equal(modules.file_changed("a"), false, "a file as it was loaded: not changed")
 stand.write_file($"{dir}a.pluto", module_file("a", "", 1) .. "-- edited\n")

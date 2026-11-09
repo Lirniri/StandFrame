@@ -14,6 +14,9 @@
 --     categories = { { key = "getters", words = { "find" } },  -- more words for a list there is
 --                    { key = "shop", name = "Shop", words = { "buy", "sell" } } },  -- a list of its own
 -- See examples/modules/06_debug_display.pluto
+--
+-- skip_first_tick = true (optional): the first on_tick after every start is skipped. Stand runs the first tick
+-- right away, while the script is still starting, so what needs the natives loaded waits a frame
 
 local class_utils = Atdar.globals.pluto.class
 -- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake
@@ -47,7 +50,7 @@ local DEBUG_PARTS = { functions = "table", groups = "table", hide = "table", cat
 -- What one function's entry in debug.functions may hold
 local FUNCTION_PARTS = { "help", "params", "args", "live" }
 -- The options a Module takes besides its hooks
-local OPTIONS = { name = true, deps = true, debug = true }
+local OPTIONS = { name = true, deps = true, debug = true, skip_first_tick = true }
 for hook in pairs(HOOKS) do
     OPTIONS[hook] = true
 end
@@ -94,6 +97,10 @@ local function validate_opts(opts: table): void
         validate_debug(v, opts.debug)
     end
 
+    if opts.skip_first_tick ~= nil then
+        v.kind("skip_first_tick", opts.skip_first_tick, "boolean")
+    end
+
     if opts.deps ~= nil then
         v.kind("deps", opts.deps, "table")
         for i, dep in ipairs(opts.deps) do
@@ -121,6 +128,10 @@ Module = class
         self.log = new Logger(opts.name)
         -- How it shows in the debug menu (see the top of this file)
         self.debug = opts.debug or {}
+        -- Whether the first tick after a start is skipped (see the top of this file)
+        self.skip_first_tick = opts.skip_first_tick == true
+        -- Set at every start: the first tick still to skip
+        self._skip_tick = false
 
         self.on_start = opts.on_start or self.on_start
         self.on_stop = opts.on_stop or self.on_stop
@@ -155,6 +166,7 @@ Module = class
             return false
         end
         self.error = nil
+        self._skip_tick = self.skip_first_tick
         if not self:call_hook("on_start") then
             return false
         end
@@ -175,6 +187,10 @@ Module = class
 
     function tick(): void
         if self.status ~= "running" then
+            return
+        end
+        if self._skip_tick then
+            self._skip_tick = false
             return
         end
         if not self:call_hook("on_tick") then

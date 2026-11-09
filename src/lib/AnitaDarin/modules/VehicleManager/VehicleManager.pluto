@@ -22,6 +22,9 @@ local class VehicleManager extends Module
     function __construct(ped: int = 0)
         parent:__construct({
             name = "VehicleManager",
+            -- Stand runs the first tick right away, while the script is still starting: skipped, so the
+            -- natives load a frame later, not in the start's time
+            skip_first_tick = true,
             -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
             debug = {
                 hide = {
@@ -44,18 +47,10 @@ local class VehicleManager extends Module
     -- aren't loaded while the script starts
     function on_start()
         self.current_vehicle = 0
-        self.__ticked = false
     end
 
     -- Remembers every vehicle the player gets into
     function on_tick()
-        -- Stand runs the first tick right away, while the script is still starting: skipped, so the
-        -- natives load a frame later, not in the start's time
-        if not self.__ticked then
-            self.__ticked = true
-            return
-        end
-
         -- State
         if not self:does_last_exist() then
             self:remove_last_vehicle()
