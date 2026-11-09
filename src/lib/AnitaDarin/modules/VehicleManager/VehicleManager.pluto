@@ -122,6 +122,7 @@ local class VehicleManager extends Module
             return self.ped_id
         end
         return Atdar.natives.player.get_ped_id()
+        -- @return a player's ped, or the one set_ped_id gave
     end
 
     -- The last vehicle remembered (add_vehicle), or nil if there's none
@@ -130,6 +131,7 @@ local class VehicleManager extends Module
             return nil
         end
         return self.last_handle
+        -- @return ?int
     end
 
     -- The vehicle remembered before the last one, or nil if there's none
@@ -138,6 +140,7 @@ local class VehicleManager extends Module
             return nil
         end
         return self.prev_handle
+        -- @return ?int
     end
 
     -- Every vehicle remembered, as a list of handles
@@ -150,6 +153,7 @@ local class VehicleManager extends Module
         end
 
         return handles
+        -- @return table of handles
     end
 
     -- Set
@@ -166,11 +170,13 @@ local class VehicleManager extends Module
     -- Whether the vehicle before the last one is remembered too
     function set_remember_prev(toggle: bool): void
         self.remember_prev = toggle
+        -- @return void
     end
 
     -- Remember every vehicle the player gets into by itself
     function set_auto_remember(toggle: bool): void
         self.auto_remember = toggle
+        -- @return void
     end
 
     -- Remembers a vehicle the script made or the player got into
@@ -183,6 +189,7 @@ local class VehicleManager extends Module
         end
         self.vehicles[handle] = true
         self:update_vehicle(handle)
+        -- @return void
     end
 
     -- Forgets a vehicle
@@ -194,6 +201,7 @@ local class VehicleManager extends Module
         if self.prev_handle == handle then
             self.prev_handle = -1
         end
+        -- @return void
     end
 
     -- Forgets the vehicle remembered last (only from the table: the vehicle stays in the game)
@@ -203,6 +211,7 @@ local class VehicleManager extends Module
         end
 
         self:remove_vehicle(self.last_handle)
+        -- @return void
     end
 
     -- Forgets the vehicle remembered before the last one (only from the table)
@@ -212,6 +221,7 @@ local class VehicleManager extends Module
         end
 
         self:remove_vehicle(self.prev_handle)
+        -- @return void
     end
 
     -- Forgets all vehicles
@@ -219,6 +229,7 @@ local class VehicleManager extends Module
         self.vehicles = {}
         self.last_handle = -1
         self.prev_handle = -1
+        -- @return void
     end
 
     -- Actions
@@ -234,6 +245,7 @@ local class VehicleManager extends Module
         end
 
         self.last_handle = handle
+        -- @return void
     end
 
     -- The vehicle the player sits in, remembered once when they get into it (not every frame they stay).
@@ -260,6 +272,8 @@ local class VehicleManager extends Module
         if is_new then
             self.log:debug($"remembered the vehicle the player got into: {vehicle}")
         end
+
+        -- @return void
     end
 
     -- Repairs a vehicle (natives entity.vehicle.repair): damage and dents gone, full health, drivable
@@ -271,6 +285,7 @@ local class VehicleManager extends Module
         end
 
         return Atdar.util.game.entity.vehicle.repair(handle, dirt_level or false, start_engine)
+        -- @return bool
     end
 
     -- Repairs the vehicle remembered last
@@ -296,6 +311,7 @@ local class VehicleManager extends Module
         end
 
         return repaired
+        -- @return int
     end
 
     -- Explodes a vehicle
@@ -321,6 +337,7 @@ local class VehicleManager extends Module
             net_id = n_vehicle.get_net_id(handle)
         })
         return true
+        -- @return bool
     end
 
     -- Explodes the vehicle remembered last
@@ -346,6 +363,7 @@ local class VehicleManager extends Module
         end
 
         return exploded
+        -- @return int
     end
 
     -- Spawns a vehicle and remembers it. By default 5 m in front of the player, facing where the player faces.
@@ -390,6 +408,7 @@ local class VehicleManager extends Module
 
         self:add_vehicle(handle)
         return handle
+        -- @return ?int
     end
 
     -- Deletes a vehicle from the game and forgets it
@@ -409,6 +428,7 @@ local class VehicleManager extends Module
         end
 
         return n_vehicle.delete(handle)
+        -- @return bool
     end
 
     -- Deletes the vehicle remembered last from the game and forgets it
@@ -433,6 +453,7 @@ local class VehicleManager extends Module
         end
 
         return deleted
+        -- @return int
     end
 
     -- Saving
