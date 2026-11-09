@@ -109,6 +109,14 @@ found, fn = pluto.path.resolve("test_path.fn()")
 stand.check(found and fn() == 1, "path.resolve: brackets at the end aren't part of the path")
 local method_found, method, owner = pluto.path.resolve("test_path:fn")
 stand.check(method_found and owner == Atdar.test_path and method() == 1, "path.resolve: a colon gives the method and its owner")
+-- A name both Stand and the script have: plain it's Stand's, with Atdar in front the script's
+Atdar.test_clash = { who = "atdar" }
+_G.test_clash = { who = "stand" }
+local _, plain_table = pluto.path.resolve("test_clash")
+local _, scripts_table = pluto.path.resolve("Atdar.test_clash")
+stand.check(plain_table.who == "stand" and scripts_table.who == "atdar", "path.resolve: a global of Stand first; the script's table of the name with Atdar in front")
+Atdar.test_clash = nil
+_G.test_clash = nil
 stand.equal(pluto.path.resolve("test_path.missing"), false, "path.resolve: nothing there - false")
 stand.equal(pluto.path.resolve("test_path:value"), false, "path.resolve: a colon after something that isn't a function - false")
 local path_text, inline = pluto.path.split("game.set_speed(5, true)")

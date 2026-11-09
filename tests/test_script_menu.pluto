@@ -343,7 +343,7 @@ stand.check(all_visible(false), "divider, Call Function, Modules and Delete Scri
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Notice In Stand",
+stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Show Call Time | Show Result On Screen | Result Length On Screen | Notice In Stand",
     "Call Function: two lists, the Arguments Guide, then the settings")
 -- Arguments Guide: how to write the arguments, as a notice in Stand
 stand.toasts = {}
@@ -395,6 +395,71 @@ stand.click(call_button)
 stand.frame()
 stand.equal(stand.child(by_name, "Table Depth"), nil, "a plain result: the table settings are gone")
 Atdar.test_table, Atdar.test_plain_value = nil, nil
+function_name.on_change("", 0)
+
+-- A loop draws what the function gave on screen (debug text), once a frame, like a module's loop
+Atdar.test_loop = function() return 7 end
+function_name.on_change("test_loop", 0)
+stand.debug_texts = {}
+stand.click(stand.child(by_name, "Loop"))
+stand.frame()
+stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "Loop draws the name and what the function gave")
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 1, "once a frame, not twice")
+Atdar.test_loop = function() return { 1, "a" } end
+stand.frame()
+stand.equal(stand.debug_texts[#stand.debug_texts], 'test_loop -> {1, "a"}', "a table unpacked")
+Atdar.test_loop = function() end
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "a call that gives nothing draws nothing")
+stand.click(stand.child(by_name, "Loop"))
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "stopped: nothing drawn")
+-- Show Result On Screen and Show Call Time: each can be turned off
+stand.equal(stand.child(call_list, "Show Result On Screen").value, true, "Show Result On Screen is on by default")
+stand.equal(stand.child(call_list, "Show Call Time").value, true, "Show Call Time is on by default")
+local timed = {}
+_G.profiling = { tick = function(label_text, fn) table.insert(timed, label_text) fn() end }
+Atdar.test_loop = function() return 7 end
+stand.click(stand.child(by_name, "Loop"))
+stand.frame()
+stand.equal(timed[#timed], "test_loop()", "Show Call Time on: the call is timed, with its name")
+stand.click(stand.child(call_list, "Show Call Time"))
+stand.equal(Atdar.loader.load("ui/stand/core/call_display").show_time, false, "(the setting is shared: ui/stand/core/call_display)")
+timed = {}
+stand.frame()
+stand.equal(#timed, 0, "off: not timed")
+stand.click(stand.child(call_list, "Show Result On Screen"))
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "Show Result On Screen off: nothing drawn")
+stand.click(stand.child(call_list, "Show Result On Screen"))
+stand.click(stand.child(call_list, "Show Call Time"))
+stand.frame()
+stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "and on again: drawn")
+-- Result Length On Screen: a long result is cut, so it doesn't run off the screen
+local length = stand.child(call_list, "Result Length On Screen")
+stand.check(length.kind == "slider" and length.value == 100, "Result Length On Screen is a slider, 100 by default")
+Atdar.test_loop = function() return string.rep("x", 300) end
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts[#stand.debug_texts], 103, "a long result: 100 characters and ...")
+stand.check(stand.debug_texts[#stand.debug_texts]:sub(-3) == "...", "cut with ...")
+menu.set_value(length, 30)
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts[#stand.debug_texts], 33, "the slider sets how many")
+Atdar.test_loop = function() return 7 end
+stand.debug_texts = {}
+stand.frame()
+stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "a short one isn't cut")
+menu.set_value(length, 100)
+stand.click(stand.child(by_name, "Loop"))
+_G.profiling = nil
+Atdar.test_loop = nil
 function_name.on_change("", 0)
 
 -- The setting is a switch that other lists read: it's on, can be turned off and on again
@@ -509,6 +574,24 @@ add_function.on_change("unique_short_fn", 0)
 stand.check(stand.find_log("'unique_short_fn' not found"), "with Use Short Names off a short name isn't looked for")
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.click(clear_all)
+-- The user's own short names, from store/<script>/for_core/ui/logic/stand/script/call_function/short_names.json
+local names_dir = $"{stand.store}AnitaDarin/for_core/ui/logic/stand/script/call_function/"
+io.makedirs(names_dir)
+stand.write_file($"{names_dir}short_names.json", '{"mine": "test_deep.sub.unique_short_fn", "broken": "no.such.path", "bad": 5}')
+stand.clear_logs()
+add_function.on_change("mine", 0)
+stand.equal(added_names(), "1: unique_short_fn: int", "a name from the file is the path it gives")
+stand.check(stand.read_file($"{names_dir}short_names.json"):find("mine", 1, true), "(the file is only read)")
+add_function.on_change("broken", 0)
+stand.check(stand.find_log("'broken' not found") and added_names() == "1: unique_short_fn: int", "a name in the file whose path leads nowhere isn't added")
+stand.click(stand.child(call_list, "Use Short Names"))
+stand.click(clear_all)
+stand.clear_logs()
+add_function.on_change("mine", 0)
+stand.check(stand.find_log("'mine' not found") and added_names() == "", "with Use Short Names off the file isn't used: only a path is")
+stand.click(stand.child(call_list, "Use Short Names"))
+stand.click(clear_all)
+os.remove($"{names_dir}short_names.json")
 Atdar.test_deep, TEST_SHORT = nil, nil
 
 -- Save Functions: the list is kept in a file while it's on, and comes back when the menu is first made

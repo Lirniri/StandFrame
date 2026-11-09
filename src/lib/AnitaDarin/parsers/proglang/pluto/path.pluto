@@ -9,9 +9,10 @@
 --     path.short_name("PLAYER.PLAYER_PED_ID")   -- "PLAYER_PED_ID"; "game.repair_vehicle" -> "repair_vehicle"
 --     path.find("get_user_vehicle_as_handle")   -- { "entities.get_user_vehicle_as_handle" }
 --
--- The path starts at Atdar with dots (game.repair_vehicle); a module's name may come first (VehicleManager.get);
--- the first word that Atdar doesn't have is a global (util, menu, PLAYER, ...). With a colon the function is
--- a method of what's before it (VehicleManager:get).
+-- The first word is a global of Stand first (util, entities, menu, PLAYER, ...), else something of the script
+-- (game.repair_vehicle; a module's name may come first: VehicleManager.get). The script has tables named like
+-- Stand's (Atdar.util, Atdar.menu): those are reached with Atdar in front (Atdar.util.hash), plain util is Stand's.
+-- With a colon the function is a method of what's before it (VehicleManager:get).
 
 -- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
 -- that's what a parser is for
@@ -67,10 +68,13 @@ function module.resolve(typed: string)
         if was_first and key == "Atdar" then
             continue
         end
-        local next_value = step(current, key)
-        -- The first word that Atdar doesn't have: a global (util, menu, ...)
-        if next_value == nil and was_first then
+        local next_value = nil
+        -- The first word: a global of Stand (util, menu, entities, ...) before the script's own table of that name
+        if was_first then
             next_value = _G[key]
+        end
+        if next_value == nil then
+            next_value = step(current, key)
         end
         current = next_value
         if current == nil then

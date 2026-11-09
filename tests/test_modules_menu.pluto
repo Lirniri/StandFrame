@@ -470,6 +470,29 @@ stand.equal(stand.debug_texts[#stand.debug_texts], "counter.add(amount, note) ->
 stand.debug_texts = {}
 stand.frame()
 stand.equal(#stand.debug_texts, 1, "once a frame, not twice")
+-- The settings of Debug > Call Function > Settings are the same here (ui/stand/core/call_display)
+local display = Atdar.loader.load("ui/stand/core/call_display")
+display.show_result = false
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "Show Result On Screen off: a module's loop draws nothing")
+display.show_result = true
+display.result_length = 20
+stand.debug_texts = {}
+stand.frame()
+local cut_text = stand.debug_texts[#stand.debug_texts]
+stand.check(cut_text ~= nil and #cut_text == 23 and cut_text:sub(-3) == "...", "Result Length On Screen: the text is cut with ...")
+display.result_length = 100
+local timed_names = {}
+_G.profiling = { tick = function(name, fn) table.insert(timed_names, name) fn() end }
+stand.frame()
+stand.equal(timed_names[#timed_names], "counter.add()", "Show Call Time on: a module's loop is timed")
+display.show_time = false
+timed_names = {}
+stand.frame()
+stand.equal(#timed_names, 0, "off: not timed")
+display.show_time = true
+_G.profiling = nil
 -- A table is unpacked
 stand.click(stand.child(add_node, "Loop"))
 local real_add = counter.add

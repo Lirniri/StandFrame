@@ -23,6 +23,8 @@ local Module = Atdar.loader.load("core/module")
 local arguments = Atdar.loader.load("ui/stand/core/arguments")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
 local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
+-- What a loop puts on the screen (the settings are in Debug > Call Function)
+local display = Atdar.loader.load("ui/stand/core/call_display")
 -- What calls gave and the module's variables, shown (Variable lines, Value and Variables lists)
 local values = Atdar.loader.load("ui/stand/modules/values")
 -- A module's on_tick run by hand (its on_tick() list)
@@ -303,9 +305,7 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
         -- What the last call gave is drawn once every frame (debug text shows for one frame only), so it
         -- stays between the calls of a loop with an interval too
         local function draw_result()
-            if run.result ~= nil and util.draw_debug_text ~= nil then
-                util.draw_debug_text(run.result)
-            end
+            display.draw(run.result)
         end
         if run.every ~= nil then
             local now = util.current_time_millis()
@@ -334,12 +334,8 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
         local function call_once()
             results = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
         end
-        -- How long a call takes, on screen (info text)
-        if profiling ~= nil then
-            profiling.tick($"{module_name}.{fn.name}()", call_once)
-        else
-            call_once()
-        end
+        -- How long a call takes, on screen (info text); Debug > Call Function > Settings decide what's shown
+        display.timed($"{module_name}.{fn.name}()", call_once)
         if not results[1] then
             function_loops[key] = nil
             show_loop_status(key, "failed")

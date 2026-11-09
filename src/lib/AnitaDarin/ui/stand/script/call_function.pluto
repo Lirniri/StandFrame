@@ -7,7 +7,8 @@
 --                     Functions (list): Add, Clear, Clear All, Save Functions, the Functions divider, then the
 --                     functions added, each with its number
 --                     Arguments Guide: how to write the arguments, as a notice in Stand
---                     Settings (divider), Use Short Names, Notice In Stand
+--                     Settings (divider), Use Short Names, Show Call Time, Show Result On Screen, Result Length On
+--                     Screen, Notice In Stand
 --
 -- An added function is named by its number and its path, cut to the last name (PLAYER.PLAYER_PED_ID ->
 -- PLAYER_PED_ID, util.toast -> toast) while Use Short Names is on, then
@@ -55,6 +56,15 @@ end
 -- Stand calls text fields again while the script stops; nothing it sends then is the user's
 local stopping = false
 util.on_stop(function() stopping = true end)
+
+-- The settings (Debug > Call Function > Settings): Notice In Stand, Use Short Names (the names in the Functions
+-- list and the notices are the last part of the path), Show Call Time and Show Result On Screen (what a loop
+-- draws on the screen as Stand's debug text, which Stand lets move), Result Length On Screen (how many characters
+-- of the result are drawn), Save Functions (the list is kept in a file)
+local settings = { stand = true, short_names = true, save = false }
+-- Show Call Time, Show Result On Screen and Result Length On Screen are kept in ui/stand/core/call_display: the loops of a
+-- module's functions use them too
+local display = Atdar.loader.load("ui/stand/core/call_display")
 
 -- The parsers and the argument fields are loaded when the list is first used, not with the script's section
 local function args_parser(): table
@@ -225,9 +235,15 @@ local function start_loop(spec: table, every: ?int): void
         if stopping or state.loop ~= loop_run then
             return false
         end
+        -- What the last call gave is drawn once every frame (debug text shows for one frame only), so it
+        -- stays between the calls of a loop with an interval too (call_display: the settings, the cut)
+        local function draw_result()
+            display.draw(loop_run.result)
+        end
         if loop_run.every ~= nil then
             local now = util.current_time_millis()
             if now < loop_run.next then
+                draw_result()
                 return true
             end
             loop_run.next = now + loop_run.every
@@ -239,7 +255,10 @@ local function start_loop(spec: table, every: ?int): void
             return false
         end
         if type(value) ~= "function" then
-            values.show_result(spec.key, table.pack(true, value))
+            local read = table.pack(true, value)
+            loop_run.result = $"{name} -> {values.results_text(read)}"
+            values.show_result(spec.key, read)
+            draw_result()
             return true
         end
         local args, count, err = read_args(spec, name)
@@ -248,13 +267,25 @@ local function start_loop(spec: table, every: ?int): void
             log:error(text("bad_args"):format(name, err))
             return false
         end
-        local results = run(value, owner, args, count)
+        local results = nil
+        local function call_once()
+            results = run(value, owner, args, count)
+        end
+        -- How long a call takes, on screen (info text), while Show Call Time is on
+        display.timed($"{name}()", call_once)
         if not results[1] then
             end_loop(state, loop_run, "failed")
             log:error(text("failed"):format(name, tostring(results[2])))
             return false
         end
+        -- Tables unpacked, functions as their signatures (describe); a call that gives nothing shows nothing
+        if results.n > 1 then
+            loop_run.result = $"{name} -> {values.results_text(results)}"
+        else
+            loop_run.result = nil
+        end
         values.show_result(spec.key, results)
+        draw_result()
         return true
     end)
 end
@@ -440,20 +471,51 @@ end
 
 -- What is typed in the Call A Function list, kept while the script runs (the menu being built again keeps it)
 local main_state = {}
--- The settings: Notice In Stand, Use Short Names (the names in the Functions list and the notices are the last
--- part of the path)
-local settings = { stand = true, short_names = true, save = false }
 -- Makes the items of the Functions list again; set by the list when it's built
 local show_added = nil
 
--- What a typed name means: a path that's there is itself; with Use Short Names on, a short name
--- (get_user_vehicle_as_handle) is the first function of that name in Atdar or the globals (path.find)
--- @return The full path, and how many functions have the name (1 for a path that's there, 0 for none)
+-- The user's own short names: store/<script>/for_core/ui/logic/stand/script/call_function/short_names.json,
+-- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }; read when a name is looked for, so the
+-- file can be edited while the script runs
+local SHORT_NAMES_FILE = "for_core/ui/logic/stand/script/call_function/short_names.json"
+
+-- @param
+-- @return The file's short names, name -> path; empty when there's no file or it isn't an object of texts
+local function saved_short_names(): table
+    -- body function
+
+    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+    local file = new JsonFile($"{Atdar.filesystem.paths.store}{SHORT_NAMES_FILE}")
+    local names = {}
+    local data = file:exists() and file:read() or nil
+
+    if type(data) ~= "table" then
+        return names
+    end
+
+    for name, path in pairs(data) do
+        if type(name) == "string" and type(path) == "string" then
+            names[name] = path
+        end
+    end
+
+    return names
+    -- what returns
+end
+
+-- What a typed name means: a path that's there is itself; with Use Short Names on, a short name is the one
+-- the short_names.json file gives it, else the first function of that name in Atdar or the globals (path.find)
+-- @param typed The text typed
+-- @return The full path, and how many functions have the name (1 for a path that's there or in the file, 0 for none)
 local function expand(typed: string)
     local paths = path_parser()
     local path = paths.split(typed:match("^%s*(.-)%s*$"))
     if path == "" or paths.resolve(path) or not settings.short_names then
         return path, paths.resolve(path) and 1 or 0
+    end
+    local own = saved_short_names()[path]
+    if own ~= nil and paths.resolve(own) then
+        return (paths.split(own)), 1
     end
     local found = paths.find(path)
     if #found == 0 then
@@ -722,6 +784,16 @@ function module.build(node: table): any
             show_added()
         end
     end, {}, label("short_names.help"), settings.short_names)
+    list:toggle(label("show_time.name"), function(on)
+        display.show_time = on
+    end, {}, label("show_time.help"), display.show_time)
+    list:toggle(label("show_result.name"), function(on)
+        display.show_result = on
+    end, {}, label("show_result.help"), display.show_result)
+    list:slider(label("result_length.name"), display.LENGTH_MIN, display.LENGTH_MAX, display.result_length, 10,
+        function(value)
+        display.result_length = value
+    end, {}, label("result_length.help"))
     list:toggle(label("stand.name"), function(on)
         settings.stand = on
     end, {}, label("stand.help"), settings.stand)

@@ -1,0 +1,60 @@
+-- lib/AnitaDarin/ui/stand/core/call_display.pluto
+--
+-- What the loops of called functions put on the screen, as Stand's debug text (Stand lets the user move it):
+-- how long a call takes and what it gave. The settings are in Debug > Call Function > Settings and are the same
+-- for every loop: the ones of Call Function, of a module's functions and of a module's on_tick run by hand.
+--
+--     call_display.timed("VehicleManager.get()", function() ... end)   -- the call, timed on screen
+--     call_display.draw("VehicleManager.get() -> 5")                    -- drawn for this frame
+--
+-- Light on purpose: it's loaded with the script's section, the lists that use it load later.
+
+local module = {}
+
+-- Show Call Time, Show Result On Screen: the switches; Result Length On Screen: how many characters are drawn
+module.show_time = true
+module.show_result = true
+module.result_length = 100
+-- The least and the most characters of a drawn result
+module.LENGTH_MIN = 20
+module.LENGTH_MAX = 500
+
+-- Runs fn; with Show Call Time on, Stand shows how long it took this frame, under the name
+-- @param name What the time is shown under
+-- @param fn What to run
+-- @return Nothing: fn is run either way
+function module.timed(name: string, fn: function): void
+    -- body function
+
+    if module.show_time and profiling ~= nil then
+        profiling.tick(name, fn)
+        return
+        -- what returns
+    end
+
+    fn()
+    -- what returns
+end
+
+-- Draws the text for this frame (the debug text shows for one frame only: call this every frame), while
+-- Show Result On Screen is on; a long one is cut to Result Length On Screen characters and ends with ...
+-- @param shown The text; nil draws nothing
+-- @return Nothing
+function module.draw(shown: ?string): void
+    -- body function
+
+    if not module.show_result or shown == nil or util.draw_debug_text == nil then
+        return
+    end
+
+    local cut = utf8.offset(shown, module.result_length + 1)
+
+    if cut ~= nil then
+        shown = shown:sub(1, cut - 1) .. "..."
+    end
+
+    util.draw_debug_text(shown)
+    -- what returns
+end
+
+return module

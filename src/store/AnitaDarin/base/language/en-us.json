@@ -838,7 +838,7 @@
             },
             "function": {
                 "name": "Function Name",
-                "help": "A path from Atdar with dots: game.repair_vehicle. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get"
+                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get"
             },
             "args": {
                 "name": "Argument",
@@ -861,8 +861,20 @@
             },
             "short_names": {
                 "name": "Use Short Names",
-                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the first one of that name in the script, then in Stand's tables. Off: the whole path",
+                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the one in the file store/<script>/for_core/ui/logic/stand/script/call_function/short_names.json ({\"ped\": \"PLAYER.PLAYER_PED_ID\"}), else the first one of that name in the script, then in Stand's tables. Off: the whole path",
                 "many": "%s: %d functions have this name, the first is used"
+            },
+            "show_time": {
+                "name": "Show Call Time",
+                "help": "While a loop runs, shows how long each call takes, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"
+            },
+            "show_result": {
+                "name": "Show Result On Screen",
+                "help": "While a loop runs, shows what the function gave, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"
+            },
+            "result_length": {
+                "name": "Result Length On Screen",
+                "help": "How many characters of the result are drawn on the screen; the rest is cut off with ... A long table doesn't run off the screen"
             },
             "functions": {
                 "name": "Functions",
