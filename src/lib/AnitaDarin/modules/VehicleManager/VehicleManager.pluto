@@ -189,7 +189,7 @@ local class VehicleManager extends Module
 
     -- Remembers a vehicle the script made or the player got into
     function add_vehicle(handle: int): void
-        
+
         -- Only a real handle: a whole number, not -1 / 0 ("none" from Stand and from the game's natives).
         -- Anything else (a function, a text typed in the menu) would break every function reading the table
         if math.type(handle) ~= "integer" or handle == -1 or handle == 0 then
