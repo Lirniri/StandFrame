@@ -1072,7 +1072,8 @@
             "found": "Version %s is out: %d file(s) to change. Press Update to install it",
             "installing": "Updating: downloading %d file(s)",
             "installed": "Updated to version %s. The script restarts",
-            "install_failed": "Couldn't update: %s. Nothing was changed"
+            "install_failed": "Couldn't update: %s. Nothing was changed",
+            "stale": "The new version is still reaching GitHub's servers, so the downloaded files don't match yet. Nothing was changed. Wait a few minutes, press Check, then Update again"
         }
     }
 }

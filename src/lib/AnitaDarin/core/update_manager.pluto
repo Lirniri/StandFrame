@@ -189,8 +189,13 @@ function module.install(): string
 
     log:notify(text("msg.installing"):format(#plan.download))
 
-    local ok, apply_err = updater.apply(plan)
+    local ok, apply_err, reason = updater.apply(plan)
     module.busy = false
+
+    if not ok and reason == "stale" then
+        log:error(text("msg.stale"))
+        return "failed"
+    end
 
     if not ok then
         log:error(text("msg.install_failed"):format(apply_err))

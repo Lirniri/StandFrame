@@ -283,7 +283,8 @@ end
 -- right writes them (first next to their places, then over them) and removes the old ones, then
 -- remembers the release as installed. Yields: call it from a thread. Restart the script after it
 -- @param on_progress function(done, total) after each download; optional
--- @return true, or false and why not (nothing written then)
+-- @return true, or false and why not (nothing written then); a third value "stale" when a download
+-- didn't match the manifest (GitHub's cache)
 function module.apply(plan: table, on_progress: ?function)
     local o = plan.opts
     local contents = {}
@@ -294,7 +295,7 @@ function module.apply(plan: table, on_progress: ?function)
         end
         -- GitHub may serve a file older than the manifest for a few minutes
         if module.hash(path, body) ~= plan.manifest.files[path].sha256 then
-            return false, $"{path}: doesn't match the manifest, try again in a few minutes"
+            return false, $"{path}: doesn't match the manifest, try again in a few minutes", "stale"
         end
         contents[path] = body
         if on_progress ~= nil then
