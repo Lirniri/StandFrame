@@ -479,6 +479,22 @@ local show_added = nil
 -- file can be edited while the script runs
 local SHORT_NAMES_FILE = "user/call_function/short_names.json"
 
+-- The registry of short names, written by hand and shipped with the script: store/<script>/core/call_function/short_name.json,
+--     { "user_vehicle": { "path": "entities.get_user_vehicle_as_handle",
+--                         "params": [ { "name": "include_last_vehicle", "type": "bool", "default": "false" } ],
+--                         "returns": "int" } }
+-- The name is what can be typed (with Use Short Names on) for the path. params and returns are for a function that
+-- says nothing of its own parameters (Stand's are C functions): they give its argument fields (name, type, an
+-- optional default as the code would write it) and its return type. params [] is a function that takes none.
+-- An entry without a path is left out
+local REGISTRY_FILE = "core/call_function/short_name.json"
+
+-- The signatures of Stand's own API (util, entities, menu, ...), written by hand and shipped with the script:
+-- store/<script>/core/call_function/stand_api.json. Stand's functions are C functions and say nothing of their
+-- parameters, so this file is where they'd be told. Only the place is registered so far: what's in the file and how
+-- it is used for the argument fields is up to the one who fills it
+local STAND_API_FILE = "core/call_function/stand_api.json"
+
 -- @param
 -- @return The file's short names, name -> path; empty when there's no file or it isn't an object of texts
 local function saved_short_names(): table
@@ -503,8 +519,68 @@ local function saved_short_names(): table
     -- what returns
 end
 
+-- @param
+-- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or it's
+-- damaged, and without the entries that have no path
+local function registry(): table
+    -- body function
+
+    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+    local file = new JsonFile($"{Atdar.filesystem.paths.store}{REGISTRY_FILE}")
+    local data = file:exists() and file:read() or nil
+    local entries = {}
+
+    if type(data) ~= "table" then
+        return entries
+    end
+
+    for name, entry in pairs(data) do
+        if type(name) == "string" and type(entry) == "table" and type(entry.path) == "string" then
+            entries[name] = entry
+        end
+    end
+
+    return entries
+    -- what returns
+end
+
+-- The signature the registry gives a function: its fields and return type, in place of what the code says
+-- @param path The function's full path
+-- @return { sig, returns } for a path with params in the registry, nil when it has none (or one is badly written)
+local function registered_signature(path: string): ?table
+    -- body function
+
+    for name, entry in pairs(registry()) do
+        if entry.path == path and type(entry.params) == "table" then
+            local names, types, defaults = {}, {}, {}
+            local valid = true
+
+            -- @param
+            -- @return
+            for index, param in ipairs(entry.params) do
+                if type(param) ~= "table" or type(param.name) ~= "string" then
+                    log:warn(text("registry.bad_param"):format(name, index))
+                    valid = false
+                    break
+                end
+
+                table.insert(names, param.name)
+                types[param.name] = type(param.type) == "string" and param.type or nil
+                defaults[param.name] = type(param.default) == "string" and param.default or nil
+            end
+
+            if valid then
+                return { sig = arguments().signature(names, types, false, defaults), returns = entry.returns }
+            end
+        end
+    end
+
+    return nil
+    -- what returns
+end
+
 -- What a typed name means: a path that's there is itself; with Use Short Names on, a short name is the one
--- the short_names.json file gives it, else the first function of that name in Atdar or the globals (path.find)
+-- the user's short_names.json gives it, then the registry (short_name.json), else the first function of that name in Atdar or the globals (path.find)
 -- @param typed The text typed
 -- @return The full path, and how many functions have the name (1 for a path that's there or in the file, 0 for none)
 local function expand(typed: string)
@@ -516,6 +592,10 @@ local function expand(typed: string)
     local own = saved_short_names()[path]
     if own ~= nil and paths.resolve(own) then
         return (paths.split(own)), 1
+    end
+    local registered = registry()[path]
+    if registered ~= nil and paths.resolve(registered.path) then
+        return (paths.split(registered.path)), 1
     end
     local found = paths.find(path)
     if #found == 0 then
@@ -553,6 +633,12 @@ local function add_item(list: table, entry: table, number: int): void
     if found and type(value) == "function" then
         sig = arguments().signature_of(value, owner ~= nil)
         returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
+        -- A function that says nothing of its parameters (a C function of Stand): the registry may
+        local registered = #sig.params == 0 and registered_signature(entry.path) or nil
+        if registered ~= nil then
+            sig = registered.sig
+            returns = returns or registered.returns
+        end
     end
     local name = $"{number}: {short}"
     if sig ~= nil and arguments().has_fields(sig) then
@@ -798,6 +884,23 @@ function module.build(node: table): any
         settings.stand = on
     end, {}, label("stand.help"), settings.stand)
     return list.handle
+end
+
+-- @param
+-- @return The table of the Stand API file (STAND_API_FILE) as it is written; empty when there's no file or it's damaged
+function module.stand_api(): table
+    -- body function
+
+    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+    local file = new JsonFile($"{Atdar.filesystem.paths.store}{STAND_API_FILE}")
+    local data = file:exists() and file:read() or nil
+
+    if type(data) ~= "table" then
+        return {}
+    end
+
+    return data
+    -- what returns
 end
 
 return module

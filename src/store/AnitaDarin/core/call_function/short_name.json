@@ -1,0 +1,22 @@
+{
+    "user_ped": {
+        "params": [],
+        "returns": "int"
+    },
+    "user": {
+        "params": [],
+        "returns": "int"
+    },
+    "user_vehicle": {
+        "path": "entities.get_user_vehicle_as_handle",
+        "params": [ { "include_last_vehicle": "last_vehicle", "type": "bool" } ],
+        "returns": "int"
+    },
+    "toast": {
+        "params": [
+            { "name": "text", "type": "string" },
+            { "name": "bitflags", "type": "?int" }
+        ],
+        "returns": "void"
+    }
+}

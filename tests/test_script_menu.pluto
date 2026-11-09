@@ -637,6 +637,48 @@ stand.check(rebuilt_item ~= nil and rebuilt_item.children[2].value == "6", "rebu
 stand.click(stand.child(functions_list, "Clear All"))
 Atdar.test_typed = nil
 
+-- The registry of short names (core/call_function/short_name.json): a name gives the path, params and returns
+-- give the argument fields and the return type of a function that says nothing of its own
+-- (the section was made again above: its items are the new ones)
+add_function = stand.child(functions_list, "Add")
+clear_all = stand.child(functions_list, "Clear All")
+local registry_dir = $"{stand.store}AnitaDarin/core/call_function/"
+io.makedirs(registry_dir)
+stand.write_file($"{registry_dir}short_name.json", '{"reg_one": {"path": "test_reg_fn", "params": [{"name": "a", "type": "int", "default": "3"}], "returns": "int"},'
+    .. ' "reg_none": {"path": "test_reg_none", "params": [], "returns": "int"},'
+    .. ' "reg_bad": {"path": "test_reg_bad", "params": [{"include_last_vehicle": "x", "type": "bool"}], "returns": "int"},'
+    .. ' "reg_no_path": {"params": [], "returns": "int"}}')
+Atdar.test_reg_fn = function(...) end
+Atdar.test_reg_none = function(...) end
+Atdar.test_reg_bad = function(...) end
+stand.click(clear_all)
+stand.clear_logs()
+add_function.on_change("reg_one", 0)
+stand.equal(added_names(), "1: test_reg_fn(a): int", "a registry name: its path, the params and the return type from the registry")
+stand.equal(stand.child(functions_list, "1: test_reg_fn(a): int").children[2].value, "3", "the field starts with the registry's default")
+stand.equal(stand.name_of(stand.child(functions_list, "1: test_reg_fn(a): int").children[2]), "Number", "named by the registry's type")
+add_function.on_change("reg_none", 0)
+stand.equal(stand.child(functions_list, "2: test_reg_none: int").kind, "action", "params [] in the registry: a function that takes none is a button")
+add_function.on_change("reg_bad", 0)
+stand.check(stand.find_log("reg_bad (short_name.json): parameter 1 has no"), "a parameter without a name is told")
+stand.check(stand.child(functions_list, "3: test_reg_bad(...)") ~= nil, "and the registry's params aren't used for it")
+add_function.on_change("reg_no_path", 0)
+stand.check(stand.find_log("'reg_no_path' not found"), "an entry without a path isn't a short name")
+stand.click(clear_all)
+os.remove($"{registry_dir}short_name.json")
+Atdar.test_reg_fn, Atdar.test_reg_none, Atdar.test_reg_bad = nil, nil, nil
+
+-- The Stand API file: its place is core/call_function/stand_api.json; read as it's written
+local call_function_module = Atdar.loader.load("ui/stand/script/call_function")
+stand.equal(next(call_function_module.stand_api()), nil, "stand_api: no file in the store - empty")
+local api_dir = $"{stand.store}AnitaDarin/core/call_function/"
+io.makedirs(api_dir)
+stand.write_file($"{api_dir}stand_api.json", '{"util.toast": {"params": [{"name": "text", "type": "string"}], "returns": "void"}}')
+stand.equal(call_function_module.stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
+stand.write_file($"{api_dir}stand_api.json", "{broken")
+stand.equal(next(call_function_module.stand_api()), nil, "stand_api: a damaged file - empty")
+os.remove($"{api_dir}stand_api.json")
+
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
 local modules_list = debug_list.children[9]
 stand.click(modules_list)

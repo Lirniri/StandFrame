@@ -864,6 +864,9 @@
                 "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the one in the file store/<script>/user/call_function/short_names.json ({\"ped\": \"PLAYER.PLAYER_PED_ID\"}), else the first one of that name in the script, then in Stand's tables. Off: the whole path",
                 "many": "%s: %d functions have this name, the first is used"
             },
+            "registry": {
+                "bad_param": "%s (short_name.json): parameter %d has no \"name\", so the registry's parameters for it are left out"
+            },
             "show_time": {
                 "name": "Show Call Time",
                 "help": "While a loop runs, shows how long each call takes, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"

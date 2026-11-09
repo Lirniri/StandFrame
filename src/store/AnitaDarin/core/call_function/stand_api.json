@@ -1,0 +1,55 @@
+{
+    "entities.get_user_vehicle_as_handle": {
+        "params": [
+            { "name": "include_last_vehicle", "type": "bool", "default": "false" }
+        ],
+        "returns": "int"
+    },
+
+
+    "players.user_ped": {
+        "params": [],
+        "returns": "int"
+    },
+
+
+    "menu.trigger_commands": {
+        "params": [
+            { "name": "text", "type": "string" }
+        ],
+        "returns": "void"
+    },
+
+    "util.toast": {
+        "params": [
+            { "name": "text", "type": "string" },
+            { "name": "bitflags", "type": "?int" }
+        ],
+        "returns": "void"
+    },
+    "util.yield": {
+        "params": [
+            { "name": "ms", "type": "int", "default": "0" }
+        ],
+        "returns": "void"
+    },
+    "util.current_time_millis": {
+        "params": [],
+        "returns": "int"
+    },
+
+    "profiling.once": {
+        "params": [
+            { "name": "name", "type": "string" },
+            { "name": "func", "type": "function" }
+        ],
+        "returns": "void"
+    },
+    "profiling.tick": {
+        "params": [
+            { "name": "name", "type": "string" },
+            { "name": "func", "type": "function" }
+        ],
+        "returns": "void"
+    }
+}
