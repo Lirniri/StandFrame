@@ -28,6 +28,31 @@ local loaded_text = {}
 -- The file's whole text, nil if it can't be read
 local read_text = Atdar.loader.load("core/filesystem/file").read
 
+-- Dep name -> set of the modules that need it directly: { [dep] = { [module name] = true } }.
+-- Kept up to date by add/unregister/register_at, so dependents_of doesn't scan every module
+local dependents = {}
+
+-- Adds the module to the dependents index
+local function index_deps(mod: table): void
+    for _, dep in ipairs(mod.deps) do
+        dependents[dep] = dependents[dep] or {}
+        dependents[dep][mod.name] = true
+    end
+end
+
+-- Takes the module out of the dependents index
+local function unindex_deps(mod: table): void
+    for _, dep in ipairs(mod.deps) do
+        local set = dependents[dep]
+        if set then
+            set[mod.name] = nil
+            if next(set) == nil then
+                dependents[dep] = nil
+            end
+        end
+    end
+end
+
 function module.add(mod: table): table
     local name = mod.name
     if type(name) ~= "string" then
@@ -38,6 +63,7 @@ function module.add(mod: table): table
     end
     by_name[name] = mod
     table.insert(order, mod)
+    index_deps(mod)
     files[name] = loading_file
     return mod
 end
@@ -174,20 +200,19 @@ end
 local function dependents_of(name: string): table
     local found = {}
     local queue = { name }
+
     while #queue > 0 do
+
         local current = table.remove(queue)
-        for _, mod in ipairs(order) do
-            if not found[mod.name] then
-                for _, dep in ipairs(mod.deps) do
-                    if dep == current then
-                        found[mod.name] = true
-                        table.insert(queue, mod.name)
-                        break
-                    end
-                end
+
+        for dependent in pairs(dependents[current] or {}) do
+            if not found[dependent] then
+                found[dependent] = true
+                table.insert(queue, dependent)
             end
         end
     end
+
     return found
 end
 
@@ -288,6 +313,7 @@ end
 local function register_at(mod: table, index: int, path: ?string): void
     by_name[mod.name] = mod
     table.insert(order, math.min(index, #order + 1), mod)
+    index_deps(mod)
     files[mod.name] = path
 end
 
@@ -302,6 +328,7 @@ local function unregister(mod: table): int
             break
         end
     end
+    unindex_deps(mod)
     by_name[mod.name] = nil
     files[mod.name] = nil
     return index
