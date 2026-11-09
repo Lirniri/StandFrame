@@ -856,6 +856,56 @@
                 "name": "Notice In Stand",
                 "help": "The result comes as a Stand notification, not in the game's feed"
             },
+            "editor": {
+                "name": "Files Editor",
+                "help": "The JSON files of Call Function: short_name.json, stand_api.json and your own ones in user/call_function. Every change is saved at once",
+                "create": {
+                    "name": "Create File",
+                    "help": "Type a name: an empty file is made in store/<script>/user/call_function. Letters, digits, _ and - only",
+                    "done": "%s created",
+                    "bad_name": "A file name has letters, digits, _ and - only",
+                    "exists": "There's a file with this name already"
+                },
+                "files": {
+                    "divider": "Files"
+                },
+                "protected": "Protected file: it can't be deleted",
+                "delete": {
+                    "name": "Delete File",
+                    "again": "Click Again To Delete",
+                    "help": "Deletes this file with its backup. Click twice within 5 seconds",
+                    "warning": "Delete %s? Click again within 5 seconds",
+                    "done": "%s deleted"
+                },
+                "add_value": {
+                    "name": "Add Value",
+                    "help": "name = value puts a value under a name; a value alone is added at the end of a list. A value is text in quotes (or a bare word), a number, true or false"
+                },
+                "add_table": {
+                    "name": "Add Table",
+                    "help": "Adds an empty table under the name typed; with nothing typed, at the end of a list"
+                },
+                "remove": {
+                    "name": "Remove",
+                    "help": "Type the name of an entry, or its number in a list, to take it out"
+                },
+                "empty": "Empty",
+                "table": {
+                    "help": "A table: open it to edit what's in it"
+                },
+                "value": {
+                    "help": "Text in quotes (or a bare word), a number, true or false. nil takes the entry away"
+                },
+                "not_saved": "%s couldn't be saved",
+                "errors": {
+                    "bad": "Only text, a number, true or false can be a value; tables are made with Add Table",
+                    "one": "One value is needed",
+                    "nil": "nil takes an entry away: use Remove to delete one",
+                    "no_entry": "There's no entry '%s'",
+                    "protected": "This file can't be deleted",
+                    "missing": "The file is already gone"
+                }
+            },
             "settings": {
                 "divider": "Settings"
             },

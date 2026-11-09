@@ -189,12 +189,14 @@ _G.filesystem = {
     exists = |path| -> io.exists(path),
     is_dir = |path| -> io.isdir(path),
     mkdirs = |path| -> io.makedirs(path),
+    -- Like Stand's: a folder that isn't there is an error, not an empty list
     list_files = function(dir)
         local files = {}
-        if io.isdir(dir) then
-            for _, path in io.listdir(dir) do
-                table.insert(files, path)
-            end
+        if not io.isdir(dir) then
+            error("operation failed", 2)
+        end
+        for _, path in io.listdir(dir) do
+            table.insert(files, path)
         end
         return files
     end,

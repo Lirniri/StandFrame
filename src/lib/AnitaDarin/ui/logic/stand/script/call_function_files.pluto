@@ -1,0 +1,346 @@
+-- lib/AnitaDarin/ui/logic/stand/script/call_function_files.pluto
+--
+-- What the Files Editor of Debug > Call Function does with the JSON files of Call Function; the items are in
+-- ui/stand/script/call_function_editor.
+--
+-- The files are the .json ones in store/<script>/core/call_function/ (shipped with the script) and in
+-- store/<script>/user/call_function/ (the user's own). short_name.json and stand_api.json can't be deleted. New
+-- files are made in user/call_function/.
+--
+--     files.list()                                -- { { id, name, area, protected } }
+--     local data = files.read(id)                 -- the file's table
+--     files.add_value(data, "name = \"int\"")     -- a value under a name, or at the end of a list
+--     files.write(id, data)                       -- saved
+--
+-- A value in a field is text in quotes (or a bare word: it's text too), a number, true or false; nil takes the
+-- entry away. Tables are made apart (add_table) and opened as lists.
+
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
+local plain = Atdar.loader.load("core/filesystem/file")
+
+local module = {}
+
+-- Where the files are, from store/<script>/, and what a file's id is: its path from there
+module.AREAS = { "core", "user" }
+local FOLDER = "call_function/"
+
+-- The files that can't be deleted (by id)
+local PROTECTED = {
+    ["core/call_function/short_name.json"] = true,
+    ["core/call_function/stand_api.json"] = true,
+}
+
+-- @param area "core" or "user"
+-- @return The folder of the area, from the script's store
+local function folder_of(area: string): string
+    return $"{area}/{FOLDER}"
+end
+
+-- @param id A file's id
+-- @return The file's full path, with the separators Windows has
+local function path_of(id: string): string
+    local relative = id:gsub("/", "\\")
+
+    return $"{Atdar.filesystem.paths.store}{relative}"
+end
+
+-- @param id A file's id
+-- @return Whether the file can't be deleted
+function module.is_protected(id: string): bool
+    return PROTECTED[id] == true
+end
+
+-- @return The JSON files, core first, each area by name: { id, name, area, protected }
+function module.list(): table
+    -- body function
+
+    local found = {}
+
+    -- @param area
+    -- @return
+    for _, area in ipairs(module.AREAS) do
+        local dir = path_of(folder_of(area))
+        local names = {}
+
+        -- Stand's list_files fails on a folder that isn't there (user/call_function, before anything is saved in it)
+        local listed = filesystem.is_dir(dir) and filesystem.list_files(dir) or {}
+
+        for _, path in ipairs(listed) do
+            local name = path:match("([^\\/]+)$")
+
+            if name ~= nil and name:match("%.json$") then
+                table.insert(names, name)
+            end
+        end
+
+        table.sort(names)
+
+        for _, name in ipairs(names) do
+            local id = $"{folder_of(area)}{name}"
+
+            table.insert(found, { id = id, name = name, area = area, protected = module.is_protected(id) })
+        end
+    end
+
+    return found
+    -- what returns
+end
+
+-- @param id A file's id
+-- @return The file's table; empty when it can't be read
+function module.read(id: string): table
+    -- body function
+
+    local data = new JsonFile(path_of(id)):read()
+
+    if type(data) ~= "table" then
+        return {}
+    end
+
+    return data
+    -- what returns
+end
+
+-- @param id A file's id
+-- @param data The table to keep in it
+-- @return Whether it was written
+function module.write(id: string, data: table): bool
+    return new JsonFile(path_of(id)):write(data)
+end
+
+-- Makes a file in user/call_function/, with {} in it
+-- @param typed The name typed: letters, digits, _ and -, with or without .json
+-- @return Whether it was made, and its id or why not ("bad_name", "exists")
+function module.create(typed: string)
+    -- body function
+
+    local name = (typed:match("^%s*(.-)%s*$"):gsub("%.json$", ""))
+    local folder = folder_of("user")
+
+    if name == "" or name:find("[^%w_%-]") then
+        return false, "bad_name"
+    end
+
+    local id = $"{folder}{name}.json"
+
+    if filesystem.exists(path_of(id)) then
+        return false, "exists"
+    end
+
+    new JsonFile(path_of(id)):write({})
+
+    return true, id
+    -- what returns
+end
+
+-- Deletes a file (and its backup): not a protected one
+-- @param id A file's id
+-- @return Whether it was deleted, or why not ("protected", "missing")
+function module.delete(id: string)
+    -- body function
+
+    if module.is_protected(id) then
+        return false, "protected"
+    end
+
+    local path = path_of(id)
+
+    if not plain.remove(path) then
+        return false, "missing"
+    end
+
+    plain.remove($"{path}.bak")
+
+    return true
+    -- what returns
+end
+
+-- ─── Values ──────────────────────────────────────────────────────────────────
+
+-- @param value A value of a file: text, number, true, false
+-- @return It as it's written in a field: text in quotes, the rest as it is
+function module.describe(value): string
+    if type(value) == "string" then
+        return '"' .. value .. '"'
+    end
+
+    return tostring(value)
+end
+
+-- @param typed What was typed in a field
+-- @return Whether it's a value, the value (nil for "nil": take it away), and the reason when it isn't ("bad", "one")
+function module.parse_value(typed: string)
+    -- body function
+
+    local word = typed:match("^%s*(.-)%s*$")
+
+    -- A bare word is text, also when it's a name Lua knows (string, table, function, util, ...)
+    if word:match("^[%a_][%w_]*$") and word ~= "nil" and word ~= "true" and word ~= "false" then
+        return true, word, nil
+    end
+
+    local args, count, err = args_parser.parse(typed)
+
+    if err ~= nil then
+        return false, nil, "bad"
+    end
+
+    if count ~= 1 then
+        return false, nil, "one"
+    end
+
+    local value = args[1]
+    local kind = type(value)
+
+    -- Only what JSON keeps in a field: tables are made apart
+    if value ~= nil and kind ~= "string" and kind ~= "number" and kind ~= "boolean" then
+        return false, nil, "bad"
+    end
+
+    return true, value, nil
+    -- what returns
+end
+
+-- ─── Tables ──────────────────────────────────────────────────────────────────
+
+-- @param tbl A table of a file
+-- @return How many entries it has (the list part and the named ones)
+function module.count(tbl: table): int
+    local count = 0
+
+    for _ in pairs(tbl) do
+        count += 1
+    end
+
+    return count
+end
+
+-- @param tbl A table of a file
+-- @return Its entries in the order they're shown: the list part, then the other keys by name: { key, value }
+function module.entries(tbl: table): table
+    -- body function
+
+    local entries = {}
+    local length = #tbl
+    local keys = {}
+
+    -- @param
+    -- @return
+    for index = 1, length do
+        table.insert(entries, { key = index, value = tbl[index] })
+    end
+
+    for key in pairs(tbl) do
+        if math.type(key) ~= "integer" or key < 1 or key > length then
+            table.insert(keys, key)
+        end
+    end
+
+    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+
+    for _, key in ipairs(keys) do
+        table.insert(entries, { key = key, value = tbl[key] })
+    end
+
+    return entries
+    -- what returns
+end
+
+-- Adds a value: "name = value" puts it under the name, "value" alone at the end of the list
+-- @param tbl The table
+-- @param typed What was typed
+-- @return Whether it was added, and the reason when not ("bad", "one", "nil")
+function module.add_value(tbl: table, typed: string)
+    -- body function
+
+    local name, written = typed:match("^%s*([^=]-)%s*=%s*(.-)%s*$")
+
+    if name == nil or name == "" then
+        name, written = nil, typed
+    end
+
+    local ok, value, why = module.parse_value(written)
+
+    if not ok then
+        return false, why
+    end
+
+    if value == nil then
+        return false, "nil"
+    end
+
+    if name == nil then
+        table.insert(tbl, value)
+    else
+        tbl[name] = value
+    end
+
+    return true
+    -- what returns
+end
+
+-- Adds an empty table: under the name typed, or at the end of the list when nothing is typed
+-- @param tbl The table
+-- @param typed The name, or ""
+function module.add_table(tbl: table, typed: string): void
+    local name = typed:match("^%s*(.-)%s*$")
+
+    if name == "" then
+        table.insert(tbl, {})
+        return
+    end
+
+    tbl[name] = {}
+end
+
+-- Takes an entry away: by its name, or by its number in a list
+-- @param tbl The table
+-- @param typed The name or the number
+-- @return Whether there was such an entry
+function module.remove(tbl: table, typed: string): bool
+    -- body function
+
+    local key = typed:match("^%s*(.-)%s*$")
+    local number = math.tointeger(tonumber(key))
+
+    if number ~= nil and tbl[number] ~= nil and number >= 1 and number <= #tbl then
+        table.remove(tbl, number)
+        return true
+    end
+
+    if tbl[key] ~= nil then
+        tbl[key] = nil
+        return true
+    end
+
+    return false
+    -- what returns
+end
+
+-- Sets an entry to what was typed in its field
+-- @param tbl The table
+-- @param key The entry's key
+-- @param typed What was typed
+-- @return Whether it was done, the reason when not, and whether the entry was taken away (nil typed)
+function module.set(tbl: table, key, typed: string)
+    -- body function
+
+    local ok, value, why = module.parse_value(typed)
+
+    if not ok then
+        return false, why, false
+    end
+
+    if value == nil and math.type(key) == "integer" and key >= 1 and key <= #tbl then
+        table.remove(tbl, key)
+        return true, nil, true
+    end
+
+    tbl[key] = value
+
+    return true, nil, value == nil
+    -- what returns
+end
+
+return module

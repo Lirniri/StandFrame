@@ -9,6 +9,7 @@
 --                     Arguments Guide: how to write the arguments, as a notice in Stand
 --                     Settings (divider), Use Short Names, Show Call Time, Show Result On Screen, Result Length On
 --                     Screen, Notice In Stand
+--                     Files Editor: the JSON files of Call Function (ui/stand/script/call_function_editor)
 --
 -- An added function is named by its number and its path, cut to the last name (PLAYER.PLAYER_PED_ID ->
 -- PLAYER_PED_ID, util.toast -> toast) while Use Short Names is on, then
@@ -883,6 +884,8 @@ function module.build(node: table): any
     list:toggle(label("stand.name"), function(on)
         settings.stand = on
     end, {}, label("stand.help"), settings.stand)
+    -- The JSON files of Call Function (short names, the Stand API, the user's own) as a tree to edit
+    Atdar.loader.load("ui/stand/script/call_function_editor").build(list)
     return list.handle
 end
 

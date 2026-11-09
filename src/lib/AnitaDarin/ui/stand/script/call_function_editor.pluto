@@ -1,0 +1,283 @@
+-- lib/AnitaDarin/ui/stand/script/call_function_editor.pluto
+--
+-- Debug > Call Function > Files Editor: the JSON files of Call Function (core/call_function and
+-- user/call_function in the script's store) as a tree to edit. What it does with the files is in
+-- ui/logic/stand/script/call_function_files.
+--
+--   Files Editor >   Create File (a name; the file is made in user/call_function)
+--                    Files (divider), then a list per file: core/short_name.json, user/short_names.json, ...
+--   a file >         Delete File (not for short_name.json and stand_api.json: "Protected File" is there instead)
+--                    Add Value, Add Table, Remove, then the entries
+--   a table >        the same: Add Value, Add Table, Remove, then its entries
+--
+-- An entry that is a value is a text field with the value in it: text in quotes (or a bare word), a number,
+-- true or false; nil takes the entry away. An entry that is a table is a list to open. Every change is
+-- written to the file at once. The lists are made when they're opened and removed when they're left.
+-- Strings: core/language "script_menu.call_function.editor"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local commands = Atdar.loader.load("ui/stand/core/commands")
+local confirm = Atdar.loader.load("ui/stand/core/confirm")
+
+local log = new Logger("CallFunctionEditor")
+
+local module = {}
+
+-- Strings under "script_menu.call_function.editor"
+local label, text = i18n.scope("script_menu.call_function.editor")
+
+-- Click types of Stand's own calls (restoring a field's state, bulk changes): not the user's
+local NOT_USER_CLICKS = { [4] = true }
+
+for _, click_name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
+    if _G[click_name] ~= nil then
+        NOT_USER_CLICKS[_G[click_name]] = true
+    end
+end
+
+-- Stand calls text fields again while the script stops: nothing it sends then is the user's
+local stopping = false
+util.on_stop(function() stopping = true end)
+
+-- The logic is loaded when the Files Editor is first opened
+-- @return The file logic (ui/logic/stand/script/call_function_files)
+local function files(): table
+    return Atdar.loader.load("ui/logic/stand/script/call_function_files")
+end
+
+-- Stand's text fields need a command each: short, unique while the field exists
+local command_number = 0
+
+-- @return A base command name no other field has now
+local function next_command(): string
+    command_number += 1
+
+    return $"callfunceditor{command_number}"
+end
+
+-- A text field of the editor; not one of the found commands (tracked without its command)
+-- @param node The list to put it in
+-- @param name Its name: a label, or the text of a key
+-- @param help Its help
+-- @param default What's in it
+-- @param on_typed function(value) the user typed in it
+-- @return Nothing
+local function field(node: table, name, help, default: string, on_typed: function): void
+    node:track_named(name, menu.text_input(node.handle, name, commands.names({ next_command() }), help,
+        function(value, click_type)
+        if stopping or NOT_USER_CLICKS[click_type] then
+            return
+        end
+
+        on_typed(value)
+    end, default))
+end
+
+-- @param key An entry's key: a name, or a number in a list
+-- @return How it's shown: the name, or [number]
+local function key_text(key): string
+    if type(key) == "number" then
+        return $"[{key}]"
+    end
+
+    return tostring(key)
+end
+
+-- Saves the file the context belongs to; says so when it can't
+-- @param context { id, data }
+-- @return Nothing
+local function save(context: table): void
+    if not files().write(context.id, context.data) then
+        log:error(text("not_saved"):format(context.id))
+    end
+end
+
+-- Puts the controls of a table and its entries in node (made empty by the caller)
+-- @param node The list of the table
+-- @param context { id, data }: the file, its whole table, for saving
+-- @param tbl The table
+-- @return Nothing
+local function fill_table(node: table, context: table, tbl: table): void
+    -- body function
+
+    local show_entries
+
+    field(node, label("add_value.name"), label("add_value.help"), "", function(value)
+        local ok, why = files().add_value(tbl, value)
+
+        if not ok then
+            log:warn(text($"errors.{why}"))
+            return
+        end
+
+        save(context)
+        show_entries()
+    end)
+
+    field(node, label("add_table.name"), label("add_table.help"), "", function(value)
+        files().add_table(tbl, value)
+        save(context)
+        show_entries()
+    end)
+
+    field(node, label("remove.name"), label("remove.help"), "", function(value)
+        if not files().remove(tbl, value) then
+            log:warn(text("errors.no_entry"):format(value))
+            return
+        end
+
+        save(context)
+        show_entries()
+    end)
+
+    local first = #node.children + 1
+
+    -- The entries made again, as the table is now
+    show_entries = function()
+        node:clear_from(first)
+
+        local entries = files().entries(tbl)
+
+        if #entries == 0 then
+            node:readonly_name(label("empty"))
+        end
+
+        -- @param
+        -- @return
+        for _, entry in ipairs(entries) do
+            local key = entry.key
+            local value = entry.value
+
+            if type(value) == "table" then
+                local child = nil
+
+                child = node:list($"{key_text(key)} ({files().count(value)})", {}, label("table.help"), function()
+                    child:clear()
+                end, function()
+                    child:clear()
+                    fill_table(child, context, value)
+                end)
+            else
+                field(node, key_text(key), label("value.help"), files().describe(value), function(typed)
+                    local ok, why, gone = files().set(tbl, key, typed)
+
+                    if not ok then
+                        log:warn(text($"errors.{why}"))
+                        return
+                    end
+
+                    save(context)
+
+                    -- Taken away: the entries without it
+                    if gone then
+                        show_entries()
+                    end
+                end)
+            end
+        end
+        -- what returns
+    end
+
+    show_entries()
+    -- what returns
+end
+
+-- A file's list: Delete File (or Protected File), then its table
+-- @param parent The Files Editor's list
+-- @param file { id, name, area, protected }
+-- @param refresh function() the files of the editor made again
+-- @return Nothing
+local function file_list(parent: table, file: table, refresh: function): void
+    local deleted = false
+    local cancel = nil
+    local node = nil
+
+    node = parent:list($"{file.area}/{file.name}", {}, file.id, function()
+        if cancel ~= nil then
+            cancel()
+        end
+
+        node:clear()
+
+        -- A deleted file's list goes now that it's left
+        if deleted then
+            refresh()
+        end
+    end, function()
+        node:clear()
+
+        local context = { id = file.id, data = files().read(file.id) }
+
+        if file.protected then
+            node:readonly_name(label("protected"))
+        else
+            local delete_ref = nil
+            delete_ref, cancel = confirm.action(node, label("delete.name"), label("delete.again"), function()
+                local ok, why = files().delete(file.id)
+
+                if not ok then
+                    log:warn(text($"errors.{why}"))
+                    return
+                end
+
+                -- The list is left empty: the notice says it, and the list goes when it's left
+                deleted = true
+                node:clear()
+                log:notify(text("delete.done"):format(file.id))
+            end, function()
+                log:warn(text("delete.warning"):format(file.id))
+            end, label("delete.help"))
+        end
+
+        fill_table(node, context, context.data)
+    end)
+end
+
+-- Makes the Files Editor list in node
+-- @param node The Call Function list
+-- @return The Files Editor's list
+function module.build(node: table): table
+    -- body function
+
+    local editor = nil
+    local first = nil
+
+    -- The file lists made again (a file made or deleted)
+    local function show_files(): void
+        editor:clear_from(first)
+
+        -- @param
+        -- @return
+        for _, file in ipairs(files().list()) do
+            file_list(editor, file, show_files)
+        end
+    end
+
+    editor = node:list(label("name"), {}, label("help"), function()
+        editor:clear()
+    end, function()
+        editor:clear()
+
+        field(editor, label("create.name"), label("create.help"), "", function(value)
+            local ok, result = files().create(value)
+
+            if not ok then
+                log:warn(text($"create.{result}"))
+                return
+            end
+
+            log:notify(text("create.done"):format(result))
+            show_files()
+        end)
+
+        editor:divider(label("files.divider"))
+        first = #editor.children + 1
+        show_files()
+    end)
+
+    return editor
+    -- what returns
+end
+
+return module

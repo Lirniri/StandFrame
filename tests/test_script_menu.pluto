@@ -343,7 +343,7 @@ stand.check(all_visible(false), "divider, Call Function, Modules and Delete Scri
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Show Call Time | Show Result On Screen | Result Length On Screen | Notice In Stand",
+stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Show Call Time | Show Result On Screen | Result Length On Screen | Notice In Stand | Files Editor",
     "Call Function: two lists, the Arguments Guide, then the settings")
 -- Arguments Guide: how to write the arguments, as a notice in Stand
 stand.toasts = {}
@@ -678,6 +678,126 @@ stand.equal(call_function_module.stand_api()["util.toast"].returns, "void", "sta
 stand.write_file($"{api_dir}stand_api.json", "{broken")
 stand.equal(next(call_function_module.stand_api()), nil, "stand_api: a damaged file - empty")
 os.remove($"{api_dir}stand_api.json")
+
+-- ─── Files Editor: the JSON files of Call Function as a tree ─────────────────
+
+local editor_core = $"{stand.store}AnitaDarin/core/call_function/"
+local editor_user = $"{stand.store}AnitaDarin/user/call_function/"
+io.makedirs(editor_core)
+io.makedirs(editor_user)
+stand.write_file($"{editor_core}short_name.json", '{"a": {"path": "x", "params": []}}')
+stand.write_file($"{editor_core}stand_api.json", '{}')
+os.remove($"{editor_user}saved_functions.json")
+os.remove($"{editor_user}saved_functions.json.bak")
+
+-- A store with no user/call_function folder yet: Stand's list_files fails on a missing folder, the list must not
+local real_store = Atdar.filesystem.paths.store
+local bare_store = stand.tmpdir("editor_bare_store") .. "AnitaDarin/"
+io.makedirs($"{bare_store}core/call_function")
+stand.write_file($"{bare_store}core/call_function/short_name.json", "{}")
+Atdar.filesystem.paths.store = bare_store
+local bare_files = Atdar.loader.load("ui/logic/stand/script/call_function_files").list()
+Atdar.filesystem.paths.store = real_store
+stand.check(#bare_files == 1 and bare_files[1].id == "core/call_function/short_name.json" and bare_files[1].protected,
+    "no user/call_function folder: the core files are listed, nothing fails")
+
+local editor = stand.child(call_list, "Files Editor")
+stand.equal(#editor.children, 0, "Files Editor: nothing in it until it's opened")
+stand.click(editor)
+stand.equal(names_in(editor), "Create File | Files | core/short_name.json | core/stand_api.json",
+    "opened: Create File, the Files divider, a list per file (core first)")
+stand.equal(stand.child(editor, "Files").kind, "divider", "Files is a divider")
+
+-- A protected file: no Delete File
+local short_name_list = stand.child(editor, "core/short_name.json")
+stand.click(short_name_list)
+stand.check(stand.child(short_name_list, "Protected file: it can't be deleted") ~= nil and stand.child(short_name_list, "Delete File") == nil,
+    "short_name.json can't be deleted: no Delete File, it says it's protected")
+stand.check(stand.child(stand.child(editor, "core/stand_api.json"), "Delete File") == nil, "nor stand_api.json")
+local files_logic = Atdar.loader.load("ui/logic/stand/script/call_function_files")
+local refused, refused_why = files_logic.delete("core/call_function/short_name.json")
+stand.check(refused == false and refused_why == "protected" and io.exists($"{editor_core}short_name.json"), "the logic refuses to delete short_name.json too, not only the menu")
+stand.equal(select(2, files_logic.delete("core/call_function/stand_api.json")), "protected", "and stand_api.json")
+stand.equal(names_in(short_name_list), "Protected file: it can't be deleted | Add Value | Add Table | Remove | a (2)",
+    "the file's table: Add Value, Add Table, Remove, then the entries; a table is a list with how many it has")
+
+-- Values: added under a name, changed, taken away; every change is written at once
+local function stored(name: string): string
+    return stand.read_file($"{editor_core}{name}")
+end
+stand.child(short_name_list, "Add Value").on_change('speed = 5', 0)
+stand.check(stored("short_name.json"):find('"speed": 5', 1, true), "name = value: written to the file at once")
+stand.equal(stand.child(short_name_list, "speed").value, "5", "and shown as a field with the value")
+stand.child(short_name_list, "Add Value").on_change('kind = int', 0)
+stand.equal(stand.child(short_name_list, "kind").value, '"int"', "a bare word is text, shown in quotes (also one Lua knows: string, table)")
+stand.child(short_name_list, "Add Value").on_change('type = string', 0)
+stand.equal(stand.child(short_name_list, "type").value, '"string"', "a name of Lua's own is text too")
+stand.child(short_name_list, "speed").on_change('true', 0)
+stand.check(stored("short_name.json"):find('"speed": true', 1, true), "a field changed: written")
+stand.clear_logs()
+stand.child(short_name_list, "speed").on_change('util', 0)
+stand.check(stored("short_name.json"):find('"speed": "util"', 1, true), "a bare word is text, also util, which Lua knows")
+stand.child(short_name_list, "speed").on_change('5, 6', 0)
+stand.check(stand.find_log("One value is needed"), "two values are refused")
+stand.child(short_name_list, "speed").on_change('v3.new(1, 2, 3)', 0)
+stand.check(stand.find_log("Only text, a number, true or false"), "a value that is none of those is refused: tables are made with Add Table")
+stand.child(short_name_list, "speed").on_change('nil', 0)
+stand.equal(stand.child(short_name_list, "speed"), nil, "nil takes the entry away")
+stand.check(not stored("short_name.json"):find('"speed"', 1, true), "and it's out of the file")
+
+-- Tables: made, opened, filled; a value alone is added at the end of a list
+stand.child(short_name_list, "Add Table").on_change('params', 0)
+local params_list = stand.child(short_name_list, "params (0)")
+stand.check(params_list ~= nil and params_list.kind == "list", "Add Table: a table under the name, a list to open")
+stand.click(params_list)
+stand.equal(names_in(params_list), "Add Value | Add Table | Remove | Empty", "opened: the same controls, and Empty for a table with nothing in it")
+stand.child(params_list, "Add Value").on_change('"one"', 0)
+stand.child(params_list, "Add Value").on_change('2', 0)
+stand.equal(names_in(params_list), "Add Value | Add Table | Remove | [1] | [2]", "a value alone is added at the end of a list")
+stand.check(stored("short_name.json"):find('"one"', 1, true), "and written")
+stand.child(params_list, "Remove").on_change('1', 0)
+stand.equal(names_in(params_list), "Add Value | Add Table | Remove | [1]", "Remove takes an entry out by its number in a list")
+stand.equal(stand.child(params_list, "[1]").value, "2", "the others move up")
+stand.clear_logs()
+stand.child(params_list, "Remove").on_change('nothing', 0)
+stand.check(stand.find_log("There's no entry 'nothing'"), "an entry that isn't there is told")
+stand.child(params_list, "Add Table").on_change('', 0)
+stand.check(stand.child(params_list, "[2] (0)") ~= nil, "Add Table with no name: a table at the end of a list")
+stand.back(params_list)
+stand.equal(#params_list.children, 0, "going back out of a table removes its items")
+stand.child(short_name_list, "Remove").on_change('params', 0)
+stand.check(stand.child(short_name_list, "params (2)") == nil and stand.child(short_name_list, "a (2)") ~= nil, "Remove by name: the table is out, the others stay")
+stand.back(short_name_list)
+
+-- Create File: in user/call_function; a name with something else than letters, digits, _ and - is refused
+stand.clear_logs()
+stand.child(editor, "Create File").on_change("bad name", 0)
+stand.check(stand.find_log("letters, digits, _ and - only") and not io.exists($"{editor_user}bad name.json"), "a bad name is refused")
+stand.child(editor, "Create File").on_change("mine", 0)
+stand.check(io.exists($"{editor_user}mine.json"), "Create File makes user/call_function/mine.json")
+stand.check(stand.child(editor, "user/mine.json") ~= nil, "and its list is there at once")
+stand.child(editor, "Create File").on_change("mine.json", 0)
+stand.check(stand.find_log("There's a file with this name already"), "a name that's taken is refused (.json or not)")
+stand.child(editor, "Create File").on_change("short_name", 0)
+stand.check(not io.exists($"{editor_user}short_name.json") == false and io.exists($"{editor_core}short_name.json"), "a file is made in user/: core's isn't touched")
+
+-- Delete File: a second click within 5 seconds; the list stays until it's left
+local mine_list = stand.child(editor, "user/mine.json")
+stand.click(mine_list)
+stand.check(stand.child(mine_list, "Protected file: it can't be deleted") == nil and stand.child(mine_list, "Delete File") ~= nil, "a user file has Delete File")
+stand.click(stand.child(mine_list, "Delete File"))
+stand.check(io.exists($"{editor_user}mine.json"), "the first click deletes nothing")
+stand.click(stand.child(mine_list, "Delete File Again") or stand.child(mine_list, "Click Again To Delete"))
+stand.check(not io.exists($"{editor_user}mine.json"), "the second one deletes the file")
+stand.equal(#mine_list.children, 0, "its list is empty (the notice says it's deleted)")
+stand.back(mine_list)
+stand.check(stand.child(editor, "user/mine.json") == nil, "and it's gone from the Files Editor once left")
+
+-- Clean up the files the test made
+os.remove($"{editor_user}short_name.json")
+os.remove($"{editor_user}short_name.json.bak")
+stand.back(editor)
+stand.equal(#editor.children, 0, "going back out of the Files Editor removes its items")
 
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
 local modules_list = debug_list.children[9]
