@@ -7,7 +7,6 @@
 --                 day and night hours, colours for each)
 --   profiles    - Profiles list laid out like Stand's: Create Profile, Open Folder, then one list per profile
 --                 with Save, Load, Automatically Save and Delete
---   auto_copy   - Copy Menu To Core
 --   command_box - Command Prefix and Separator
 --   debug       - Debug Mode, Load Timing
 --   log_keep_days - Keep Logs (Days)
@@ -149,20 +148,6 @@ local function show_profile_value(ref, key: string, value): void
     end
 end
 
--- "Copy Menu To Core: AnitaDarin", "...: Off", or the saved folder marked missing if it's gone from store
-local function auto_copy_caption(): string
-    local id = Atdar.profile.get("auto_copy_menu")
-    if type(id) ~= "string" or id == "" then
-        return i18n.text("menu_loader.auto_copy.name"):format(i18n.text("menu_loader.auto_copy.off"))
-    end
-    for _, pack in ipairs(view.packs) do
-        if pack.folder == id then
-            return i18n.text("menu_loader.auto_copy.name"):format(pack.name)
-        end
-    end
-    return i18n.text("menu_loader.auto_copy.name"):format(i18n.text("menu_loader.auto_copy.missing"):format(id))
-end
-
 -- The refs may belong to a section that was already removed, so a failed update is just skipped
 local function rename(ref, caption: string): void
     if ref then
@@ -193,7 +178,6 @@ local function update_captions(): void
     for _, ref in pairs(view.subject_colors) do
         pcall(menu.set_visible, ref, is_message)
     end
-    rename(view.auto_copy, auto_copy_caption())
 end
 
 -- After another profile is loaded its values go into the fields
@@ -631,25 +615,6 @@ function module.profiles(node: table, refresh: function): void
     list:divider(label("list.divider"))
     first = #list.children + 1
     fill_entries()
-end
-
--- ─── Copy Menu To Core ───────────────────────────────────────────────────────
-
--- Off, then every pack in store; takes effect at the next start (see auto_copy in menu.pluto)
-function module.auto_copy(node: table): void
-    local options = { i18n.label("menu_loader.auto_copy.off") }
-    for _, pack in ipairs(view.packs) do
-        table.insert(options, pack.name)
-    end
-    view.auto_copy = node:list_action(auto_copy_caption(), options, function(index)
-        local pack = view.packs[index - 1]
-        Atdar.profile.set("auto_copy_menu", pack ? pack.folder : "")
-        if pack then
-            log:notify(i18n.text("menu_loader.auto_copy.later"):format(pack.name))
-        else
-            log:notify(i18n.text("menu_loader.auto_copy.disabled"))
-        end
-    end, { "menuloaderautocopy" }, i18n.label("menu_loader.auto_copy.help"))
 end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────

@@ -297,12 +297,11 @@ function module.build(section: table, opts: table): void
 
     profile_menu.profiles(section, opts.refresh)
 
-    -- Its commands all start with menuloader: menuloader, menuloaderunload, menuloaderautocopy,
+    -- Its commands all start with menuloader: menuloader, menuloaderunload,
     -- menuloaderbuiltin, menuloader<pack folder>
     local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
         i18n.label("menu_loader.load_menu.help"))
     load_menu:action(i18n.label("menu_loader.unload.name"), opts.unload, { "menuloaderunload" }, i18n.label("menu_loader.unload.help"))
-    profile_menu.auto_copy(load_menu)
     opts.fill_menus(load_menu)
 
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))

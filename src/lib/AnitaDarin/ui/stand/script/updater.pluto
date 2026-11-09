@@ -1,21 +1,27 @@
 -- The Update list of the script's section (script_menu puts it under Open Folder): checking for a new
 -- release and installing it.
 --
+--   Installed Version: unknown     (read-only)
+--   Available Version: not checked (read-only)
+--   Last Check: never              (read-only, profile: update_last_check)
+--   Changes                        (what the available version changes)
 --   Check For Updates
 --   Update Branch: main            (profile: update_branch)
 --   ── Update ──
 --   Update
+--   Check Before Updating          (profile: update_check_before)
 --   Update Automatically          (profile: auto_update)
 --   Check For Updates Every (Days) (profile: update_check_days)
 --
--- A stub for now: the auto-updater lives apart in updater/ until it's brought into the script, so
--- Check For Updates and Update only say they aren't made yet; the settings are kept in the profile
--- already, for when it is.
--- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays, updaterbranch
+-- The work is done by core/update_manager (check, install, the automatic check); the menu only starts it
+-- in a thread and shows what it found.
+-- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
+-- updaterbranch, updaterbefore, updaterchanges
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
+local manager = Atdar.loader.load("core/update_manager")
 
 local log = new Logger("Updater")
 
@@ -24,9 +30,9 @@ local module = {}
 -- Strings under "updater_menu"
 local label, text = i18n.scope("updater_menu")
 
--- An item that isn't made yet: says so when clicked
-local function stub(node: table, key: string, command: string): void
-    node:action(label($"{key}.name"), || -> log:notify(text("stub")), { command }, label($"{key}.help"))
+-- An item running a function of the manager in a thread: the check and the install download, so they yield
+local function threaded(node: table, key: string, command: string, run: function): void
+    node:action(label($"{key}.name"), || -> util.create_thread(run), { command }, label($"{key}.help"))
 end
 
 -- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried
@@ -44,13 +50,75 @@ local function branch_options(): table
     return options
 end
 
--- The branch picker made by build
-local view = { branch = nil }
+-- The info lines and the branch picker made by build
+local view = { branch = nil, installed = nil, available = nil, last_check = nil }
+
+-- "never" when no check ran, else the time of the last one
+local function last_check_text(): string
+    local time = Atdar.profile.get("update_last_check") or 0
+
+    if time == 0 then
+        return text("info.never")
+    end
+
+    return os.date("%Y-%m-%d %H:%M", time)
+end
+
+local function available_text(): string
+    local version = manager.available_version()
+
+    if version == nil then
+        return text("info.not_checked")
+    end
+
+    if manager.is_up_to_date() then
+        return text("info.up_to_date"):format(version)
+    end
+
+    return version
+end
+
+-- Puts what's known into the info lines. A line of a removed section is skipped
+local function refresh_info(): void
+    if view.installed == nil then
+        return
+    end
+
+    pcall(menu.set_value, view.installed, manager.installed_version() or text("info.unknown"))
+    pcall(menu.set_value, view.available, available_text())
+    pcall(menu.set_value, view.last_check, last_check_text())
+end
+
+-- Says what the available version changes, one notification per line (the first MAX_LINES)
+local MAX_LINES = 8
+
+local function show_changes(): void
+    local lines = manager.changes()
+
+    if #lines == 0 then
+        log:notify(text("changes.none"))
+        return
+    end
+
+    for i, line in ipairs(lines) do
+        if i > MAX_LINES then
+            log:notify(text("changes.more"):format(#lines - MAX_LINES))
+            return
+        end
+        log:notify(text($"changes.{line.kind}"):format(line.path))
+    end
+end
 
 function module.build(node: table): table
     local profile = Atdar.profile
     local list = node:list(label("name"), { "updater" }, label("help"))
-    stub(list, "check", "updatercheck")
+    view.installed = list:readonly(label("info.installed"), "")
+    view.available = list:readonly(label("info.available"), "")
+    view.last_check = list:readonly(label("info.last_check"), "")
+    refresh_info()
+    manager.on_change(refresh_info)
+    list:action(label("changes.name"), show_changes, { "updaterchanges" }, label("changes.help"))
+    threaded(list, "check", "updatercheck", manager.check)
     -- The branch updates come from, its name in the item: "Update Branch: main"
     view.branch = list:list_action(branch_caption(), branch_options(), function(index)
         local branch = BRANCHES[index]
@@ -60,7 +128,14 @@ function module.build(node: table): table
     end, { "updaterbranch" }, label("branch.help"))
 
     list:divider(label("divider"))
-    stub(list, "install", "updaterinstall")
+    threaded(list, "install", "updaterinstall", manager.install_and_restart)
+    list:toggle(label("before.name"), function(on)
+        -- Stand also calls it at every start: only a real change is saved
+        if profile.get("update_check_before") == on then
+            return
+        end
+        profile.set("update_check_before", on)
+    end, { "updaterbefore" }, label("before.help"), profile.get("update_check_before") ~= false)
     list:toggle(label("auto.name"), function(on)
         -- Stand also calls it at every start, restoring the state it keeps: only a real change is saved
         if profile.get("auto_update") == on then
@@ -87,6 +162,7 @@ i18n.on_change(function()
     if view.branch == nil then
         return
     end
+    refresh_info()
     pcall(menu.set_menu_name, view.branch, branch_caption())
     pcall(menu.set_list_action_options, view.branch, branch_options())
 end)

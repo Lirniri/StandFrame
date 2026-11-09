@@ -292,6 +292,9 @@ for _, name in ipairs({ "__construct", "__index", "__newindex", "__call", "__tos
     CLASS_FUNCTIONS[name] = true
 end
 
+-- Module.functions_of results: class -> kind -> list; weak, so a dropped class takes its lists with it
+local functions_cache = setmetatable({}, { __mode = "k" })
+
 -- What kind a function is by its name: "public" (add), "internal" (_helper), "private" (__secret)
 local function kind_of(name: string): string
     if name:sub(1, 2) == "__" then
@@ -308,10 +311,19 @@ end
 -- Module's own methods, the hooks and the class's own (__construct, metamethods) are left out.
 -- kind: "public" (default) - names without _; "internal" - names starting with _ (helpers);
 -- "private" - names starting with __
+-- The list is read once per class and kind (debug.getinfo/getlocal are slow); a reloaded module is a new
+-- class, so it's read again. Don't change the returned list
 function Module.functions_of(instance: table, kind: string = "public"): table
     local found = {}
     local list = {}
     local cls = getmetatable(instance)
+    local first = cls
+
+    local cached = functions_cache[first]
+    if cached ~= nil and cached[kind] ~= nil then
+        return cached[kind]
+    end
+
     while type(cls) == "table" and cls ~= Module do
         for name, value in pairs(cls) do
             if type(name) == "string" and type(value) == "function" and not found[name]
@@ -330,6 +342,11 @@ function Module.functions_of(instance: table, kind: string = "public"): table
         cls = rawget(cls, "__parent")
     end
     table.sort(list, |a, b| -> a.name < b.name)
+
+    if type(first) == "table" then
+        functions_cache[first] = functions_cache[first] or {}
+        functions_cache[first][kind] = list
+    end
     return list
 end
 

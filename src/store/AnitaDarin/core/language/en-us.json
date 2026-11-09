@@ -22,14 +22,6 @@
             "done": "Menu unloaded",
             "notice": "Built-in menu not loaded"
         },
-        "auto_copy": {
-            "name": "Copy Menu To Core: %s",
-            "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
-            "off": "Off",
-            "missing": "%s (not in store)",
-            "later": "'%s' will be copied to core at the next start",
-            "disabled": "Copying to core is off; the copy in core stays"
-        },
         "menus": {
             "divider": "Menus"
         },
@@ -40,7 +32,6 @@
             "copied": {
                 "help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded."
             },
-            "auto_copy_again": "Copying to core is on: the menu comes back at the next start",
             "removed": "Removed from core: %d file(s)"
         },
         "pack": {
@@ -1021,6 +1012,23 @@
     "updater_menu": {
         "name": "Update",
         "help": "Checking for and installing a new version of the script",
+        "info": {
+            "installed": "Installed Version",
+            "available": "Available Version",
+            "last_check": "Last Check",
+            "unknown": "unknown",
+            "not_checked": "not checked",
+            "never": "never",
+            "up_to_date": "%s (up to date)"
+        },
+        "changes": {
+            "name": "Changes",
+            "help": "Shows what the available version changes",
+            "none": "No changes to show: nothing to update, or updates weren't checked yet",
+            "update": "Update: %s",
+            "remove": "Remove: %s",
+            "more": "...and %d more"
+        },
         "check": {
             "name": "Check For Updates",
             "help": "Finds out whether a new version of the script is out"
@@ -1029,6 +1037,10 @@
         "install": {
             "name": "Update",
             "help": "Downloads and installs the new version; profiles and settings stay"
+        },
+        "before": {
+            "name": "Check Before Updating",
+            "help": "Update checks for a newer version first, and does nothing if there is none"
         },
         "auto": {
             "name": "Update Automatically",
@@ -1047,6 +1059,14 @@
             "experiment": "experiment (newest)",
             "set": "Updates will come from the %s branch"
         },
-        "stub": "Updating isn't made yet"
+        "msg": {
+            "busy": "A check or an update is already running",
+            "check_failed": "Couldn't check for updates: %s",
+            "up_to_date": "The script is up to date (version %s)",
+            "found": "Version %s is out: %d file(s) to change. Press Update to install it",
+            "installing": "Updating: downloading %d file(s)",
+            "installed": "Updated to version %s. The script restarts",
+            "install_failed": "Couldn't update: %s. Nothing was changed"
+        }
     }
 }

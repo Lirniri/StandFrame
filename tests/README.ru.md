@@ -27,7 +27,6 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_module_manager` | зависимости, остановку по цепочке, повторный запуск, тик, перезагрузку с диска |
 | `test_modules_menu` | меню модулей: видимость в режиме отладки, действия, перевод |
 | `test_script_menu` | раздел скрипта: раскладку, выбор языка, профили, заглушки, переименование |
-| `test_menu_startup` | запуск как в bootstrap: копирование пака в ядро, загрузку встроенного меню |
 | `test_menu_utils` | `utils/menu`: выбор цвета, спойлер; `utils/color`: hex, Stand, игра |
 | `test_installer` | переименование скрипта с открытым лог-файлом, занятое имя, занятая папка |
 | `test_logger` | логгер: файл на каждый день `<скрипт>_<дата>.log` в `store/<скрипт>/logs`, новый файл в новый день, срок хранения, очистка, сломанный файл |
@@ -41,7 +40,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_examples` | запускает на заглушках модули, фичи, пакет, `menu/helpers`, `basics/06_check` и `basics/07_parsers_and_colors`; проверяет имена обёрток, используемые примерами нативов |
 | `test_check` | `core/check`: `expecter` для аргументов функций и `validator` для опций; ошибки `Module` и `Feature` указывают на строку, где написаны опции, и через `extends` тоже |
 | `test_parsers` | `parsers/`: hex-цвет (`color`), строгий JSON (`json`); Pluto в `proglang.pluto`: аргументы (`args`), слова имени (`name`), типы из исходника (`source`), пути (`path`); имена команд Stand (`stand.command_box`); фасады |
-| `test_updater` / `test_updater_manifest.py` | обновлялка из `updater/` на фейковом GitHub и генератор манифеста |
+| `test_updater` / `test_updater_manifest.py` | обновлялка (`core/updater`) на фейковом GitHub и генератор манифеста |
 
 ## Как написать тест
 

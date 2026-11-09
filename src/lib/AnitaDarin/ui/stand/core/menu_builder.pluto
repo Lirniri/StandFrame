@@ -217,7 +217,7 @@ function module.find_packs(packs_dir: string): table
             local info = read_json($"{path}\\info.json")
             if type(info) == "table" and type(info.name) == "string" then
                 info.dir = $"{path}\\"
-                -- The pack's id, e.g. for the profile's auto_copy_menu
+                -- The pack's id
                 info.folder = path:match("([^\\/]+)$")
                 table.insert(packs, info)
             end

@@ -121,14 +121,19 @@ local function caller(): string
     end
 end
 
+-- Names of the files module.load got, so reload doesn't have to walk the whole package.loaded
+local loaded_names = {}
+
 -- Requires lib/AnitaDarin/<path>. On error logs it with the file that asked for it and returns
 -- an empty table, so one broken file doesn't take down the whole section
 function module.load(path: string): table
-    local ok, result = timed_require(path, $"{Atdar.name}/{path}")
+    local name = $"{Atdar.name}/{path}"
+    local ok, result = timed_require(path, name)
     if not ok then
         log:error($"failed to load '{path}' (from {caller()})\n{result}")
         return {}
     end
+    loaded_names[name] = true
     -- An empty file makes require return true instead of a table
     if type(result) ~= "table" then
         log:warn($"'{path}' did not return a table")
@@ -187,9 +192,11 @@ end
 function module.reload(tbl: table, base: string): int
     local prefix = $"{Atdar.name}/{base}/"
     local forgotten = 0
-    for name in pairs(package.loaded) do
-        if type(name) == "string" and name:sub(1, #prefix) == prefix then
+    -- Only the files module.load knows, not all of package.loaded; one a file required itself isn't forgotten
+    for name in pairs(loaded_names) do
+        if name:sub(1, #prefix) == prefix then
             package.loaded[name] = nil
+            loaded_names[name] = nil
             forgotten += 1
         end
     end

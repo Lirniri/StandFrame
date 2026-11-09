@@ -1,7 +1,6 @@
--- updater/updater.pluto
---
--- The script's auto-updater, kept apart from the script while both grow: the script doesn't load it yet.
--- It runs inside the script all the same (Atdar.loader): installed.json goes through core JsonFile.
+-- The script's updater engine: compares the installed files with the release, downloads the changed ones
+-- and removes the dropped ones. core/update_manager keeps the state and drives it from the menu.
+-- installed.json goes through core JsonFile.
 --
 -- What a release is: updater/manifest.json in the repo's release branch (main), made by
 -- updater/manifest.py - every file of src with its sha256. The updater reads it, compares each file with
@@ -12,22 +11,7 @@
 -- put there (a menu copied to core, a pack of one's own). Removed: only files a previous update put
 -- there that the new release doesn't have.
 --
--- Use, from a thread (it yields while downloading):
---     local updater = require("updater")
---     util.create_thread(function()
---         local plan, err = updater.check({ name = Atdar.name })
---         if plan == nil then
---             util.toast(err)
---             return
---         end
---         if updater.is_up_to_date(plan) then
---             return
---         end
---         local ok, apply_err = updater.apply(plan)
---         if ok then
---             util.restart_script()
---         end
---     end)
+-- check and apply yield while downloading: call them from a thread (util.create_thread)
 
 -- The manifest downloaded is read strictly (a cut-off one is no manifest); installed.json goes through JsonFile
 local json_parser = Atdar.loader.load("parsers/json")
@@ -39,7 +23,7 @@ local module = {}
 -- Where releases come from; each can be given in opts instead
 module.DEFAULTS = {
     host = "raw.githubusercontent.com",
-    repo = "Lirniri/StandFrame",
+    repo = "Lirniri/Stand-AnitaDarin",
     branch = "main",
     -- The manifest's place in the repo
     manifest = "updater/manifest.json",
@@ -164,7 +148,7 @@ local function url_path(path: string): string
     return (path:gsub("[^%w%-%._~/]", |c| -> string.format("%%%02X", c:byte())))
 end
 
--- "/Lirniri/StandFrame/main/src/lib/AnitaDarin/core/loader.pluto"
+-- "/Lirniri/Stand-AnitaDarin/main/src/lib/AnitaDarin/core/loader.pluto"
 local function raw_path(o: table, path: string): string
     return url_path($"/{o.repo}/{o.branch}/{path}")
 end
@@ -257,7 +241,7 @@ end
 function module.check(opts: ?table)
     local o = options(opts)
     if async_http.have_access ~= nil and not async_http.have_access() then
-        return nil, "Lua scripts have no internet access (Stand > Lua Scripts > Settings)"
+        return nil, $"the script has no internet access (turn off Disable Internet Access in Stand > Lua Scripts > {o.name})"
     end
     local body, err = module.fetch(o.host, raw_path(o, o.manifest), o.timeout)
     if body == nil then

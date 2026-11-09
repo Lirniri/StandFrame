@@ -1,10 +1,9 @@
--- updater/updater.pluto: paths under the script's name, user data kept, plan, apply, removal.
+-- core/updater: paths under the script's name, user data kept, plan, apply, removal.
 -- The network is a fake async_http here; files go to tests/.tmp only
 local stand = require("stand")
 stand.boot()
-package.path = $"{stand.ROOT}/updater/?.pluto;{package.path}"
 local json = require "pluto:json"
-local updater = require("updater")
+local updater = Atdar.loader.load("core/updater")
 
 -- ─── Fake GitHub ─────────────────────────────────────────────────────────────
 
@@ -32,7 +31,7 @@ _G.async_http = {
     end,
 }
 
-local BASE = "/Lirniri/StandFrame/main/"
+local BASE = "/Lirniri/Stand-AnitaDarin/main/"
 local function serve(path: string, content) served[$"{BASE}src/{path}"] = content end
 local function publish(files: table, version: string)
     local listed = {}
@@ -100,7 +99,7 @@ publish({
 
 local plan, err = updater.check(opts)
 stand.check(plan ~= nil, $"check gives a plan ({tostring(err)})")
-stand.equal(requests[1], "raw.githubusercontent.com/Lirniri/StandFrame/main/updater/manifest.json", "the manifest from main")
+stand.equal(requests[1], "raw.githubusercontent.com/Lirniri/Stand-AnitaDarin/main/updater/manifest.json", "the manifest from main")
 stand.equal(plan.version, "0.1.0", "with the release's version")
 stand.equal(table.concat(plan.download, " | "),
     "AnitaDarin.pluto | lib/AnitaDarin/core/loader.pluto | store/AnitaDarin/profiles/main.json",
@@ -166,7 +165,7 @@ plan, err = updater.check(opts)
 stand.check(plan == nil and err:find("'Other'", 1, true), "another project's manifest: refused")
 access = false
 plan, err = updater.check(opts)
-stand.check(plan == nil and err:find("no internet access", 1, true), "no internet access for Lua: says where to allow it")
+stand.check(plan == nil and err:find("Disable Internet Access in Stand > Lua Scripts > Renamed", 1, true), "no internet access: says where to allow it")
 access = true
 
 -- A request that never answers times out

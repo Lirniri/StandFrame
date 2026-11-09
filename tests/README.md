@@ -28,7 +28,6 @@ What's checked:
 | `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk |
 | `test_modules_menu` | the modules menu: visibility in debug mode, actions, translation |
 | `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming |
-| `test_menu_startup` | startup as in bootstrap: copying a pack into the core, loading the built-in menu |
 | `test_menu_utils` | `utils/menu`: colour picker, spoiler; `utils/color`: hex, Stand, game |
 | `test_installer` | renaming the script with its log file open, a name already taken, a folder held open |
 | `test_logger` | the logger: a file per day `<script>_<date>.log` in `store/<script>/logs`, a new file on a new day, retention, cleanup, a broken file |
@@ -42,7 +41,7 @@ What's checked:
 | `test_examples` | runs modules, features, the pack, `menu/helpers`, and `basics/06_check` plus `basics/07_parsers_and_colors` against stubs; checks the wrapper names used by the native examples |
 | `test_check` | `core/check`: `expecter` for function arguments and `validator` for options; errors from `Module` and `Feature` point at the line with the options, through `extends` too |
 | `test_parsers` | `parsers/`: hex colour (`color`), strict JSON (`json`); Pluto in `proglang.pluto`: arguments (`args`), words of a name (`name`), types from the source (`source`), paths (`path`); Stand command names (`stand.command_box`); the facades |
-| `test_updater` / `test_updater_manifest.py` | the updater from `updater/` on a fake GitHub, and the manifest generator |
+| `test_updater` / `test_updater_manifest.py` | the updater (`core/updater`) on a fake GitHub, and the manifest generator |
 
 ## Writing a test
 

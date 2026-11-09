@@ -57,6 +57,7 @@ local function read_languages(source: table): void
         end
     end
     source.files = files
+    source.flat = {}
     source.languages = setmetatable({}, {
         __index = function(languages, code)
             local path = files[code]
@@ -90,6 +91,34 @@ local function name_in(source: table, code: string): ?string
     return text:match('"language_name"%s*:%s*"([^"\\]*)"')
 end
 
+-- Nested strings as one table, "menu.self.godmode" -> text, so a key is found by one index instead of being split on every call
+local function flatten(data: table, path: string, result: table): table
+    for key, value in pairs(data) do
+        local full = path == "" and tostring(key) or $"{path}.{tostring(key)}"
+        if type(value) == "table" then
+            flatten(value, full, result)
+        elseif type(value) == "string" then
+            result[full] = value
+        end
+    end
+    return result
+end
+
+-- The language's strings by full key, made the first time they're asked for (reload makes them again)
+local function flat_of(source: table, code: string): ?table
+    local flat = source.flat[code]
+    if flat ~= nil then
+        return flat
+    end
+    local strings = source.languages[code]
+    if strings == nil then
+        return nil
+    end
+    flat = flatten(strings, "", {})
+    source.flat[code] = flat
+    return flat
+end
+
 local function lookup(data: table, key: string)
     local value = data
     for part in key:gmatch("[^%.]+") do
@@ -118,10 +147,10 @@ end
 local function find(code: string, key: string): ?string
     for i = #sources, 1, -1 do
         local source = sources[i]
-        local strings = source.languages[code]
+        local flat = flat_of(source, code)
         local own_key = key_in(source, key)
-        local text = strings and own_key and lookup(strings, own_key)
-        if type(text) == "string" then
+        local text = flat and own_key and flat[own_key]
+        if text ~= nil then
             return text
         end
     end
@@ -311,9 +340,9 @@ function module.file_of(key: string): ?string
     for _, code in ipairs({ shown, ENGLISH }) do
         for i = #sources, 1, -1 do
             local source = sources[i]
-            local strings = source.languages[code]
+            local flat = flat_of(source, code)
             local own_key = key_in(source, key)
-            if strings and own_key and type(lookup(strings, own_key)) == "string" then
+            if flat and own_key and flat[own_key] ~= nil then
                 local path = source.files[code]
                 local root = filesystem.scripts_dir()
                 if path:sub(1, #root) == root then

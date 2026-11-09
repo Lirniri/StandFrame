@@ -2,16 +2,22 @@
 
 **English** | [Русский](README.ru.md)
 
-The script's updater. For now it stands apart: the script doesn't load it. It grows with the project and will be
-connected later.
-
-The script's Settings menu already has an Update section, but its check and install actions are placeholders. The
-automatic-update toggle and interval currently save profile settings only; they do not call this updater.
+The script's auto-updater. The engine is part of the script ([core/updater.pluto](../src/lib/AnitaDarin/core/updater.pluto));
+[core/update_manager.pluto](../src/lib/AnitaDarin/core/update_manager.pluto) keeps what a check found and runs it for the
+Settings > Update menu and for the automatic check.
 
 | File | What it does |
 |---|---|
-| [updater.pluto](updater.pluto) | The updater for Stand: compares installed files with the release, downloads changed ones, removes dropped ones |
+| [core/updater.pluto](../src/lib/AnitaDarin/core/updater.pluto) | The engine: compares installed files with the release, downloads changed ones, removes dropped ones |
+| [core/update_manager.pluto](../src/lib/AnitaDarin/core/update_manager.pluto) | Check and install one at a time, notifications, the automatic check, restart after an update |
 | [manifest.py](manifest.py) | Makes `manifest.json`: every file of `src` from git with its sha256; that is the release |
+
+The Update menu shows the installed and available versions, the last check and the files an update would change.
+Settings (profile): `update_branch`, `update_check_before` (Update checks first and stops if nothing is newer),
+`auto_update` (install what the automatic check finds), `update_check_days` (0 = never), `update_last_check`.
+The automatic check runs a few seconds after the start and then looks hourly whether it is due.
+
+The manifest must be on the branch updates come from, so run `manifest.py` before pushing to `main` and to `experiment`.
 
 ## How it works
 
@@ -36,20 +42,10 @@ A script with another name is updated under its own: `lib/AnitaDarin/...` from t
 ## Example
 
 ```lua
-local updater = require("updater")
+local manager = Atdar.loader.load("core/update_manager")
 util.create_thread(function()
-    local plan, err = updater.check({ name = Atdar.name })
-    if plan == nil then
-        util.toast(err)
-        return
-    end
-    if updater.is_up_to_date(plan) then
-        return
-    end
-    local ok, apply_err = updater.apply(plan, |done, total| -> util.draw_debug_text($"{done}/{total}"))
-    if ok then
-        util.restart_script()
-    end
+    manager.check()             -- tells what it found
+    manager.install_and_restart()
 end)
 ```
 

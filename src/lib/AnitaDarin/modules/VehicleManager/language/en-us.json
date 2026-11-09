@@ -6,5 +6,6 @@
     "no_folder": "The module isn't loaded from a file: there's no folder to save to",
     "not_written": "Couldn't write %s",
     "saved": "Saved to %s",
-    "not_ped": "'%s' isn't a ped's handle, not set"
+    "not_ped": "'%s' isn't a ped's handle, not set",
+    "not_count": "'%s' isn't a count from 1, not set"
 }

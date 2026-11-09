@@ -183,11 +183,6 @@ local function remove_builtin(): void
     local ok, result = builder.remove_copied_core(paths.lib, paths.store)
     if ok then
         log:notify(i18n.text("menu_loader.builtin.removed"):format(result))
-        -- Otherwise the copy silently comes back at the next start
-        if (Atdar.profile.get("auto_copy_menu") or "") ~= "" then
-            -- i18n directly: label()/text() of this file are declared further down
-            log:notify(i18n.text("menu_loader.builtin.auto_copy_again"))
-        end
     else
         log:warn($"nothing removed: {result}")
     end
@@ -317,50 +312,6 @@ settings.add(function(node)
         unload = unload_menu,
     })
 end)
-
--- The active profile can keep a pack copied into core (its auto_copy_menu). At every start the pack is
--- copied again when it changed, so changes made to it in store reach the copy (an unchanged one is
--- left as it is: nothing to write), and then loads as the built-in menu.
--- Built here, in the script's main body, its items get the states saved in Stand's profile,
--- which a menu loaded later by hand doesn't
-local function auto_copy(): void
-    local id = Atdar.profile.get("auto_copy_menu")
-    if type(id) ~= "string" or id == "" then
-        return
-    end
-    local info = nil
-    for _, pack in ipairs(builder.find_loadable_packs(PACKS_DIR)) do
-        if pack.folder == id then
-            info = pack
-            break
-        end
-    end
-    if not info then
-        log:warn($"menu '{id}' to copy to core isn't in store")
-        return
-    end
-    local manifest = builder.read_core_manifest(paths.lib)
-    -- A built-in menu that wasn't copied from a pack belongs to the script: never replaced
-    if has_builtin() and not manifest then
-        log:warn($"menu '{id}' not copied to core: the script has its own built-in menu")
-        return
-    end
-    if manifest and builder.core_copy_is_current(info, paths.lib, paths.store) then
-        log:info($"'{info.name}' in core is the same as in store, not copied again")
-        return
-    end
-    if manifest then
-        builder.remove_copied_core(paths.lib, paths.store)
-    end
-    local ok, result = builder.copy_pack_to_core(info, paths.lib, paths.store)
-    if ok then
-        log:info($"'{info.name}' copied to core ({result} file(s))")
-    else
-        log:warn($"'{info.name}' not copied to core: {result}")
-    end
-end
-
-auto_copy()
 
 if has_builtin() then
     load_builtin()
