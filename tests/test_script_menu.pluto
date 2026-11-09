@@ -343,7 +343,13 @@ stand.check(all_visible(false), "divider, Call Function, Modules and Delete Scri
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | Settings | Notice In Stand", "Call Function: two lists, then the settings")
+stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Notice In Stand",
+    "Call Function: two lists, the Arguments Guide, then the settings")
+-- Arguments Guide: how to write the arguments, as a notice in Stand
+stand.toasts = {}
+stand.click(stand.child(call_list, "Arguments Guide"))
+stand.check(stand.toasts[#stand.toasts] and stand.toasts[#stand.toasts]:find("Each argument has its own field", 1, true), "Arguments Guide tells it in Stand")
+stand.check(stand.toasts[#stand.toasts]:find("An empty field is not given", 1, true), "and what an empty field means")
 stand.equal(stand.child(call_list, "Settings").kind, "divider", "Settings is a divider")
 stand.equal(stand.child(call_list, "Notice In Stand").value, true, "Notice In Stand is on by default")
 -- Call A Function: the name may have brackets, as it's written in a call: "name()" or "name(arguments)"
@@ -455,9 +461,35 @@ stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...)", "Clear: the
 stand.equal(stand.child(functions_list, "2: GET_THING(...)").children[1].value, "5", "the others keep what's typed in their fields")
 add_function.on_change("test_typed", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "one added again goes to the end")
+-- Use Short Names: on, the last name only; off, the whole path is shown; the list follows at once
+stand.equal(stand.child(call_list, "Use Short Names").value, true, "Use Short Names is on by default")
+stand.click(stand.child(call_list, "Use Short Names"))
+stand.equal(added_names(), "1: test_plain: int | 2: NATIVE_TEST.GET_THING(...) | 3: test_typed(count, name, ...)",
+    "off: the native's whole path")
+stand.check(stand.child(functions_list, "2: NATIVE_TEST.GET_THING(...)").children[1].value == "5", "the fields keep what's typed")
+stand.click(stand.child(call_list, "Use Short Names"))
+stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "on again: the short name")
 stand.click(clear_all)
 stand.equal(names_in(functions_list), "Add | Clear | Clear All | Functions", "Clear All takes them all out")
 Atdar.test_plain, NATIVE_TEST = nil, nil
+
+-- Short names to call by: with Use Short Names on, a function is typed by the last part of its path
+Atdar.test_deep = { sub = { unique_short_fn = function(): int return 7 end } }
+TEST_SHORT = { another_short = function(...) end }
+stand.clear_logs()
+add_function.on_change("unique_short_fn", 0)
+stand.equal(added_names(), "1: unique_short_fn: int", "Add takes a short name: it's found in Atdar")
+add_function.on_change("another_short", 0)
+stand.equal(added_names(), "1: unique_short_fn: int | 2: another_short(...)", "and in a global table")
+stand.click(stand.child(call_list, "Use Short Names"))
+stand.equal(added_names(), "1: test_deep.sub.unique_short_fn: int | 2: TEST_SHORT.another_short(...)",
+    "they're kept with the full paths: off, those are shown")
+stand.clear_logs()
+add_function.on_change("unique_short_fn", 0)
+stand.check(stand.find_log("'unique_short_fn' not found"), "with Use Short Names off a short name isn't looked for")
+stand.click(stand.child(call_list, "Use Short Names"))
+stand.click(clear_all)
+Atdar.test_deep, TEST_SHORT = nil, nil
 
 -- Made again (the section being built again): the functions added and what's typed in their fields stay
 Atdar.test_typed = function(count: int, name: string) end

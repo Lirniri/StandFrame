@@ -6,9 +6,11 @@
 --   Call Function >   Call A Function (list): Function Name, then the panel (below)
 --                     Functions (list): Add, Clear, Clear All, the Functions divider, then the functions added,
 --                     each with its number
---                     Settings (divider), Notice In Stand
+--                     Arguments Guide: how to write the arguments, as a notice in Stand
+--                     Settings (divider), Use Short Names, Notice In Stand
 --
--- An added function is named by its number and its path, a native's namespace (PLAYER.) left out, then
+-- An added function is named by its number and its path, cut to the last name (PLAYER.PLAYER_PED_ID ->
+-- PLAYER_PED_ID, util.toast -> toast) while Use Short Names is on, then
 -- what it takes and gives: "1: PLAYER_PED_ID: int" (no arguments), "2: get(handle, ...): bool" (the arguments'
 -- names in brackets; the return type is there when the code writes one: void for nothing). One that
 -- takes arguments is a list: a field for each of its parameters by the type the code says
@@ -435,8 +437,36 @@ end
 
 -- What is typed in the Call A Function list, kept while the script runs (the menu being built again keeps it)
 local main_state = {}
--- The Notice In Stand setting
-local settings = { stand = true }
+-- The settings: Notice In Stand, Use Short Names (the names in the Functions list and the notices are the last
+-- part of the path)
+local settings = { stand = true, short_names = true }
+-- Makes the items of the Functions list again; set by the list when it's built
+local show_added = nil
+
+-- What a typed name means: a path that's there is itself; with Use Short Names on, a short name
+-- (get_user_vehicle_as_handle) is the first function of that name in Atdar or the globals (path.find)
+-- @return The full path, and how many functions have the name (1 for a path that's there, 0 for none)
+local function expand(typed: string)
+    local paths = path_parser()
+    local path = paths.split(typed:match("^%s*(.-)%s*$"))
+    if path == "" or paths.resolve(path) or not settings.short_names then
+        return path, paths.resolve(path) and 1 or 0
+    end
+    local found = paths.find(path)
+    if #found == 0 then
+        return path, 0
+    end
+    return found[1], #found
+end
+
+-- A path as it's shown in the Functions list and the notices
+local function shown(path: string): string
+    local paths = path_parser()
+    if settings.short_names then
+        return paths.short_name(path)
+    end
+    return (paths.split(path))
+end
 -- The functions of the Functions list, in order: { id, path, state }, state as the panel keeps it
 local added = {}
 -- The number of the last function added: each has its own commands and result, never used twice
@@ -451,7 +481,7 @@ end
 -- Named with its number in the list, the arguments and the return type
 local function add_item(list: table, entry: table, number: int): void
     local paths = path_parser()
-    local short = paths.short_name(entry.path)
+    local short = shown(entry.path)
     local found, value, owner = paths.resolve(entry.path)
     local sig = nil
     local returns = nil
@@ -518,7 +548,7 @@ local function build_by_name(node: table): void
         key = RESULT_KEY,
         state = main_state,
         name = function() return main_state.name or "" end,
-        target = function() return path_parser().resolve(main_state.name or "") end,
+        target = function() return path_parser().resolve((expand(main_state.name or ""))) end,
         args_command = "debugcallfuncargs",
         with_name = true,
         in_stand = in_stand,
@@ -531,8 +561,8 @@ local function build_functions(node: table): void
     local list = node:list(label("functions.name"), {}, label("functions.help"))
     local first = nil
 
-    -- The items of the functions made again, with the numbers they have now
-    local function show_added(): void
+    -- The items of the functions made again, with the numbers and names they have now
+    show_added = function()
         list:clear_from(first)
         for number, entry in ipairs(added) do
             add_item(list, entry, number)
@@ -543,14 +573,17 @@ local function build_functions(node: table): void
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end
-        -- The brackets, if it was typed as a call, aren't part of the path
-        local path = path_parser().split(value:match("^%s*(.-)%s*$"))
+        -- The brackets, if it was typed as a call, aren't part of the path; a short name is its full path
+        local path, matches = expand(value)
         if path == "" then
             return
         end
-        if not path_parser().resolve(path) then
+        if matches == 0 then
             log:warn(text("not_found"):format(path))
             return
+        end
+        if matches > 1 then
+            log:notify(text("short_names.many"):format(path, matches))
         end
         for _, entry in ipairs(added) do
             if entry.path == path then
@@ -562,7 +595,7 @@ local function build_functions(node: table): void
         local entry = { id = last_id, path = path, state = {} }
         table.insert(added, entry)
         add_item(list, entry, #added)
-        log:notify(text("add.done"):format(#added, path_parser().short_name(path)))
+        log:notify(text("add.done"):format(#added, shown(path)))
     end, label("add.help"), "")
 
     -- The number of the function to take out
@@ -581,7 +614,7 @@ local function build_functions(node: table): void
         end
         local entry = table.remove(added, number)
         show_added()
-        log:notify(text("clear.done"):format(number, path_parser().short_name(entry.path)))
+        log:notify(text("clear.done"):format(number, shown(entry.path)))
     end, label("clear.help"), "")
 
     list:action(label("clear_all.name"), function()
@@ -606,7 +639,21 @@ function module.build(node: table): any
     local list = node:list(label("name"), {}, label("help"))
     build_by_name(list)
     build_functions(list)
+    -- How to write the arguments, as a notice in Stand (there's room for it there)
+    list:action(label("guide.name"), function()
+        log:notify(text("guide.text"), "stand")
+    end, {}, label("guide.help"))
     list:divider(label("settings.divider"))
+    list:toggle(label("short_names.name"), function(on, click_type)
+        if stopping or settings.short_names == on then
+            return
+        end
+        settings.short_names = on
+        -- The names in the list follow (not while Stand puts the saved state back: the list isn't made then)
+        if show_added ~= nil and not NOT_USER_CLICKS[click_type] then
+            show_added()
+        end
+    end, {}, label("short_names.help"), settings.short_names)
     list:toggle(label("stand.name"), function(on)
         settings.stand = on
     end, {}, label("stand.help"), settings.stand)

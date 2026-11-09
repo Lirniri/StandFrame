@@ -6,7 +6,8 @@
 --     path.resolve("game.repair_vehicle")      -- true, the function
 --     path.resolve("VehicleManager:get")        -- true, the method, its module (the self to call it with)
 --     path.resolve("PLAYER.PLAYER_PED_ID()")    -- true, the native (the brackets are cut: see split)
---     path.short_name("PLAYER.PLAYER_PED_ID")   -- "PLAYER_PED_ID"
+--     path.short_name("PLAYER.PLAYER_PED_ID")   -- "PLAYER_PED_ID"; "game.repair_vehicle" -> "repair_vehicle"
+--     path.find("get_user_vehicle_as_handle")   -- { "entities.get_user_vehicle_as_handle" }
 --
 -- The path starts at Atdar with dots (game.repair_vehicle); a module's name may come first (VehicleManager.get);
 -- the first word that Atdar doesn't have is a global (util, menu, PLAYER, ...). With a colon the function is
@@ -86,13 +87,75 @@ function module.resolve(typed: string)
     return true, fn, current
 end
 
--- The name of a path to show: Stand's natives are in a namespace of capitals (PLAYER.PLAYER_PED_ID), which
--- is left out; any other path stays as it is (game.repair_vehicle, VehicleManager:get). Brackets are cut
+-- How deep the tables of Atdar and of the globals are looked into by find
+local FIND_DEPTH = { atdar = 4, globals = 2 }
+-- Globals that aren't looked into: the language's own and the ones that hold everything
+local FIND_SKIP = { _G = true, _ENV = true, Atdar = true, package = true, debug = true, io = true, os = true,
+    string = true, table = true, math = true, utf8 = true, coroutine = true }
+
+-- Adds to out the paths of the functions called name in tbl and the tables in it, down to depth
+local function scan(tbl: table, prefix: string, depth: int, name: string, out: table, seen: table): void
+    if seen[tbl] then
+        return
+    end
+    seen[tbl] = true
+    local keys = {}
+    -- A table of the script's may be a proxy that can't be walked: it's skipped then
+    local walked = pcall(function()
+        for key in pairs(tbl) do
+            if type(key) == "string" and key:sub(1, 2) ~= "__" then
+                table.insert(keys, key)
+            end
+        end
+    end)
+    if not walked then
+        return
+    end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        local ok, value = pcall(function() return tbl[key] end)
+        if ok then
+            if key == name and type(value) == "function" then
+                table.insert(out, $"{prefix}{key}")
+            elseif type(value) == "table" and depth > 1 then
+                scan(value, $"{prefix}{key}.", depth - 1, name, out, seen)
+            end
+        end
+    end
+end
+
+-- The full paths of the functions with this short name (no dot or colon in it), to call by it: what Atdar
+-- has first (game.repair_vehicle), then the globals one level down (entities.get_user_vehicle_as_handle,
+-- util.toast, PLAYER.PLAYER_PED_ID). Each part in alphabetical order, so the first is the same every time
+-- @return The paths, the first is the one to use; empty when there's none
+function module.find(name: string): table
+    expect("find", "name", name, "string")
+    local out = {}
+    if name == "" or name:find("[%.:%s]") then
+        return out
+    end
+    local seen = {}
+    scan(Atdar, "", FIND_DEPTH.atdar, name, out, seen)
+    local globals = {}
+    for key, value in pairs(_G) do
+        if type(key) == "string" and type(value) == "table" and not FIND_SKIP[key] then
+            table.insert(globals, key)
+        end
+    end
+    table.sort(globals)
+    for _, key in ipairs(globals) do
+        scan(_G[key], $"{key}.", FIND_DEPTH.globals, name, out, seen)
+    end
+    return out
+end
+
+-- The short name of a path: what's after the last dot or colon, whatever the namespace is (Stand's natives,
+-- Stand's own functions, the script's, a module's): PLAYER.PLAYER_PED_ID -> PLAYER_PED_ID,
+-- util.toast -> toast, VehicleManager:get -> get. Brackets are cut
 function module.short_name(typed: string): string
     expect("short_name", "typed", typed, "string")
     local path = module.split(typed)
-    local rest = path:match("^[A-Z][A-Z0-9_]*%.(.+)$")
-    return rest or path
+    return path:match("([^%.:]+)$") or path
 end
 
 return module

@@ -522,7 +522,6 @@
             "done": "%s = %s"
         },
         "call": {
-            "help": "Each argument has its own field, by the type the module's code says for it. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given",
             "button": {
                 "help": "Calls the function once; what it gives shows in a notification and on the Variable line"
             },
@@ -532,11 +531,7 @@
             "hook": {
                 "help": "Calls the module's hook; its status doesn't change"
             },
-            "bad_args": "%s: bad arguments: %s",
-            "guide": {
-                "name": "Arguments Guide",
-                "help": "Sends to Stand how to write the functions' arguments in the argument fields"
-            }
+            "bad_args": "%s: bad arguments: %s"
         },
         "loop": {
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
@@ -864,6 +859,11 @@
             "settings": {
                 "divider": "Settings"
             },
+            "short_names": {
+                "name": "Use Short Names",
+                "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A function can also be typed by its short name, in Function Name and Add: the first one of that name in the script, then in Stand's tables. Off: the whole path",
+                "many": "%s: %d functions have this name, the first is used"
+            },
             "functions": {
                 "name": "Functions",
                 "help": "Functions kept in a list, each with a field for every argument. Add puts one in, Clear takes one out by its number"
@@ -884,6 +884,11 @@
                 "name": "Clear All",
                 "help": "Takes every function out of the list",
                 "done": "The list of functions is cleared"
+            },
+            "guide": {
+                "name": "Arguments Guide",
+                "help": "Sends to Stand how to write the functions' arguments in the argument fields",
+                "text": "Each argument has its own field, by the type the module's code says for it. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given"
             },
             "added": {
                 "help": "A field for each argument by the type the code says, then Call, Call After, Loop...",

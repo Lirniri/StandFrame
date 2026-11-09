@@ -5,7 +5,9 @@ enum MenuType begin
 end
 -- The enum's name isn't a value in Pluto (its constants are put in at compile time), so the table is
 -- what other files compare with: state.MenuType.STAND
-module.MenuType = { STAND = MenuType.STAND, SCALEFORM = MenuType.SCALEFORM }
+module.MenuType = { 
+    STAND = MenuType.STAND, SCALEFORM = MenuType.SCALEFORM 
+}
 
 -- Current menu view
 module.current_view = MenuType.STAND

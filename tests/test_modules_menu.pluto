@@ -103,7 +103,7 @@ local function names_in(node)
     return table.concat(names, " | ")
 end
 stand.equal(entry_b.kind, "list", "a module is a list")
-stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories | Arguments Guide"
+stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories"
     .. " | Module Functions | Base Functions", "actions, Disable Function Categories, Module Functions, Base Functions")
 stand.equal(stand.child(entry_b, "Base Functions").kind, "list", "Base Functions is a list, like a category")
 stand.equal(names_in(stand.child(entry_b, "Base Functions")), "on_start(): void | on_tick(): void | on_stop(): void",
@@ -606,7 +606,7 @@ stand.check(stand.child(reloader_fns(), "one()") ~= nil and stand.child(reloader
 stand.write_file($"{reload_dir}reloader.pluto",
     reloader_file("    function two() return 2 end\n    function three(x) return x end"))
 stand.click(stand.child(entry_reloader, "Reload"))
-stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories | Arguments Guide"
+stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories"
     .. " | Module Functions | Base Functions", "after Reload the list is made again, once")
 stand.equal(names_in(reloader_fns()), "Variables | Functions | three(x) | two()",
     "with the new code's functions: one() and the field old_field(x) gone, nothing twice")
@@ -764,11 +764,7 @@ stand.clear_logs()
 stand.click(stand.child(park_node, "Call"))
 stand.check(stand.find_log("park(handle) -> 8"), "and takes a whole one")
 menu.set_value(park_args, "42")
--- Arguments Guide: how to write them, as a notice in Stand
-stand.toasts = {}
-stand.click(stand.child(garage_entry, "Arguments Guide"))
-stand.check(stand.toasts[#stand.toasts]:find("Each argument has its own field", 1, true), "Arguments Guide tells it in Stand")
-stand.check(stand.toasts[#stand.toasts]:find("An empty field is not given", 1, true), "and what an empty field means")
+stand.equal(stand.child(garage_entry, "Arguments Guide"), nil, "the Arguments Guide isn't in a module's list: it's in Call Function")
 stand.clear_logs()
 stand.click(stand.child(park_node, "Call"))
 stand.check(stand.find_log("park(handle) -> 42"), "and Call uses them")

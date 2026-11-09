@@ -834,10 +834,6 @@ local function fill_module(entry: table, name: string): void
         no_categories[name] = on or nil
         rebuild_functions(name)
     end, {}, label("no_categories.help"), no_categories[name] == true)
-    -- How to write the arguments of its functions, as a notice in Stand (there's room for it there)
-    entry:action(label("call.guide.name"), function()
-        log:notify(text("call.help"), "stand")
-    end, {}, label("call.guide.help"))
     -- Where the functions start, so Reload can make them again
     view.sections[name] = { entry = entry, first = #entry.children + 1 }
     functions_of(entry, mod)

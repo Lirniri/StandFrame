@@ -106,11 +106,24 @@ stand.equal(pluto.path.resolve("test_path:value"), false, "path.resolve: a colon
 local path_text, inline = pluto.path.split("game.set_speed(5, true)")
 stand.check(path_text == "game.set_speed" and inline == "5, true", "path.split: the path and what's in the brackets")
 stand.equal(select("#", pluto.path.split("game.go")), 2, "path.split: no brackets - the path, nil")
-stand.equal(pluto.path.short_name("PLAYER.PLAYER_PED_ID"), "PLAYER_PED_ID", "path.short_name: a native's namespace is left out")
+stand.equal(pluto.path.short_name("PLAYER.PLAYER_PED_ID"), "PLAYER_PED_ID", "path.short_name: what's after the last dot")
 stand.equal(pluto.path.short_name("ENTITY.GET_ENTITY_COORDS()"), "GET_ENTITY_COORDS", "path.short_name: and the brackets")
-stand.equal(pluto.path.short_name("game.repair_vehicle"), "game.repair_vehicle", "path.short_name: another path stays whole")
-stand.equal(pluto.path.short_name("VehicleManager:get"), "VehicleManager:get", "path.short_name: a method too")
+stand.equal(pluto.path.short_name("util.toast"), "toast", "path.short_name: any namespace, Stand's own too")
+stand.equal(pluto.path.short_name("game.repair_vehicle"), "repair_vehicle", "path.short_name: the script's")
+stand.equal(pluto.path.short_name("VehicleManager:get"), "get", "path.short_name: a method too")
+stand.equal(pluto.path.short_name("test"), "test", "path.short_name: a name without a namespace")
+-- find: a function by its short name, in Atdar and then in the globals
+Atdar.test_path = { deep = { found_fn = function() end }, found_fn = function() end }
+TEST_FIND = { found_fn = function() end, other_fn = function() end, table_not_fn = {} }
+local matches = pluto.path.find("found_fn")
+stand.check(#matches == 3 and matches[1] == "test_path.deep.found_fn" and matches[2] == "test_path.found_fn" and matches[3] == "TEST_FIND.found_fn",
+    "path.find: Atdar first, each part in order, then the globals")
+stand.equal(pluto.path.find("other_fn")[1], "TEST_FIND.other_fn", "path.find: a global table's function")
+stand.equal(pluto.path.find("table_not_fn")[1], nil, "path.find: a table isn't a function")
+stand.equal(#pluto.path.find("no_such_fn"), 0, "path.find: none - empty")
+stand.equal(#pluto.path.find("test_path.found_fn"), 0, "path.find: a name with a dot isn't a short name")
 Atdar.test_path = nil
+TEST_FIND = nil
 
 -- ─── stand.command_box ───────────────────────────────────────────────────────
 
