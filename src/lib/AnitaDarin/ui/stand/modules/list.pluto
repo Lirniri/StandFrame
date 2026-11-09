@@ -507,13 +507,13 @@ local function function_list(entry: table, mod: table, fn: table): void
                 call_with_args(module_name, fn, key)
             end
         end, call_args[key] or ""))
-        node:toggle(label("loop.call_on_enter"), function(on)
+        node:toggle(label("loop.call_on_enter.name"), function(on)
             call_on_enter[key] = on or nil
-        end, {}, label("loop.call_on_enter_help"), call_on_enter[key] == true)
+        end, {}, label("loop.call_on_enter.help"), call_on_enter[key] == true)
     end
-    node:action(label("loop.call"), || -> call_with_args(module_name, fn, key), {}, label("call.button_help"))
+    node:action(label("loop.call"), || -> call_with_args(module_name, fn, key), {}, label("call.button.help"))
     -- Once, after the ms picked; the arguments are worked out then, not at the click
-    node:track(menu.click_slider(node.handle, label("loop.call_after"), {}, label("loop.call_after_help"),
+    node:track(menu.click_slider(node.handle, label("loop.call_after.name"), {}, label("loop.call_after.help"),
         100, 60000, 1000, 100, function(ms, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
@@ -526,12 +526,12 @@ local function function_list(entry: table, mod: table, fn: table): void
             end
         end)
     end))
-    node:toggle(label("loop.call_on_open"), function(on)
+    node:toggle(label("loop.call_on_open.name"), function(on)
         call_on_open[key] = on or nil
-    end, {}, label("loop.call_on_open_help"), call_on_open[key] == true)
-    node:toggle(label("loop.call_on_focus"), function(on)
+    end, {}, label("loop.call_on_open.help"), call_on_open[key] == true)
+    node:toggle(label("loop.call_on_focus.name"), function(on)
         call_on_focus[key] = on or nil
-    end, {}, label("loop.call_on_focus_help"), call_on_focus[key] == true)
+    end, {}, label("loop.call_on_focus.help"), call_on_focus[key] == true)
     -- The cursor on the function's list (not inside it)
     menu.on_focus(node.handle, function()
         if call_on_focus[key] then
@@ -542,7 +542,7 @@ local function function_list(entry: table, mod: table, fn: table): void
     values.add_result_lines(node, key)
     -- How deep a table it gave opens in the Value list (kept by key)
     -- Shown only while the last result is a table
-    local depth_ref = node:track(menu.slider(node.handle, label("loop.table_depth"), {}, label("loop.table_depth_help"),
+    local depth_ref = node:track(menu.slider(node.handle, label("loop.table_depth.name"), {}, label("loop.table_depth.help"),
         1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
         if stopping then
             return
@@ -551,19 +551,19 @@ local function function_list(entry: table, mod: table, fn: table): void
         values.set_result_depth(key, depth, NOT_USER_CLICKS[click_type])
     end))
     -- The functions in the table become lists with their own Arguments and Call
-    local call_ref = node:toggle(label("loop.call_in_tables"), function(on, click_type)
+    local call_ref = node:toggle(label("loop.call_in_tables.name"), function(on, click_type)
         if stopping then
             return
         end
         values.set_call_in_tables(key, on, NOT_USER_CLICKS[click_type])
-    end, {}, label("loop.call_in_tables_help"), values.call_in_tables(key))
+    end, {}, label("loop.call_in_tables.help"), values.call_in_tables(key))
     -- The other values in the table become fields to type a new value in
-    local edit_ref = node:toggle(label("loop.edit_in_tables"), function(on, click_type)
+    local edit_ref = node:toggle(label("loop.edit_in_tables.name"), function(on, click_type)
         if stopping then
             return
         end
         values.set_edit_in_tables(key, on, NOT_USER_CLICKS[click_type])
-    end, {}, label("loop.edit_in_tables_help"), values.edit_in_tables(key))
+    end, {}, label("loop.edit_in_tables.help"), values.edit_in_tables(key))
     values.bind_depth_items(key, { depth_ref, call_ref, edit_ref })
     -- (the functions of a table it gave get the same panel as Debug > Call Function: Argument, Call, Loop...)
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
@@ -575,7 +575,7 @@ local function function_list(entry: table, mod: table, fn: table): void
     end
     -- On: every frame; off: the loop stops, also one started with an interval. Made as the loop is now
     syncing[key] = true
-    loop_toggles[key] = node:toggle(label("loop.loop"), function(on)
+    loop_toggles[key] = node:toggle(label("loop.loop.name"), function(on)
         if stopping or syncing[key] then
             return
         end
@@ -587,9 +587,9 @@ local function function_list(entry: table, mod: table, fn: table): void
         elseif not on and running then
             stop_loop(module_name, fn)
         end
-    end, {}, label("loop.loop_help"), function_loops[key] ~= nil)
+    end, {}, label("loop.loop.help"), function_loops[key] ~= nil)
     syncing[key] = nil
-    node:track(menu.click_slider(node.handle, label("loop.every"), {}, label("loop.every_help"),
+    node:track(menu.click_slider(node.handle, label("loop.every.name"), {}, label("loop.every.help"),
         100, 60000, 1000, 100, function(ms, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
@@ -689,7 +689,7 @@ local HOOKS = {
 -- The Module Functions list (its Variables, then a list per function of the module), then the Base Functions
 -- divider with the hooks
 local function functions_of(entry: table, mod: table): void
-    local functions_node = entry:list(label("functions"), {}, label("functions_help"))
+    local functions_node = entry:list(label("functions.name"), {}, label("functions.help"))
     values.variables_list(functions_node, mod.name, hidden_of)
 
     -- The functions to show (debug.hide left out), by name; _ ones apart
@@ -770,7 +770,7 @@ local function functions_of(entry: table, mod: table): void
         end
     end
     if #rest > 0 or #groups == 0 then
-        functions_node:divider(label("functions_divider"))
+        functions_node:divider(label("functions.divider"))
     end
     if #functions == 0 and #groups == 0 then
         functions_node:readonly_name(label("no_functions"))
@@ -802,9 +802,9 @@ local function functions_of(entry: table, mod: table): void
     -- The hooks: a Base Functions list like a category, or with categories off a section under its divider
     local hooks_node = entry
     if no_categories[mod.name] then
-        entry:divider(label("base_functions"))
+        entry:divider(label("base_functions.name"))
     else
-        hooks_node = entry:list(label("base_functions"), {}, label("base_functions_help"))
+        hooks_node = entry:list(label("base_functions.name"), {}, label("base_functions.help"))
     end
     for _, hook in ipairs(HOOKS) do
         -- The module's own type, or the one Module declares the hook with (a module's override may leave it out)
@@ -814,7 +814,7 @@ local function functions_of(entry: table, mod: table): void
         if hook.name == "on_tick" then
             ticks.list(hooks_node, mod, item_name(named))
         else
-            hooks_node:action(item_name(named), || -> call(mod.name, hook, {}, 0), {}, label("call.hook_help"))
+            hooks_node:action(item_name(named), || -> call(mod.name, hook, {}, 0), {}, label("call.hook.help"))
         end
     end
 end
@@ -844,7 +844,7 @@ local function fill_module(entry: table, name: string): void
             refresh()
         end)
     end
-    entry:divider(label("functions_divider"))
+    entry:divider(label("functions.divider"))
     -- Before the functions, so making them again (below) leaves it where it is
     entry:toggle(label("no_categories.name"), function(on)
         if stopping or (no_categories[name] == true) == on then
@@ -905,7 +905,7 @@ local function fill(node: table): void
     -- A module made in code has no file to read again
     node:action(label("reload_all.name"), || -> reload_modules(|name| -> modules.file_of(name) ~= nil, "reload_all"),
         {}, label("reload_all.help"))
-    node:divider(label("list"))
+    node:divider(label("list.divider"))
 
     local names = modules.names()
     for _, name in ipairs(names) do
@@ -940,7 +940,7 @@ module.describe = values.describe
 -- @return The list (a MenuNode)
 function module.list_in(node: table): table
     local list = nil
-    list = node:list(label("title"), {}, label("help"), || -> empty(list), || -> fill(list))
+    list = node:list(label("name"), {}, label("help"), || -> empty(list), || -> fill(list))
     return list
 end
 

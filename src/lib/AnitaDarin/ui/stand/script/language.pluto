@@ -44,7 +44,7 @@ local function language_caption(): string
             return text("language.name"):format(name)
         end
     end
-    return text("language.name"):format(text("language.auto"))
+    return text("language.name"):format(text("language.auto.name"))
 end
 
 -- The language list: Language: Auto (Stand) at the top, then the Translation divider with Create Translation,
@@ -52,7 +52,7 @@ end
 --
 -- The languages to pick: Auto, then each language by its file's language_name, and the code of each
 local function language_options()
-    local names, codes = { label("language.auto") }, { "auto" }
+    local names, codes = { label("language.auto.name") }, { "auto" }
     for _, language in ipairs(i18n.languages()) do
         table.insert(names, language.name)
         table.insert(codes, language.code)
@@ -138,12 +138,20 @@ function module.show_keys(node: table): void
         if not i18n.set_show_keys(on) then
             pcall(menu.set_value, keys_ref, false)
         end
-    end, { "langkeys" }, label("translation.show_keys.help"))
+    end, { "debuglangkeys" }, label("translation.show_keys.help"))
+    -- The key of the item the cursor is on, in a Stand notification: exact even where items share a text
+    node:toggle(label("translation.send_path.name"), function(on)
+        i18n.set_send_path(on)
+    end, { "debuglangpath" }, label("translation.send_path.help"))
+    -- The file that string is in, for opening it to translate
+    node:toggle(label("translation.send_file.name"), function(on)
+        i18n.set_send_file(on)
+    end, { "debuglangfile" }, label("translation.send_file.help"))
 end
 
 -- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
 function module.build(node: table): void
-    local list = node:list(label("language.list"), {}, label("language.list_help"))
+    local list = node:list(label("language.list.name"), {}, label("language.list.help"))
 
     local names, codes = language_options()
     view.codes = codes

@@ -1,114 +1,114 @@
 {
     "menu": {
         "self": {
-            "menu_name": "Self",
+            "name": "Self",
             "movement": {
-                "menu_name": "Movement",
+                "name": "Movement",
                 "ragdoll_control": {
-                    "menu_name": "Ragdoll Control"
+                    "name": "Ragdoll Control"
                 },
                 "scuba_mode": {
-                    "menu_name": "Scuba Mode"
+                    "name": "Scuba Mode"
                 },
                 "disables": {
-                    "menu_name": "Disables",
+                    "name": "Disables",
                     "disable_sprint": {
-                        "menu_name": "Disable Sprint"
+                        "name": "Disable Sprint"
                     }
                 }
             },
             "state": {
-                "menu_name": "State",
+                "name": "State",
                 "health": {
                     "divider": {
-                        "menu_name": "Health"
+                        "name": "Health"
                     }
                 },
                 "restore_health": {
-                    "menu_name": "Restore Health"
+                    "name": "Restore Health"
                 },
                 "regeneration_health": {
-                    "menu_name": "Health Regeneration",
+                    "name": "Health Regeneration",
                     "start": {
-                        "menu_name": "Regenerate"
+                        "name": "Regenerate"
                     },
                     "divider": {
                         "settings": {
-                            "menu_name": "Settings"
+                            "name": "Settings"
                         }
                     },
                     "amount": {
-                        "menu_name": "Amount per Step"
+                        "name": "Amount per Step"
                     },
                     "interval": {
-                        "menu_name": "Interval (ms)"
+                        "name": "Interval (ms)"
                     },
                     "target": {
-                        "menu_name": "Up to (%)"
+                        "name": "Up to (%)"
                     }
                 },
                 "armor": {
                     "divider": {
-                        "menu_name": "Armor"
+                        "name": "Armor"
                     }
                 },
                 "restore_armor": {
-                    "menu_name": "Restore Armor"
+                    "name": "Restore Armor"
                 },
                 "stamina": {
                     "divider": {
-                        "menu_name": "Stamina"
+                        "name": "Stamina"
                     }
                 },
                 "infinite_stamina": {
-                    "menu_name": "Infinite Stamina"
+                    "name": "Infinite Stamina"
                 },
                 "restore_stamina": {
-                    "menu_name": "Restore Stamina"
+                    "name": "Restore Stamina"
                 },
                 "reset_stamina": {
-                    "menu_name": "Reset Stamina"
+                    "name": "Reset Stamina"
                 }
             },
             "godmode": {
-                "menu_name": "Godmode"
+                "name": "Godmode"
             },
             "half_godmode": {
-                "menu_name": "Half-Godmode"
+                "name": "Half-Godmode"
             }
         },
         "vehicle": {
-            "menu_name": "Vehicle",
+            "name": "Vehicle",
             "last_vehicle": {
-                "menu_name": "Last Vehicle",
+                "name": "Last Vehicle",
                 "divider": {
-                    "menu_name": "Vehicle"
+                    "name": "Vehicle"
                 }
             },
             "movement": {
-                "menu_name": "Movement"
+                "name": "Movement"
             },
             "explode": {
-                "menu_name": "Explode"
+                "name": "Explode"
             }
         },
         "modes": {
-            "menu_name": "Modes",
+            "name": "Modes",
             "singleplayer": {
-                "menu_name": "Singleplayer"
+                "name": "Singleplayer"
             },
             "multiplayer": {
-                "menu_name": "Multiplayer",
+                "name": "Multiplayer",
                 "players": {
-                    "menu_name": "Players"
+                    "name": "Players"
                 }
             }
         },
         "settings": {
-            "menu_name": "Settings",
+            "name": "Settings",
             "anidar": {
                 "settings": {
-                    "menu_name": "Settings"
+                    "name": "Settings"
                 }
             }
         }

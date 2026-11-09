@@ -15,18 +15,39 @@
             "name": "Load Menu",
             "help": "Replace the current menu. Menus from store are made outside the script and run their own code"
         },
-        "menus": "Menus",
+        "unload": {
+            "name": "Unload",
+            "help": "Takes the loaded menu out of the script; Load Menu brings one back",
+            "nothing": "No menu is loaded",
+            "done": "Menu unloaded",
+            "notice": "Built-in menu not loaded"
+        },
+        "auto_copy": {
+            "name": "Copy Menu To Core: %s",
+            "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
+            "off": "Off",
+            "missing": "%s (not in store)",
+            "later": "'%s' will be copied to core at the next start",
+            "disabled": "Copying to core is off; the copy in core stays"
+        },
+        "menus": {
+            "divider": "Menus"
+        },
         "no_menus": "No menus found",
         "builtin": {
             "name": "%s (built-in)",
             "help": "The menu that ships with the script",
-            "copied_help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded.",
+            "copied": {
+                "help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded."
+            },
             "auto_copy_again": "Copying to core is on: the menu comes back at the next start",
             "removed": "Removed from core: %d file(s)"
         },
         "pack": {
             "help": "v%s by %s\nRuns its own code with full access: load only packs you trust",
-            "options_help": "Copy to core: becomes the built-in menu and runs at every start",
+            "options": {
+                "help": "Copy to core: becomes the built-in menu and runs at every start"
+            },
             "unknown_version": "?",
             "unknown_author": "unknown"
         },
@@ -44,7 +65,7 @@
         }
     },
     "profile": {
-        "title": "Profiles",
+        "name": "Profiles",
         "help": "Script profiles: the script's own settings (names, command prefix). Stand's own profiles still keep item states.",
         "create": {
             "name": "Create Profile",
@@ -62,7 +83,9 @@
             "name": "Open Folder",
             "help": "Opens the folder with the profile files"
         },
-        "list": "Profiles",
+        "list": {
+            "divider": "Profiles"
+        },
         "entry": {
             "active": "%s (active)",
             "help": "* means the active profile has unsaved changes"
@@ -175,7 +198,9 @@
             "examples": {
                 "name": "Notification Examples",
                 "help": "How each kind of notification looks now, where notifications show",
-                "one_help": "Shows an example of this kind; the examples are taken away from the game's feed on going back out of Notifications",
+                "one": {
+                    "help": "Shows an example of this kind; the examples are taken away from the game's feed on going back out of Notifications"
+                },
                 "info": {
                     "name": "Notification",
                     "text": "This is how a notification looks"
@@ -299,15 +324,9 @@
             "name": "Write Info At Once",
             "help": "Every log line goes to the file at once, not within a second. Warnings and errors always go at once. Slower, but nothing is lost if the game crashes"
         },
-        "auto_copy": {
-            "name": "Copy Menu To Core: %s",
-            "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
-            "off": "Off",
-            "missing": "%s (not in store)",
-            "later": "'%s' will be copied to core at the next start",
-            "disabled": "Copying to core is off; the copy in core stays"
+        "script": {
+            "divider": "Script"
         },
-        "script": "Script",
         "rename": {
             "name": "Rename Script",
             "help": "Renames the script's file and its lib/store/resources folders, then restarts it under the new name. Letters, digits and _ only",
@@ -318,12 +337,16 @@
             "done": "Renamed to %s. If it doesn't start by itself, start %s in Stand > Lua Scripts"
         },
         "language": {
-            "list": "Language",
-            "list_help": "The script's language, and translations into others",
+            "list": {
+                "name": "Language",
+                "help": "The script's language, and translations into others"
+            },
             "name": "Language: %s",
             "help": "Language of the script. Auto follows Stand's language",
-            "auto": "Auto (Stand)",
-            "auto_help": "Show the script in Stand's language",
+            "auto": {
+                "name": "Auto (Stand)",
+                "help": "Show the script in Stand's language"
+            },
             "unavailable": "Stand is in English, so the script can't be shown in another language: it follows Stand. The choice is kept and works while Stand is in another language",
             "unavailable_mark": "%s (not with Stand in English)"
         },
@@ -353,6 +376,14 @@
                 "name": "Show Keys",
                 "help": "Shows each string's key instead of its text, to see which key is which while translating",
                 "unavailable": "Stand is in English, so the keys can't be shown: the script follows Stand's texts. Works while Stand is in another language"
+            },
+            "send_path": {
+                "name": "Send Translation Path",
+                "help": "Hover an item and its key (the translation path) comes in a Stand notification. Exact even where Show Keys can't tell items with the same text apart"
+            },
+            "send_file": {
+                "name": "Send File Path",
+                "help": "Hover an item and the path of the language file its string is in comes in a Stand notification"
             },
             "progress": {
                 "name": "Translation Progress",
@@ -392,8 +423,10 @@
         "no_profiles": "No profiles: Create Main Profile or Save brings one back"
     },
     "modules": {
-        "divider": "Debug",
-        "title": "Modules",
+        "debug": {
+            "divider": "Debug"
+        },
+        "name": "Modules",
         "help": "The script's internal modules. Shown in debug mode only",
         "open_folder": {
             "name": "Open Folder",
@@ -420,7 +453,9 @@
             "done": "Modules reloaded: %d",
             "none": "No modules loaded from files"
         },
-        "list": "Modules",
+        "list": {
+            "divider": "Modules"
+        },
         "empty": "No modules registered",
         "start": "Start",
         "stop": "Stop",
@@ -444,18 +479,24 @@
             "failed": "failed",
             "manual": "running by hand"
         },
-        "base_functions": "Base Functions",
-        "base_functions_help": "on_start, on_tick, on_stop: the hooks the module manager calls",
+        "base_functions": {
+            "name": "Base Functions",
+            "help": "on_start, on_tick, on_stop: the hooks the module manager calls"
+        },
         "no_categories": {
             "name": "Disable Function Categories",
             "help": "The module's functions in one list, without Getters, Setters and the others; the base functions as a section, not a list"
         },
-        "functions": "Module Functions",
-        "functions_help": "The module's variables and functions",
-        "variables": "Variables",
-        "variables_help": "The module's fields and their values, kept up to date while the list is open",
+        "functions": {
+            "name": "Module Functions",
+            "help": "The module's variables and functions",
+            "divider": "Functions"
+        },
+        "variables": {
+            "name": "Variables",
+            "help": "The module's fields and their values, kept up to date while the list is open"
+        },
         "no_variables": "No variables",
-        "functions_divider": "Functions",
         "internal_functions": "Internal Functions",
         "private_functions": "Private Functions",
         "categories": {
@@ -479,11 +520,15 @@
         },
         "call": {
             "help": "Arguments separated by commas, as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. — in the help: not given",
-            "button_help": "Calls the function once; what it gives shows in a notification and on the Variable line",
+            "button": {
+                "help": "Calls the function once; what it gives shows in a notification and on the Variable line"
+            },
             "done": "%s: done",
             "result": "%s -> %s",
             "failed": "%s failed: %s",
-            "hook_help": "Calls the module's hook; its status doesn't change",
+            "hook": {
+                "help": "Calls the module's hook; its status doesn't change"
+            },
             "bad_args": "%s: bad arguments: %s",
             "guide": {
                 "name": "Arguments Guide",
@@ -494,20 +539,32 @@
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
             "args": "Arguments",
             "args_extra": "left over: %s",
-            "call_on_enter": "Call After Typing",
-            "call_on_enter_help": "Calls the function as soon as the Arguments are typed in",
+            "call_on_enter": {
+                "name": "Call After Typing",
+                "help": "Calls the function as soon as the Arguments are typed in"
+            },
             "call": "Call",
-            "call_after": "Call After",
-            "call_after_help": "Calls the function once after so many milliseconds",
+            "call_after": {
+                "name": "Call After",
+                "help": "Calls the function once after so many milliseconds"
+            },
             "call_scheduled": "%s: called in %d ms",
-            "call_on_open": "Call When Opened",
-            "call_on_open_help": "Calls the function every time its list is opened",
-            "call_on_focus": "Call When Hovered",
-            "call_on_focus_help": "Calls the function every time the cursor comes onto its list",
-            "loop": "Loop",
-            "loop_help": "Calls the function every frame while it's on",
-            "every": "Loop With Interval",
-            "every_help": "Calls the function once every so many milliseconds; switches Loop on, which also switches it off",
+            "call_on_open": {
+                "name": "Call When Opened",
+                "help": "Calls the function every time its list is opened"
+            },
+            "call_on_focus": {
+                "name": "Call When Hovered",
+                "help": "Calls the function every time the cursor comes onto its list"
+            },
+            "loop": {
+                "name": "Loop",
+                "help": "Calls the function every frame while it's on"
+            },
+            "every": {
+                "name": "Loop With Interval",
+                "help": "Calls the function once every so many milliseconds; switches Loop on, which also switches it off"
+            },
             "started": "%s: loop started",
             "started_every": "%s: loop every %d ms",
             "stopped": "%s: loop stopped",
@@ -519,26 +576,40 @@
                 "failed": "error"
             },
             "status_line": "Loop Status: %s",
-            "call_in_tables": "Call Functions In Tables",
-            "call_in_tables_help": "The functions in the Value list become lists with the same menu as Call Function, except the name and the notice in Stand",
-            "edit_in_tables": "Change Variable Values",
-            "edit_in_tables_help": "The values in the Value list (not functions or tables) become fields: type a new expression (5, true, \"text\", v3.new(1, 2, 3), nil) and it's written to the table",
-            "table_depth": "Table Depth",
-            "table_depth_help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables makes a great many items",
-            "result_line":"Variable: %s",
+            "call_in_tables": {
+                "name": "Call Functions In Tables",
+                "help": "The functions in the Value list become lists with the same menu as Call Function, except the name and the notice in Stand"
+            },
+            "edit_in_tables": {
+                "name": "Change Variable Values",
+                "help": "The values in the Value list (not functions or tables) become fields: type a new expression (5, true, \"text\", v3.new(1, 2, 3), nil) and it's written to the table"
+            },
+            "table_depth": {
+                "name": "Table Depth",
+                "help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables makes a great many items"
+            },
+            "result_line": "Variable: %s",
             "result_list": "Value (%d)",
             "no_result": "—"
         },
         "tick": {
             "help": "Runs on_tick by hand every frame; the time it takes shows on screen. A running module is stopped first",
-            "start_init": "Start With Init",
-            "start_init_help": "on_start, then on_tick every frame until stopped; on_stop at the end",
-            "start": "Start Loop Only",
-            "start_help": "Only on_tick every frame until stopped, without on_start and on_stop",
-            "start_for": "Start Loop For A While",
-            "start_for_help": "Only on_tick every frame for the seconds picked",
-            "stop": "Stop",
-            "stop_help": "Stops the loop started by hand; after Start With Init calls on_stop",
+            "start_init": {
+                "name": "Start With Init",
+                "help": "on_start, then on_tick every frame until stopped; on_stop at the end"
+            },
+            "start": {
+                "name": "Start Loop Only",
+                "help": "Only on_tick every frame until stopped, without on_start and on_stop"
+            },
+            "start_for": {
+                "name": "Start Loop For A While",
+                "help": "Only on_tick every frame for the seconds picked"
+            },
+            "stop": {
+                "name": "Stop",
+                "help": "Stops the loop started by hand; after Start With Init calls on_stop"
+            },
             "started": "%s: loop started",
             "started_init": "%s: initialised, loop started",
             "started_for": "%s: loop started for %d s",
@@ -578,21 +649,16 @@
     },
     "script_menu": {
         "stub": "Not made yet",
-        "divider": {
-            "options_from_other_menu": "Options from other menus"
-        },
-        "unload": {
-            "name": "Unload",
-            "help": "Takes the loaded menu out of the script; Load Menu brings one back",
-            "nothing": "No menu is loaded",
-            "done": "Menu unloaded",
-            "notice": "Built-in menu not loaded"
+        "options_from_other_menu": {
+            "divider": "Options from other menus"
         },
         "command_box": {
             "name": "Command Box",
             "help": "Command names of the script's items"
         },
-        "commands_divider": "Commands",
+        "commands": {
+            "divider": "Commands"
+        },
         "base_commands": {
             "name": "Base Commands",
             "help": "The script's own commands, without the prefix. Each opens a list where it can be renamed and given extra words; kept in store/AnitaDarin/commands",
@@ -626,7 +692,9 @@
                     "name": "Add Word",
                     "help": "One more command for this item, with the same prefix; it can have several"
                 },
-                "remove_help": "Click to take this word off",
+                "remove": {
+                    "help": "Click to take this word off"
+                },
                 "added": "Command '%s' added",
                 "removed": "Word '%s' taken off",
                 "own": "'%s' is this command's already"
@@ -670,8 +738,12 @@
         },
         "commands_folder": {
             "name": "Open Commands Folder",
-            "script_help": "Opens the folder with the script's commands' custom names and words: store/AnitaDarin/commands",
-            "menu_help": "Opens the loaded menu's commands folder: its commands' custom names and words",
+            "script": {
+                "help": "Opens the folder with the script's commands' custom names and words: store/AnitaDarin/commands"
+            },
+            "menu": {
+                "help": "Opens the loaded menu's commands folder: its commands' custom names and words"
+            },
             "no_menu": "No menu is loaded: there's no commands folder"
         },
         "open_folder": {
@@ -698,8 +770,10 @@
             "name": "Debug",
             "help": "Debug mode, the script's modules and the script itself"
         },
-        "logs": "Logs",
-        "logs_help": "The script's log: the name in its lines, how long the files are kept, when they are written, clearing them",
+        "logs": {
+            "name": "Logs",
+            "help": "The script's log: the name in its lines, how long the files are kept, when they are written, clearing them"
+        },
         "settings": {
             "name": "Settings",
             "help": "The script's own settings, whichever menu is loaded",

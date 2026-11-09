@@ -153,14 +153,14 @@ end
 local function auto_copy_caption(): string
     local id = Atdar.profile.get("auto_copy_menu")
     if type(id) ~= "string" or id == "" then
-        return text("auto_copy.name"):format(text("auto_copy.off"))
+        return i18n.text("menu_loader.auto_copy.name"):format(i18n.text("menu_loader.auto_copy.off"))
     end
     for _, pack in ipairs(view.packs) do
         if pack.folder == id then
-            return text("auto_copy.name"):format(pack.name)
+            return i18n.text("menu_loader.auto_copy.name"):format(pack.name)
         end
     end
-    return text("auto_copy.name"):format(text("auto_copy.missing"):format(id))
+    return i18n.text("menu_loader.auto_copy.name"):format(i18n.text("menu_loader.auto_copy.missing"):format(id))
 end
 
 -- The refs may belong to a section that was already removed, so a failed update is just skipped
@@ -361,7 +361,7 @@ local function notifications(list: table): void
     local examples = list:list(label("notify.examples.name"), {}, label("notify.examples.help"))
     for _, kind in ipairs(EXAMPLE_KINDS) do
         examples:action(label($"notify.examples.{kind.key}.name"), || -> show_examples({ kind }), {},
-            label("notify.examples.one_help"))
+            label("notify.examples.one.help"))
     end
     examples:action(label("notify.examples.all.name"), || -> show_examples(EXAMPLE_KINDS), {},
         label("notify.examples.all.help"))
@@ -593,7 +593,7 @@ function module.profiles(node: table, refresh: function): void
         end
     end
 
-    list = node:list(label("title"), { "profiles" }, label("help"), nil, fill_entries)
+    list = node:list(label("name"), { "profiles" }, label("help"), nil, fill_entries)
 
     list:text_input(label("create.name"), { "newprofile" }, function(value)
         if value ~= "" and profile.create(value) then
@@ -625,7 +625,7 @@ function module.profiles(node: table, refresh: function): void
         util.open_folder(profile.folder())
     end, {}, label("open_folder.help"))
 
-    list:divider(label("list"))
+    list:divider(label("list.divider"))
     first = #list.children + 1
     fill_entries()
 end
@@ -634,7 +634,7 @@ end
 
 -- Off, then every pack in store; takes effect at the next start (see auto_copy in menu.pluto)
 function module.auto_copy(node: table): void
-    local options = { label("auto_copy.off") }
+    local options = { i18n.label("menu_loader.auto_copy.off") }
     for _, pack in ipairs(view.packs) do
         table.insert(options, pack.name)
     end
@@ -642,11 +642,11 @@ function module.auto_copy(node: table): void
         local pack = view.packs[index - 1]
         Atdar.profile.set("auto_copy_menu", pack ? pack.folder : "")
         if pack then
-            log:notify(text("auto_copy.later"):format(pack.name))
+            log:notify(i18n.text("menu_loader.auto_copy.later"):format(pack.name))
         else
-            log:notify(text("auto_copy.disabled"))
+            log:notify(i18n.text("menu_loader.auto_copy.disabled"))
         end
-    end, { "menuloaderautocopy" }, label("auto_copy.help"))
+    end, { "menuloaderautocopy" }, i18n.label("menu_loader.auto_copy.help"))
 end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────

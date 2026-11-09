@@ -1,114 +1,114 @@
 {
     "menu": {
         "self": {
-            "menu_name": "Игрок",
+            "name": "Игрок",
             "movement": {
-                "menu_name": "Передвижение",
+                "name": "Передвижение",
                 "ragdoll_control": {
-                    "menu_name": "Управление в рэгдолле"
+                    "name": "Управление в рэгдолле"
                 },
                 "scuba_mode": {
-                    "menu_name": "Режим акваланга"
+                    "name": "Режим акваланга"
                 },
                 "disables": {
-                    "menu_name": "Отключения",
+                    "name": "Отключения",
                     "disable_sprint": {
-                        "menu_name": "Отключить быстрый бег"
+                        "name": "Отключить быстрый бег"
                     }
                 }
             },
             "state": {
-                "menu_name": "Состояние",
+                "name": "Состояние",
                 "health": {
                     "divider": {
-                        "menu_name": "Здоровье"
+                        "name": "Здоровье"
                     }
                 },
                 "restore_health": {
-                    "menu_name": "Восстановить здоровье"
+                    "name": "Восстановить здоровье"
                 },
                 "regeneration_health": {
-                    "menu_name": "Регенерация здоровья",
+                    "name": "Регенерация здоровья",
                     "start": {
-                        "menu_name": "Регенерировать"
+                        "name": "Регенерировать"
                     },
                     "divider": {
                         "settings": {
-                            "menu_name": "Настройки"
+                            "name": "Настройки"
                         }
                     },
                     "amount": {
-                        "menu_name": "Здоровья за шаг"
+                        "name": "Здоровья за шаг"
                     },
                     "interval": {
-                        "menu_name": "Интервал (мс)"
+                        "name": "Интервал (мс)"
                     },
                     "target": {
-                        "menu_name": "До уровня (%)"
+                        "name": "До уровня (%)"
                     }
                 },
                 "armor": {
                     "divider": {
-                        "menu_name": "Броня"
+                        "name": "Броня"
                     }
                 },
                 "restore_armor": {
-                    "menu_name": "Восстановить броню"
+                    "name": "Восстановить броню"
                 },
                 "stamina": {
                     "divider": {
-                        "menu_name": "Выносливость"
+                        "name": "Выносливость"
                     }
                 },
                 "infinite_stamina": {
-                    "menu_name": "Бесконечная выносливость"
+                    "name": "Бесконечная выносливость"
                 },
                 "restore_stamina": {
-                    "menu_name": "Восстановить выносливость"
+                    "name": "Восстановить выносливость"
                 },
                 "reset_stamina": {
-                    "menu_name": "Сбросить выносливость"
+                    "name": "Сбросить выносливость"
                 }
             },
             "godmode": {
-                "menu_name": "Режим бога"
+                "name": "Режим бога"
             },
             "half_godmode": {
-                "menu_name": "Режим полубога"
+                "name": "Режим полубога"
             }
         },
         "vehicle": {
-            "menu_name": "Транспорт",
+            "name": "Транспорт",
             "last_vehicle": {
-                "menu_name": "Последний транспорт",
+                "name": "Последний транспорт",
                 "divider": {
-                    "menu_name": "Транспорт"
+                    "name": "Транспорт"
                 }
             },
             "movement": {
-                "menu_name": "Передвижение"
+                "name": "Передвижение"
             },
             "explode": {
-                "menu_name": "Взорвать"
+                "name": "Взорвать"
             }
         },
         "modes": {
-            "menu_name": "Режимы",
+            "name": "Режимы",
             "singleplayer": {
-                "menu_name": "Одиночная игра"
+                "name": "Одиночная игра"
             },
             "multiplayer": {
-                "menu_name": "Многопользовательская игра",
+                "name": "Многопользовательская игра",
                 "players": {
-                    "menu_name": "Игроки"
+                    "name": "Игроки"
                 }
             }
         },
         "settings": {
-            "menu_name": "Настройки",
+            "name": "Настройки",
             "anidar": {
                 "settings": {
-                    "menu_name": "Настройки"
+                    "name": "Настройки"
                 }
             }
         }

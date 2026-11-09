@@ -327,7 +327,7 @@ function module.panel(list: table, spec: table): table
     end, {}, label("call.help"))
 
     -- Once, after the ms picked; the arguments are worked out then, not at the click
-    list:click_slider(mlabel("loop.call_after"), 100, 60000, 1000, 100, function(ms, click_type)
+    list:click_slider(mlabel("loop.call_after.name"), 100, 60000, 1000, 100, function(ms, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end
@@ -338,15 +338,15 @@ function module.panel(list: table, spec: table): table
                 call(spec)
             end
         end)
-    end, {}, mlabel("loop.call_after_help"))
+    end, {}, mlabel("loop.call_after.help"))
 
-    list:toggle(mlabel("loop.call_on_open"), function(on)
+    list:toggle(mlabel("loop.call_on_open.name"), function(on)
         state.on_open = on
-    end, {}, mlabel("loop.call_on_open_help"), state.on_open == true)
+    end, {}, mlabel("loop.call_on_open.help"), state.on_open == true)
 
-    list:toggle(mlabel("loop.call_on_focus"), function(on)
+    list:toggle(mlabel("loop.call_on_focus.name"), function(on)
         state.on_focus = on
-    end, {}, mlabel("loop.call_on_focus_help"), state.on_focus == true)
+    end, {}, mlabel("loop.call_on_focus.help"), state.on_focus == true)
     -- The cursor on this list (not inside it)
     menu.on_focus(list.handle, function()
         if state.on_focus and not stopping then
@@ -360,26 +360,26 @@ function module.panel(list: table, spec: table): table
     -- Table Depth, Call Functions In Tables and Change Variable Values: shown only while the result is a table.
     -- Stand puts the saved state of these back while the script starts, where the Value list can't be made
     -- again: then it's only remembered (quiet)
-    local depth_ref = list:slider(mlabel("loop.table_depth"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
+    local depth_ref = list:slider(mlabel("loop.table_depth.name"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
         if stopping then
             return
         end
         values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.table_depth_help"))
+    end, {}, mlabel("loop.table_depth.help"))
     -- The functions in the table become lists with the same panel
-    local call_ref = list:toggle(mlabel("loop.call_in_tables"), function(on, click_type)
+    local call_ref = list:toggle(mlabel("loop.call_in_tables.name"), function(on, click_type)
         if stopping then
             return
         end
         values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.call_in_tables_help"), values.call_in_tables(spec.key))
+    end, {}, mlabel("loop.call_in_tables.help"), values.call_in_tables(spec.key))
     -- The other values in the table become fields to type a new value in
-    local edit_ref = list:toggle(mlabel("loop.edit_in_tables"), function(on, click_type)
+    local edit_ref = list:toggle(mlabel("loop.edit_in_tables.name"), function(on, click_type)
         if stopping then
             return
         end
         values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.edit_in_tables_help"), values.edit_in_tables(spec.key))
+    end, {}, mlabel("loop.edit_in_tables.help"), values.edit_in_tables(spec.key))
     values.bind_depth_items(spec.key, { depth_ref, call_ref, edit_ref })
 
     -- The loop: its status line (as the loop is now), Loop, Loop With Interval
@@ -393,7 +393,7 @@ function module.panel(list: table, spec: table): table
     end
     state.status_ref = list:divider(mtext("loop.status_line"):format(status_text(status_kind, status_every)))
 
-    state.loop_toggle = list:toggle(mlabel("loop.loop"), function(on)
+    state.loop_toggle = list:toggle(mlabel("loop.loop.name"), function(on)
         if stopping or state.syncing then
             return
         end
@@ -404,14 +404,14 @@ function module.panel(list: table, spec: table): table
         if not on and state.loop ~= nil then
             stop_loop(spec)
         end
-    end, {}, mlabel("loop.loop_help"), state.loop ~= nil)
+    end, {}, mlabel("loop.loop.help"), state.loop ~= nil)
 
-    list:click_slider(mlabel("loop.every"), 100, 60000, 1000, 100, function(ms, click_type)
+    list:click_slider(mlabel("loop.every.name"), 100, 60000, 1000, 100, function(ms, click_type)
         if stopping or NOT_USER_CLICKS[click_type] then
             return
         end
         start_loop(spec, ms)
-    end, {}, mlabel("loop.every_help"))
+    end, {}, mlabel("loop.every.help"))
 
     return {
         call = function() call(spec) end,

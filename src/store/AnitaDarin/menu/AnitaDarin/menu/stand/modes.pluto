@@ -4,21 +4,21 @@ local lang = Atdar.lang
 return {
     build = function(node, ctx)
         local modes_menu = node:list(
-            lang.translate("menu.modes.menu_name"),
+            lang.translate("menu.modes.name"),
             { "modes" }
         )
 
         local sp_submenu = modes_menu:list(
-            lang.translate("menu.modes.singleplayer.menu_name"),
+            lang.translate("menu.modes.singleplayer.name"),
             { "modesp" }
         )
 
         local mp_submenu = modes_menu:list(
-            lang.translate("menu.modes.multiplayer.menu_name"),
+            lang.translate("menu.modes.multiplayer.name"),
             { "modemp" }
         )
         mp_submenu:list(
-            lang.translate("menu.modes.multiplayer.players.menu_name")
+            lang.translate("menu.modes.multiplayer.players.name")
         )
 
     end,

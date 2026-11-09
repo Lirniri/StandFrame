@@ -213,16 +213,16 @@ end
 function module.list(entry: table, mod: table, title: string): void
     local name = mod.name
     local node = entry:list(title, {}, label("tick.help"))
-    node:action(label("tick.start_init"), || -> start_tick(name, nil, true), {}, label("tick.start_init_help"))
-    node:action(label("tick.start"), || -> start_tick(name, nil, false), {}, label("tick.start_help"))
-    node:track(menu.click_slider(node.handle, label("tick.start_for"), {}, label("tick.start_for_help"),
+    node:action(label("tick.start_init.name"), || -> start_tick(name, nil, true), {}, label("tick.start_init.help"))
+    node:action(label("tick.start.name"), || -> start_tick(name, nil, false), {}, label("tick.start.help"))
+    node:track(menu.click_slider(node.handle, label("tick.start_for.name"), {}, label("tick.start_for.help"),
         1, 600, 10, 1, function(seconds, click_type)
         if stopping or not hooks.is_user_click(click_type) then
             return
         end
         start_tick(name, seconds, false)
     end))
-    node:action(label("tick.stop"), || -> stop_tick(name), {}, label("tick.stop_help"))
+    node:action(label("tick.stop.name"), || -> stop_tick(name), {}, label("tick.stop.help"))
     tick_statuses[name] = node:divider(text("entry.status_line"):format(text("tick.state.stopped")))
     local run = manual_ticks[name]
     if run ~= nil and run.ends ~= nil then

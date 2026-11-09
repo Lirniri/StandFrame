@@ -4,24 +4,24 @@ local lang = Atdar.lang
 return {
     build = function(node, ctx)
         local vehicle_menu = node:list(
-            lang.translate("menu.vehicle.menu_name"),
+            lang.translate("menu.vehicle.name"),
             { "vehicle" }
         )
 
         local last_vehicle = vehicle_menu:list(
-            lang.translate("menu.vehicle.last_vehicle.menu_name")
+            lang.translate("menu.vehicle.last_vehicle.name")
         )
         last_vehicle:divider(
-            lang.translate("menu.vehicle.last_vehicle.divider.menu_name")
+            lang.translate("menu.vehicle.last_vehicle.divider.name")
         )
 
         vehicle_menu:list(
-            lang.translate("menu.vehicle.movement.menu_name")
+            lang.translate("menu.vehicle.movement.name")
         )
 
         vehicle_menu:add_feature(
             features.get("self.explode"),
-            lang.translate("menu.vehicle.explode.menu_name"),
+            lang.translate("menu.vehicle.explode.name"),
             { "explodevehicle" }
         )
     end,

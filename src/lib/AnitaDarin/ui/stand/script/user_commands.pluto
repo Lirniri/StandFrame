@@ -310,7 +310,7 @@ function module.build(node: table): table
         end)
     end, { "cbuserremove" }, label("remove.help"))
 
-    list:divider(i18n.label("script_menu.commands_divider"))
+    list:divider(i18n.label("script_menu.commands.divider"))
     view = { node = list, first = #list.children + 1, entries = {}, remove_ref = remove_ref }
     make_example()
     refresh()

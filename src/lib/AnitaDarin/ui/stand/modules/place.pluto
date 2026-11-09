@@ -46,7 +46,7 @@ end
 -- @return The list (a MenuNode)
 function module.list_in(node: table): table
     local list = nil
-    list = node:list(label("title"), {}, label("help"), || -> modules_menu().close(list), || -> modules_menu().open(list))
+    list = node:list(label("name"), {}, label("help"), || -> modules_menu().close(list), || -> modules_menu().open(list))
     return list
 end
 
@@ -59,7 +59,7 @@ function module.build(parent: table, before_list: ?function): void
         return
     end
     -- A section made again (a profile created or deleted): the old place's items are gone
-    place = { divider = parent:divider(label("divider")), extra = {} }
+    place = { divider = parent:divider(label("debug.divider")), extra = {} }
     if before_list ~= nil then
         table.insert(place.extra, before_list(parent))
     end

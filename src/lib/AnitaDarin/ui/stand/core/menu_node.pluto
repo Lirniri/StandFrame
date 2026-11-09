@@ -3,6 +3,7 @@ local Feature = Atdar.loader.load("features/feature")
 -- Capitalized: methods below take a `commands` parameter with the item's base command names
 local Commands = Atdar.loader.load("ui/stand/core/commands")
 local menu_utils = Atdar.loader.load("utils/menu")
+local i18n = Atdar.loader.load("core/i18n")
 
 -- Stand item for each Feature kind; names and help may be Stand labels (int) from i18n
 local ITEM_FOR_KIND = {
@@ -67,6 +68,16 @@ MenuNode = class
         return child_handle
     end
 
+    -- track() for an item named by a Stand label from i18n: hovering it sends its translation path
+    -- when that's switched on (Debug > Languages)
+    function track_named(name, child_handle, commands)
+        -- A script without strings (a test of its own) has no i18n to watch with
+        if i18n.watch_path then
+            i18n.watch_path(child_handle, name)
+        end
+        return self:track(child_handle, commands)
+    end
+
     -- Forgets every item in this node and its sublists in Commands, before they're deleted
     function untrack_commands(): void
         for _, child_handle in ipairs(self.children) do
@@ -101,22 +112,22 @@ MenuNode = class
     end
 
     function divider(text: string|int)
-        return self:track(menu.divider(self.handle, text))
+        return self:track_named(text, menu.divider(self.handle, text))
     end
 
     -- "Name: value" line; change the value later with menu.set_value(ref, "...")
     function readonly(name: string|int, value: string = "")
-        return self:track(menu.readonly(self.handle, name, value))
+        return self:track_named(name, menu.readonly(self.handle, name, value))
     end
 
     -- Text-only line, like a divider but in the normal item style
     function readonly_name(name: string|int)
-        return self:track(menu.readonly_name(self.handle, name))
+        return self:track_named(name, menu.readonly_name(self.handle, name))
     end
 
     -- Opens the link in the browser when clicked
     function hyperlink(name: string|int, link: string, help: string|int = "")
-        return self:track(menu.hyperlink(self.handle, name, link, help))
+        return self:track_named(name, menu.hyperlink(self.handle, name, link, help))
     end
 
     -- on_back(): Stand calls it when the user goes back out of the list (optional; no "= nil" default:
@@ -124,7 +135,7 @@ MenuNode = class
     -- on_open(): Stand calls it when the user opens the list (optional, like on_back)
     function list(name: string|int, commands: table = {}, help: string|int = "", on_back, on_open): table
         local child = new MenuNode(menu.list(self.handle, name, Commands.names(commands), help, on_open, on_back))
-        self:track(child.handle, commands)
+        self:track_named(name, child.handle, commands)
         table.insert(self.sublists, child)
         return child
     end
@@ -182,35 +193,35 @@ MenuNode = class
 
     -- List of options where picking one calls on_select(index, option_name, click_type)
     function list_action(name: string|int, options: table, on_select: function, commands: table = {}, help: string|int = "")
-        return self:track(menu.list_action(self.handle, name, Commands.names(commands), help, options, on_select), commands)
+        return self:track_named(name, menu.list_action(self.handle, name, Commands.names(commands), help, options, on_select), commands)
     end
 
     -- Text field; on_change(value, click_type) runs when the user enters text.
     -- Stand takes the text through its command box, so the field needs command names
     function text_input(name: string|int, commands: table, on_change: function, help: string|int = "", default: string = "")
-        return self:track(menu.text_input(self.handle, name, Commands.names(commands), help, on_change, default), commands)
+        return self:track_named(name, menu.text_input(self.handle, name, Commands.names(commands), help, on_change, default), commands)
     end
 
     -- Plain button that isn't backed by a feature
     function action(name: string|int, on_click: function, commands: table = {}, help: string|int = "")
-        return self:track(menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)
+        return self:track_named(name, menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)
     end
 
     -- Plain on/off switch that isn't backed by a feature; on_change(on, click_type).
     -- Stand calls it only on a change, so nothing keeps running and it needn't be stopped on delete
     function toggle(name: string|int, on_change: function, commands: table = {}, help: string|int = "", default: bool = false)
-        return self:track(menu.toggle(self.handle, name, Commands.names(commands), help, on_change, default), commands)
+        return self:track_named(name, menu.toggle(self.handle, name, Commands.names(commands), help, on_change, default), commands)
     end
 
     -- Number picker; on_change(value, prev_value, click_type)
     function slider(name: string|int, min: int, max: int, default: int, step: int, on_change: function, commands: table = {}, help: string|int = "")
-        return self:track(menu.slider(self.handle, name, Commands.names(commands), help,
+        return self:track_named(name, menu.slider(self.handle, name, Commands.names(commands), help,
             min, max, default, step, on_change), commands)
     end
 
     -- Number picker that acts on a click with the number picked; on_click(value, click_type)
     function click_slider(name: string|int, min: int, max: int, default: int, step: int, on_click: function, commands: table = {}, help: string|int = "")
-        return self:track(menu.click_slider(self.handle, name, Commands.names(commands), help,
+        return self:track_named(name, menu.click_slider(self.handle, name, Commands.names(commands), help,
             min, max, default, step, on_click), commands)
     end
 
@@ -218,13 +229,13 @@ MenuNode = class
     -- transparency adds Opacity
     function color(name: string|int, default: table, on_change: function, commands: table = {}, help: string|int = "",
             transparency: bool = false)
-        return self:track(menu_utils.color(self.handle, name, Commands.names(commands), help, default, on_change,
+        return self:track_named(name, menu_utils.color(self.handle, name, Commands.names(commands), help, default, on_change,
             transparency), commands)
     end
 
     -- Options picked with left/right, without a submenu; on_click(index, option_name, click_type)
     function text_slider(name: string|int, options: table, on_click: function, commands: table = {}, help: string|int = "")
-        return self:track(menu.textslider(self.handle, name, Commands.names(commands), help, options, on_click), commands)
+        return self:track_named(name, menu.textslider(self.handle, name, Commands.names(commands), help, options, on_click), commands)
     end
 
     function add_feature(feature: table, name: string|int, commands: table = {}, help: string|int = "")
@@ -232,7 +243,7 @@ MenuNode = class
         if not create then
             error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")
         end
-        local ref = self:track(create(self.handle, feature, name, Commands.names(commands), help), commands)
+        local ref = self:track_named(name, create(self.handle, feature, name, Commands.names(commands), help), commands)
         if TOGGLE_KINDS[feature.kind] then
             table.insert(self.toggles, ref)
             -- A failed feature is switched off; its toggle follows. The ref may be deleted by then

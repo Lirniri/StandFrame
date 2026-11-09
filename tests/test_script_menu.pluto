@@ -266,7 +266,7 @@ stand.equal(names_in(logs_list), "Name In Logs: "
     .. " | Keep Logs (Days) | Write Info At Once | Clear Current Log File | Clear All Log Files", "Debug > Logs")
 local debug_settings = stand.child(find("Debug"), "Settings")
 stand.equal(names_in(debug_settings), "Languages", "Debug > Settings")
-stand.equal(names_in(stand.child(debug_settings, "Languages")), "Show Keys", "Debug > Settings > Languages")
+stand.equal(names_in(stand.child(debug_settings, "Languages")), "Show Keys | Send Translation Path | Send File Path", "Debug > Settings > Languages")
 stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
@@ -478,6 +478,33 @@ stand.equal(stand.name_of(show_keys), "Отображать ключи", "the te
 stand.equal(stand.name_of(language), "Язык: Авто (Stand)", "the captions as well")
 stand.language = "en"
 stand.frame()
+
+-- Send Translation Path: hovering an item sends its key to Stand: the item's own, even where texts are shared
+-- (the Profiles list and its divider are both "Profiles")
+local send_path = stand.find_item(find("Debug"), "Send Translation Path")
+stand.equal(send_path.kind, "toggle", "Send Translation Path is a switch")
+stand.equal(i18n.get_send_path(), false, "it's off at first")
+stand.clear_logs()
+stand.hover(show_keys)
+stand.equal(stand.find_log("profile.translation.show_keys.name"), nil, "and then hovering sends nothing")
+stand.click(send_path)
+stand.equal(i18n.get_send_path(), true, "switched on")
+stand.hover(show_keys)
+stand.check(stand.find_log("profile.translation.show_keys.name"), "hovering an item sends its key")
+stand.hover(stand.find_item(profiles(), "Profiles") or send_path)
+stand.click(send_path)
+stand.equal(i18n.get_send_path(), false, "switched off")
+
+-- Send File Path: the file the string is in, from Lua Scripts on
+local send_file = stand.find_item(find("Debug"), "Send File Path")
+stand.equal(send_file.kind, "toggle", "Send File Path is a switch")
+stand.clear_logs()
+stand.click(send_file)
+stand.hover(show_keys)
+stand.check(stand.find_log("language") and stand.find_log("en-us.json"),
+    "hovering an item sends the file its string is in")
+stand.click(send_file)
+stand.equal(i18n.get_send_file(), false, "switched off")
 
 -- ─── Translation: Create Translation ─────────────────────────────────────────
 

@@ -34,6 +34,11 @@ local forced = nil
 local requested = nil
 -- Show each string's key instead of its text (set_show_keys): a translator sees which key is which
 local show_keys = false
+-- Hovering an item sends its key to Stand (set_send_path), and the key last asked for under each Stand label
+local send_path = false
+-- The same for the file the string is in (set_send_file)
+local send_file = false
+local recent = {}
 -- Called after the shown language changed (on_change), e.g. to rebuild texts made with text()
 local listeners = {}
 
@@ -238,6 +243,7 @@ end
 function module.label(key: string, fallback: ?string = nil): int
     local cached = labels[key]
     if cached then
+        recent[cached] = key
         return cached
     end
 
@@ -266,7 +272,67 @@ function module.label(key: string, fallback: ?string = nil): int
     end
 
     labels[key] = label
+    recent[label] = key
     return label
+end
+
+-- Strings with the same English text share one Stand label, so a label alone doesn't say which key it came
+-- from. The key asked for last is the one for the item being made: label() is called just before it
+-- @return Whether the item gets the hover notice
+function module.watch_path(ref, label): bool
+    local key = type(label) == "number" and recent[label] or nil
+    if key == nil then
+        return false
+    end
+    menu.on_focus(ref, function()
+        if send_path then
+            log:notify(key, "stand")
+        end
+        if send_file then
+            log:notify(module.file_of(key) or "?", "stand")
+        end
+    end)
+    return true
+end
+
+-- @return The file the string at key is in, in the language shown (English when that language doesn't have
+-- it), from Lua Scripts on: store/AnitaDarin/base/language/ru-ru.json; nil if no file has it
+function module.file_of(key: string): ?string
+    local shown = forced or current_code() or ENGLISH
+    for _, code in ipairs({ shown, ENGLISH }) do
+        for i = #sources, 1, -1 do
+            local source = sources[i]
+            local strings = source.languages[code]
+            local own_key = key_in(source, key)
+            if strings and own_key and type(lookup(strings, own_key)) == "string" then
+                local path = source.files[code]
+                local root = filesystem.scripts_dir()
+                if path:sub(1, #root) == root then
+                    return path:sub(#root + 1)
+                end
+                return path
+            end
+        end
+    end
+    return nil
+end
+
+-- Hovering an item sends the path of the file its string is in to Stand's notifications
+function module.set_send_file(on: bool): void
+    send_file = on
+end
+
+function module.get_send_file(): bool
+    return send_file
+end
+
+-- Hovering an item sends its translation path (the key) to Stand's notifications
+function module.set_send_path(on: bool): void
+    send_path = on
+end
+
+function module.get_send_path(): bool
+    return send_path
 end
 
 -- @return Whether any source has a <code>.json file
@@ -494,7 +560,7 @@ end)
 
 -- label and text for the keys under one part of the strings, so a file doesn't write its part each time:
 --     local label, text = i18n.scope("modules")
---     label("title")   -- i18n.label("modules.title")
+--     label("name")   -- i18n.label("modules.name")
 -- @return label(key, fallback), text(key, fallback)
 function module.scope(part: string)
     return |key, fallback| -> module.label($"{part}.{key}", fallback),

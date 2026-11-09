@@ -167,7 +167,7 @@ local function command_entry(list: table, ref): table
         end
         word_items = {}
         for _, word in ipairs(commands.words_of(ref)) do
-            table.insert(word_items, menu.action(entry.handle, word, {}, label("found_commands.words.remove_help"), function()
+            table.insert(word_items, menu.action(entry.handle, word, {}, label("found_commands.words.remove.help"), function()
                 local _, reason = commands.remove_word(ref, word)
                 if reason == "not_saved" then
                     log:warn(text("found_commands.not_saved"))
@@ -292,7 +292,7 @@ function module.build(section: table, opts: table): void
         i18n.label("profile.settings.help"))
     profile_menu.appearance(settings)
     language_menu.build(settings)
-    settings:divider(i18n.label("profile.script"))
+    settings:divider(i18n.label("profile.script.divider"))
     profile_menu.rename(settings)
 
     profile_menu.profiles(section, opts.refresh)
@@ -301,13 +301,13 @@ function module.build(section: table, opts: table): void
     -- menuloaderbuiltin, menuloader<pack folder>
     local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
         i18n.label("menu_loader.load_menu.help"))
-    load_menu:action(label("unload.name"), opts.unload, { "menuloaderunload" }, label("unload.help"))
+    load_menu:action(i18n.label("menu_loader.unload.name"), opts.unload, { "menuloaderunload" }, i18n.label("menu_loader.unload.help"))
     profile_menu.auto_copy(load_menu)
     opts.fill_menus(load_menu)
 
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
     profile_menu.command_box(command_box)
-    command_box:divider(label("commands_divider"))
+    command_box:divider(label("commands.divider"))
     local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
     local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
     user_commands.build(command_box)
@@ -323,9 +323,9 @@ function module.build(section: table, opts: table): void
                 filesystem.mkdirs(dir)
             end
             util.open_folder(dir)
-        end, {}, label($"commands_folder.{part.who}_help"))
+        end, {}, label($"commands_folder.{part.who}.help"))
         -- The folder apart from the commands under it
-        part.list:divider(label("commands_divider"))
+        part.list:divider(label("commands.divider"))
     end
 
     local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
@@ -339,8 +339,8 @@ function module.build(section: table, opts: table): void
 
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)
-    local logs = debug:list(label("logs"), {}, label("logs_help"))
-    debug:divider(label("divider.options_from_other_menu"))
+    local logs = debug:list(label("logs.name"), {}, label("logs.help"))
+    debug:divider(label("options_from_other_menu.divider"))
     profile_menu.log_name(logs)
     profile_menu.log_keep_days(logs)
     profile_menu.log_info_at_once(logs)

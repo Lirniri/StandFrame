@@ -619,7 +619,7 @@ function module.variables_list(node: table, module_name: string, hidden_of): voi
     local list = nil
     -- The current opening: a newer one (or going back) ends the refresh of the one before
     local opened = nil
-    list = node:list(label("variables"), {}, label("variables_help"), function()
+    list = node:list(label("variables.name"), {}, label("variables.help"), function()
         opened = nil
         list:clear()
     end, function()

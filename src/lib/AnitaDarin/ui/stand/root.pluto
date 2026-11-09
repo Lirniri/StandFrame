@@ -144,15 +144,15 @@ end
 -- Load Menu brings one back
 local function unload_menu(): void
     if not current then
-        log:notify(i18n.text("script_menu.unload.nothing"))
+        log:notify(i18n.text("menu_loader.unload.nothing"))
         return
     end
     unload_current()
-    show_notice(has_builtin() ? "script_menu.unload.notice" : "menu_loader.not_found")
+    show_notice(has_builtin() ? "menu_loader.unload.notice" : "menu_loader.not_found")
     rebuild_settings()
     -- The script's notifications in the game's feed go too; "Menu unloaded" is then the only one
     pcall(|| -> Atdar.natives.visual.hud.thefeed.remove_all())
-    log:notify(i18n.text("script_menu.unload.done"))
+    log:notify(i18n.text("menu_loader.unload.done"))
 end
 
 local function copy_pack(info: table): void
@@ -235,39 +235,51 @@ local function pack_command(info: table): string
     return $"menuloader{word}"
 end
 
+-- { ref, caption() } of the entries fill_picker made
+local picker_rows = {}
+
 -- Adds an entry per available menu: the built-in one (if any) and every pack in store, with their state.
 -- The section is rebuilt after every load and unload, so the states are always current
 local function fill_picker(node: table): void
     local builtin = has_builtin()
     local manifest = builtin and builder.read_core_manifest(paths.lib)
+    -- The entries' captions are made with text(), so they're made again when the shown language changes
+    picker_rows = {}
     -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
     if not manifest then
-        node:divider(label("menus"))
+        node:divider(label("menus.divider"))
     end
     if builtin then
-        local name = with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name),
-            current and current.kind == "builtin", false)
+        local loaded_builtin = current and current.kind == "builtin"
+        local function builtin_caption(): string
+            return with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name),
+                loaded_builtin, false)
+        end
+        local name = builtin_caption()
         if manifest then
-            node:list_action(name, copied_builtin_options(), function(index)
+            local ref = node:list_action(name, copied_builtin_options(), function(index)
                 if index == 1 then
                     load_builtin()
                 else
                     remove_builtin()
                 end
-            end, { "menuloaderbuiltin" }, text("builtin.copied_help"):format(manifest.pack))
-            node:divider(label("menus"))
+            end, { "menuloaderbuiltin" }, text("builtin.copied.help"):format(manifest.pack))
+            table.insert(picker_rows, { ref = ref, caption = builtin_caption,
+                help = || -> text("builtin.copied.help"):format(manifest.pack) })
+            node:divider(label("menus.divider"))
         else
-            node:action(name, load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
+            local ref = node:action(name, load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
+            table.insert(picker_rows, { ref = ref, caption = builtin_caption })
         end
     end
     local packs = builder.find_loadable_packs(PACKS_DIR)
     for _, info in ipairs(packs) do
         local version = info.version or text("pack.unknown_version")
         local author = info.author or text("pack.unknown_author")
-        local help = text("pack.help"):format(version, author) .. "\n" .. text("pack.options_help")
+        local help = text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
         local loaded = current and current.kind == "pack" and current.pack == info.folder
         local in_core = manifest and manifest.pack == info.name
-        node:list_action(with_state(info.name, loaded, in_core), pack_options(), function(index)
+        local ref = node:list_action(with_state(info.name, loaded, in_core), pack_options(), function(index)
             if index == 1 then
                 load_pack(info)
             elseif index == 2 then
@@ -278,11 +290,22 @@ local function fill_picker(node: table): void
                 open_features_folder(info)
             end
         end, { pack_command(info) }, help)
+        table.insert(picker_rows, { ref = ref, caption = || -> with_state(info.name, loaded, in_core), help = pack_help })
     end
     if not builtin and #packs == 0 then
         node:divider(label("no_menus"))
     end
 end
+
+i18n.on_change(function()
+    for _, row in ipairs(picker_rows) do
+        -- The refs may belong to a section that was already removed
+        pcall(menu.set_menu_name, row.ref, row.caption())
+        if row.help then
+            pcall(menu.set_help_text, row.ref, row.help())
+        end
+    end
+end)
 
 -- The script's own section (script_menu lays it out). Added before any menu loads,
 -- so unloading a menu never drops it
