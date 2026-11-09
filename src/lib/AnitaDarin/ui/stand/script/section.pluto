@@ -345,9 +345,10 @@ function module.build(section: table, opts: table): void
     profile_menu.log_keep_days(logs)
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
+
     local from_other_menu__settings = debug:list(label("settings.name"), {}, label("settings.help"))
-    local languages = from_other_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))
-    language_menu.show_keys(languages)
+    local from_other_menu__languages = from_other_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))
+    language_menu.show_keys(from_other_menu__languages)
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_place.build(debug, call_function.build)
     modules_place.debug_only(delete_script(debug))

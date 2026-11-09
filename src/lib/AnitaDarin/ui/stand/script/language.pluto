@@ -134,15 +134,20 @@ end
 -- Stand in English (i18n says so): the switch goes back off. section puts it in Debug > Languages
 function module.show_keys(node: table): void
     local keys_ref
+
     keys_ref = node:toggle(label("translation.show_keys.name"), function(on)
         if not i18n.set_show_keys(on) then
             pcall(menu.set_value, keys_ref, false)
         end
     end, { "debuglangkeys" }, label("translation.show_keys.help"))
+
+    node:divider(label("translation.send.divider"))
+
     -- The key of the item the cursor is on, in a Stand notification: exact even where items share a text
     node:toggle(label("translation.send_path.name"), function(on)
         i18n.set_send_path(on)
     end, { "debuglangpath" }, label("translation.send_path.help"))
+
     -- The file that string is in, for opening it to translate
     node:toggle(label("translation.send_file.name"), function(on)
         i18n.set_send_file(on)

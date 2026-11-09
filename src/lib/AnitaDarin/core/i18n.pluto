@@ -285,12 +285,21 @@ function module.watch_path(ref, label): bool
         return false
     end
     menu.on_focus(ref, function()
+        local parts = {}
         if send_path then
-            log:notify(key, "stand")
+            table.insert(parts, key)
         end
         if send_file then
-            log:notify(module.file_of(key) or "?", "stand")
+            table.insert(parts, module.file_of(key) or "?")
         end
+        if #parts == 0 then
+            return
+        end
+        -- Both in one notification: on separate lines when Stand's notifications put the text on its own line
+        -- (Settings > Appearance > Notifications > Stand), otherwise in a row
+        local profile = Atdar.profile
+        local newline = profile and profile.get and profile.get("notify_stand_newline") == true
+        log:notify(table.concat(parts, newline ? "\n" : " | "), "stand")
     end)
     return true
 end

@@ -352,6 +352,9 @@
         },
         "translation": {
             "divider": "Translation",
+            "send": {
+                "divider": "Send"
+            },
             "create": {
                 "name": "Create Translation",
                 "help": "Starts a translation into a new language: a file to translate in each folder of strings, a copy of the language picked"
