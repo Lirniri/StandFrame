@@ -13,15 +13,15 @@
 --   Update Automatically          (profile: auto_update)
 --   Check For Updates Every (Days) (profile: update_check_days)
 --
--- A stub for now: the auto-updater lives apart in updater/ until it's brought into the script, so
--- the buttons only say they aren't made yet and the version lines stay at "unknown"; the settings are
--- kept in the profile already, and refresh_info is where the updater will put what it finds.
+-- The work is done by core/update_manager (check, install, the automatic check); the menu only starts it
+-- in a thread and shows what it found.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
 -- updaterbranch, updaterbefore, updaterchanges
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
+local manager = Atdar.loader.load("core/update_manager")
 
 local log = new Logger("Updater")
 
@@ -30,9 +30,9 @@ local module = {}
 -- Strings under "updater_menu"
 local label, text = i18n.scope("updater_menu")
 
--- An item that isn't made yet: says so when clicked
-local function stub(node: table, key: string, command: string): void
-    node:action(label($"{key}.name"), || -> log:notify(text("stub")), { command }, label($"{key}.help"))
+-- An item running a function of the manager in a thread: the check and the install download, so they yield
+local function threaded(node: table, key: string, command: string, run: function): void
+    node:action(label($"{key}.name"), || -> util.create_thread(run), { command }, label($"{key}.help"))
 end
 
 -- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried
@@ -50,10 +50,7 @@ local function branch_options(): table
     return options
 end
 
--- What a check found: nil until the updater is brought in. changes - lines of what the version changes
-local found = { installed = nil, available = nil, changes = {} }
-
--- The branch picker and the info lines made by build
+-- The info lines and the branch picker made by build
 local view = { branch = nil, installed = nil, available = nil, last_check = nil }
 
 -- "never" when no check ran, else the time of the last one
@@ -67,27 +64,48 @@ local function last_check_text(): string
     return os.date("%Y-%m-%d %H:%M", time)
 end
 
+local function available_text(): string
+    local version = manager.available_version()
+
+    if version == nil then
+        return text("info.not_checked")
+    end
+
+    if manager.is_up_to_date() then
+        return text("info.up_to_date"):format(version)
+    end
+
+    return version
+end
+
 -- Puts what's known into the info lines. A line of a removed section is skipped
 local function refresh_info(): void
     if view.installed == nil then
         return
     end
 
-    pcall(menu.set_value, view.installed, found.installed or text("info.unknown"))
-    pcall(menu.set_value, view.available, found.available or text("info.not_checked"))
+    pcall(menu.set_value, view.installed, manager.installed_version() or text("info.unknown"))
+    pcall(menu.set_value, view.available, available_text())
     pcall(menu.set_value, view.last_check, last_check_text())
 end
 
--- Says what the available version changes, one notification per line
-local function show_changes(): void
+-- Says what the available version changes, one notification per line (the first MAX_LINES)
+local MAX_LINES = 8
 
-    if #found.changes == 0 then
+local function show_changes(): void
+    local lines = manager.changes()
+
+    if #lines == 0 then
         log:notify(text("changes.none"))
         return
     end
 
-    for _, line in ipairs(found.changes) do
-        log:notify(line)
+    for i, line in ipairs(lines) do
+        if i > MAX_LINES then
+            log:notify(text("changes.more"):format(#lines - MAX_LINES))
+            return
+        end
+        log:notify(text($"changes.{line.kind}"):format(line.path))
     end
 end
 
@@ -98,8 +116,9 @@ function module.build(node: table): table
     view.available = list:readonly(label("info.available"), "")
     view.last_check = list:readonly(label("info.last_check"), "")
     refresh_info()
+    manager.on_change(refresh_info)
     list:action(label("changes.name"), show_changes, { "updaterchanges" }, label("changes.help"))
-    stub(list, "check", "updatercheck")
+    threaded(list, "check", "updatercheck", manager.check)
     -- The branch updates come from, its name in the item: "Update Branch: main"
     view.branch = list:list_action(branch_caption(), branch_options(), function(index)
         local branch = BRANCHES[index]
@@ -109,7 +128,7 @@ function module.build(node: table): table
     end, { "updaterbranch" }, label("branch.help"))
 
     list:divider(label("divider"))
-    stub(list, "install", "updaterinstall")
+    threaded(list, "install", "updaterinstall", manager.install_and_restart)
     list:toggle(label("before.name"), function(on)
         -- Stand also calls it at every start: only a real change is saved
         if profile.get("update_check_before") == on then

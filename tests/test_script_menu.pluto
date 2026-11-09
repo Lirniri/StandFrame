@@ -228,16 +228,25 @@ menu.set_value(night, 19)
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
 local update_list = find("Update")
-stand.equal(names_in(update_list), "Check For Updates | Update Branch: main | Update | Update | Update Automatically"
+stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check For Updates"
+    .. " | Update Branch: main | Update | Update | Check Before Updating | Update Automatically"
     .. " | Check For Updates Every (Days)",
-    "Update: Check For Updates and its branch, then the Update divider with Update and its settings")
-stand.equal(update_list.children[3].kind, "divider", "the Update divider under the branch")
+    "Update: the version lines, Changes, Check For Updates and its branch, then the Update divider with Update and its settings")
+stand.equal(update_list.children[7].kind, "divider", "the Update divider under the branch")
+stand.equal(update_list.children[2].value, "not checked", "the available version isn't known before a check")
+stand.equal(update_list.children[3].value, "never", "and no check ran")
+stand.toasts = {}
+stand.click(stand.find_item(update_list, "Changes"))
+stand.check(stand.toasts[#stand.toasts]:find("No changes to show", 1, true), "Changes: nothing before a check")
+-- No internet in the test: the check fails and says why
+_G.async_http = { have_access = || -> true, init = function(host, path, on_success, on_fail) on_fail("no answer") end,
+    dispatch = function() end }
 stand.toasts = {}
 stand.click(stand.find_item(update_list, "Check For Updates"))
-stand.check(stand.toasts[#stand.toasts]:find("Updating isn't made yet", 1, true), "Check For Updates says it isn't made yet")
+stand.check(stand.toasts[#stand.toasts]:find("Couldn't check for updates", 1, true), "Check For Updates says why it failed")
 stand.toasts = {}
-stand.click(update_list.children[4])
-stand.check(stand.toasts[#stand.toasts]:find("Updating isn't made yet", 1, true), "Update too")
+stand.click(update_list.children[8])
+stand.check(stand.toasts[#stand.toasts]:find("Couldn't check for updates", 1, true), "Update checks first and stops when it can't")
 stand.equal(names_in(find("Command Box")), "Base Commands Prefix | Base Commands Separator: None | Found Commands Prefix"
     .. " | Found Commands Separator: None | Commands | Base Commands | Found Commands | User Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
@@ -1188,13 +1197,19 @@ menu.show_warning = real_warning
 
 -- Update's settings are kept in the profile already (last: they leave it changed)
 local update_list = find("Update")
-local auto_update = update_list.children[5]
+local check_before = update_list.children[9]
+stand.equal(check_before.value, profile.get("update_check_before") ~= false, "Check Before Updating shows the profile's value")
+local before_was = profile.get("update_check_before")
+stand.click(check_before)
+stand.equal(profile.get("update_check_before"), not before_was, "and switching it saves it")
+stand.click(check_before)
+local auto_update = update_list.children[10]
 stand.equal(auto_update.value, profile.get("auto_update") == true, "Update Automatically shows the profile's value")
 local auto_before = profile.get("auto_update")
 stand.click(auto_update)
 stand.equal(profile.get("auto_update"), not auto_before, "and switching it saves it")
 stand.click(auto_update)
-local check_days = update_list.children[6]
+local check_days = update_list.children[11]
 stand.equal(check_days.kind, "click_slider", "Check For Updates Every is a click slider")
 stand.equal(check_days.value, profile.get("update_check_days"), "showing the profile's days")
 local days_before = profile.get("update_check_days")
@@ -1204,7 +1219,7 @@ stand.check(stand.toasts[#stand.toasts]:find("every 3 days", 1, true), "and says
 stand.click(check_days, 0)
 stand.check(stand.toasts[#stand.toasts]:find("won't be checked", 1, true), "0: never")
 profile.set("update_check_days", days_before)
-local branch_item = update_list.children[2]
+local branch_item = update_list.children[6]
 stand.equal(stand.name_of(branch_item), "Update Branch: main", "Update Branch shows the profile's branch")
 stand.click(branch_item, 2)
 stand.equal(profile.get("update_branch"), "experiment", "picking experiment saves it")

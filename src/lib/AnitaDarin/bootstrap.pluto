@@ -56,6 +56,9 @@ Atdar.features = Atdar.loader.load("features/registry")
 
 Atdar.ui.menu = require($"{Atdar.name}/ui/stand/root")
 
+-- The automatic update check (update_check_days, auto_update in the profile)
+Atdar.loader.load("core/update_manager").start_auto()
+
 -- Load Timing on: how long the start took and which files were the slowest, in Stand's log
 if Atdar.load_timing then
     Atdar.loader.report(Atdar.loader.now() - started)

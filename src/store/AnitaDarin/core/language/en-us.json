@@ -1027,12 +1027,16 @@
             "last_check": "Last Check",
             "unknown": "unknown",
             "not_checked": "not checked",
-            "never": "never"
+            "never": "never",
+            "up_to_date": "%s (up to date)"
         },
         "changes": {
             "name": "Changes",
             "help": "Shows what the available version changes",
-            "none": "No changes to show: updates weren't checked yet"
+            "none": "No changes to show: nothing to update, or updates weren't checked yet",
+            "update": "Update: %s",
+            "remove": "Remove: %s",
+            "more": "...and %d more"
         },
         "check": {
             "name": "Check For Updates",
@@ -1064,6 +1068,14 @@
             "experiment": "experiment (newest)",
             "set": "Updates will come from the %s branch"
         },
-        "stub": "Updating isn't made yet"
+        "msg": {
+            "busy": "A check or an update is already running",
+            "check_failed": "Couldn't check for updates: %s",
+            "up_to_date": "The script is up to date (version %s)",
+            "found": "Version %s is out: %d file(s) to change. Press Update to install it",
+            "installing": "Updating: downloading %d file(s)",
+            "installed": "Updated to version %s. The script restarts",
+            "install_failed": "Couldn't update: %s. Nothing was changed"
+        }
     }
 }

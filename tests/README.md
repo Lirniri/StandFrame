@@ -42,7 +42,7 @@ What's checked:
 | `test_examples` | runs modules, features, the pack, `menu/helpers`, and `basics/06_check` plus `basics/07_parsers_and_colors` against stubs; checks the wrapper names used by the native examples |
 | `test_check` | `core/check`: `expecter` for function arguments and `validator` for options; errors from `Module` and `Feature` point at the line with the options, through `extends` too |
 | `test_parsers` | `parsers/`: hex colour (`color`), strict JSON (`json`); Pluto in `proglang.pluto`: arguments (`args`), words of a name (`name`), types from the source (`source`), paths (`path`); Stand command names (`stand.command_box`); the facades |
-| `test_updater` / `test_updater_manifest.py` | the updater from `updater/` on a fake GitHub, and the manifest generator |
+| `test_updater` / `test_updater_manifest.py` | the updater (`core/updater`) on a fake GitHub, and the manifest generator |
 
 ## Writing a test
 

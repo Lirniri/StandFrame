@@ -1,0 +1,232 @@
+-- Drives the updater (core/updater) for the menu and for the automatic check: keeps what the last check
+-- found, runs check and install one at a time and tells the user what happened.
+-- Settings are in the profile: update_branch, update_check_before, auto_update, update_check_days,
+-- update_last_check. Strings: core/language "updater_menu" > "msg"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local updater = Atdar.loader.load("core/updater")
+local installer = Atdar.loader.load("core/installer")
+
+local log = new Logger("Updater")
+
+local _, text = i18n.scope("updater_menu")
+
+local module = {}
+
+-- What the last check found (see updater.plan), nil before the first one or after an install
+module.plan = nil
+
+-- Whether a check or an install is running
+module.busy = false
+
+-- Seconds in a day
+local DAY = 86400
+
+-- How often the automatic check looks whether it's due, ms
+local AUTO_TICK = 3600000
+
+-- Called after a check or an install, for the menu to show the new state
+local listeners = {}
+
+function module.on_change(listener: function): void
+    table.insert(listeners, listener)
+end
+
+local function changed(): void
+    for _, listener in ipairs(listeners) do
+        pcall(listener)
+    end
+end
+
+local function options(): table
+    return { name = Atdar.name, branch = Atdar.profile.get("update_branch") or "main" }
+end
+
+-- The version of the release the last update installed, nil if the script wasn't installed by an update
+function module.installed_version(): ?string
+    local data = updater.installed(options())
+
+    if data == nil then
+        return nil
+    end
+
+    return data.version
+end
+
+-- The version the last check found, nil before one
+function module.available_version(): ?string
+    if module.plan == nil then
+        return nil
+    end
+
+    return module.plan.version
+end
+
+-- Whether the last check found nothing to update
+function module.is_up_to_date(): bool
+    return module.plan ~= nil and updater.is_up_to_date(module.plan)
+end
+
+-- What the available version changes, nothing before a check
+-- @return Lines { kind = "update"|"remove", path }
+function module.changes(): table
+    local lines = {}
+
+    if module.plan == nil then
+        return lines
+    end
+
+    for _, path in ipairs(module.plan.download) do
+        table.insert(lines, { kind = "update", path = path })
+    end
+
+    for _, path in ipairs(module.plan.remove) do
+        table.insert(lines, { kind = "remove", path = path })
+    end
+
+    return lines
+end
+
+-- Whether the automatic check is on and it's been update_check_days since the last one
+function module.is_check_due(): bool
+    local days = Atdar.profile.get("update_check_days") or 0
+    local last = Atdar.profile.get("update_last_check") or 0
+
+    if days == 0 then
+        return false
+    end
+
+    return os.time() - last >= days * DAY
+end
+
+-- Downloads the manifest and compares it with the installed files, remembering the result.
+-- Yields: call it from a thread
+-- @return The plan, or nil and why not
+local function run_check()
+    local plan, err = updater.check(options())
+
+    if plan == nil then
+        return nil, err
+    end
+
+    module.plan = plan
+    Atdar.profile.set("update_last_check", os.time())
+    return plan, nil
+end
+
+-- Checks and tells what was found. Yields: call it from a thread
+-- @return The plan, nil if the check failed or another one is running
+function module.check()
+
+    if module.busy then
+        log:notify(text("msg.busy"))
+        return nil
+    end
+
+    module.busy = true
+    local plan, err = run_check()
+    module.busy = false
+
+    if plan == nil then
+        log:warn(text("msg.check_failed"):format(err))
+        return nil
+    end
+
+    changed()
+
+    if updater.is_up_to_date(plan) then
+        log:notify(text("msg.up_to_date"):format(tostring(plan.version)))
+        return plan
+    end
+
+    log:notify(text("msg.found"):format(tostring(plan.version), #plan.download + #plan.remove))
+    return plan
+end
+
+-- Installs what the last check found; with update_check_before on (or no check yet) it checks first and
+-- stops if there's nothing newer. Yields: call it from a thread
+-- @return "installed", "up_to_date", "failed" or "busy"; the script is to be restarted after "installed"
+function module.install(): string
+
+    if module.busy then
+        log:notify(text("msg.busy"))
+        return "busy"
+    end
+
+    module.busy = true
+
+    local plan = module.plan
+    local err = nil
+
+    if plan == nil or Atdar.profile.get("update_check_before") ~= false then
+        plan, err = run_check()
+    end
+
+    if plan == nil then
+        module.busy = false
+        log:warn(text("msg.check_failed"):format(err))
+        return "failed"
+    end
+
+    if updater.is_up_to_date(plan) then
+        module.busy = false
+        changed()
+        log:notify(text("msg.up_to_date"):format(tostring(plan.version)))
+        return "up_to_date"
+    end
+
+    log:notify(text("msg.installing"):format(#plan.download))
+
+    local ok, apply_err = updater.apply(plan)
+    module.busy = false
+
+    if not ok then
+        log:error(text("msg.install_failed"):format(apply_err))
+        return "failed"
+    end
+
+    module.plan = nil
+    changed()
+    log:success(text("msg.installed"):format(tostring(plan.version)))
+    return "installed"
+end
+
+-- Installs and starts the script again when it was updated. Yields: call it from a thread
+function module.install_and_restart(): void
+    if module.install() == "installed" then
+        installer.restart_as(Atdar.name)
+    end
+end
+
+-- One round of the automatic check: checks when due, installs what it found if auto_update is on
+local function auto_round(): void
+
+    if not module.is_check_due() then
+        return
+    end
+
+    local plan = module.check()
+
+    if plan == nil or updater.is_up_to_date(plan) then
+        return
+    end
+
+    if Atdar.profile.get("auto_update") == true then
+        module.install_and_restart()
+    end
+end
+
+-- Starts the thread of the automatic check: a round soon after the start, then every AUTO_TICK
+function module.start_auto(): void
+    util.create_thread(function()
+        util.yield(10000) -- the script is still starting
+
+        while true do
+            auto_round()
+            util.yield(AUTO_TICK)
+        end
+    end)
+end
+
+return module

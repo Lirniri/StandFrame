@@ -1,10 +1,9 @@
--- updater/updater.pluto: paths under the script's name, user data kept, plan, apply, removal.
+-- core/updater: paths under the script's name, user data kept, plan, apply, removal.
 -- The network is a fake async_http here; files go to tests/.tmp only
 local stand = require("stand")
 stand.boot()
-package.path = $"{stand.ROOT}/updater/?.pluto;{package.path}"
 local json = require "pluto:json"
-local updater = require("updater")
+local updater = Atdar.loader.load("core/updater")
 
 -- ─── Fake GitHub ─────────────────────────────────────────────────────────────
 
@@ -166,7 +165,7 @@ plan, err = updater.check(opts)
 stand.check(plan == nil and err:find("'Other'", 1, true), "another project's manifest: refused")
 access = false
 plan, err = updater.check(opts)
-stand.check(plan == nil and err:find("no internet access", 1, true), "no internet access for Lua: says where to allow it")
+stand.check(plan == nil and err:find("Disable Internet Access in Stand > Lua Scripts > Renamed", 1, true), "no internet access: says where to allow it")
 access = true
 
 -- A request that never answers times out

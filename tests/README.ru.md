@@ -41,7 +41,7 @@ python tests/run.py -v       показать вывод и у прошедши�
 | `test_examples` | запускает на заглушках модули, фичи, пакет, `menu/helpers`, `basics/06_check` и `basics/07_parsers_and_colors`; проверяет имена обёрток, используемые примерами нативов |
 | `test_check` | `core/check`: `expecter` для аргументов функций и `validator` для опций; ошибки `Module` и `Feature` указывают на строку, где написаны опции, и через `extends` тоже |
 | `test_parsers` | `parsers/`: hex-цвет (`color`), строгий JSON (`json`); Pluto в `proglang.pluto`: аргументы (`args`), слова имени (`name`), типы из исходника (`source`), пути (`path`); имена команд Stand (`stand.command_box`); фасады |
-| `test_updater` / `test_updater_manifest.py` | обновлялка из `updater/` на фейковом GitHub и генератор манифеста |
+| `test_updater` / `test_updater_manifest.py` | обновлялка (`core/updater`) на фейковом GitHub и генератор манифеста |
 
 ## Как написать тест
 

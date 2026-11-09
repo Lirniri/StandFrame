@@ -23,8 +23,7 @@ for modules.
 
 The built-in menu is still in development. Its current feature items include self/player options (such as god mode,
 movement and health/armour/stamina actions) and a vehicle action; some menu sections are present as scaffolding and
-don't yet contain features. The updater engine is also separate from the running script: the Update menu entries are
-placeholders and do not install updates yet. See [updater/README.md](updater/README.md).
+don't yet contain features. The Update menu checks for and installs new versions (manually or on an interval). See [updater/README.md](updater/README.md).
 
 ## Install and run
 
@@ -67,7 +66,7 @@ configure notifications and command names, and use Load Menu to select or copy a
 | `src/store/AnitaDarin/` | Default data and the built-in menu pack |
 | `examples/` | Guided examples for core APIs, features, modules, menus, and packs |
 | `tests/` | Tests against Stand API stubs |
-| `updater/` | Standalone updater engine and release-manifest generator; not yet wired into the script |
+| `updater/` | Release-manifest generator for the updater (the engine is `core/updater`) and its docs |
 
 ## Development and tests
 
