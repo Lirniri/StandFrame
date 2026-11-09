@@ -245,6 +245,7 @@ local class VehicleManager extends Module
     -- Explodes every remembered vehicle still in the game
     -- @return How many were exploded
     function explode_all(): int
+        
         local exploded = 0
 
         for _, handle in ipairs(self:get_handles()) do

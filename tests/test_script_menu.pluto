@@ -393,13 +393,13 @@ stand.check(add_function and add_function.kind == "text_input" and clear_one and
     and clear_all and clear_all.kind == "action", "Functions: Add and Clear are fields, Clear All a button")
 local function added_names(): string
     local names = {}
-    for i = 5, #functions_list.children do
+    for i = 6, #functions_list.children do
         table.insert(names, stand.name_of(functions_list.children[i]))
     end
     return table.concat(names, " | ")
 end
-stand.equal(names_in(functions_list), "Add | Clear | Clear All | Functions", "Add, Clear, Clear All, the Functions divider; nothing under it at first")
-stand.equal(functions_list.children[4].kind, "divider", "the Functions divider is under Clear All")
+stand.equal(names_in(functions_list), "Add | Clear | Clear All | Save Functions | Functions", "Add, Clear, Clear All, the Functions divider; nothing under it at first")
+stand.equal(functions_list.children[5].kind, "divider", "the Functions divider is under Save Functions")
 local typed_calls = {}
 Atdar.test_typed = function(count: int, name: string, ...) table.insert(typed_calls, table.pack(count, name, ...)) return count end
 local plain_calls = 0
@@ -416,10 +416,10 @@ stand.equal(added_names(), "1: test_typed(count, name, ...) | 2: test_plain: int
     "a native's namespace is left out of the name; none: the return type written; ... for what's not said of the arguments")
 stand.clear_logs()
 add_function.on_change("test_plain", 0)
-stand.check(stand.find_log("is in the list already") and #functions_list.children == 7, "the same path twice: once")
+stand.check(stand.find_log("is in the list already") and #functions_list.children == 8, "the same path twice: once")
 add_function.on_change("test_plain", 4)
 add_function.on_change("", 0)
-stand.equal(#functions_list.children, 7, "Stand putting the field back adds nothing, nor does an empty one")
+stand.equal(#functions_list.children, 8, "Stand putting the field back adds nothing, nor does an empty one")
 local typed_item = stand.child(functions_list, "1: test_typed(count, name, ...)")
 local plain_item = stand.child(functions_list, "2: test_plain: int")
 stand.equal(plain_item.kind, "action", "a function without parameters is a button")
@@ -450,11 +450,11 @@ menu.set_value(typed_item.children[2], "4")
 -- Clear takes one out by its number, the others are numbered again and keep what's typed
 stand.clear_logs()
 clear_one.on_change("7", 0)
-stand.check(stand.find_log("There's no function number '7'") and #functions_list.children == 7, "a number with no function is told")
+stand.check(stand.find_log("There's no function number '7'") and #functions_list.children == 8, "a number with no function is told")
 clear_one.on_change("x", 0)
-stand.equal(#functions_list.children, 7, "so is what isn't a number")
+stand.equal(#functions_list.children, 8, "so is what isn't a number")
 clear_one.on_change("1", 4)
-stand.equal(#functions_list.children, 7, "Stand putting the field back takes nothing out")
+stand.equal(#functions_list.children, 8, "Stand putting the field back takes nothing out")
 menu.set_value(stand.child(functions_list, "3: GET_THING(...)").children[1], "5")
 clear_one.on_change("1", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...)", "Clear: the function gone, the others numbered again")
@@ -470,7 +470,7 @@ stand.check(stand.child(functions_list, "2: NATIVE_TEST.GET_THING(...)").childre
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "on again: the short name")
 stand.click(clear_all)
-stand.equal(names_in(functions_list), "Add | Clear | Clear All | Functions", "Clear All takes them all out")
+stand.equal(names_in(functions_list), "Add | Clear | Clear All | Save Functions | Functions", "Clear All takes them all out")
 Atdar.test_plain, NATIVE_TEST = nil, nil
 
 -- Short names to call by: with Use Short Names on, a function is typed by the last part of its path
@@ -490,6 +490,29 @@ stand.check(stand.find_log("'unique_short_fn' not found"), "with Use Short Names
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.click(clear_all)
 Atdar.test_deep, TEST_SHORT = nil, nil
+
+-- Save Functions: the list is kept in a file while it's on, and comes back when the menu is first made
+local saved_path = $"{stand.store}AnitaDarin/call_functions.json"
+Atdar.test_saved = function(a: int) end
+add_function.on_change("test_saved", 0)
+stand.check(not io.exists(saved_path), "Save Functions is off: nothing is written")
+stand.click(stand.child(functions_list, "Save Functions"))
+stand.check(io.exists(saved_path) and stand.read_file(saved_path):find("test_saved", 1, true), "on: the list is written")
+add_function.on_change("test_plain_saved", 0)
+stand.check(not stand.read_file(saved_path):find("test_plain_saved", 1, true), "a path that isn't found isn't written")
+clear_one.on_change("1", 0)
+stand.check(not stand.read_file(saved_path):find("test_saved", 1, true), "Clear is written too")
+add_function.on_change("test_saved", 0)
+-- A fresh copy of the list's code, as at the next start: the functions come back from the file
+package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
+local fresh = Atdar.loader.load("ui/stand/script/call_function")
+local fresh_handle = fresh.build(new MenuNode(stand.root))
+stand.check(stand.find_item(fresh_handle, "1: test_saved(a)") ~= nil, "the functions come back from the file")
+stand.equal(stand.find_item(fresh_handle, "Save Functions").value, true, "with Save Functions on")
+stand.click(stand.child(functions_list, "Save Functions"))
+stand.check(not io.exists(saved_path), "off: the file is removed")
+stand.click(clear_all)
+Atdar.test_saved = nil
 
 -- Made again (the section being built again): the functions added and what's typed in their fields stay
 Atdar.test_typed = function(count: int, name: string) end

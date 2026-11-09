@@ -885,6 +885,10 @@
                 "help": "Takes every function out of the list",
                 "done": "The list of functions is cleared"
             },
+            "save": {
+                "name": "Save Functions",
+                "help": "Keeps the list of functions in a file, store/<script>/call_functions.json, and puts it back at the next start. The paths only, not what's typed in the fields. Off: the file is removed"
+            },
             "guide": {
                 "name": "Arguments Guide",
                 "help": "Sends to Stand how to write the functions' arguments in the argument fields",

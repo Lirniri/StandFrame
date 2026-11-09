@@ -4,8 +4,8 @@
 -- a table or a variable by its name.
 --
 --   Call Function >   Call A Function (list): Function Name, then the panel (below)
---                     Functions (list): Add, Clear, Clear All, the Functions divider, then the functions added,
---                     each with its number
+--                     Functions (list): Add, Clear, Clear All, Save Functions, the Functions divider, then the
+--                     functions added, each with its number
 --                     Arguments Guide: how to write the arguments, as a notice in Stand
 --                     Settings (divider), Use Short Names, Notice In Stand
 --
@@ -439,7 +439,7 @@ end
 local main_state = {}
 -- The settings: Notice In Stand, Use Short Names (the names in the Functions list and the notices are the last
 -- part of the path)
-local settings = { stand = true, short_names = true }
+local settings = { stand = true, short_names = true, save = false }
 -- Makes the items of the Functions list again; set by the list when it's built
 local show_added = nil
 
@@ -556,8 +556,49 @@ local function build_by_name(node: table): void
     })
 end
 
--- The Functions list: Add, Clear, Clear All, the Functions divider, then the functions added
+-- The file the functions are saved in while Save Functions is on: store/<script>/call_functions.json,
+-- { "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the fields
+local function saved_file(): table
+    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+    return new JsonFile($"{Atdar.filesystem.paths.store}call_functions.json")
+end
+
+-- Writes the list to the file while Save Functions is on
+local function save_added(): void
+    if not settings.save then
+        return
+    end
+    local paths = {}
+    for _, entry in ipairs(added) do
+        table.insert(paths, entry.path)
+    end
+    saved_file():write({ functions = paths })
+end
+
+-- The functions of the file, put in the list; once, when the menu is first made (the file is there while
+-- Save Functions was on)
+local loaded = false
+local function load_saved(): void
+    if loaded then
+        return
+    end
+    loaded = true
+    local file = saved_file()
+    if not file:exists() then
+        return
+    end
+    settings.save = true
+    for _, path in ipairs((file:read() or {}).functions or {}) do
+        if type(path) == "string" then
+            last_id += 1
+            table.insert(added, { id = last_id, path = path, state = {} })
+        end
+    end
+end
+
+-- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added
 local function build_functions(node: table): void
+    load_saved()
     local list = node:list(label("functions.name"), {}, label("functions.help"))
     local first = nil
 
@@ -594,6 +635,7 @@ local function build_functions(node: table): void
         last_id += 1
         local entry = { id = last_id, path = path, state = {} }
         table.insert(added, entry)
+        save_added()
         add_item(list, entry, #added)
         log:notify(text("add.done"):format(#added, shown(path)))
     end, label("add.help"), "")
@@ -613,6 +655,7 @@ local function build_functions(node: table): void
             return
         end
         local entry = table.remove(added, number)
+        save_added()
         show_added()
         log:notify(text("clear.done"):format(number, shown(entry.path)))
     end, label("clear.help"), "")
@@ -622,9 +665,23 @@ local function build_functions(node: table): void
             return
         end
         added = {}
+        save_added()
         show_added()
         log:notify(text("clear_all.done"))
     end, {}, label("clear_all.help"))
+
+    -- On: the list is kept in a file and comes back at the next start; off: the file is removed
+    list:toggle(label("save.name"), function(on)
+        if stopping or settings.save == on then
+            return
+        end
+        settings.save = on
+        if on then
+            save_added()
+            return
+        end
+        saved_file():remove()
+    end, {}, label("save.help"), settings.save)
 
     list:divider(label("functions.name"))
     first = #list.children + 1

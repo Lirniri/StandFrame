@@ -13,3 +13,4 @@ __pycache__/
 # Files the tests write (tests/run.py, tests/stand.pluto tmpdir)
 tests/.tmp/
 Планы.txt
+CLAUDE.md
