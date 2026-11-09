@@ -89,24 +89,29 @@ local function refresh_info(): void
     pcall(menu.set_value, view.last_check, last_check_text())
 end
 
--- Says what the available version changes, one notification per line (the first MAX_LINES)
-local MAX_LINES = 8
+-- Says what the available version changes: the files in one notification in Stand (the game's feed
+-- cuts a long text), the first MAX_LINES of them
+local MAX_LINES = 30
 
 local function show_changes(): void
     local lines = manager.changes()
 
     if #lines == 0 then
-        log:notify(text("changes.none"))
+        log:notify(text("changes.none"), "stand")
         return
     end
 
+    local parts = {}
+
     for i, line in ipairs(lines) do
         if i > MAX_LINES then
-            log:notify(text("changes.more"):format(#lines - MAX_LINES))
-            return
+            table.insert(parts, text("changes.more"):format(#lines - MAX_LINES))
+            break
         end
-        log:notify(text($"changes.{line.kind}"):format(line.path))
+        table.insert(parts, text($"changes.{line.kind}"):format(line.path))
     end
+
+    log:notify(table.concat(parts, "\n"), "stand")
 end
 
 function module.build(node: table): table
