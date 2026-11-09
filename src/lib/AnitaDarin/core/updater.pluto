@@ -23,7 +23,7 @@ local module = {}
 -- Where releases come from; each can be given in opts instead
 module.DEFAULTS = {
     host = "raw.githubusercontent.com",
-    repo = "Lirniri/StandFrame",
+    repo = "Lirniri/Stand-AnitaDarin",
     branch = "main",
     -- The manifest's place in the repo
     manifest = "updater/manifest.json",
@@ -148,7 +148,7 @@ local function url_path(path: string): string
     return (path:gsub("[^%w%-%._~/]", |c| -> string.format("%%%02X", c:byte())))
 end
 
--- "/Lirniri/StandFrame/main/src/lib/AnitaDarin/core/loader.pluto"
+-- "/Lirniri/Stand-AnitaDarin/main/src/lib/AnitaDarin/core/loader.pluto"
 local function raw_path(o: table, path: string): string
     return url_path($"/{o.repo}/{o.branch}/{path}")
 end

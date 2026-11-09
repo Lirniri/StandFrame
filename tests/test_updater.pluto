@@ -31,7 +31,7 @@ _G.async_http = {
     end,
 }
 
-local BASE = "/Lirniri/StandFrame/main/"
+local BASE = "/Lirniri/Stand-AnitaDarin/main/"
 local function serve(path: string, content) served[$"{BASE}src/{path}"] = content end
 local function publish(files: table, version: string)
     local listed = {}
@@ -99,7 +99,7 @@ publish({
 
 local plan, err = updater.check(opts)
 stand.check(plan ~= nil, $"check gives a plan ({tostring(err)})")
-stand.equal(requests[1], "raw.githubusercontent.com/Lirniri/StandFrame/main/updater/manifest.json", "the manifest from main")
+stand.equal(requests[1], "raw.githubusercontent.com/Lirniri/Stand-AnitaDarin/main/updater/manifest.json", "the manifest from main")
 stand.equal(plan.version, "0.1.0", "with the release's version")
 stand.equal(table.concat(plan.download, " | "),
     "AnitaDarin.pluto | lib/AnitaDarin/core/loader.pluto | store/AnitaDarin/profiles/main.json",
