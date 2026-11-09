@@ -36,6 +36,7 @@ What's checked:
 | `test_json_file` | JsonFile: safe writing, damaged files, `.bak`; profiles on top of it |
 | `test_commands` | command names with the profile's prefix and renaming on the fly |
 | `test_i18n` | strings from language files through Stand labels, layers of sources |
+| `test_i18n_keys.py` | every key written out in the code (`lang.translate`, `i18n.label`/`text`, `label`/`text` of a scope) is in the English files |
 | `test_streaming` | loading each kind of asset (and `texture_dict`, `model`), `request(false)`, timeouts |
 | `test_examples` | the examples run as written: modules, features, the pack, `basics`, `menu/helpers`; every function the natives examples call exists |
 | `test_check` | `core/check`: `expecter` for function arguments and `validator` for options; errors from `Module` and `Feature` point at the line with the options, through `extends` too |
