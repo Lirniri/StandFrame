@@ -7,7 +7,7 @@ end
 -- what other files compare with: state.MenuType.STAND
 module.MenuType = { STAND = MenuType.STAND, SCALEFORM = MenuType.SCALEFORM }
 
--- Текущий вид меню
+-- Current menu view
 module.current_view = MenuType.STAND
 
 return module
