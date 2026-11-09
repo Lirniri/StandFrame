@@ -30,19 +30,27 @@ local class VehicleManager extends Module
             -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
             debug = {
                 hide = {
-                    "_free_name"
+                    "_free_name",
+                    "_unorder",
+                    "_trim"
                 }
             }
         })
         -- State lives in fields; set defaults here
+
+        -- Ped>State
         self.ped_id = ped 
 
+        -- Vehicle>State
         self.last_handle = -1
         self.prev_handle = -1
+        -- Vehicle>Flags
         self.auto_remember = false
+        self.count_remember = 15
         self.remember_prev = true
-
+        -- Vehicle>Tables
         self.vehicles = {}
+        self.order = {} -- the handles, the oldest first: tells which one to forget past count_remember
     end
 
     -- The vehicle the player is in at the start is remembered a frame later (on_tick): the natives it needs
@@ -181,20 +189,42 @@ local class VehicleManager extends Module
 
     -- Remembers a vehicle the script made or the player got into
     function add_vehicle(handle: int): void
+        
         -- Only a real handle: a whole number, not -1 / 0 ("none" from Stand and from the game's natives).
         -- Anything else (a function, a text typed in the menu) would break every function reading the table
         if math.type(handle) ~= "integer" or handle == -1 or handle == 0 then
             self.log:warn(self:text("not_handle", "'%s' isn't a vehicle's handle, not remembered"):format(tostring(handle)))
             return
         end
+
+        -- Added again: it moves to the end of the order, so the ones used lately are forgotten last
+        self:_unorder(handle)
+        table.insert(self.order, handle)
+
         self.vehicles[handle] = true
         self:update_vehicle(handle)
+        self:_trim()
+        -- @return void
+    end
+
+    -- How many vehicles are remembered at most; past it the oldest are forgotten (only from the table)
+    function set_count_remember(count: int): void
+
+        if math.type(count) ~= "integer" or count < 1 then
+            self.log:warn(self:text("not_count", "'%s' isn't a count from 1, not set"):format(tostring(count)))
+            return
+        end
+
+        self.count_remember = count
+        self:_trim()
         -- @return void
     end
 
     -- Forgets a vehicle
     function remove_vehicle(handle: int): void
         self.vehicles[handle] = nil
+        self:_unorder(handle)
+
         if self.last_handle == handle then
             self.last_handle = -1
         end
@@ -227,6 +257,7 @@ local class VehicleManager extends Module
     -- Forgets all vehicles
     function remove_all_vehicles(): void
         self.vehicles = {}
+        self.order = {}
         self.last_handle = -1
         self.prev_handle = -1
         -- @return void
@@ -507,6 +538,27 @@ local class VehicleManager extends Module
         end
 
         return saved
+    end
+
+    -- Takes the handle out of the order list
+    function _unorder(handle: int): void
+
+        for i, ordered in ipairs(self.order) do
+            if ordered == handle then
+                table.remove(self.order, i)
+                return
+            end
+        end
+        -- @return void
+    end
+
+    -- Forgets the oldest vehicles while there are more than count_remember
+    function _trim(): void
+
+        while #self.order > self.count_remember do
+            self:remove_vehicle(self.order[1])
+        end
+        -- @return void
     end
 
     -- "adder", or "adder_2", "adder_3"... when the file is there already
