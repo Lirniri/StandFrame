@@ -1,4 +1,4 @@
-local settings = Atdar.loader.load("ui/stand/script/settings")
+local settings = Atdar.loader.load("ui/stand/core/settings")
 
 local lang = Atdar.lang
 

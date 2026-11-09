@@ -16,16 +16,16 @@
 -- Strings: base/language "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
-local installer = Atdar.loader.load("core/installer")
+local delete_script_logic = Atdar.loader.load("ui/logic/script/delete_script")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/core/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
-local profile_menu = Atdar.loader.load("ui/stand/script/profile_menu")
-local language_menu = Atdar.loader.load("ui/stand/script/language_menu")
+local profile_menu = Atdar.loader.load("ui/stand/script/profile")
+local language_menu = Atdar.loader.load("ui/stand/script/language")
 local user_commands = Atdar.loader.load("ui/stand/script/user_commands")
--- The Modules place only: the list's items (ui/stand/modules/menu) load when it's first opened
+-- The Modules place only: the list's items (ui/stand/modules/list) load when it's first opened
 local modules_place = Atdar.loader.load("ui/stand/modules/place")
-local updater_menu = Atdar.loader.load("ui/stand/script/updater_menu")
+local updater_menu = Atdar.loader.load("ui/stand/script/updater")
 local call_function = Atdar.loader.load("ui/stand/script/call_function")
 
 local log = new Logger("Menu")
@@ -40,61 +40,21 @@ local function stub(node: table, key: string): void
     node:action(label($"{key}.name"), || -> log:notify(text("stub")), {}, label("stub"))
 end
 
--- How long the confirm button of Delete Script waits for its second click
-local CONFIRM_MS = 5000
-
--- Delete Script: a list, so deleting takes its own confirm button and never happens on one click.
--- The button deletes on a second click within CONFIRM_MS: the first one renames it and says what goes;
--- going back out of the list cancels it.
--- Not menu.show_warning: in the game it let the delete through without showing anything, whatever the
--- click type. Not a toggle either: Stand keeps toggle states in its profile, so it could start on.
--- Profiles and settings are kept unless switched off. Then the script deletes its files (core/installer) and stops
+-- Delete Script: a list with its own confirm button; what the clicks do is in
+-- ui/logic/script/delete_script. Only the button's name is changed here
 -- @return The list's handle
 local function delete_script(node: table)
     local confirm_ref
-    -- Until when a second click deletes; nil - not armed
-    local armed_until = nil
-    -- Going back out of the list cancels a first click: the button's name comes back on the next tick
-    local list = node:list(label("delete_script.name"), {}, label("delete_script.help"), function()
-        armed_until = nil
-    end)
+    local controller = delete_script_logic.new({
+        on_armed = || -> pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.again")),
+        on_disarmed = || -> pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.name")),
+    })
+    local list = node:list(label("delete_script.name"), {}, label("delete_script.help"), || -> controller.cancel())
     list:divider(label("delete_script.cannot_undo"))
-    local keep = true
-    list:toggle(label("delete_script.keep.name"), function(on) keep = on end, {},
+    list:toggle(label("delete_script.keep.name"), |on| -> controller.set_keep(on), {},
         label("delete_script.keep.help"), true)
-    -- Set once the script is deleted: it's stopping, further clicks must do nothing
-    local deleted = false
-    confirm_ref = list:action(label("delete_script.confirm.name"), function()
-        if deleted then
-            return
-        end
-        local now = util.current_time_millis()
-        if armed_until == nil or now > armed_until then
-            armed_until = now + CONFIRM_MS
-            pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.again"))
-            local warning = text(keep ? "delete_script.warning_keep" : "delete_script.warning"):format(Atdar.name)
-            log:warn($"{warning}\n{text('delete_script.confirm.again_notice'):format(CONFIRM_MS // 1000)}")
-            -- The button gets its name back when the time is up (or after the delete was cancelled)
-            util.create_tick_handler(function()
-                if armed_until ~= nil and util.current_time_millis() <= armed_until then
-                    return true
-                end
-                armed_until = nil
-                pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.name"))
-                return false
-            end)
-            return
-        end
-        armed_until = nil
-        local ok, result = installer.delete(keep)
-        if not ok then
-            log:warn(text("delete_script.failed"):format(result))
-            return
-        end
-        deleted = true
-        log:notify(text("delete_script.done"):format(Atdar.name, result))
-        installer.stop()
-    end, {}, label("delete_script.confirm.help"))
+    confirm_ref = list:action(label("delete_script.confirm.name"), || -> controller.confirm(), {},
+        label("delete_script.confirm.help"))
     return list.handle
 end
 

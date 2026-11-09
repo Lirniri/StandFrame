@@ -45,7 +45,7 @@ Atdar.natives = Atdar.loader.auto({}, "natives")
 Atdar.modules = Atdar.loader.load("core/module_manager")
 Atdar.features = Atdar.loader.load("features/registry")
 stand.clear_logs()
-Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
+Atdar.ui.menu = require($"{Atdar.name}/ui/stand/root")
 
 stand.check(stand.find_log("'AnitaDarin' copied to core"), "the pack was copied at start")
 stand.check(stand.find_log("Stand is in English"), "a saved language Stand can't show is reported, not a crash")

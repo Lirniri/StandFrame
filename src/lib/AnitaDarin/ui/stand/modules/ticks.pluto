@@ -1,6 +1,6 @@
 -- lib/AnitaDarin/ui/stand/modules/ticks.pluto
 --
--- A module's on_tick run by hand from the Modules list (ui/stand/modules/menu): every frame, with or
+-- A module's on_tick run by hand from the Modules list (ui/stand/modules/list): every frame, with or
 -- without a time limit, with or without on_start / on_stop around it, whatever the module's status.
 -- Each run is a table of its own: a newer run or Stop replaces it, and its tick handler ends then.
 -- Loaded with modules_menu, which binds what it knows of the list (bind).

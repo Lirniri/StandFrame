@@ -56,7 +56,7 @@ return {
 | Спойлер | `Atdar.menu.spoiler(node.handle, name, value, hidden_text, help)` | Значение скрыто до нажатия |
 | Подменю из таблицы | `builder.build_items(node, items, where)` | Те же пункты, записанные данными. Ошибка в таблице — предупреждение в логе, пункт пропускается |
 
-`confirm` — это `ui/stand/confirm`, `builder` — `ui/stand/menu_builder`, оба берутся через `Atdar.loader.load`.
+`confirm` — это `ui/stand/core/confirm`, `builder` — `ui/stand/core/menu_builder`, оба берутся через `Atdar.loader.load`.
 
 **Команды.** `commands` — базовые имена команд без префикса: `{ "heal" }` станет `atdarheal`.
 Пользователь может переименовать их в «Настройки > Командная строка».

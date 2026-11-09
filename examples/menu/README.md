@@ -55,7 +55,7 @@ return {
 | Spoiler | `Atdar.menu.spoiler(node.handle, name, value, hidden_text, help)` | A value hidden until clicked |
 | Submenu from a table | `builder.build_items(node, items, where)` | The same items, written as data. A mistake in the table is a warning in the log, and that item is skipped |
 
-`confirm` is `ui/stand/confirm` and `builder` is `ui/stand/menu_builder`; get both through `Atdar.loader.load`.
+`confirm` is `ui/stand/core/confirm` and `builder` is `ui/stand/core/menu_builder`; get both through `Atdar.loader.load`.
 
 **Commands.** `commands` are base command names without the prefix: `{ "heal" }` becomes `atdarheal`. The user can
 rename them in Settings > Command Box.

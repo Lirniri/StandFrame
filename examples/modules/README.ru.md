@@ -114,7 +114,7 @@ parent:__construct({
 -- Для одного модуля: опция debug.categories (см. выше)
 
 -- Для всех модулей: в любом файле, который загружается до открытия меню
-local modules_menu = Atdar.loader.load("ui/stand/modules_menu")
+local modules_menu = Atdar.loader.load("ui/stand/modules/list")
 modules_menu.add_category("getters", { "find", "fetch" })        -- ещё слова для «Получателей»
 modules_menu.add_category("checks", { "has", "can" })            -- и для «Проверок»
 modules_menu.add_category("shop", { "buy", "sell" }, "Магазин")   -- новый список в конце

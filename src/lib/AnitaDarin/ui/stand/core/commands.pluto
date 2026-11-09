@@ -8,7 +8,7 @@
 -- (gm -> atdargm). Each command's are kept in a file of its own, commands/<base>.json:
 --     { "name": "god", "words": ["gm", "immortal"] }
 -- in the commands folder of whoever made the item:
---   the loaded menu - the menu's own folder (ui/stand/menu passes it to begin_menu): the pack's in store,
+--   the loaded menu - the menu's own folder (ui/stand/root passes it to begin_menu): the pack's in store,
 --                     or core's for the built-in menu
 --   the script      - store/<script>/commands/
 -- An older commands.json there ({ base: name }) is still read, and goes once the folder is written.

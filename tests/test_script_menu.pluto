@@ -1,4 +1,4 @@
--- ui/stand/script/script_menu (+ profile_menu, i18n languages): the script's section as laid out,
+-- ui/stand/script/section (+ profile_menu, i18n languages): the script's section as laid out,
 -- language choice, profiles, stubs, debug items
 local stand = require("stand")
 stand.boot()
@@ -18,7 +18,7 @@ Atdar.profile = Atdar.loader.load("core/profile")
 Atdar.modules = Atdar.loader.load("core/module_manager")
 local profile = Atdar.profile
 local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
-local script_menu = Atdar.loader.load("ui/stand/script/script_menu")
+local script_menu = Atdar.loader.load("ui/stand/script/section")
 local profiles_dir = $"{stand.store}AnitaDarin/profiles/"
 
 -- Rebuilding the section, as menu.pluto's rebuild_settings does; the menu picker is faked
@@ -33,8 +33,8 @@ local function rebuild()
 end
 rebuild()
 -- The Modules list's items (the biggest file, with its parsers) aren't loaded with the section
-local MODULES_MENU = "AnitaDarin/ui/stand/modules/menu"
-stand.equal(package.loaded[MODULES_MENU], nil, "the section is made without loading ui/stand/modules/menu")
+local MODULES_MENU = "AnitaDarin/ui/stand/modules/list"
+stand.equal(package.loaded[MODULES_MENU], nil, "the section is made without loading ui/stand/modules/list")
 stand.equal(package.loaded["AnitaDarin/parsers/proglang/pluto/args"], nil, "nor the parsers it needs")
 
 local function names_in(node)
@@ -331,7 +331,7 @@ stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing sho
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
 local modules_list = debug_list.children[11]
 stand.click(modules_list)
-stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules/menu")
+stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules/list")
 stand.check(#modules_list.children > 0, "and makes the list's items")
 stand.back(modules_list)
 stand.equal(#modules_list.children, 0, "going back out takes them away")

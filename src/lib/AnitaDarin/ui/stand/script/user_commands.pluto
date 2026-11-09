@@ -21,7 +21,7 @@ local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local commands = Atdar.loader.load("ui/stand/core/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
-local profile_menu = Atdar.loader.load("ui/stand/script/profile_menu")
+local profile_menu = Atdar.loader.load("ui/stand/script/profile")
 
 local log = new Logger("Commands")
 

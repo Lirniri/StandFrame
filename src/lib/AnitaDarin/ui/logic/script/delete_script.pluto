@@ -1,0 +1,92 @@
+-- lib/AnitaDarin/ui/logic/script/delete_script.pluto
+-- What Delete Script does; the items themselves are in ui/stand/script/section.
+--
+-- Deleting takes a confirm button and never happens on one click: the first click arms it (the menu
+-- renames the button, and the notice says what goes), a second one within CONFIRM_MS deletes.
+-- Going back out of the list cancels it.
+-- Not menu.show_warning: in the game it let the delete through without showing anything, whatever the
+-- click type. Not a toggle either: Stand keeps toggle states in its profile, so it could start on.
+-- Profiles and settings are kept unless switched off. Then the script deletes its files (core/installer) and stops.
+-- Strings: base/language "script_menu" ("delete_script.*")
+
+local i18n = Atdar.loader.load("core/i18n")
+local installer = Atdar.loader.load("core/installer")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Menu")
+local _, text = i18n.scope("script_menu")
+
+local module = {}
+
+-- How long the confirm button waits for its second click
+module.CONFIRM_MS = 5000
+
+-- Which warning an arming click shows
+local function warning_key(keep: bool): string
+    if keep then
+        return "delete_script.warning_keep"
+    end
+    return "delete_script.warning"
+end
+
+-- One Delete Script list's state
+-- @param hooks on_armed(): the first click came, show the button as "click again";
+--              on_disarmed(): the time ran out (or it was cancelled), show it as it was
+-- @return confirm(): the button's click; cancel(): going back out of the list; set_keep(on): the
+--         "keep profiles and settings" switch
+function module.new(hooks: table): table
+    local controller = {}
+    local keep = true
+    -- Until when a second click deletes; nil - not armed
+    local armed_until = nil
+    -- Set once the script is deleted: it's stopping, further clicks must do nothing
+    local deleted = false
+
+    function controller.set_keep(on: bool): void
+        keep = on
+    end
+
+    -- The button's name comes back on the next tick (the loop that arming starts)
+    function controller.cancel(): void
+        armed_until = nil
+    end
+
+    local function arm(): void
+        armed_until = util.current_time_millis() + module.CONFIRM_MS
+        hooks.on_armed()
+        local warning = text(warning_key(keep)):format(Atdar.name)
+        log:warn($"{warning}\n{text('delete_script.confirm.again_notice'):format(module.CONFIRM_MS // 1000)}")
+        -- The button gets its name back when the time is up (or after the delete was cancelled)
+        util.create_tick_handler(function()
+            if armed_until ~= nil and util.current_time_millis() <= armed_until then
+                return true
+            end
+            armed_until = nil
+            hooks.on_disarmed()
+            return false
+        end)
+    end
+
+    function controller.confirm(): void
+        if deleted then
+            return
+        end
+        if armed_until == nil or util.current_time_millis() > armed_until then
+            arm()
+            return
+        end
+        armed_until = nil
+        local ok, result = installer.delete(keep)
+        if not ok then
+            log:warn(text("delete_script.failed"):format(result))
+            return
+        end
+        deleted = true
+        log:notify(text("delete_script.done"):format(Atdar.name, result))
+        installer.stop()
+    end
+
+    return controller
+end
+
+return module

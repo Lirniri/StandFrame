@@ -1,6 +1,6 @@
 -- lib/AnitaDarin/ui/stand/modules/values.pluto
 --
--- What the Modules list (ui/stand/modules/menu) shows of values: what a call gave - the notice's text,
+-- What the Modules list (ui/stand/modules/list) shows of values: what a call gave - the notice's text,
 -- a function's Variable line and, for a table, the Value list under it - and a module's Variables list,
 -- its fields kept up to date while it's open. Loaded with modules_menu, when the list is first opened.
 -- Strings: base/language "modules"

@@ -51,7 +51,7 @@ Atdar.modules.start()
 -- Which features get loaded depends on the menu: built-in ones or the chosen pack's
 Atdar.features = Atdar.loader.load("features/registry")
 
-Atdar.ui.menu = require($"{Atdar.name}/ui/stand/menu")
+Atdar.ui.menu = require($"{Atdar.name}/ui/stand/root")
 
 -- Load Timing on: how long the start took and which files were the slowest, in Stand's log
 if Atdar.load_timing then
