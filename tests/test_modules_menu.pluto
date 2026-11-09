@@ -180,7 +180,7 @@ counter.items = nil
 local add_node = stand.child(stand.child(counter_functions, "Add"), "add(amount, note)")
 stand.equal(add_node.kind, "list", "with parameters: a list too")
 stand.equal(names_in(add_node), "amount | Argument * | note | Argument * | Call Settings | Call After Typing | Call | Call After | Call When Opened"
-    .. " | Call When Hovered | Variable: — | Loop Status: stopped | Loop | Loop With Interval",
+    .. " | Call When Hovered | Loop Status: stopped | Loop | Loop With Interval | Variable: —",
     "a divider with the parameter's name and a field for each, on top")
 -- The field under a parameter's divider
 local function field_under(node, param: string)
@@ -201,9 +201,8 @@ stand.check(add_args.commands[1]:find("moduleargsfor3_2_1$") ~= nil, $"a short c
 stand.check(add_note.commands[1]:find("moduleargsfor3_2_2$") ~= nil, $"the next parameter's: {add_note.commands[1]}")
 local reset_node = stand.child(counter_functions, "reset()")
 stand.equal(reset_node.kind, "list", "without: a list")
-stand.equal(names_in(reset_node), "Call Settings | Call | Call After | Call When Opened | Call When Hovered | Variable: —"
-    .. " | Loop Status: stopped | Loop | Loop With Interval",
-    "Call, Call After, Call When Opened / Hovered, what it gave last, the loop's status above Loop and Loop With Interval")
+stand.equal(names_in(reset_node), "Call Settings | Call | Call After | Call When Opened | Call When Hovered | Loop Status: stopped | Loop | Loop With Interval | Variable: —",
+    "Call Settings, Call, Call After, Call When Opened / Hovered, the loop (status, Loop, Loop With Interval), then what it gave last")
 -- Call After: once, after the ms picked
 counter.count = 5
 local clock_before = stand.clock
@@ -484,6 +483,16 @@ stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: 
 stand.equal(names_in(value_list), "[1] | [2] | [3] (1)", "its entries, a table inside as a list")
 stand.equal(stand.child(value_list, "[2]").value, '"a"', "each with its value")
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table", "a table of mixed kinds: just table")
+-- The table settings come with a table result, as the last items: right under the Value list
+local function tail_of(node, count: int): string
+    local names = {}
+    for i = #node.children - count + 1, #node.children do
+        table.insert(names, stand.name_of(node.children[i]))
+    end
+    return table.concat(names, " | ")
+end
+stand.equal(tail_of(add_node, 4), "Value (3) | Table Depth | Call Functions In Tables | Change Variable Values",
+    "a table result: Table Depth, Call Functions In Tables and Change Variable Values are right under the Value list, the last items")
 -- Types in words: a table by what it holds
 counter.add = function() return { 1, 2, 3 } end
 stand.frame()
@@ -501,6 +510,8 @@ stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: e
 counter.add = function() return 2.5 end
 stand.frame()
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "a plain value: the value, no type")
+stand.equal(stand.child(add_node, "Table Depth"), nil, "no table any more: the table settings are gone")
+stand.equal(stand.name_of(add_node.children[#add_node.children]), "Value (0)", "and the Value list is the last item")
 counter.add = real_add
 counter.count = 5
 stand.click(stand.child(add_node, "Loop"))

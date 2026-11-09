@@ -377,6 +377,26 @@ stand.frame()
 stand.equal(called[2] and called[2].n, 2, "the brackets' content is the arguments when the Arguments field is empty")
 stand.equal(called[2] and called[2][1], 5, "the first one a number")
 stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
+-- A table result: the table settings are made at the end, right under the Value list; a plain one takes them away
+Atdar.test_table = function() return { 1, 2 } end
+Atdar.test_plain_value = function() return 5 end
+function_name.on_change("test_table", 0)
+stand.click(call_button)
+stand.frame()
+local by_name_names = {}
+for _, child in by_name.children do
+    table.insert(by_name_names, stand.name_of(child))
+end
+stand.equal(table.concat(by_name_names, " | ", #by_name_names - 3),
+    "Value (2) | Table Depth | Call Functions In Tables | Change Variable Values",
+    "a table result: Table Depth, Call Functions In Tables and Change Variable Values are the last items, under the Value list")
+function_name.on_change("test_plain_value", 0)
+stand.click(call_button)
+stand.frame()
+stand.equal(stand.child(by_name, "Table Depth"), nil, "a plain result: the table settings are gone")
+Atdar.test_table, Atdar.test_plain_value = nil, nil
+function_name.on_change("", 0)
+
 -- The setting is a switch that other lists read: it's on, can be turned off and on again
 stand.click(stand.child(call_list, "Notice In Stand"))
 stand.equal(stand.child(call_list, "Notice In Stand").value, false, "Notice In Stand can be turned off")

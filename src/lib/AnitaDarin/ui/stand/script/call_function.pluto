@@ -359,34 +359,6 @@ function module.panel(list: table, spec: table): table
         end
     end)
 
-    -- What came out: the Variable line, and for a table the Value list under it
-    values.add_result_lines(list, spec.key, spec.kept)
-
-    -- Table Depth, Call Functions In Tables and Change Variable Values: shown only while the result is a table.
-    -- Stand puts the saved state of these back while the script starts, where the Value list can't be made
-    -- again: then it's only remembered (quiet)
-    local depth_ref = list:slider(mlabel("loop.table_depth.name"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
-        if stopping then
-            return
-        end
-        values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.table_depth.help"))
-    -- The functions in the table become lists with the same panel
-    local call_ref = list:toggle(mlabel("loop.call_in_tables.name"), function(on, click_type)
-        if stopping then
-            return
-        end
-        values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.call_in_tables.help"), values.call_in_tables(spec.key))
-    -- The other values in the table become fields to type a new value in
-    local edit_ref = list:toggle(mlabel("loop.edit_in_tables.name"), function(on, click_type)
-        if stopping then
-            return
-        end
-        values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
-    end, {}, mlabel("loop.edit_in_tables.help"), values.edit_in_tables(spec.key))
-    values.bind_depth_items(spec.key, { depth_ref, call_ref, edit_ref })
-
     -- The loop: its status line (as the loop is now), Loop, Loop With Interval
     local status_kind = "stopped"
     local status_every = nil
@@ -417,6 +389,37 @@ function module.panel(list: table, spec: table): table
         end
         start_loop(spec, ms)
     end, {}, mlabel("loop.every.help"))
+
+    -- What came out: the Variable line, and for a table the Value list under it
+    values.add_result_lines(list, spec.key, spec.kept)
+
+    -- Table Depth, Call Functions In Tables and Change Variable Values: made while the result is a table, at the
+    -- end of the list, right under the Value list. Stand puts the saved state of these back while they're made:
+    -- then it's only remembered (quiet)
+    values.bind_depth_items(spec.key, function()
+        local first = #list.children + 1
+        list:slider(mlabel("loop.table_depth.name"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
+            if stopping then
+                return
+            end
+            values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
+        end, {}, mlabel("loop.table_depth.help"))
+        -- The functions in the table become lists with the same panel
+        list:toggle(mlabel("loop.call_in_tables.name"), function(on, click_type)
+            if stopping then
+                return
+            end
+            values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+        end, {}, mlabel("loop.call_in_tables.help"), values.call_in_tables(spec.key))
+        -- The other values in the table become fields to type a new value in
+        list:toggle(mlabel("loop.edit_in_tables.name"), function(on, click_type)
+            if stopping then
+                return
+            end
+            values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+        end, {}, mlabel("loop.edit_in_tables.help"), values.edit_in_tables(spec.key))
+        return function() list:clear_from(first) end
+    end)
 
     return {
         call = function() call(spec) end,

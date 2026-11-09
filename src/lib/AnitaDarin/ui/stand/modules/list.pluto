@@ -518,34 +518,8 @@ local function function_list(entry: table, mod: table, fn: table): void
             call_with_args(module_name, fn, key)
         end
     end)
-    -- What it gave last and, for a table, its Value list right under; then how its loop is
-    values.add_result_lines(node, key)
-    -- How deep a table it gave opens in the Value list (kept by key)
-    -- Shown only while the last result is a table
-    local depth_ref = node:track(menu.slider(node.handle, label("loop.table_depth.name"), {}, label("loop.table_depth.help"),
-        1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
-        if stopping then
-            return
-        end
-        -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
-        values.set_result_depth(key, depth, NOT_USER_CLICKS[click_type])
-    end))
-    -- The functions in the table become lists with their own Arguments and Call
-    local call_ref = node:toggle(label("loop.call_in_tables.name"), function(on, click_type)
-        if stopping then
-            return
-        end
-        values.set_call_in_tables(key, on, NOT_USER_CLICKS[click_type])
-    end, {}, label("loop.call_in_tables.help"), values.call_in_tables(key))
-    -- The other values in the table become fields to type a new value in
-    local edit_ref = node:toggle(label("loop.edit_in_tables.name"), function(on, click_type)
-        if stopping then
-            return
-        end
-        values.set_edit_in_tables(key, on, NOT_USER_CLICKS[click_type])
-    end, {}, label("loop.edit_in_tables.help"), values.edit_in_tables(key))
-    values.bind_depth_items(key, { depth_ref, call_ref, edit_ref })
-    -- (the functions of a table it gave get the same panel as Debug > Call Function: Argument, Call, Loop...)
+    -- How its loop is: the status line, Loop, Loop With Interval. Above what it gave, so the table settings
+    -- made under the Value list are the last items
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
     local run = function_loops[key]
     if run ~= nil and run.every ~= nil then
@@ -576,6 +550,40 @@ local function function_list(entry: table, mod: table, fn: table): void
         end
         start_loop(module_name, fn, ms)
     end))
+
+    -- What it gave last and, for a table, its Value list right under
+    values.add_result_lines(node, key)
+    -- The table settings, while the last result is a table, at the end: right under the Value list.
+    -- How deep a table it gave opens in the Value list (kept by key), the functions in the table become lists
+    -- with their own Arguments and Call, the other values become fields to type a new value in
+    -- (the functions of a table it gave get the same panel as Debug > Call Function: Argument, Call, Loop...)
+    values.bind_depth_items(key, function()
+        local first = #node.children + 1
+        -- Shown only while the last result is a table
+        node:track(menu.slider(node.handle, label("loop.table_depth.name"), {}, label("loop.table_depth.help"),
+            1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
+            if stopping then
+                return
+            end
+            -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
+            values.set_result_depth(key, depth, NOT_USER_CLICKS[click_type])
+        end))
+        -- The functions in the table become lists with their own Arguments and Call
+        node:toggle(label("loop.call_in_tables.name"), function(on, click_type)
+            if stopping then
+                return
+            end
+            values.set_call_in_tables(key, on, NOT_USER_CLICKS[click_type])
+        end, {}, label("loop.call_in_tables.help"), values.call_in_tables(key))
+        -- The other values in the table become fields to type a new value in
+        node:toggle(label("loop.edit_in_tables.name"), function(on, click_type)
+            if stopping then
+                return
+            end
+            values.set_edit_in_tables(key, on, NOT_USER_CLICKS[click_type])
+        end, {}, label("loop.edit_in_tables.help"), values.edit_in_tables(key))
+        return function() node:clear_from(first) end
+    end)
 end
 
 -- ─── Categories: lists of functions by a word in their names ────────────────

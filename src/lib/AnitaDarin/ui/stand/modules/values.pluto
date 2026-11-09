@@ -198,14 +198,25 @@ local update_result_list
 local MAX_VARIABLE_DEPTH = 3
 -- The same key -> how deep its Value list opens tables (none - MAX_VARIABLE_DEPTH); set_result_depth changes it
 local result_depths = {}
--- The same key -> the items of the Table Depth setting (the slider, a divider over it): shown only while
--- the function's last result is a table
+-- The same key -> the Table Depth, Call Functions In Tables and Change Variable Values items of its list:
+-- { build = function() -> remove, remove = function or nil }. They're made while the function's last result
+-- is a table and taken away when it isn't. Made at the end of the list, so they're right under the Value
+-- list: Stand puts an item that is shown again at the end of its list, wherever it was made
 local depth_items = {}
 
 local function show_depth_items(key: string): void
+    local entry = depth_items[key]
+    if entry == nil then
+        return
+    end
     local on = last_tables[key] ~= nil
-    for _, ref in ipairs(depth_items[key] or {}) do
-        pcall(menu.set_visible, ref, on)
+    if on and entry.remove == nil then
+        entry.remove = entry.build()
+        return
+    end
+    if not on and entry.remove ~= nil then
+        pcall(entry.remove)
+        entry.remove = nil
     end
 end
 
@@ -281,9 +292,10 @@ function module.set_result_depth(key: string, depth: int, quiet: ?bool): void
     end)
 end
 
--- The items of the Table Depth setting of key's list (refs): shown only while the last result is a table
-function module.bind_depth_items(key: string, refs: table): void
-    depth_items[key] = refs
+-- The items of the table settings of key's list: build() makes them at the end of the list and returns a
+-- function that takes them away; they exist only while the last result is a table
+function module.bind_depth_items(key: string, build): void
+    depth_items[key] = { build = build }
     show_depth_items(key)
 end
 
