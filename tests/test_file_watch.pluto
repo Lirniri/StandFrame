@@ -41,10 +41,31 @@ stand.equal(watch.check(), false, "within a second it doesn't look yet")
 -- A written file stops the script and says which one
 stand.clear_logs()
 stand.toasts = {}
-stand.equal(look(), true, "a written file is a change")
+stand.equal(look(), false, "a written file doesn't stop the script at once")
+stand.equal(look(), false, "nor a second later: the files must be quiet for two")
+stand.equal(stand.stopped, nil, "and it isn't stopped yet")
+stand.equal(look(), true, "two quiet seconds after the change it stops")
 stand.check(stand.stopped, "the script is stopped")
 stand.check(stand.find_log("a.pluto changed on disk"), "and the file is named in the log")
 stand.equal(look(), true, "once stopping it stays so")
+
+-- Files still changing keep it waiting: only quiet counts, and the file named is the first that changed
+watch.reset()
+stand.stopped = nil
+stand.clear_logs()
+values.stop_on_change = true
+look()
+stand.write_file($"{lib}first.pluto", "1")
+look()
+for i = 1, 5 do
+    stand.write_file($"{lib}more{i}.pluto", "x")
+    stand.equal(look(), false, $"files still being copied ({i}): no stop")
+end
+look()
+stand.equal(look(), true, "after the last file it stops")
+stand.check(stand.find_log("first.pluto changed on disk") or stand.find_log("first.pluto"), "and names the first file that changed")
+for _, name in ipairs({ "first" }) do os.remove($"{lib}{name}.pluto") end
+for i = 1, 5 do os.remove($"{lib}more{i}.pluto") end
 
 -- A new file, a removed file and the launcher count too
 for _, change in ipairs({
@@ -58,6 +79,8 @@ for _, change in ipairs({
     look()
     stand.equal(stand.stopped, nil, $"{change[1]}: not stopped before the change")
     change[2]()
+    look()
+    look()
     stand.equal(look(), true, $"{change[1]} stops the script")
 end
 

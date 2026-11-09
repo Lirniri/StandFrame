@@ -873,7 +873,7 @@
                     "exists": "There's a file with this name already"
                 },
                 "functions": {
-                    "divider": "Функции"
+                    "divider": "Functions"
                 },
                 "files": {
                     "divider": "Files"

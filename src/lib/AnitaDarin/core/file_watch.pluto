@@ -1,7 +1,9 @@
 -- Stops the script when its own files change on disk (the profile's Stop After Changes, Debug section).
 -- Meant for development: after build.py copies a new version in, the script stops and is started again by hand.
 -- Files are compared by write time and size, looked at once a second, and only while the setting is on:
--- what changed before it was switched on doesn't count
+-- what changed before it was switched on doesn't count.
+-- The script stops only when the files have been quiet for QUIET_MS: a build copying many files takes a while,
+-- and stopping on the first one would have the script start again on half-copied files
 
 local Logger = Atdar.loader.load("core/logger")
 local i18n = Atdar.loader.load("core/i18n")
@@ -13,10 +15,16 @@ local module = {}
 -- How often the files are looked at, ms
 local CHECK_MS = 1000
 
+-- How long the files must stay unchanged after the last change before the script stops, ms
+local QUIET_MS = 2000
+
 -- path -> "write time:size" of the files when the setting was switched on; nil while it is off
 local snapshot = nil
 local last_check = 0
 local stopping = false
+-- The first file that changed since the files were quiet, and when the last change was seen
+local pending = nil
+local last_change = 0
 
 
 -- One file's stamp: changes when the file is written or its size changes
@@ -123,6 +131,7 @@ function module.check(): bool
 
     if Atdar.profile.get("stop_on_change") ~= true then
         snapshot = nil
+        pending = nil
         return false
         -- what returns: the setting is off
     end
@@ -143,15 +152,27 @@ function module.check(): bool
     end
     last_check = now
 
-    local changed = find_change(snapshot, take_snapshot())
-    if changed == nil then
+    local current = take_snapshot()
+    local changed = find_change(snapshot, current)
+    -- variable: "changed" is ?string
+
+    -- Still changing: wait, and compare with the files as they are now
+    if changed ~= nil then
+        snapshot = current
+        pending = pending or changed
+        last_change = now
         return false
-        -- what returns: nothing changed
+        -- what returns: a file changed, waiting for the files to be quiet
     end
 
-    stop_for(changed)
+    if pending == nil or now - last_change < QUIET_MS then
+        return false
+        -- what returns: nothing changed, or not quiet for long enough yet
+    end
+
+    stop_for(pending)
     return true
-    -- what returns: a file changed, the script is stopping
+    -- what returns: the files changed and are quiet again, the script is stopping
 end
 
 -- Forgets the snapshot and the stop, as if the script had just started. For the tests
@@ -160,6 +181,8 @@ function module.reset(): void
     snapshot = nil
     last_check = 0
     stopping = false
+    pending = nil
+    last_change = 0
 end
 
 util.create_tick_handler(function()
