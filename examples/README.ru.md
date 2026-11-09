@@ -1,4 +1,4 @@
-# Примеры AnitaDarin
+# Примеры StandFrame
 
 [English](README.md) | **Русский**
 
