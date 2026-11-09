@@ -1,17 +1,23 @@
 -- The Update list of the script's section (script_menu puts it under Open Folder): checking for a new
 -- release and installing it.
 --
+--   Installed Version: unknown     (read-only)
+--   Available Version: not checked (read-only)
+--   Last Check: never              (read-only, profile: update_last_check)
+--   Changes                        (what the available version changes)
 --   Check For Updates
 --   Update Branch: main            (profile: update_branch)
 --   ── Update ──
 --   Update
+--   Check Before Updating          (profile: update_check_before)
 --   Update Automatically          (profile: auto_update)
 --   Check For Updates Every (Days) (profile: update_check_days)
 --
 -- A stub for now: the auto-updater lives apart in updater/ until it's brought into the script, so
--- Check For Updates and Update only say they aren't made yet; the settings are kept in the profile
--- already, for when it is.
--- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays, updaterbranch
+-- the buttons only say they aren't made yet and the version lines stay at "unknown"; the settings are
+-- kept in the profile already, and refresh_info is where the updater will put what it finds.
+-- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
+-- updaterbranch, updaterbefore, updaterchanges
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -44,12 +50,55 @@ local function branch_options(): table
     return options
 end
 
--- The branch picker made by build
-local view = { branch = nil }
+-- What a check found: nil until the updater is brought in. changes - lines of what the version changes
+local found = { installed = nil, available = nil, changes = {} }
+
+-- The branch picker and the info lines made by build
+local view = { branch = nil, installed = nil, available = nil, last_check = nil }
+
+-- "never" when no check ran, else the time of the last one
+local function last_check_text(): string
+    local time = Atdar.profile.get("update_last_check") or 0
+
+    if time == 0 then
+        return text("info.never")
+    end
+
+    return os.date("%Y-%m-%d %H:%M", time)
+end
+
+-- Puts what's known into the info lines. A line of a removed section is skipped
+local function refresh_info(): void
+    if view.installed == nil then
+        return
+    end
+
+    pcall(menu.set_value, view.installed, found.installed or text("info.unknown"))
+    pcall(menu.set_value, view.available, found.available or text("info.not_checked"))
+    pcall(menu.set_value, view.last_check, last_check_text())
+end
+
+-- Says what the available version changes, one notification per line
+local function show_changes(): void
+
+    if #found.changes == 0 then
+        log:notify(text("changes.none"))
+        return
+    end
+
+    for _, line in ipairs(found.changes) do
+        log:notify(line)
+    end
+end
 
 function module.build(node: table): table
     local profile = Atdar.profile
     local list = node:list(label("name"), { "updater" }, label("help"))
+    view.installed = list:readonly(label("info.installed"), "")
+    view.available = list:readonly(label("info.available"), "")
+    view.last_check = list:readonly(label("info.last_check"), "")
+    refresh_info()
+    list:action(label("changes.name"), show_changes, { "updaterchanges" }, label("changes.help"))
     stub(list, "check", "updatercheck")
     -- The branch updates come from, its name in the item: "Update Branch: main"
     view.branch = list:list_action(branch_caption(), branch_options(), function(index)
@@ -61,6 +110,13 @@ function module.build(node: table): table
 
     list:divider(label("divider"))
     stub(list, "install", "updaterinstall")
+    list:toggle(label("before.name"), function(on)
+        -- Stand also calls it at every start: only a real change is saved
+        if profile.get("update_check_before") == on then
+            return
+        end
+        profile.set("update_check_before", on)
+    end, { "updaterbefore" }, label("before.help"), profile.get("update_check_before") ~= false)
     list:toggle(label("auto.name"), function(on)
         -- Stand also calls it at every start, restoring the state it keeps: only a real change is saved
         if profile.get("auto_update") == on then
@@ -87,6 +143,7 @@ i18n.on_change(function()
     if view.branch == nil then
         return
     end
+    refresh_info()
     pcall(menu.set_menu_name, view.branch, branch_caption())
     pcall(menu.set_list_action_options, view.branch, branch_options())
 end)

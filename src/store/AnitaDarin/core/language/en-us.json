@@ -1021,6 +1021,19 @@
     "updater_menu": {
         "name": "Update",
         "help": "Checking for and installing a new version of the script",
+        "info": {
+            "installed": "Installed Version",
+            "available": "Available Version",
+            "last_check": "Last Check",
+            "unknown": "unknown",
+            "not_checked": "not checked",
+            "never": "never"
+        },
+        "changes": {
+            "name": "Changes",
+            "help": "Shows what the available version changes",
+            "none": "No changes to show: updates weren't checked yet"
+        },
         "check": {
             "name": "Check For Updates",
             "help": "Finds out whether a new version of the script is out"
@@ -1029,6 +1042,10 @@
         "install": {
             "name": "Update",
             "help": "Downloads and installs the new version; profiles and settings stay"
+        },
+        "before": {
+            "name": "Check Before Updating",
+            "help": "Update checks for a newer version first, and does nothing if there is none"
         },
         "auto": {
             "name": "Update Automatically",
