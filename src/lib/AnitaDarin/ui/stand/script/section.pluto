@@ -18,10 +18,11 @@
 -- Strings: core/language "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local delete_script_logic = Atdar.loader.load("ui/logic/stand/script/delete_script")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/core/commands")
-local command_box = Atdar.loader.load("parsers/stand/command_box")
+local command_names = Atdar.loader.load("ui/logic/stand/script/command_names")
 local profile_menu = Atdar.loader.load("ui/stand/script/profile")
 local language_menu = Atdar.loader.load("ui/stand/script/language")
 local user_commands = Atdar.loader.load("ui/stand/script/user_commands")
@@ -78,27 +79,9 @@ local function item_name(ref): string
     return tostring(name)
 end
 
--- "godmode" - an item's commands without the prefix, easier to read; the full one is inside its list
-local function short_names(ref): string
-    return table.concat(commands.bases_of(ref) or {}, ", ")
-end
-
-local function full_names(ref): string
-    return table.concat(commands.names_of(ref) or {}, ", ")
-end
-
--- Click types of calls Stand makes by itself: restoring the state from its profile (the field's default
--- for an item it has no state of), bulk changes. Seen as 4 in the game; the names when Stand has them
-local NOT_USER_CLICKS = { [4] = true }
-for _, name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
-    if _G[name] ~= nil then
-        NOT_USER_CLICKS[_G[name]] = true
-    end
-end
-
--- Stand calls text fields again while the script stops; nothing it sends then is the user's
-local stopping = false
-util.on_stop(function() stopping = true end)
+-- What the lists do with the names (rename, reset, words) is in ui/logic/stand/script/command_names
+local short_names = command_names.short_names
+local full_names = command_names.full_names
 
 -- A command: a list with its full command, its custom name and a reset, then its extra words. They're
 -- kept by ui/stand/core/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
@@ -127,34 +110,14 @@ local function command_entry(list: table, ref): table
     local base = commands.base_of(ref) or ""
     menu.text_input(entry.handle, label("found_commands.rename.name"), commands.names({ $"cbrename{base}" }),
         label("found_commands.rename.help"), function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
-        if command_box.sanitize(value) == commands.custom_of(ref) then
-            return
-        end
-        local ok, reason = commands.set_custom(ref, value)
-        if reason == "not_saved" then
-            -- Renamed for now, but it won't be there at the next start
-            renamed()
-            log:warn(text("found_commands.not_saved"))
-            return
-        end
-        if not ok then
-            log:warn(text(reason == "taken" and "found_commands.rename.taken" or "found_commands.rename.failed"):format(value))
-            return
-        end
-        renamed()
-        log:notify(text("found_commands.rename.done"):format(full_names(ref)))
+        command_names.rename(ref, value, renamed)
     end, commands.custom_of(ref))
 
     entry:action(label("found_commands.reset.name"), function()
-        local _, reason = commands.set_custom(ref, "")
-        if reason == "not_saved" then
-            log:warn(text("found_commands.not_saved"))
-        end
-        renamed()
-        log:notify(text("found_commands.reset.done"):format(short_names(ref)))
+        command_names.reset(ref, renamed)
     end, {}, label("found_commands.reset.help"))
 
     -- Extra words: more commands for the item, the same prefix. Each a button that takes it off;
@@ -168,38 +131,23 @@ local function command_entry(list: table, ref): table
         word_items = {}
         for _, word in ipairs(commands.words_of(ref)) do
             table.insert(word_items, menu.action(entry.handle, word, {}, label("found_commands.words.remove.help"), function()
-                local _, reason = commands.remove_word(ref, word)
-                if reason == "not_saved" then
-                    log:warn(text("found_commands.not_saved"))
-                end
-                renamed()
-                show_words()
-                log:notify(text("found_commands.words.removed"):format(word))
+                command_names.remove_word(ref, word, function()
+                    renamed()
+                    show_words()
+                end)
             end))
         end
     end
     -- A text field needs a command: cbaddword<base>, made without commands.track like cbrename
     menu.text_input(entry.handle, label("found_commands.words.add.name"), commands.names({ $"cbaddword{base}" }),
         label("found_commands.words.add.help"), function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] or value == "" then
+        if not clicks.is_user_action(click_type) or value == "" then
             return
         end
-        local ok, reason = commands.add_word(ref, value)
-        if reason == "not_saved" then
+        command_names.add_word(ref, value, function()
             renamed()
             show_words()
-            log:warn(text("found_commands.not_saved"))
-            return
-        end
-        if not ok then
-            local key = ({ own = "found_commands.words.own", taken = "found_commands.rename.taken" })[reason]
-                or "found_commands.rename.failed"
-            log:warn(text(key):format(value))
-            return
-        end
-        renamed()
-        show_words()
-        log:notify(text("found_commands.words.added"):format(command_box.sanitize(value)))
+        end)
     end, "")
     show_words()
     return found
@@ -282,6 +230,7 @@ end
 
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)
 -- opts.packs:      menu packs in store, offered for copying to core
+-- opts.find_packs: the menu packs in store, looked for again when Load Menu is opened
 -- opts.fill_menus: fill_menus(node) adds the Menus divider and an entry per menu (menu.pluto)
 function module.build(section: table, opts: table): void
     profile_menu.begin(opts.packs)
@@ -299,10 +248,22 @@ function module.build(section: table, opts: table): void
 
     -- Its commands all start with menuloader: menuloader, menuloaderunload, menuloaderautocopy,
     -- menuloaderbuiltin, menuloader<pack folder>
-    local load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
-        i18n.label("menu_loader.load_menu.help"))
+    -- The menus are looked for again each time the list is opened, so a pack put into store shows without
+    -- a restart; the entries start where the first_menu says
+    local first_menu = nil
+    local load_menu
+    load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
+        i18n.label("menu_loader.load_menu.help"), nil, function()
+        if first_menu == nil then
+            return
+        end
+        profile_menu.refresh_packs(opts.find_packs())
+        load_menu:clear_from(first_menu)
+        opts.fill_menus(load_menu)
+    end)
     load_menu:action(i18n.label("menu_loader.unload.name"), opts.unload, { "menuloaderunload" }, i18n.label("menu_loader.unload.help"))
     profile_menu.auto_copy(load_menu)
+    first_menu = #load_menu.children + 1
     opts.fill_menus(load_menu)
 
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))

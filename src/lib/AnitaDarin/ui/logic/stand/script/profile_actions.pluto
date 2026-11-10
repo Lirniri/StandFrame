@@ -1,0 +1,105 @@
+-- lib/AnitaDarin/ui/logic/stand/script/profile_actions.pluto
+-- What the profile items do besides showing: Save, Load, Reset, Delete of a profile, Create Main Profile and
+-- Rename Script. The items, their captions and the warnings before them are in ui/stand/script/profile.
+-- Each takes after(): what the menu does once the change is made (captions, fields, the entries again).
+-- Strings: core/language "profile"
+
+local i18n = Atdar.loader.load("core/i18n")
+local installer = Atdar.loader.load("core/installer")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Profile")
+local text = select(2, i18n.scope("profile"))
+
+local module = {}
+
+-- Profiles
+
+-- Writes the active profile's values into the profile
+function module.save(name: string, after: function): void
+    if not Atdar.profile.save_to(name) then
+        return
+    end
+
+    after()
+    log:notify(text("save.done"):format(name))
+end
+
+-- Makes the profile the active one
+function module.load(name: string, after: function): void
+    Atdar.profile.switch(name)
+    after()
+    log:notify(text("load.done"):format(name))
+end
+
+-- Every value of the profile back to the defaults in core/profile
+function module.reset(name: string, after: function): void
+    if not Atdar.profile.reset(name) then
+        log:warn(text("reset.failed"):format(name))
+        return
+    end
+
+    -- Only the active profile's values are on screen
+    if name == Atdar.profile.active_name() then
+        after()
+    end
+    log:notify(text("reset.done"):format(name))
+end
+
+-- Takes the profile out. after() runs only when it was deleted
+function module.delete(name: string, after: function): void
+    if Atdar.profile.delete(name) then
+        after()
+    end
+end
+
+-- Makes the main profile with the defaults; one that's there is made again
+function module.create_main(after: function): void
+    local main = Atdar.profile.main_name()
+    local existed = Atdar.profile.exists(main)
+
+    if not Atdar.profile.create_main() then
+        log:warn(text("create_main.failed"):format(main))
+        return
+    end
+
+    if existed then
+        log:notify(text("create_main.recreated"):format(main))
+    else
+        log:notify(text("create_main.done"):format(main))
+    end
+    after()
+end
+
+-- Rename Script
+
+-- Whether the name can be the script's; says so when it can't
+function module.is_valid_name(value: string): bool
+    if installer.valid_name(value) then
+        return true
+    end
+
+    log:warn(text("rename.invalid"):format(value))
+    return false
+end
+
+-- Renames the script's folders and stops it (it starts again under the new name)
+-- @return Whether it was renamed
+function module.rename_script(value: string): bool
+    local ok, reason, busy_folder = installer.rename(value)
+
+    if not ok then
+        if busy_folder then
+            log:warn(text("rename.busy"):format(busy_folder))
+        else
+            log:warn(text("rename.failed"):format(reason))
+        end
+        return false
+    end
+
+    log:notify(text("rename.done"):format(value, value))
+    installer.stop()
+    return true
+end
+
+return module

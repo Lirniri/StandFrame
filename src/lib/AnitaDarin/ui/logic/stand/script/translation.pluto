@@ -1,0 +1,51 @@
+-- lib/AnitaDarin/ui/logic/stand/script/translation.pluto
+-- What Create Translation does: what a new translation's code starts as, and making its files.
+-- The items (code, name, start language, Create) are in ui/stand/script/language.
+-- Strings: core/language "profile.translation"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Language")
+local text = select(2, i18n.scope("profile"))
+
+local module = {}
+
+-- What a new translation's code starts as: Stand's language when the script has no file for it ("de" -> "de-de")
+function module.suggested_code(): string
+    local current = lang.get_current()
+
+    if type(current) ~= "string" or not current:match("^%l%l$") or current == "en" then
+        return ""
+    end
+
+    local code = $"{current}-{current}"
+
+    if i18n.has_language(code) then
+        return ""
+    end
+
+    return code
+end
+
+-- Makes a file to translate in every folder of strings (i18n.create_language)
+-- @param draft { code, name, from }: the new language's code and name, and the language to start from
+-- @param after What the menu does once it's made (the picker lists the languages there are now)
+function module.create(draft: table, after: function): void
+    local count, err = i18n.create_language(draft.code, draft.name, draft.from)
+
+    if count == nil then
+        if err == "exists" then
+            log:warn(text("translation.exists"):format(draft.code))
+            return
+        end
+
+        log:warn(text("translation.bad_code"):format(draft.code))
+        return
+    end
+
+    after()
+    log:success(text("translation.created"):format(draft.code, count))
+end
+
+return module

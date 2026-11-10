@@ -1,0 +1,194 @@
+-- lib/AnitaDarin/ui/logic/stand/script/user_commands.pluto
+-- What the user's own commands do: kept in files, run through Stand's command box, named after what they run.
+-- The items (Command Box > User Commands) are in ui/stand/script/user_commands.
+--
+-- Each is kept in store/<script>/commands/user/<name>.json { "commands": [...], "help": "..." }, shared by
+-- every profile; the commands folder is the user's (build.py and the updater leave it).
+-- The first time there's one, as an example: settingsatdar, opening the script's settings.
+-- Strings: core/language "script_menu.user_commands"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local commands = Atdar.loader.load("ui/stand/core/commands")
+local command_box = Atdar.loader.load("parsers/stand/command_box")
+
+local log = new Logger("Commands")
+local text = select(2, i18n.scope("script_menu.user_commands"))
+
+local module = {}
+
+-- Files
+
+-- store/<script>/commands/user/
+function module.folder(): string
+    return $"{filesystem.store_dir()}{Atdar.name}\\commands\\user\\"
+end
+
+-- "godmode on; ; tpwaypoint " -> { "godmode on", "tpwaypoint" }
+function module.split(input: string): table
+    local list = {}
+    for part in input:gmatch("[^;]+") do
+        local clean = part:match("^%s*(.-)%s*$")
+        if clean ~= "" then
+            table.insert(list, clean)
+        end
+    end
+    return list
+end
+
+-- What a file holds, cleaned: { commands = { texts }, help = text }
+local function clean_entry(data): table
+    local entry = { commands = {}, help = "" }
+    if type(data) ~= "table" then
+        return entry
+    end
+    for _, line in ipairs(type(data.commands) == "table" and data.commands or {}) do
+        if type(line) == "string" and line:match("%S") then
+            table.insert(entry.commands, line)
+        end
+    end
+    if type(data.help) == "string" then
+        entry.help = data.help
+    end
+    return entry
+end
+
+-- @return { [name] = { commands, help } } of every file in the folder
+function module.read(): table
+    local entries = {}
+    local dir = module.folder()
+    if not filesystem.is_dir(dir) then
+        return entries
+    end
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        local base = path:match("([^\\/]+)%.json$")
+        local name = base and command_box.sanitize(base) or ""
+        if name ~= "" then
+            entries[name] = clean_entry(new JsonFile(path):read())
+        end
+    end
+    return entries
+end
+
+-- @return Whether it was written
+function module.save(name: string, entry: table): bool
+    return new JsonFile($"{module.folder()}{name}.json"):write({ commands = entry.commands, help = entry.help })
+end
+
+function module.remove(name: string): void
+    new JsonFile($"{module.folder()}{name}.json"):remove()
+end
+
+-- The example, made the first time only (no folder yet): settingsatdar opens the script's settings
+-- through their command (atdar_settings, or as the Base Commands prefix and a custom name have it).
+-- Removed, it stays removed: the folder is there from then on
+local EXAMPLE = "settingsatdar"
+
+function module.make_example(): void
+    if filesystem.exists(module.folder()) then
+        return
+    end
+    local settings = commands.names_as({ "settings" }, "script")[1]
+    if settings == nil then
+        return
+    end
+    module.save(EXAMPLE, { commands = { settings }, help = text("example") })
+end
+
+-- Running
+
+-- Commands running now: one that runs itself, straight or through others, is stopped there
+local running = {}
+-- Name -> the times it ran in the last second: a loop Stand runs later rather than at once is stopped too
+local recent = {}
+local MAX_PER_SECOND = 20
+
+-- Runs the entry's commands through Stand's command box, one after another
+-- @return Whether they were given to Stand
+function module.run(name: string, entry: table): bool
+    if #entry.commands == 0 then
+        log:notify(text("nothing"):format(name))
+        return false
+    end
+    local now = util.current_time_millis()
+    local times = {}
+    for _, time in ipairs(recent[name] or {}) do
+        if now - time < 1000 then
+            table.insert(times, time)
+        end
+    end
+    if running[name] or #times >= MAX_PER_SECOND then
+        log:warn(text("loop"):format(name))
+        return false
+    end
+    table.insert(times, now)
+    recent[name] = times
+    running[name] = true
+    local ok, err = pcall(menu.trigger_commands, table.concat(entry.commands, "; "))
+    running[name] = nil
+    if not ok then
+        log:warn(text("failed"):format(name, tostring(err)))
+    end
+    return ok
+end
+
+-- Names
+
+-- "ready" -> the names it has in Stand now ("atdar_ready"), with the user's prefix
+function module.full_name(name: string): string
+    return commands.names_as({ name }, "user")[1] or name
+end
+
+-- The name of the item a command line runs ("godmode on" -> the godmode item's "God Mode"): a label
+-- as Stand gives it, so it follows Stand's language; nil when no item has that command (yet)
+local function item_name(line: string)
+    local word = line:match("^%S+")
+    if word == nil or type(menu.ref_by_command_name) ~= "function" then
+        return nil
+    end
+    local ok, ref = pcall(menu.ref_by_command_name, word)
+    if not ok or ref == nil or not menu.is_ref_valid(ref) then
+        return nil
+    end
+    local named, name = pcall(menu.get_menu_name, ref)
+    return named and name or nil
+end
+
+-- What a user command's Run is called: the names of the items it runs, "Settings" or "God Mode, Never
+-- Wanted"; a line no item answers to (yet: a pack's items come later) as it's written; nothing to run -
+-- the command's own name
+function module.caption(name: string, entry: table)
+    if #entry.commands == 0 then
+        return module.full_name(name)
+    end
+    local names = {}
+    for _, line in ipairs(entry.commands) do
+        local item = item_name(line)
+        if item == nil then
+            item = line
+        end
+        table.insert(names, item)
+    end
+    if #names == 1 then
+        return names[1]
+    end
+    -- Several: as text, labels in Stand's language
+    for i, item in ipairs(names) do
+        if type(item) == "number" then
+            names[i] = lang.get_localised(item)
+        end
+    end
+    return table.concat(names, ", ")
+end
+
+-- Whether Stand already has a command of that name (Stand's own, the script's, another user one)
+function module.command_taken(full: string): bool
+    if type(menu.ref_by_command_name) ~= "function" then
+        return false
+    end
+    local ok, ref = pcall(menu.ref_by_command_name, full)
+    return ok and ref ~= nil and menu.is_ref_valid(ref) == true
+end
+
+return module

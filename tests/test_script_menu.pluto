@@ -22,12 +22,16 @@ local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
 local script_menu = Atdar.loader.load("ui/stand/script/section")
 local profiles_dir = $"{stand.store}AnitaDarin/profiles/"
 
+-- What the menu loader finds in store when Load Menu is opened
+FOUND_PACKS = { { folder = "AnitaDarin", name = "AnitaDarin" } }
+
 -- Rebuilding the section, as menu.pluto's rebuild_settings does; the menu picker is faked
 local function rebuild()
     stand.root.children = {}
     script_menu.build(new MenuNode(stand.root), {
         refresh = rebuild,
         packs = { { folder = "AnitaDarin", name = "AnitaDarin" } },
+        find_packs = || -> FOUND_PACKS,
         fill_menus = |node| -> node:divider("Menus"),
         unload = function() UNLOADED = true end,
     })
@@ -227,6 +231,9 @@ menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
+-- Opening it looks for the menus again: the entries are made again, not added a second time
+find("Load Menu").on_click()
+stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu: opened, the menus made again")
 local update_list = find("Update")
 stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check | Check For Updates"
     .. " | Check On Start | Update Branch: main | Update | Update | Check Before Updating | Update Automatically"
@@ -678,14 +685,14 @@ os.remove($"{registry_dir}short_name.json")
 Atdar.test_reg_fn, Atdar.test_reg_none, Atdar.test_reg_bad = nil, nil, nil
 
 -- The Stand API file: its place is core/call_function/stand_api.json; read as it's written
-local call_function_module = Atdar.loader.load("ui/stand/script/call_function")
-stand.equal(next(call_function_module.stand_api()), nil, "stand_api: no file in the store - empty")
+local registry_logic = Atdar.loader.load("ui/logic/stand/script/call_function_registry")
+stand.equal(next(registry_logic.stand_api()), nil, "stand_api: no file in the store - empty")
 local api_dir = $"{stand.store}AnitaDarin/core/call_function/"
 io.makedirs(api_dir)
 stand.write_file($"{api_dir}stand_api.json", '{"util.toast": {"params": [{"name": "text", "type": "string"}], "returns": "void"}}')
-stand.equal(call_function_module.stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
+stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
 stand.write_file($"{api_dir}stand_api.json", "{broken")
-stand.equal(next(call_function_module.stand_api()), nil, "stand_api: a damaged file - empty")
+stand.equal(next(registry_logic.stand_api()), nil, "stand_api: a damaged file - empty")
 os.remove($"{api_dir}stand_api.json")
 
 -- ─── Files Editor: the JSON files of Call Function as a tree ─────────────────

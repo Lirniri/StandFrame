@@ -36,6 +36,9 @@
 -- Strings: core/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
 
 local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
+local registry_files = Atdar.loader.load("ui/logic/stand/script/call_function_registry")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("CallFunction")
@@ -46,17 +49,7 @@ local module = {}
 local label, text = i18n.scope("script_menu.call_function")
 -- The strings of the Modules list's function lists, shared: Call After, Call When Opened, Loop
 local mlabel, mtext = i18n.scope("modules")
--- Click types of calls Stand makes by itself (restoring a field's state, bulk changes): not the user's
-local NOT_USER_CLICKS = { [4] = true }
-for _, name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
-    if _G[name] ~= nil then
-        NOT_USER_CLICKS[_G[name]] = true
-    end
-end
 
--- Stand calls text fields again while the script stops; nothing it sends then is the user's
-local stopping = false
-util.on_stop(function() stopping = true end)
 
 -- The settings (Debug > Call Function > Settings): Notice In Stand, Use Short Names (the names in the Functions
 -- list and the notices are the last part of the path), Show Call Time and Show Result On Screen (what a loop
@@ -231,24 +224,7 @@ local function start_loop(spec: table, every: ?int): void
         log:notify(mtext("loop.started_every"):format(name, every))
     end
     local values = Atdar.loader.load("ui/stand/modules/values")
-    util.create_tick_handler(function()
-        -- Stopped, or replaced by a newer loop
-        if stopping or state.loop ~= loop_run then
-            return false
-        end
-        -- What the last call gave is drawn once every frame (debug text shows for one frame only), so it
-        -- stays between the calls of a loop with an interval too (call_display: the settings, the cut)
-        local function draw_result()
-            display.draw(loop_run.result)
-        end
-        if loop_run.every ~= nil then
-            local now = util.current_time_millis()
-            if now < loop_run.next then
-                draw_result()
-                return true
-            end
-            loop_run.next = now + loop_run.every
-        end
+    call_loop.start(loop_run, || -> state.loop == loop_run, function()
         local found, value, owner = spec.target()
         if not found then
             end_loop(state, loop_run, "failed")
@@ -259,7 +235,6 @@ local function start_loop(spec: table, every: ?int): void
             local read = table.pack(true, value)
             loop_run.result = $"{name} -> {values.results_text(read)}"
             values.show_result(spec.key, read)
-            draw_result()
             return true
         end
         local args, count, err = read_args(spec, name)
@@ -268,12 +243,8 @@ local function start_loop(spec: table, every: ?int): void
             log:error(text("bad_args"):format(name, err))
             return false
         end
-        local results = nil
-        local function call_once()
-            results = run(value, owner, args, count)
-        end
         -- How long a call takes, on screen (info text), while Show Call Time is on
-        display.timed($"{name}()", call_once)
+        local results = call_loop.timed($"{name}()", || -> run(value, owner, args, count))
         if not results[1] then
             end_loop(state, loop_run, "failed")
             log:error(text("failed"):format(name, tostring(results[2])))
@@ -286,7 +257,6 @@ local function start_loop(spec: table, every: ?int): void
             loop_run.result = nil
         end
         values.show_result(spec.key, results)
-        draw_result()
         return true
     end)
 end
@@ -343,7 +313,7 @@ function module.panel(list: table, spec: table): table
         })
     else
         list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
-            if stopping or NOT_USER_CLICKS[click_type] then
+            if not clicks.is_user_action(click_type) then
                 return
             end
             state.args = value
@@ -365,13 +335,13 @@ function module.panel(list: table, spec: table): table
 
     -- Once, after the ms picked; the arguments are worked out then, not at the click
     list:click_slider(mlabel("loop.call_after.name"), 100, 60000, 1000, 100, function(ms, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         log:notify(mtext("loop.call_scheduled"):format(spec.name(), ms))
         util.create_thread(function()
             util.yield(ms)
-            if not stopping then
+            if not clicks.is_stopping() then
                 call(spec)
             end
         end)
@@ -386,7 +356,7 @@ function module.panel(list: table, spec: table): table
     end, {}, mlabel("loop.call_on_focus.help"), state.on_focus == true)
     -- The cursor on this list (not inside it)
     menu.on_focus(list.handle, function()
-        if state.on_focus and not stopping then
+        if state.on_focus and not clicks.is_stopping() then
             call(spec)
         end
     end)
@@ -403,7 +373,7 @@ function module.panel(list: table, spec: table): table
     state.status_ref = list:divider(mtext("loop.status_line"):format(status_text(status_kind, status_every)))
 
     state.loop_toggle = list:toggle(mlabel("loop.loop.name"), function(on)
-        if stopping or state.syncing then
+        if clicks.is_stopping() or state.syncing then
             return
         end
         if on and state.loop == nil then
@@ -416,7 +386,7 @@ function module.panel(list: table, spec: table): table
     end, {}, mlabel("loop.loop.help"), state.loop ~= nil)
 
     list:click_slider(mlabel("loop.every.name"), 100, 60000, 1000, 100, function(ms, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         start_loop(spec, ms)
@@ -431,24 +401,24 @@ function module.panel(list: table, spec: table): table
     values.bind_depth_items(spec.key, function()
         local first = #list.children + 1
         list:slider(mlabel("loop.table_depth.name"), 1, 8, values.result_depth(spec.key), 1, function(depth, previous, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
-            values.set_result_depth(spec.key, depth, NOT_USER_CLICKS[click_type])
+            values.set_result_depth(spec.key, depth, not clicks.is_user_click(click_type))
         end, {}, mlabel("loop.table_depth.help"))
         -- The functions in the table become lists with the same panel
         list:toggle(mlabel("loop.call_in_tables.name"), function(on, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
-            values.set_call_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+            values.set_call_in_tables(spec.key, on, not clicks.is_user_click(click_type))
         end, {}, mlabel("loop.call_in_tables.help"), values.call_in_tables(spec.key))
         -- The other values in the table become fields to type a new value in
         list:toggle(mlabel("loop.edit_in_tables.name"), function(on, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
-            values.set_edit_in_tables(spec.key, on, NOT_USER_CLICKS[click_type])
+            values.set_edit_in_tables(spec.key, on, not clicks.is_user_click(click_type))
         end, {}, mlabel("loop.edit_in_tables.help"), values.edit_in_tables(spec.key))
         return function() list:clear_from(first) end
     end)
@@ -475,111 +445,6 @@ local main_state = {}
 -- Makes the items of the Functions list again; set by the list when it's built
 local show_added = nil
 
--- The user's own short names: store/<script>/user/call_function/short_names.json,
--- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }; read when a name is looked for, so the
--- file can be edited while the script runs
-local SHORT_NAMES_FILE = "user/call_function/short_names.json"
-
--- The registry of short names, written by hand and shipped with the script: store/<script>/core/call_function/short_name.json,
---     { "user_vehicle": { "path": "entities.get_user_vehicle_as_handle",
---                         "params": [ { "name": "include_last_vehicle", "type": "bool", "default": "false" } ],
---                         "returns": "int" } }
--- The name is what can be typed (with Use Short Names on) for the path. params and returns are for a function that
--- says nothing of its own parameters (Stand's are C functions): they give its argument fields (name, type, an
--- optional default as the code would write it) and its return type. params [] is a function that takes none.
--- An entry without a path is left out
-local REGISTRY_FILE = "core/call_function/short_name.json"
-
--- The signatures of Stand's own API (util, entities, menu, ...), written by hand and shipped with the script:
--- store/<script>/core/call_function/stand_api.json. Stand's functions are C functions and say nothing of their
--- parameters, so this file is where they'd be told. Only the place is registered so far: what's in the file and how
--- it is used for the argument fields is up to the one who fills it
-local STAND_API_FILE = "core/call_function/stand_api.json"
-
--- @param
--- @return The file's short names, name -> path; empty when there's no file or it isn't an object of texts
-local function saved_short_names(): table
-    -- body function
-
-    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-    local file = new JsonFile($"{Atdar.filesystem.paths.store}{SHORT_NAMES_FILE}")
-    local names = {}
-    local data = file:exists() and file:read() or nil
-
-    if type(data) ~= "table" then
-        return names
-    end
-
-    for name, path in pairs(data) do
-        if type(name) == "string" and type(path) == "string" then
-            names[name] = path
-        end
-    end
-
-    return names
-    -- what returns
-end
-
--- @param
--- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or it's
--- damaged, and without the entries that have no path
-local function registry(): table
-    -- body function
-
-    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-    local file = new JsonFile($"{Atdar.filesystem.paths.store}{REGISTRY_FILE}")
-    local data = file:exists() and file:read() or nil
-    local entries = {}
-
-    if type(data) ~= "table" then
-        return entries
-    end
-
-    for name, entry in pairs(data) do
-        if type(name) == "string" and type(entry) == "table" and type(entry.path) == "string" then
-            entries[name] = entry
-        end
-    end
-
-    return entries
-    -- what returns
-end
-
--- The signature the registry gives a function: its fields and return type, in place of what the code says
--- @param path The function's full path
--- @return { sig, returns } for a path with params in the registry, nil when it has none (or one is badly written)
-local function registered_signature(path: string): ?table
-    -- body function
-
-    for name, entry in pairs(registry()) do
-        if entry.path == path and type(entry.params) == "table" then
-            local names, types, defaults = {}, {}, {}
-            local valid = true
-
-            -- @param
-            -- @return
-            for index, param in ipairs(entry.params) do
-                if type(param) ~= "table" or type(param.name) ~= "string" then
-                    log:warn(text("registry.bad_param"):format(name, index))
-                    valid = false
-                    break
-                end
-
-                table.insert(names, param.name)
-                types[param.name] = type(param.type) == "string" and param.type or nil
-                defaults[param.name] = type(param.default) == "string" and param.default or nil
-            end
-
-            if valid then
-                return { sig = arguments().signature(names, types, false, defaults), returns = entry.returns }
-            end
-        end
-    end
-
-    return nil
-    -- what returns
-end
-
 -- What a typed name means: a path that's there is itself; with Use Short Names on, a short name is the one
 -- the user's short_names.json gives it, then the registry (short_name.json), else the first function of that name in Atdar or the globals (path.find)
 -- @param typed The text typed
@@ -590,11 +455,11 @@ local function expand(typed: string)
     if path == "" or paths.resolve(path) or not settings.short_names then
         return path, paths.resolve(path) and 1 or 0
     end
-    local own = saved_short_names()[path]
+    local own = registry_files.short_names()[path]
     if own ~= nil and paths.resolve(own) then
         return (paths.split(own)), 1
     end
-    local registered = registry()[path]
+    local registered = registry_files.registry()[path]
     if registered ~= nil and paths.resolve(registered.path) then
         return (paths.split(registered.path)), 1
     end
@@ -635,7 +500,7 @@ local function add_item(list: table, entry: table, number: int): void
         sig = arguments().signature_of(value, owner ~= nil)
         returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
         -- A function that says nothing of its parameters (a C function of Stand): the registry may
-        local registered = #sig.params == 0 and registered_signature(entry.path) or nil
+        local registered = #sig.params == 0 and registry_files.registered_signature(entry.path) or nil
         if registered ~= nil then
             sig = registered.sig
             returns = returns or registered.returns
@@ -682,7 +547,7 @@ local function build_by_name(node: table): void
 
     -- With Call After Typing Function on, typing the name calls it (or reads a table or a variable) at once
     list:text_input(label("function.name"), { "debugcallfuncname" }, function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         main_state.name = value
@@ -708,15 +573,6 @@ local function build_by_name(node: table): void
     })
 end
 
--- The file the functions are saved in while Save Functions is on: store/<script>/user/call_function/saved_functions.json,
--- { "save": true, "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the
--- fields. Switching Save Functions off leaves the file as it is ("save": false): what to do with it is the
--- user's choice
-local function saved_file(): table
-    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-    return new JsonFile($"{Atdar.filesystem.paths.store}user/call_function/saved_functions.json")
-end
-
 -- Writes the list to the file while Save Functions is on
 local function save_added(): void
     if not settings.save then
@@ -726,7 +582,7 @@ local function save_added(): void
     for _, entry in ipairs(added) do
         table.insert(paths, entry.path)
     end
-    saved_file():write({ save = true, functions = paths })
+    registry_files.write_saved(paths)
 end
 
 -- The Save Functions setting and, when it's on, the functions of the file, put in the list; once, when the menu
@@ -737,7 +593,7 @@ local function load_saved(): void
         return
     end
     loaded = true
-    local data = saved_file():read() or {}
+    local data = registry_files.read_saved()
     settings.save = data.save == true
     if not settings.save then
         return
@@ -765,7 +621,7 @@ local function build_functions(node: table): void
     end
 
     list:text_input(label("add.name"), { "debugaddfunc" }, function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         -- The brackets, if it was typed as a call, aren't part of the path; a short name is its full path
@@ -796,7 +652,7 @@ local function build_functions(node: table): void
 
     -- The number of the function to take out
     list:text_input(label("clear.name"), { "debugclearfunction" }, function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         local typed = value:match("^%s*(.-)%s*$")
@@ -827,7 +683,7 @@ local function build_functions(node: table): void
     -- On: the list is kept in a file and comes back at the next start; off: the file stays as it was, with
     -- "save" false, so the next start doesn't use it
     list:toggle(label("save.name"), function(on)
-        if stopping or settings.save == on then
+        if clicks.is_stopping() or settings.save == on then
             return
         end
         settings.save = on
@@ -835,12 +691,7 @@ local function build_functions(node: table): void
             save_added()
             return
         end
-        local file = saved_file()
-        local data = file:read()
-        if data ~= nil then
-            data.save = false
-            file:write(data)
-        end
+        registry_files.switch_off_saved()
     end, {}, label("save.help"), settings.save)
 
     list:divider(label("functions.name"))
@@ -862,12 +713,12 @@ function module.build(node: table): any
     end, {}, label("guide.help"))
     list:divider(label("settings.divider"))
     list:toggle(label("short_names.name"), function(on, click_type)
-        if stopping or settings.short_names == on then
+        if clicks.is_stopping() or settings.short_names == on then
             return
         end
         settings.short_names = on
         -- The names in the list follow (not while Stand puts the saved state back: the list isn't made then)
-        if show_added ~= nil and not NOT_USER_CLICKS[click_type] then
+        if show_added ~= nil and clicks.is_user_click(click_type) then
             show_added()
         end
     end, {}, label("short_names.help"), settings.short_names)
@@ -890,20 +741,4 @@ function module.build(node: table): any
 end
 
 -- @param
--- @return The table of the Stand API file (STAND_API_FILE) as it is written; empty when there's no file or it's damaged
-function module.stand_api(): table
-    -- body function
-
-    local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-    local file = new JsonFile($"{Atdar.filesystem.paths.store}{STAND_API_FILE}")
-    local data = file:exists() and file:read() or nil
-
-    if type(data) ~= "table" then
-        return {}
-    end
-
-    return data
-    -- what returns
-end
-
 return module

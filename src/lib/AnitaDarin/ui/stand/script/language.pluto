@@ -14,6 +14,7 @@
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
+local translation = Atdar.loader.load("ui/logic/stand/script/translation")
 
 local log = new Logger("Language")
 
@@ -68,19 +69,6 @@ local function refresh_languages(): void
     rename(view.language, language_caption())
 end
 
--- What a new translation's code starts as: Stand's language when the script has no file for it ("de" -> "de-de")
-local function suggested_code(): string
-    local current = lang.get_current()
-    if type(current) ~= "string" or not current:match("^%l%l$") or current == "en" then
-        return ""
-    end
-    local code = $"{current}-{current}"
-    if i18n.has_language(code) then
-        return ""
-    end
-    return code
-end
-
 -- "Translate From: English"
 local function from_caption(code: string): string
     for _, language in ipairs(i18n.languages()) do
@@ -94,7 +82,7 @@ end
 -- Create Translation: the code, the name and the language to start from, then Create. Makes a file to
 -- translate in every folder of strings (i18n.create_language); the language shows in the picker at once
 local function create_translation(list: table): void
-    local draft = { code = suggested_code(), name = "", from = "en-us" }
+    local draft = { code = translation.suggested_code(), name = "", from = "en-us" }
     local create = list:list(label("translation.create.name"), {}, label("translation.create.help"))
     create:text_input(label("translation.code.name"), { "langcode" }, function(value)
         draft.code = value:lower():match("^%s*(.-)%s*$")
@@ -116,17 +104,7 @@ local function create_translation(list: table): void
     end, { "langfrom" }, label("translation.from.help"))
 
     create:action(label("translation.create_button.name"), function()
-        local count, err = i18n.create_language(draft.code, draft.name, draft.from)
-        if count == nil then
-            if err == "exists" then
-                log:warn(text("translation.exists"):format(draft.code))
-                return
-            end
-            log:warn(text("translation.bad_code"):format(draft.code))
-            return
-        end
-        refresh_languages()
-        log:success(text("translation.created"):format(draft.code, count))
+        translation.create(draft, refresh_languages)
     end, { "langcreate" }, label("translation.create_button.help"))
 end
 

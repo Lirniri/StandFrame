@@ -21,7 +21,8 @@
 -- deleting a profile rebuild it, since the list of profiles changes
 
 local i18n = Atdar.loader.load("core/i18n")
-local installer = Atdar.loader.load("core/installer")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local actions = Atdar.loader.load("ui/logic/stand/script/profile_actions")
 local Logger = Atdar.loader.load("core/logger")
 local color = Atdar.loader.load("utils/color")
 local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
@@ -58,9 +59,6 @@ local INPUT_KEYS = { "display_name", "short_name", "command_box_prefix", "comman
 local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {}, subject_colors = {} }
 -- Set while values are written from code, so their on_change doesn't count as an edit
 local updating = false
--- Stand calls text fields again while the script stops; showing a warning then is an error
-local stopping = false
-util.on_stop(function() stopping = true end)
 
 -- "main", "main (active)" or "main (active)*" with unsaved changes
 local function entry_caption(name: string): string
@@ -263,8 +261,26 @@ Atdar.profile.on_change(|| -> update_captions())
 -- Captions are texts in the shown language, so they're made again when it changes (also Stand's own)
 i18n.on_change(|| -> update_captions())
 
+-- Off, then every pack in store: the options of Copy Menu To Core
+local function auto_copy_options(): table
+    local options = { i18n.label("menu_loader.auto_copy.off") }
+    for _, pack in ipairs(view.packs) do
+        table.insert(options, pack.name)
+    end
+    return options
+end
+
+-- The packs in store were read again (Load Menu was opened): Copy Menu To Core offers what's there now
+function module.refresh_packs(packs: table): void
+    view.packs = packs
+    if view.auto_copy ~= nil then
+        pcall(menu.set_list_action_options, view.auto_copy, auto_copy_options())
+        rename(view.auto_copy, auto_copy_caption())
+    end
+end
+
 -- Starts a new build of the section; items made before it are forgotten.
--- packs: menu packs in store (menu_builder.find_loadable_packs), offered for copying to core
+-- packs: menu packs in store (menu_packs.find_loadable_packs), offered for copying to core
 function module.begin(packs: table = {}): void
     view = { inputs = {}, entries = {}, packs = packs, colors = {}, sliders = {}, subject_colors = {} }
 end
@@ -389,7 +405,7 @@ local function color_item(node: table, key: string, name: string, commands: tabl
         log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)}, updating {tostring(updating)})")
         -- Stand also calls this when the script stops, with the colour the item shows: for "" (the game's
         -- own) that's black, which would then be saved as picked. Only a different colour is a pick
-        if updating or stopping or hex == color.to_hex(profile_color(key), true) then
+        if updating or clicks.is_stopping() or hex == color.to_hex(profile_color(key), true) then
             return
         end
         Atdar.profile.set(key, hex)
@@ -499,10 +515,7 @@ local function build_entry(parent: table, name: string, refresh: function): void
     local save_ref
     save_ref = entry:action(label("save.name"), function(click_type)
         local function save(): void
-            if profile.save_to(name) then
-                update_captions()
-                log:notify(text("save.done"):format(name))
-            end
+            actions.save(name, update_captions)
         end
         -- Saving into another profile overwrites what it had
         if name ~= profile.active_name() then
@@ -515,12 +528,12 @@ local function build_entry(parent: table, name: string, refresh: function): void
     local load_ref
     load_ref = entry:action(label("load.name"), function(click_type)
         local function load_profile(): void
-            profile.switch(name)
-            update_captions()
-            if not update_fields() then
-                refresh()
-            end
-            log:notify(text("load.done"):format(name))
+            actions.load(name, function()
+                update_captions()
+                if not update_fields() then
+                    refresh()
+                end
+            end)
         end
         if profile.is_dirty() then
             menu.show_warning(load_ref, click_type, text("load.unsaved"):format(profile.active_name()), load_profile)
@@ -537,17 +550,12 @@ local function build_entry(parent: table, name: string, refresh: function): void
     -- Every value back to the defaults in core/profile, after a second click
     local _
     _, cancel_reset = confirm.action(entry, label("reset.name"), label("reset.again"), function()
-        if not profile.reset(name) then
-            log:warn(text("reset.failed"):format(name))
-            return
-        end
-        if name == profile.active_name() then
+        actions.reset(name, function()
             update_captions()
             if not update_fields() then
                 refresh()
             end
-        end
-        log:notify(text("reset.done"):format(name))
+        end)
     end, function()
         log:warn(text("reset.warning"):format(name, confirm.WAIT_MS // 1000))
     end, label("reset.help"))
@@ -555,9 +563,7 @@ local function build_entry(parent: table, name: string, refresh: function): void
     local delete_ref
     delete_ref = entry:action(label("delete.name"), function(click_type)
         menu.show_warning(delete_ref, click_type, text("delete.warning"):format(name), function()
-            if profile.delete(name) then
-                refresh()
-            end
+            actions.delete(name, refresh)
         end)
     end, {}, label("delete.help"))
 end
@@ -608,16 +614,10 @@ function module.profiles(node: table, refresh: function): void
     local create_main_ref
     create_main_ref = list:action(label("create_main.name"), function(click_type)
         local main = profile.main_name()
-        local existed = profile.exists(main)
         local function make(): void
-            if not profile.create_main() then
-                log:warn(text("create_main.failed"):format(main))
-                return
-            end
-            log:notify(text(existed and "create_main.recreated" or "create_main.done"):format(main))
-            changed()
+            actions.create_main(changed)
         end
-        if not existed then
+        if not profile.exists(main) then
             make()
             return
         end
@@ -637,11 +637,7 @@ end
 
 -- Off, then every pack in store; takes effect at the next start (see auto_copy in menu.pluto)
 function module.auto_copy(node: table): void
-    local options = { i18n.label("menu_loader.auto_copy.off") }
-    for _, pack in ipairs(view.packs) do
-        table.insert(options, pack.name)
-    end
-    view.auto_copy = node:list_action(auto_copy_caption(), options, function(index)
+    view.auto_copy = node:list_action(auto_copy_caption(), auto_copy_options(), function(index)
         local pack = view.packs[index - 1]
         Atdar.profile.set("auto_copy_menu", pack ? pack.folder : "")
         if pack then
@@ -760,28 +756,18 @@ function module.rename(node: table): void
     -- showing a warning then is an error, so nothing is asked then
     local renaming = false
     rename_ref = node:text_input(label("rename.name"), { "renamescript" }, function(value, click_type)
-        if renaming or stopping or value == Atdar.name then
+        if renaming or clicks.is_stopping() or value == Atdar.name then
             return
         end
-        if not installer.valid_name(value) then
-            log:warn(text("rename.invalid"):format(value))
+        if not actions.is_valid_name(value) then
             return
         end
         -- Still possible if Stand stops the script before our on_stop handler runs
         local shown = pcall(menu.show_warning, rename_ref, click_type, text("rename.warning"):format(Atdar.name, value), function()
             renaming = true
-            local ok, reason, busy_folder = installer.rename(value)
-            if not ok then
+            if not actions.rename_script(value) then
                 renaming = false
-                if busy_folder then
-                    log:warn(text("rename.busy"):format(busy_folder))
-                    return
-                end
-                log:warn(text("rename.failed"):format(reason))
-                return
             end
-            log:notify(text("rename.done"):format(value, value))
-            installer.stop()
         end)
         if not shown then
             log:debug($"rename to '{value}' not asked: the script is stopping")

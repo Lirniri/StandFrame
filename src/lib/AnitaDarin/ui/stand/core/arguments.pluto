@@ -27,6 +27,7 @@
 -- Strings: core/language "arguments"
 
 local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local commands = Atdar.loader.load("ui/stand/core/commands")
 local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
@@ -40,16 +41,6 @@ local module = {}
 -- Strings under "arguments"
 local label, text = i18n.scope("arguments")
 
--- Click types of Stand's own calls (restoring a field's state, bulk changes): not the user's
-local NOT_USER_CLICKS = { [4] = true }
-for _, click_name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
-    if _G[click_name] ~= nil then
-        NOT_USER_CLICKS[_G[click_name]] = true
-    end
-end
--- Stand calls text fields again while the script stops: nothing it sends then is the user's
-local stopping = false
-util.on_stop(function() stopping = true end)
 
 -- ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -263,11 +254,11 @@ function module.build(list: table, spec: table): void
         end
         list:track_named(name_label, menu.text_input(list.handle, name_label, commands.names({ spec.command(index) }),
             help, function(value, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
             texts[index] = value
-            if spec.on_typed ~= nil and not NOT_USER_CLICKS[click_type] then
+            if spec.on_typed ~= nil and clicks.is_user_click(click_type) then
                 spec.on_typed()
             end
         end, texts[index] or start or ""))

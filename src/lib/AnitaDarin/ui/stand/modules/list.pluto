@@ -14,6 +14,8 @@
 --     modules_menu.module_in(node, "VehicleManager")  -- one module's list: status, actions, functions
 
 local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
 -- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake
 -- (a missing `local`) doesn't break reading functions here
 local debug = debug
@@ -23,12 +25,12 @@ local Module = Atdar.loader.load("core/module")
 local arguments = Atdar.loader.load("ui/stand/core/arguments")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
 local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
--- What a loop puts on the screen (the settings are in Debug > Call Function)
-local display = Atdar.loader.load("ui/stand/core/call_display")
 -- What calls gave and the module's variables, shown (Variable lines, Value and Variables lists)
 local values = Atdar.loader.load("ui/stand/modules/values")
 -- A module's on_tick run by hand (its on_tick() list)
 local ticks = Atdar.loader.load("ui/stand/modules/ticks")
+-- The runs themselves
+local tick_runs = Atdar.loader.load("ui/logic/stand/ticks")
 
 local log = new Logger("Modules")
 
@@ -84,7 +86,7 @@ end
 
 -- "Status: running", the divider on top of a module's list
 local function status_line(mod: table): string
-    if ticks.is_running(mod.name) then
+    if tick_runs.is_running(mod.name) then
         return text("entry.status_line"):format(text("status.manual"))
     end
     return text("entry.status_line"):format(text($"status.{mod.status}"))
@@ -127,18 +129,18 @@ end
 local ACTIONS = {
     { key = "start", run = |name| -> Atdar.modules.start_module(name) },
     { key = "restart", run = function(name)
-        ticks.stop(name)
+        tick_runs.stop(name)
         stop_function_loops(name)
         Atdar.modules.stop_module(name)
         Atdar.modules.start_module(name)
     end },
     { key = "stop", run = function(name)
-        ticks.stop(name)
+        tick_runs.stop(name)
         stop_function_loops(name)
         Atdar.modules.stop_module(name)
     end },
     { key = "reload", run = function(name)
-        ticks.stop(name)
+        tick_runs.stop(name)
         stop_function_loops(name)
         Atdar.modules.reload_module(name)
     end },
@@ -186,22 +188,11 @@ local function call(module_name: string, fn: table, args: table, count: int): vo
     end)
 end
 
--- Click types of Stand's own calls (restoring a field's state, bulk changes): not the user's
-local NOT_USER_CLICKS = { [4] = true }
-for _, click_name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
-    if _G[click_name] ~= nil then
-        NOT_USER_CLICKS[_G[click_name]] = true
-    end
-end
--- Stand calls text fields again while the script stops: nothing it sends then is a call
-local stopping = false
-util.on_stop(function() stopping = true end)
 
 -- What the on_tick runs need of this list
 ticks.bind({
     short_name = short_name,
     refresh = refresh,
-    is_user_click = |click_type| -> not NOT_USER_CLICKS[click_type],
     -- The module's Status divider: "running by hand" while a run goes on
     status_changed = function(module_name)
         local status_ref = (view.statuses or {})[module_name]
@@ -297,24 +288,7 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
         log:notify(text("loop.started_every"):format(name, every))
     end
 
-    util.create_tick_handler(function()
-        -- Stopped, or replaced by a newer loop
-        if stopping or function_loops[key] ~= run then
-            return false
-        end
-        -- What the last call gave is drawn once every frame (debug text shows for one frame only), so it
-        -- stays between the calls of a loop with an interval too
-        local function draw_result()
-            display.draw(run.result)
-        end
-        if run.every ~= nil then
-            local now = util.current_time_millis()
-            if now < run.next then
-                draw_result()
-                return true
-            end
-            run.next = now + run.every
-        end
+    call_loop.start(run, || -> function_loops[key] == run, function()
         -- The module as it is now (Reload makes a new one)
         local modules = Atdar.modules
         if not modules.has(module_name) then
@@ -330,12 +304,10 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
             log:error(text("call.bad_args"):format(name, args_err))
             return false
         end
-        local results = nil
-        local function call_once()
-            results = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
-        end
         -- How long a call takes, on screen (info text); Debug > Call Function > Settings decide what's shown
-        display.timed($"{module_name}.{fn.name}()", call_once)
+        local results = call_loop.timed($"{module_name}.{fn.name}()", function()
+            return table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
+        end)
         if not results[1] then
             function_loops[key] = nil
             show_loop_status(key, "failed")
@@ -349,7 +321,6 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
             run.result = nil
         end
         values.show_result(key, results)
-        draw_result()
         return true
     end)
 end
@@ -400,7 +371,7 @@ end
 local function keep_live(module_name: string, fn: table, key: string, opened): void
     local next_call = 0
     util.create_tick_handler(function()
-        if stopping or not opened() then
+        if clicks.is_stopping() or not opened() then
             return false
         end
         local now = util.current_time_millis()
@@ -491,13 +462,13 @@ local function function_list(entry: table, mod: table, fn: table): void
     -- Once, after the ms picked; the arguments are worked out then, not at the click
     node:track(menu.click_slider(node.handle, label("loop.call_after.name"), {}, label("loop.call_after.help"),
         100, 60000, 1000, 100, function(ms, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         log:notify(text("loop.call_scheduled"):format($"{short_name(module_name)}.{signature(fn)}", ms))
         util.create_thread(function()
             util.yield(ms)
-            if not stopping then
+            if not clicks.is_stopping() then
                 call_with_args(module_name, fn, key)
             end
         end)
@@ -526,7 +497,7 @@ local function function_list(entry: table, mod: table, fn: table): void
     -- On: every frame; off: the loop stops, also one started with an interval. Made as the loop is now
     syncing[key] = true
     loop_toggles[key] = node:toggle(label("loop.loop.name"), function(on)
-        if stopping or syncing[key] then
+        if clicks.is_stopping() or syncing[key] then
             return
         end
         -- Only a real change: the toggle following a loop (e.g. one with an interval) starts nothing,
@@ -541,7 +512,7 @@ local function function_list(entry: table, mod: table, fn: table): void
     syncing[key] = nil
     node:track(menu.click_slider(node.handle, label("loop.every.name"), {}, label("loop.every.help"),
         100, 60000, 1000, 100, function(ms, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
         start_loop(module_name, fn, ms)
@@ -558,25 +529,25 @@ local function function_list(entry: table, mod: table, fn: table): void
         -- Shown only while the last result is a table
         node:track(menu.slider(node.handle, label("loop.table_depth.name"), {}, label("loop.table_depth.help"),
             1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
             -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
-            values.set_result_depth(key, depth, NOT_USER_CLICKS[click_type])
+            values.set_result_depth(key, depth, not clicks.is_user_click(click_type))
         end))
         -- The functions in the table become lists with their own Arguments and Call
         node:toggle(label("loop.call_in_tables.name"), function(on, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
-            values.set_call_in_tables(key, on, NOT_USER_CLICKS[click_type])
+            values.set_call_in_tables(key, on, not clicks.is_user_click(click_type))
         end, {}, label("loop.call_in_tables.help"), values.call_in_tables(key))
         -- The other values in the table become fields to type a new value in
         node:toggle(label("loop.edit_in_tables.name"), function(on, click_type)
-            if stopping then
+            if clicks.is_stopping() then
                 return
             end
-            values.set_edit_in_tables(key, on, NOT_USER_CLICKS[click_type])
+            values.set_edit_in_tables(key, on, not clicks.is_user_click(click_type))
         end, {}, label("loop.edit_in_tables.help"), values.edit_in_tables(key))
         return function() node:clear_from(first) end
     end)
@@ -833,7 +804,7 @@ local function fill_module(entry: table, name: string): void
     entry:divider(label("functions.divider"))
     -- Before the functions, so making them again (below) leaves it where it is
     entry:toggle(label("no_categories.name"), function(on)
-        if stopping or (no_categories[name] == true) == on then
+        if clicks.is_stopping() or (no_categories[name] == true) == on then
             return
         end
         no_categories[name] = on or nil
@@ -876,7 +847,7 @@ local function fill(node: table): void
     node:action(label("refresh.name"), refresh, {}, label("refresh.help"))
     node:action(label("stop_all.name"), function()
         -- On_tick run by hand stops too: nothing of the modules keeps running
-        ticks.stop_all()
+        tick_runs.stop_all()
         stop_function_loops(nil)
         modules.stop()
         refresh()

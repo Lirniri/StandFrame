@@ -1,0 +1,103 @@
+-- lib/AnitaDarin/ui/logic/stand/script/command_names.pluto
+-- What the lists of Found Commands and Base Commands do: rename an item's command, give it back its own
+-- name, add and take off extra words. The names are kept by ui/stand/core/commands; the lists that show them
+-- are in ui/stand/script/section.
+-- Each takes changed(): what the menu does when the names changed (its captions, the word buttons).
+-- Strings: core/language "script_menu" ("found_commands.*")
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local commands = Atdar.loader.load("ui/stand/core/commands")
+local command_box = Atdar.loader.load("parsers/stand/command_box")
+
+local log = new Logger("Menu")
+local text = select(2, i18n.scope("script_menu"))
+
+local module = {}
+
+-- "godmode" - an item's commands without the prefix, easier to read
+function module.short_names(ref): string
+    return table.concat(commands.bases_of(ref) or {}, ", ")
+end
+
+-- "atdar_godmode" - the commands as Stand has them now
+function module.full_names(ref): string
+    return table.concat(commands.names_of(ref) or {}, ", ")
+end
+
+-- Says it when a change was made for now but isn't kept for the next start
+local function warn_not_saved(): void
+    log:warn(text("found_commands.not_saved"))
+end
+
+-- Gives the item the name typed; the same as it has already is no change
+function module.rename(ref, value: string, changed: function): void
+    if command_box.sanitize(value) == commands.custom_of(ref) then
+        return
+    end
+
+    local ok, reason = commands.set_custom(ref, value)
+
+    if reason == "not_saved" then
+        -- Renamed for now, but it won't be there at the next start
+        changed()
+        warn_not_saved()
+        return
+    end
+
+    if not ok then
+        local key = reason == "taken" and "found_commands.rename.taken" or "found_commands.rename.failed"
+        log:warn(text(key):format(value))
+        return
+    end
+
+    changed()
+    log:notify(text("found_commands.rename.done"):format(module.full_names(ref)))
+end
+
+-- Gives the item back its own name
+function module.reset(ref, changed: function): void
+    local _, reason = commands.set_custom(ref, "")
+
+    if reason == "not_saved" then
+        warn_not_saved()
+    end
+
+    changed()
+    log:notify(text("found_commands.reset.done"):format(module.short_names(ref)))
+end
+
+-- Adds a word: one more command for the item, the same prefix
+function module.add_word(ref, value: string, changed: function): void
+    local ok, reason = commands.add_word(ref, value)
+
+    if reason == "not_saved" then
+        changed()
+        warn_not_saved()
+        return
+    end
+
+    if not ok then
+        local key = ({ own = "found_commands.words.own", taken = "found_commands.rename.taken" })[reason]
+            or "found_commands.rename.failed"
+        log:warn(text(key):format(value))
+        return
+    end
+
+    changed()
+    log:notify(text("found_commands.words.added"):format(command_box.sanitize(value)))
+end
+
+-- Takes a word off
+function module.remove_word(ref, word: string, changed: function): void
+    local _, reason = commands.remove_word(ref, word)
+
+    if reason == "not_saved" then
+        warn_not_saved()
+    end
+
+    changed()
+    log:notify(text("found_commands.words.removed"):format(word))
+end
+
+return module

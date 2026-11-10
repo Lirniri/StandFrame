@@ -1,55 +1,23 @@
 -- lib/AnitaDarin/ui/stand/modules/ticks.pluto
 --
--- A module's on_tick run by hand from the Modules list (ui/stand/modules/list): every frame, with or
--- without a time limit, with or without on_start / on_stop around it, whatever the module's status.
--- Each run is a table of its own: a newer run or Stop replaces it, and its tick handler ends then.
+-- The on_tick() list of a module in the Modules list (ui/stand/modules/list): Start With Init, Start Loop Only,
+-- Start For A While, Stop and the Status line. What the buttons do (the runs) is in ui/logic/stand/ticks.
 -- Loaded with modules_menu, which binds what it knows of the list (bind).
 -- Strings: core/language "modules"
 
 local i18n = Atdar.loader.load("core/i18n")
-local Logger = Atdar.loader.load("core/logger")
-
-local log = new Logger("Modules")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local runs = Atdar.loader.load("ui/logic/stand/ticks")
 
 local module = {}
 
 -- Strings under "modules"
 local label, text = i18n.scope("modules")
 
--- Stand runs the tick handlers once more while the script stops: the runs end then
-local stopping = false
-util.on_stop(function() stopping = true end)
-
--- What the Modules list gives (bind): short_name(name) for notices, status_changed(name) to show the
--- module's Status again, refresh() for every entry, is_user_click(click_type)
+-- What the Modules list gives (bind): status_changed(name) to show the module's Status again
 local hooks = {
-    short_name = |name| -> name,
     status_changed = |name| -> nil,
-    refresh = || -> nil,
-    is_user_click = |click_type| -> true,
 }
-
-function module.bind(given: table): void
-    for key, fn in pairs(given) do
-        hooks[key] = fn
-    end
-end
-
--- Module name -> its on_tick run by hand going on
-local manual_ticks = {}
-
--- Whether the module's on_tick is run by hand now
-function module.is_running(module_name: string): bool
-    return manual_ticks[module_name] ~= nil
-end
-
--- A module's on_tick run every frame from the menu, with or without a time limit, whatever its status.
--- Each run is a table of its own: a newer run or Stop replaces it, and its tick handler ends then
-
-
-local function tick_name(module_name: string): string
-    return $"{hooks.short_name(module_name)}.on_tick()"
-end
 
 -- Module name -> the Status line in its on_tick() list
 local tick_statuses = {}
@@ -71,159 +39,30 @@ local function show_tick_status(module_name: string, state: string, seconds_left
     hooks.status_changed(module_name)
 end
 
--- Seconds left of a run with a limit, rounded up: 10 at the start, 1 in its last second
-local function seconds_left(run: table): int
-    return math.ceil((run.ends - util.current_time_millis()) / 1000)
-end
-
--- Calls one of the module's hooks by hand for a manual run; an error is told
--- @return Whether it finished without an error
-local function run_hook(module_name: string, hook: string): bool
-    local modules = Atdar.modules
-    if not modules.has(module_name) then
-        return false
-    end
-    local mod = modules.get(module_name)
-    local ok, err = pcall(mod[hook], mod)
-    if not ok then
-        log:error(text("call.failed"):format($"{hooks.short_name(module_name)}.{hook}()", tostring(err)))
-    end
-    return ok
-end
-
--- Ends a run: forgets it, shows the state; a run started with init calls on_stop, so the module cleans up
-local function end_run(module_name: string, run: table, state: string): void
-    if manual_ticks[module_name] == run then
-        manual_ticks[module_name] = nil
-    end
-    show_tick_status(module_name, state)
-    if run.with_init then
-        run_hook(module_name, "on_stop")
-    end
-end
-
--- Runs the module's on_tick every frame; seconds: for how long, nil - until Stop.
--- with_init: on_start first (a failing one starts nothing), on_stop when the run ends
-local function start_tick(module_name: string, seconds: ?int, with_init: bool): void
-    -- A running module is ticked by the manager already: stopped, so on_tick runs once a frame, by hand
-    local modules = Atdar.modules
-    if modules.has(module_name) and modules.get(module_name):is_running() then
-        modules.stop_module(module_name)
-        hooks.refresh()
-        log:notify(text("tick.module_stopped"):format(hooks.short_name(module_name)))
-    end
-
-    -- A run going on is replaced: ended first, so its on_stop comes before the new on_start
-    local previous = manual_ticks[module_name]
-    if previous ~= nil then
-        end_run(module_name, previous, "stopped")
-    end
-
-    if with_init and not run_hook(module_name, "on_start") then
-        show_tick_status(module_name, "failed")
-        return
-    end
-
-    local run = { ends = nil, shown = nil, with_init = with_init }
-    if seconds ~= nil then
-        run.ends = util.current_time_millis() + seconds * 1000
-    end
-    manual_ticks[module_name] = run
-    if seconds == nil then
-        show_tick_status(module_name, "running")
-        log:notify(text(with_init ? "tick.started_init" : "tick.started"):format(tick_name(module_name)))
-    else
-        run.shown = seconds
-        show_tick_status(module_name, "running_for", seconds)
-        log:notify(text("tick.started_for"):format(tick_name(module_name), seconds))
-    end
-
-    util.create_tick_handler(function()
-        -- Stopped, or replaced by a newer run
-        if stopping or manual_ticks[module_name] ~= run then
-            return false
-        end
-        if run.ends ~= nil then
-            local left = seconds_left(run)
-            if left <= 0 then
-                end_run(module_name, run, "stopped")
-                log:notify(text("tick.finished"):format(tick_name(module_name)))
-                return false
-            end
-            -- Once a second, not every frame
-            if left ~= run.shown then
-                run.shown = left
-                show_tick_status(module_name, "running_for", left)
-            end
-        end
-        -- The module as it is now (Reload makes a new one)
-        local current = Atdar.modules
-        if not current.has(module_name) then
-            manual_ticks[module_name] = nil
-            show_tick_status(module_name, "stopped")
-            return false
-        end
-        local mod = current.get(module_name)
-        local ok, err = true, nil
-        local function tick_once()
-            ok, err = pcall(mod.on_tick, mod)
-        end
-        -- Stand shows how long it took this frame on screen (info text), under the module's full name
-        -- (Debug > Call Function > Settings: Show Call Time)
-        Atdar.loader.load("ui/stand/core/call_display").timed($"{module_name}.on_tick()", tick_once)
-        if not ok then
-            log:error(text("call.failed"):format(tick_name(module_name), tostring(err)))
-            end_run(module_name, run, "failed")
-            return false
-        end
-        return true
-    end)
-end
-
-local function stop_tick(module_name: string): void
-    local run = manual_ticks[module_name]
-    if run == nil then
-        log:notify(text("tick.not_running"):format(tick_name(module_name)))
-        return
-    end
-    end_run(module_name, run, "stopped")
-    log:notify(text("tick.stopped"):format(tick_name(module_name)))
-end
-
--- Stop and Restart: a run going on ends (told), none - nothing said
-function module.stop(module_name: string): void
-    if manual_ticks[module_name] ~= nil then
-        stop_tick(module_name)
-    end
-end
-
--- Stops every manual on_tick (Stop All)
-function module.stop_all(): void
-    local runs = manual_ticks
-    manual_ticks = {}
-    for module_name, run in pairs(runs) do
-        end_run(module_name, run, "stopped")
-    end
+-- @param given short_name(name) for notices, refresh() for every entry, status_changed(name)
+function module.bind(given: table): void
+    hooks.status_changed = given.status_changed or hooks.status_changed
+    runs.bind({ short_name = given.short_name, refresh = given.refresh, show_status = show_tick_status })
 end
 
 -- The on_tick() list: Start With Init, Start Loop Only, Start For A While (seconds), Stop, then the Status
 function module.list(entry: table, mod: table, title: string): void
     local name = mod.name
     local node = entry:list(title, {}, label("tick.help"))
-    node:action(label("tick.start_init.name"), || -> start_tick(name, nil, true), {}, label("tick.start_init.help"))
-    node:action(label("tick.start.name"), || -> start_tick(name, nil, false), {}, label("tick.start.help"))
+    node:action(label("tick.start_init.name"), || -> runs.start(name, nil, true), {}, label("tick.start_init.help"))
+    node:action(label("tick.start.name"), || -> runs.start(name, nil, false), {}, label("tick.start.help"))
     node:track(menu.click_slider(node.handle, label("tick.start_for.name"), {}, label("tick.start_for.help"),
         1, 600, 10, 1, function(seconds, click_type)
-        if stopping or not hooks.is_user_click(click_type) then
+        if not clicks.is_user_action(click_type) then
             return
         end
-        start_tick(name, seconds, false)
+        runs.start(name, seconds, false)
     end))
-    node:action(label("tick.stop.name"), || -> stop_tick(name), {}, label("tick.stop.help"))
+    node:action(label("tick.stop.name"), || -> runs.stop_told(name), {}, label("tick.stop.help"))
     tick_statuses[name] = node:divider(text("entry.status_line"):format(text("tick.state.stopped")))
-    local run = manual_ticks[name]
+    local run = runs.run_of(name)
     if run ~= nil and run.ends ~= nil then
-        show_tick_status(name, "running_for", math.max(seconds_left(run), 1))
+        show_tick_status(name, "running_for", math.max(runs.seconds_left(run), 1))
     elseif run ~= nil then
         show_tick_status(name, "running")
     end
