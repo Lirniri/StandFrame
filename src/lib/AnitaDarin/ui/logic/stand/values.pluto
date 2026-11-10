@@ -19,8 +19,10 @@ module.MAX_VARIABLE_DEPTH = 3
 
 -- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known
 local function function_text(fn): string
+
     local info = debug.getinfo(fn, "u")
     local params = {}
+
     for i = 1, info.nparams do
         local name = debug.getlocal(fn, i)
         if i ~= 1 or name ~= "self" then
@@ -30,11 +32,14 @@ local function function_text(fn): string
     if info.isvararg then
         table.insert(params, "...")
     end
+
     local params_text = table.concat(params, ", ")
     local returns = source_parser.return_type(fn)
+    
     if returns == nil then
         return $"function({params_text})"
     end
+
     return $"function({params_text}): {returns}"
 end
 
@@ -56,7 +61,9 @@ end
 -- A value as text: a table unpacked ({1, 2}, {"a", "b"}, {name = "x", [5] = true}), a function as its
 -- signature, the rest by tostring. seen: the tables being shown, so one inside itself is "{...}"
 describe = function(value, depth, seen)
+
     local kind = type(value)
+
     if kind == "function" then
         return function_text(value)
     end
@@ -73,6 +80,7 @@ describe = function(value, depth, seen)
     for i = 1, length do
         table.insert(parts, describe_item(value[i], depth + 1, seen))
     end
+
     -- The other keys after the list part, in a fixed order
     local keys = {}
     for key in pairs(value) do
@@ -80,7 +88,9 @@ describe = function(value, depth, seen)
             table.insert(keys, key)
         end
     end
+
     table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+
     for _, key in ipairs(keys) do
         local key_text = type(key) == "string" and key:match("^[%a_][%w_]*$") ? key
             : $"[{describe_item(key, depth + 1, seen)}]"
@@ -92,6 +102,7 @@ describe = function(value, depth, seen)
         parts = table.move(parts, 1, MAX_ITEMS, 1, {})
         table.insert(parts, "...")
     end
+
     return "{" .. table.concat(parts, ", ") .. "}"
 end
 
@@ -126,7 +137,9 @@ function module.type_text(value): string
     if kind ~= "table" then
         return text($"types.{kind}")
     end
+
     local inner = nil
+
     for _, entry in pairs(value) do
         local entry_kind = kind_of(entry)
         if inner == nil then
@@ -140,9 +153,11 @@ function module.type_text(value): string
             inner = "number"
         end
     end
+
     if inner == nil then
         return text("types.table_empty")
     end
+
     return text($"types.table_of_{inner}")
 end
 
@@ -153,33 +168,42 @@ local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, l
 -- The module's own fields (set in its __construct or later), sorted by name: { name, value }.
 -- Functions (hooks given as options) and Module's fields are left out
 local function variables_of(mod: table, hidden_of): table
+
     local list = {}
     local hidden = hidden_of(mod)
+
     for key, value in pairs(mod) do
         if type(key) == "string" and not MODULE_FIELDS[key] and not hidden[key] and key:sub(1, 2) ~= "__"
             and type(value) ~= "function" then
             table.insert(list, { name = key, value = value })
         end
     end
+
     table.sort(list, |a, b| -> a.name < b.name)
+
     return list
 end
 
 -- A table's entries in the order they're shown: the list part, then the other keys sorted.
 -- @return { key_text, value }: "[1]", "name", "[158214]"
 function module.table_entries(tbl: table): table
+
     local entries = {}
     local length = #tbl
+
     for i = 1, length do
         table.insert(entries, { key_text = $"[{i}]", value = tbl[i], raw_key = i })
     end
+
     local keys = {}
     for key in pairs(tbl) do
         if math.type(key) ~= "integer" or key < 1 or key > length then
             table.insert(keys, key)
         end
     end
+
     table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+
     for _, key in ipairs(keys) do
         local key_text = key
         if type(key) ~= "string" or not key:match("^[%a_][%w_]*$") then
@@ -189,6 +213,7 @@ function module.table_entries(tbl: table): table
         end
         table.insert(entries, { key_text = key_text, value = tbl[key], raw_key = key })
     end
+    
     return entries
 end
 
@@ -202,8 +227,10 @@ module.MAX_TABLE_ENTRIES = 100
 -- limit: how deep tables are made lists (MAX_VARIABLE_DEPTH when nil)
 -- holder, raw_key: the table the value is in and its key there; a function line keeps them to be called
 function module.collect_variable(out: table, parent: string, name: string, value, depth: int, seen: table, limit: ?int, holder: ?table, raw_key): void
+    
     limit = limit or module.MAX_VARIABLE_DEPTH
     local path = $"{parent}/{name}"
+    
     if type(value) ~= "table" or seen[value] or depth >= limit then
         local item = { kind = "line", path = path, parent = parent, name = name,
             text = describe_item(value, depth, seen) }
@@ -217,13 +244,18 @@ function module.collect_variable(out: table, parent: string, name: string, value
         table.insert(out, item)
         return
     end
+    
     local entries = module.table_entries(value)
+    
     table.insert(out, { kind = "list", path = path, parent = parent, name = $"{name} ({#entries})" })
+    
     if #entries == 0 then
         table.insert(out, { kind = "note", path = $"{path}/", parent = path, name = "{}" })
         return
     end
+    
     seen[value] = true
+    
     for i, entry in ipairs(entries) do
         if i > module.MAX_TABLE_ENTRIES then
             table.insert(out, { kind = "note", path = $"{path}/...", parent = path, name = "..." })
@@ -231,6 +263,7 @@ function module.collect_variable(out: table, parent: string, name: string, value
         end
         module.collect_variable(out, path, entry.key_text, entry.value, depth + 1, seen, limit, value, entry.raw_key)
     end
+    
     seen[value] = nil
 end
 

@@ -79,6 +79,11 @@ local function separator_caption(key: string = "command_box_separator", name: st
     return text(name):format(text(value))
 end
 
+-- The separator choices of every command prefix: none, underscore, dot (the order of SEPARATORS)
+local function separator_options(): table
+    return { label("separator.none"), label("separator.underscore"), label("separator.dot") }
+end
+
 local function log_name_caption(): string
     local key = Atdar.profile.get("log_name") == "display" ? "log_name.display" : "log_name.short"
     return text("log_name.name"):format(text(key))
@@ -654,27 +659,29 @@ end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────
 
--- Base Commands (the script's own) and Found Commands (the loaded menu's) each have a prefix and a separator
-function module.command_box(node: table): void
-    local options = { label("separator.none"), label("separator.underscore"), label("separator.dot") }
-    -- Commands start with cb (command box): cbprefix, cbseparator, cbfoundprefix, cbfoundseparator
+-- Prefix and separator of the script's own commands (Base Commands): cbprefix, cbseparator
+function module.command_box_base_prefix(node: table): void
+    -- Commands start with cb (command box)
     input(node, "command_box_prefix", true, "cbprefix")
-    view.separator = node:list_action(separator_caption(), options, function(index)
+    view.separator = node:list_action(separator_caption(), separator_options(), function(index)
         Atdar.profile.set("command_box_separator", SEPARATORS[index])
     end, { "cbseparator" }, label("separator.help"))
+end
+
+-- Prefix and separator of the loaded menu's commands (Found Commands): cbfoundprefix, cbfoundseparator
+function module.command_box_found_prefix(node: table): void
     input(node, "command_box_found_prefix", true, "cbfoundprefix")
-    view.found_separator = node:list_action(separator_caption("command_box_found_separator", "found_separator.name"), options,
-        function(index)
+    view.found_separator = node:list_action(separator_caption("command_box_found_separator", "found_separator.name"),
+        separator_options(), function(index)
         Atdar.profile.set("command_box_found_separator", SEPARATORS[index])
     end, { "cbfoundseparator" }, label("found_separator.help"))
 end
 
 -- The user's own commands' prefix and separator, at the top of User Commands: cbuserprefix, cbuserseparator
 function module.user_command_box(node: table): void
-    local options = { label("separator.none"), label("separator.underscore"), label("separator.dot") }
     input(node, "command_box_user_prefix", true, "cbuserprefix")
-    view.user_separator = node:list_action(separator_caption("command_box_user_separator", "user_separator.name"), options,
-        function(index)
+    view.user_separator = node:list_action(separator_caption("command_box_user_separator", "user_separator.name"),
+        separator_options(), function(index)
         Atdar.profile.set("command_box_user_separator", SEPARATORS[index])
     end, { "cbuserseparator" }, label("user_separator.help"))
 end

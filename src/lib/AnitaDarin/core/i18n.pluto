@@ -20,25 +20,33 @@ local module = {}
 
 -- Searched from last to first, so a menu's strings win over the script's
 local sources = {}
+
 -- key -> label, reset whenever sources change since the text behind a key may change
 local labels = {}
+
 -- Every label made so far: label -> { key, english }. Never reset: items already in the menu keep
 -- their labels, and set_language() has to reach them all
 local made = {}
 -- Missing keys already logged
+
 local reported = {}
 -- Language code chosen in the profile ("ru-ru"); nil follows Stand's language
 local forced = nil
+
 -- What set_language() was last asked for; applied again when Stand's language changes,
 -- e.g. it couldn't be shown with Stand in English and now Stand isn't
 local requested = nil
+
 -- Show each string's key instead of its text (set_show_keys): a translator sees which key is which
 local show_keys = false
+
 -- Hovering an item sends its key to Stand (set_send_path), and the key last asked for under each Stand label
 local send_path = false
+
 -- The same for the file the string is in (set_send_file)
 local send_file = false
 local recent = {}
+
 -- Called after the shown language changed (on_change), e.g. to rebuild texts made with text()
 local listeners = {}
 
@@ -70,7 +78,9 @@ local function read_languages(source: table): void
             end
 
             local strings = new JsonFile(path):read() or {}
+
             rawset(languages, code, strings)
+
             return strings
         end,
     })
@@ -96,6 +106,7 @@ local function name_in(source: table, code: string): ?string
     if text == nil then
         return nil
     end
+
     return text:match('"language_name"%s*:%s*"([^"\\]*)"')
 end
 
@@ -170,6 +181,7 @@ local function find(code: string, key: string): ?string
         local flat = flat_of(source, code)
         local own_key = key_in(source, key)
         local text = flat and own_key and flat[own_key]
+
         if text ~= nil then
             return text
         end
@@ -291,7 +303,9 @@ function module.add_source(dir: string, required: bool = false, prefix: ?string)
     end
 
     table.insert(sources, source)
+
     labels = {}
+
     return source
 end
 
@@ -358,7 +372,9 @@ function module.watch_path(ref, label): bool
     end
 
     menu.on_focus(ref, function()
+
         local parts = {}
+
         if send_path then
             table.insert(parts, key)
         end
@@ -368,10 +384,12 @@ function module.watch_path(ref, label): bool
         if #parts == 0 then
             return
         end
+
         -- Both in one notification: on separate lines when Stand's notifications put the text on its own line
         -- (Settings > Appearance > Notifications > Stand), otherwise in a row
         local profile = Atdar.profile
         local newline = profile and profile.get and profile.get("notify_stand_newline") == true
+
         log:notify(table.concat(parts, newline ? "\n" : " | "), "stand")
     end)
 
@@ -389,12 +407,15 @@ function module.file_of(key: string): ?string
             local source = sources[i]
             local flat = flat_of(source, code)
             local own_key = key_in(source, key)
+
             if flat and own_key and flat[own_key] ~= nil then
                 local path = source.files[code]
                 local root = filesystem.scripts_dir()
+
                 if path:sub(1, #root) == root then
                     return path:sub(#root + 1)
                 end
+
                 return path
             end
         end
@@ -434,6 +455,7 @@ end
 -- @return { { code, name } } for every language with a file, English first, the rest by name.
 -- The name is the file's own "language_name", e.g. "Русский"
 function module.languages(): table
+
     local list = {}
     local seen = {}
 
@@ -503,20 +525,26 @@ end
 -- Stand's translations, so it can't be shown with Stand in English. Applies to items already in the menu too
 -- @return false when it can't be shown (nothing changes), otherwise true
 function module.set_show_keys(on: bool): bool
+
     local can_choose = module.can_choose_language()
+
     if on and not can_choose then
         log:warn(module.text("profile.translation.show_keys.unavailable"))
         return false
     end
+
     show_keys = on
+
     if can_choose then
         for label, entry in pairs(made) do
             apply_current(label, entry.key, entry.english)
         end
     end
+
     for _, fn in ipairs(listeners) do
         fn()
     end
+
     return true
 end
 
@@ -559,16 +587,20 @@ function module.create_language(code: string, name: ?string, from: ?string)
     if not module.is_code(code) then
         return nil, "code"
     end
+
     if module.has_language(code) then
         return nil, "exists"
     end
 
     from = from or ENGLISH
     local made_count = 0
+
     for _, source in ipairs(sources) do
         local strings = source.languages[from] or source.languages[ENGLISH]
+
         if strings ~= nil and not filesystem.exists($"{source.dir}{code}.json") then
             local copy = {}
+
             for key, value in pairs(strings) do
                 copy[key] = value
             end
@@ -598,10 +630,13 @@ function module.progress(code: string): table
         for key, value in pairs(english) do
             local full = path == "" and tostring(key) or $"{path}.{tostring(key)}"
             local other = type(translated) == "table" and translated[key] or nil
+
             if type(value) == "table" then
                 walk(value, other, full, prefix)
             elseif type(value) == "string" and full ~= "language_name" then
+
                 result.total += 1
+
                 if type(other) == "string" and other ~= value then
                     result.translated += 1
                 else
@@ -613,6 +648,7 @@ function module.progress(code: string): table
 
     for _, source in ipairs(sources) do
         local english = source.languages[ENGLISH]
+
         if english ~= nil then
             walk(english, source.languages[code], "", source.prefix)
         end
@@ -645,9 +681,12 @@ local stand_language = lang.get_current()
 util.create_tick_handler(function()
 
     local current = lang.get_current()
+
     if current ~= stand_language then
         stand_language = current
+
         ensure_translated()
+        
         if requested or show_keys then
             module.set_language(requested)
         else

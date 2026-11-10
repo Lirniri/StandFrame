@@ -23,11 +23,14 @@ function module.start(loop_run: table, is_current: function, step: function): vo
         -- The result is drawn every frame (debug text shows for one frame only), so it stays between
         -- the calls of a loop with an interval too
         if loop_run.every ~= nil then
+
             local now = util.current_time_millis()
+
             if now < loop_run.next then
                 display.draw(loop_run.result)
                 return true
             end
+
             loop_run.next = now + loop_run.every
         end
 
@@ -45,6 +48,7 @@ end
 -- @param call The call, returns its packed results
 -- @return What call returned
 function module.timed(name: string, call: function): table
+    
     local results = nil
 
     display.timed(name, function()

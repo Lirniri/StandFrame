@@ -87,10 +87,12 @@ function module.default_of(param: table): ?string
     if param.default ~= nil then
         return param.default
     end
+
     -- ?type: may be left out
     if param.type ~= nil and param.type:sub(1, 1) == "?" then
         return nil
     end
+
     return KIND_DEFAULT[module.kind_of(param.type)]
 end
 
@@ -98,26 +100,33 @@ end
 -- nothing of its parameters: it takes what's given (isvararg), so its signature is only "...".
 -- skip_self: a method called with its owner: its self isn't asked for
 function module.signature_of(fn, skip_self: ?bool): table
+    
     local info = debug.getinfo(fn, "u")
     local names = {}
+
     for i = 1, info.nparams do
         local name = debug.getlocal(fn, i)
         if not (i == 1 and skip_self and name == "self") then
             table.insert(names, name)
         end
     end
+
     return module.signature(names, source_parser.param_types(fn), info.isvararg, source_parser.param_defaults(fn))
 end
 
 -- "handle, coords, ...": the parameters' names, and ... when it takes more
 function module.params_text(sig: table): string
+
     local names = {}
+
     for _, param in ipairs(sig.params) do
         table.insert(names, param.name)
     end
+
     if sig.vararg then
         table.insert(names, "...")
     end
+
     return table.concat(names, ", ")
 end
 
@@ -138,9 +147,11 @@ local function read_one(param: table, typed: ?string)
     if typed == nil then
         typed = module.default_of(param)
     end
+
     if typed == nil or trim(typed) == "" then
         return nil
     end
+
     local kind = module.kind_of(param.type)
     if kind == "string" then
         return typed
@@ -153,16 +164,19 @@ local function read_one(param: table, typed: ?string)
         end
         return fn
     end
+
     local args, count, err = args_parser.parse(typed)
     if err ~= nil then
         return nil, text("errors.bad"):format(param.name, err)
     end
+
     if kind == "table" then
         if count == 1 and type(args[1]) == "table" then
             return args[1]
         end
         return { table.unpack(args, 1, count) }
     end
+
     if kind == "vector3" and count == 3 then
         for i = 1, 3 do
             if type(args[i]) ~= "number" then
@@ -171,10 +185,13 @@ local function read_one(param: table, typed: ?string)
         end
         return v3.new(args[1], args[2], args[3])
     end
+
     if count ~= 1 then
         return nil, text(kind == "vector3" and "errors.vector" or "errors.one_value"):format(param.name)
     end
+
     local value = args[1]
+
     if kind == "integer" then
         local whole = type(value) == "number" and math.tointeger(value) or nil
         if whole == nil then
@@ -182,12 +199,15 @@ local function read_one(param: table, typed: ?string)
         end
         return whole
     end
+
     if kind == "float" and type(value) ~= "number" then
         return nil, text("errors.number"):format(param.name)
     end
+
     if kind == "boolean" and type(value) ~= "boolean" then
         return nil, text("errors.boolean"):format(param.name)
     end
+
     return value
 end
 
@@ -195,7 +215,9 @@ end
 -- nils at the end aren't counted (the function's own defaults apply)
 -- @return The arguments, how many there are, and what was wrong (nil if nothing)
 function module.read(sig: table, texts: table)
+
     local args, count = {}, 0
+
     for i, param in ipairs(sig.params) do
         local value, err = read_one(param, texts[i])
         if err ~= nil then
@@ -206,18 +228,24 @@ function module.read(sig: table, texts: table)
             count = i
         end
     end
+
     if sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
+
         local rest, rest_count, err = args_parser.parse(texts.rest)
+
         if err ~= nil then
             return {}, 0, text("errors.bad"):format(text("rest.name"), err)
         end
+
         -- After the named parameters, those left empty in between are nil
         local first = #sig.params
         for i = 1, rest_count do
             args[first + i] = rest[i]
         end
+        
         count = first + rest_count
     end
+
     return args, count, nil
 end
 

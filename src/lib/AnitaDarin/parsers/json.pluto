@@ -14,20 +14,27 @@ local module = {}
 -- file would load with keys silently missing ('{"a":1,"b":' gives { a = 1 }). Checked here instead
 -- @return The decoded table, or nil if the text isn't one whole JSON object or array
 function module.decode(text: string): ?table
+
     local trimmed = text:match("^%s*(.-)%s*$")
     local first, last = trimmed:sub(1, 1), trimmed:sub(-1)
+
     if not ((first == "{" and last == "}") or (first == "[" and last == "]")) then
         return nil
     end
+
     local data = json.decode(trimmed)
+
     if type(data) ~= "table" then
         return nil
     end
+
     -- '{bad}' decodes to an empty table
     local compact = trimmed:gsub("%s", "")
+    
     if next(data) == nil and compact ~= "{}" and compact ~= "[]" then
         return nil
     end
+
     return data
 end
 

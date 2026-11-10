@@ -91,7 +91,9 @@ MenuNode = class
     -- Switches off every toggle in this node and its sublists, then waits for Stand to stop them.
     -- A toggle_loop deleted while on keeps ticking in Stand and fails with "CommandRef is not valid"
     function stop_toggles(): void
+
         local stopped = false
+
         local function stop_in(node)
             for _, ref in ipairs(node.toggles) do
                 if menu.get_value(ref) then
@@ -103,7 +105,9 @@ MenuNode = class
                 stop_in(sublist)
             end
         end
+
         stop_in(self)
+
         if stopped then
             for _ = 1, STOP_TICKS do
                 util.yield()
@@ -151,10 +155,13 @@ MenuNode = class
     -- Removes the items from the index-th on (in the order they were made), leaving the ones before:
     -- a part of a list made again (e.g. a module's functions after its code is reloaded)
     function clear_from(index: int): void
+
         local removed = {}
+
         for i = #self.children, index, -1 do
             removed[self.children[i]] = true
         end
+
         -- Toggles switched off first: one deleted while on keeps ticking in Stand
         for i = #self.toggles, 1, -1 do
             local ref = self.toggles[i]
@@ -165,6 +172,7 @@ MenuNode = class
                 table.remove(self.toggles, i)
             end
         end
+
         for i = #self.sublists, 1, -1 do
             local sublist = self.sublists[i]
             if removed[sublist.handle] then
@@ -172,6 +180,7 @@ MenuNode = class
                 table.remove(self.sublists, i)
             end
         end
+
         for i = #self.children, index, -1 do
             local child_handle = table.remove(self.children, i)
             Commands.untrack(child_handle)
@@ -239,11 +248,14 @@ MenuNode = class
     end
 
     function add_feature(feature: table, name: string|int, commands: table = {}, help: string|int = "")
+
         local create = ITEM_FOR_KIND[feature.kind]
         if not create then
             error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")
         end
+
         local ref = self:track_named(name, create(self.handle, feature, name, Commands.names(commands), help), commands)
+
         if TOGGLE_KINDS[feature.kind] then
             table.insert(self.toggles, ref)
             -- A failed feature is switched off; its toggle follows. The ref may be deleted by then
@@ -251,6 +263,7 @@ MenuNode = class
                 pcall(menu.set_value, ref, false)
             end)
         end
+        
         return ref
     end
 

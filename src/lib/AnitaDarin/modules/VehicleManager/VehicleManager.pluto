@@ -22,6 +22,7 @@ local function vehicle_data(handle: int): ?table
         x = coords.x, y = coords.y, z = coords.z,
         heading = n_entity.get_heading(handle)
     }
+    
     local name = util.reverse_joaat(model)
 
     if name ~= nil and name ~= "" then

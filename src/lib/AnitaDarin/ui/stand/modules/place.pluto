@@ -20,10 +20,13 @@ local debug_mode = Atdar.debug == true
 
 -- The "Debug" divider, the Modules list and the items added with debug_only() show in debug mode
 local function update_visibility(): void
+
     local refs = { place.divider, place.list and place.list.handle }
+
     for _, ref in ipairs(place.extra or {}) do
         table.insert(refs, ref)
     end
+
     for _, ref in pairs(refs) do
         pcall(menu.set_visible, ref, debug_mode)
     end
@@ -54,15 +57,18 @@ end
 -- before_list: an optional function(parent) that makes an item right under the divider, above Modules;
 -- it returns the item's handle, which is shown in debug mode too
 function module.build(parent: table, before_list: ?function): void
+
     -- The manager failed to load: the loader left an empty table
     if Atdar.modules == nil or type(Atdar.modules.names) ~= "function" then
         return
     end
+
     -- A section made again (a profile created or deleted): the old place's items are gone
     place = { divider = parent:divider(label("debug.divider")), extra = {} }
     if before_list ~= nil then
         table.insert(place.extra, before_list(parent))
     end
+    
     place.list = module.list_in(parent)
     update_visibility()
 end

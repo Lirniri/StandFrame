@@ -270,13 +270,15 @@ function module.build(section: table, opts: table): void
 
     -- Command Box
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
-    profile_menu.command_box(command_box)
-    command_box:divider(label("commands.divider"))
     local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
-    local found = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
+    profile_menu.command_box_base_prefix(base_commands)
+
+    local found_commands = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
+    profile_menu.command_box_found_prefix(found_commands)
+
     user_commands.build(command_box)
     -- The folder each list's names and words are kept in; made when it isn't there yet
-    for _, part in ipairs({ { list = base_commands, who = "script" }, { list = found, who = "menu" } }) do
+    for _, part in ipairs({ { list = base_commands, who = "script" }, { list = found_commands, who = "menu" } }) do
         part.list:action(label("commands_folder.name"), function()
             local dir = commands.folder_of(part.who)
             if dir == nil then
@@ -334,7 +336,7 @@ function module.build(section: table, opts: table): void
     end, { "notifyclearfeed" }, label("clear_feed.help"))
 
     -- Last, once every item of the section has its commands
-    fill_command_lists(base_commands, found)
+    fill_command_lists(base_commands, found_commands)
 end
 
 return module

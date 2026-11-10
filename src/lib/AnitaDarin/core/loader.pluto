@@ -47,6 +47,7 @@ end
 -- Loads inside it count as its nested time. Errors from fn pass through, after the time is recorded
 -- @return What fn returns
 function module.measure(what: string, fn, ...)
+
     local frame = { nested = 0 }
     table.insert(loading, frame)
     local started = module.now()
@@ -54,18 +55,24 @@ function module.measure(what: string, fn, ...)
     local total = module.now() - started
     table.remove(loading)
     local parent = loading[#loading]
+
     if parent then
         parent.nested += total
     end
+
     local own = total - frame.nested
     local path = shorten(what)
+
     table.insert(module.timings, { path = path, total = total, own = own, depth = #loading })
+
     if Atdar.load_timing then
         log:info($"loaded '{path}' in {ms(total)} ms (own {ms(own)} ms)")
     end
+
     if not results[1] then
         error(results[2], 0)
     end
+
     return table.unpack(results, 2, results.n)
 end
 
@@ -82,19 +89,24 @@ end
 -- @param total_ms The whole start, if measured (bootstrap passes it)
 -- @param limit How many of the slowest files to list
 function module.report(total_ms: ?number, limit: int = 15): void
+
     local sorted = {}
     local own_sum = 0
+
     for _, entry in ipairs(module.timings) do
         table.insert(sorted, entry)
         own_sum += entry.own
     end
+
     table.sort(sorted, |a, b| -> a.own > b.own)
 
     local summary = $"load times: {#sorted} files, {ms(own_sum)} ms in them"
     if total_ms ~= nil then
         summary ..= $", the whole start {ms(total_ms)} ms"
     end
+
     log:info(summary)
+
     for i = 1, math.min(limit, #sorted) do
         local entry = sorted[i]
         log:info(string.format("%8s ms own %8s ms with nested   %s", ms(entry.own), ms(entry.total), entry.path))
@@ -106,17 +118,21 @@ end
 -- @return The file and line that asked for a load, past the loader's own frames and C functions
 -- (require, pcall): "lib/AnitaDarin/natives/visual/hud/thefeed.pluto:13"
 local function caller(): string
+
     local own = debug.getinfo(1, "S").source
     local level = 2
+
     while true do
         local info = debug.getinfo(level, "Sl")
         if info == nil then
             return "?"
         end
+
         if info.what ~= "C" and info.source ~= own then
             local file = info.source:gsub("^@", "")
             return $"{shorten(file)}:{info.currentline}"
         end
+
         level += 1
     end
 end
@@ -127,18 +143,23 @@ local loaded_names = {}
 -- Requires lib/AnitaDarin/<path>. On error logs it with the file that asked for it and returns
 -- an empty table, so one broken file doesn't take down the whole section
 function module.load(path: string): table
+
     local name = $"{Atdar.name}/{path}"
     local ok, result = timed_require(path, name)
+
     if not ok then
         log:error($"failed to load '{path}' (from {caller()})\n{result}")
         return {}
     end
+
     loaded_names[name] = true
+
     -- An empty file makes require return true instead of a table
     if type(result) ~= "table" then
         log:warn($"'{path}' did not return a table")
         return {}
     end
+
     return result
 end
 
@@ -149,6 +170,7 @@ local LIB_DIR = $"{filesystem.scripts_dir()}lib\\{Atdar.name}\\"
 -- so a facade doesn't list its submodules. A field with no such file stays nil, so typos aren't hidden.
 -- Example: return Atdar.loader.auto(module, "natives/visual/hud") -> hud.minimap loads natives/visual/hud/minimap.pluto
 function module.auto(tbl: table, base: string): table
+
     -- Fields already known to have no file: not checked on disk again
     local missing = {}
     return setmetatable(tbl, {
@@ -190,8 +212,10 @@ end
 -- a table kept in a variable from before stays the old one
 -- @return How many loaded files were forgotten
 function module.reload(tbl: table, base: string): int
+
     local prefix = $"{Atdar.name}/{base}/"
     local forgotten = 0
+
     -- Only the files module.load knows, not all of package.loaded; one a file required itself isn't forgotten
     for name in pairs(loaded_names) do
         if name:sub(1, #prefix) == prefix then
@@ -200,9 +224,11 @@ function module.reload(tbl: table, base: string): int
             forgotten += 1
         end
     end
+
     for key in pairs(tbl) do
         rawset(tbl, key, nil)
     end
+    
     -- A fresh auto: files added since are found too
     module.auto(tbl, base)
     return forgotten

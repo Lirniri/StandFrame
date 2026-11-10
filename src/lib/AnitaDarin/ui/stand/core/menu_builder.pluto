@@ -96,26 +96,31 @@ local function check_item(item, where: string): ?string
         log:warn($"{where}: item must be a table, got {type(item)}")
         return nil
     end
+    
     for key in pairs(item) do
         if not ITEM_FIELDS[key] then
             log:warn($"{where}: unknown field '{tostring(key)}'")
         end
     end
+
     if item.items ~= nil and item.list == nil then
         log:warn($"{where}: 'items' belongs to a list item, add list = \"Name\" next to it")
         return nil
     end
+
     local types = {}
     for _, type_name in ipairs(TYPE_NAMES) do
         if item[type_name] ~= nil then
             table.insert(types, type_name)
         end
     end
+
     if #types ~= 1 then
         local found = #types == 0 ? "none" : table.concat(types, " and ")
         log:warn($"{where}: item needs exactly one of {table.concat(TYPE_NAMES, ', ')}, found {found}")
         return nil
     end
+
     local type_name = types[1]
     for _, field in ipairs(ITEM_TYPES[type_name].required or {}) do
         if item[field] == nil then
@@ -123,6 +128,7 @@ local function check_item(item, where: string): ?string
             return nil
         end
     end
+
     return type_name
 end
 

@@ -60,15 +60,20 @@ end
 -- Calls one of the module's hooks by hand for a manual run; an error is told
 -- @return Whether it finished without an error
 local function run_hook(module_name: string, hook: string): bool
+
     local modules = Atdar.modules
+
     if not modules.has(module_name) then
         return false
     end
+
     local mod = modules.get(module_name)
     local ok, err = pcall(mod[hook], mod)
+
     if not ok then
         log:error(text("call.failed"):format($"{hooks.short_name(module_name)}.{hook}()", tostring(err)))
     end
+
     return ok
 end
 
@@ -86,8 +91,10 @@ end
 -- Runs the module's on_tick every frame; seconds: for how long, nil - until Stop.
 -- with_init: on_start first (a failing one starts nothing), on_stop when the run ends
 function module.start(module_name: string, seconds: ?int, with_init: bool): void
+
     -- A running module is ticked by the manager already: stopped, so on_tick runs once a frame, by hand
     local modules = Atdar.modules
+
     if modules.has(module_name) and modules.get(module_name):is_running() then
         modules.stop_module(module_name)
         hooks.refresh()
@@ -106,10 +113,12 @@ function module.start(module_name: string, seconds: ?int, with_init: bool): void
     end
 
     local run = { ends = nil, shown = nil, with_init = with_init }
+
     if seconds ~= nil then
         run.ends = util.current_time_millis() + seconds * 1000
     end
     manual_ticks[module_name] = run
+
     if seconds == nil then
         show_tick_status(module_name, "running")
         log:notify(text(with_init ? "tick.started_init" : "tick.started"):format(tick_name(module_name)))
@@ -120,23 +129,29 @@ function module.start(module_name: string, seconds: ?int, with_init: bool): void
     end
 
     util.create_tick_handler(function()
+
         -- Stopped, or replaced by a newer run
         if clicks.is_stopping() or manual_ticks[module_name] ~= run then
             return false
         end
+
         if run.ends ~= nil then
+
             local left = module.seconds_left(run)
+
             if left <= 0 then
                 end_run(module_name, run, "stopped")
                 log:notify(text("tick.finished"):format(tick_name(module_name)))
                 return false
             end
+
             -- Once a second, not every frame
             if left ~= run.shown then
                 run.shown = left
                 show_tick_status(module_name, "running_for", left)
             end
         end
+
         -- The module as it is now (Reload makes a new one)
         local current = Atdar.modules
         if not current.has(module_name) then
@@ -144,11 +159,13 @@ function module.start(module_name: string, seconds: ?int, with_init: bool): void
             show_tick_status(module_name, "stopped")
             return false
         end
+
         local mod = current.get(module_name)
         local ok, err = true, nil
         local function tick_once()
             ok, err = pcall(mod.on_tick, mod)
         end
+
         -- Stand shows how long it took this frame on screen (info text), under the module's full name
         -- (Debug > Call Function > Settings: Show Call Time)
         Atdar.loader.load("ui/stand/core/call_display").timed($"{module_name}.on_tick()", tick_once)
@@ -157,6 +174,7 @@ function module.start(module_name: string, seconds: ?int, with_init: bool): void
             end_run(module_name, run, "failed")
             return false
         end
+        
         return true
     end)
 end

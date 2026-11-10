@@ -21,9 +21,11 @@
 
 -- The open file of today; a new day (or another folder) opens a new one
 local log_file = { path = nil, handle = nil }
+
 -- Lines written but not on disk yet, and when they last went (see Writing to disk below)
 local unflushed = false
 local last_flush = 0
+
 -- Set when the file can't be opened or written: lines then go to Stand's log only,
 -- so a full disk or a locked file doesn't fail every line
 local file_broken = false
@@ -49,26 +51,33 @@ end
 -- The day files in the folder: { name = "2026-11-06", path = ... }; other files aren't touched.
 -- Any name ending in the date counts, so files named before the script's name was added are cleaned too
 local function day_files(dir: string): table
+
     local list = {}
+
     if not filesystem.exists(dir) then
         return list
     end
+
     for _, path in ipairs(filesystem.list_files(dir)) do
         local day = path:match("(%d%d%d%d%-%d%d%-%d%d)%.log$")
         if day then
             table.insert(list, { name = day, path = path })
         end
     end
+
     return list
 end
 
 -- How many days of files are kept: the profile's log_keep_days, 0 = all
 local function keep_days(): int
+
     local profile = Atdar.profile
     local days = profile and profile.get and profile.get("log_keep_days")
+
     if type(days) ~= "number" then
         return 0
     end
+
     return days
 end
 
@@ -78,13 +87,16 @@ local function remove_old_files(dir: string, today: string): void
     if days <= 0 then
         return
     end
+
     local year, month, day = today:match("^(%d+)%-(%d+)%-(%d+)$")
     if not year then
         return
     end
+
     -- Noon, so a daylight saving switch doesn't move the day
     local noon = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day), hour = 12 })
     local oldest = os.date("%Y-%m-%d", noon - (days - 1) * 86400)
+
     for _, file in ipairs(day_files(dir)) do
         if file.name < oldest then
             os.remove(file.path)
@@ -95,8 +107,10 @@ end
 -- Opens today's file if it isn't the open one yet; on opening, old files are removed.
 -- Errors when it can't be opened
 local function today_file()
+
     local dir = log_dir()
     local today = os.date("%Y-%m-%d")
+
     -- The script's file name first: the files still sort by date, and a copied file says whose it is.
     -- Not the Display Name: changing it would split a day into two files
     local path = $"{dir}{Atdar.name}_{today}.log"
@@ -104,11 +118,15 @@ local function today_file()
         return log_file.handle
     end
     close_file()
+
     if not filesystem.exists(dir) then
         filesystem.mkdirs(dir)
     end
+
     pcall(remove_old_files, dir, today)
+
     local handle, err = io.open(path, "a")
+
     if not handle then
         error(err)
     end
@@ -178,15 +196,19 @@ end
 -- @return The level's name in the script's language ("Предупреждение"); English until core/i18n has
 -- loaded (it loads after the logger, and lines can come before it)
 local function level_title(level: string): string
+
     local english = LEVEL_ENGLISH[level] or level
     local i18n = package.loaded[$"{Atdar.name}/core/i18n"]
+
     if type(i18n) ~= "table" or type(i18n.text) ~= "function" then
         return english
     end
+
     local ok, title = pcall(i18n.text, $"logger.level.{level:lower()}", english)
     if not ok or type(title) ~= "string" then
         return english
     end
+
     return title
 end
 
@@ -242,18 +264,23 @@ local class Logger
             -- On screen: the whole line in debug mode, otherwise the short one. The head apart too:
             -- Stand's notification may put the text on a line of its own (opts.head)
             local head = Atdar.debug ? self:full_head(level) : self:short_head(level)
+
             -- The emoticon at the end of the sentence: "Saved :D"
             local emoticon = emoticon_of(level)
             if emoticon ~= "" then
                 msg = $"{msg} {emoticon}"
             end
+
             local shown = $"{head} {msg}"
+
             -- Where it shows is the profile's notify; errors go to Stand unless the profile says otherwise
             local profile = Atdar.profile
+
             if target == nil and level == "ERROR" and profile and profile.get
                 and profile.get("notify_errors_in_stand") ~= false then
                 target = "stand"
             end
+
             -- utils/util loads after the logger, so errors during early loading use Stand's toast.
             -- A notification that fails itself (e.g. the game's feed) still shows, in Stand
             -- The whole line for Stand and feed posts; a message card shows the level as its subject
@@ -265,6 +292,7 @@ local class Logger
                     return post
                 end
             end
+            
             util.toast(shown)
         end
         return nil

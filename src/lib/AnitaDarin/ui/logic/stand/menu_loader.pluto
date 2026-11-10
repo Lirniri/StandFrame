@@ -28,11 +28,14 @@ module.PACKS_DIR = PACKS_DIR
 -- @return Built-in feature files: everything in the category folders of lib features/.
 -- Top-level files there (Feature, registry) are the core, not features
 local function find_builtin_features(): table
+
     local files = {}
     local dir = $"{paths.lib}features\\"
+
     if not filesystem.is_dir(dir) then
         return files
     end
+
     for _, path in ipairs(filesystem.list_files(dir)) do
         if filesystem.is_dir(path) then
             for _, file in ipairs(packs.find_feature_files($"{path}\\")) do
@@ -40,7 +43,9 @@ local function find_builtin_features(): table
             end
         end
     end
+
     table.sort(files)
+    
     return files
 end
 

@@ -88,7 +88,6 @@ end
 -- @param tbl The table
 -- @return Nothing
 local function fill_table(node: table, context: table, tbl: table): void
-    -- body function
 
     local show_entries
 
@@ -137,6 +136,7 @@ local function fill_table(node: table, context: table, tbl: table): void
         -- @param
         -- @return
         for _, entry in ipairs(entries) do
+
             local key = entry.key
             local value = entry.value
 
@@ -166,6 +166,8 @@ local function fill_table(node: table, context: table, tbl: table): void
                     end
                 end)
             end
+
+            --@return void
         end
         -- what returns
     end
@@ -180,6 +182,7 @@ end
 -- @param refresh function() the files of the editor made again
 -- @return Nothing
 local function file_list(parent: table, file: table, refresh: function): void
+    
     local deleted = false
     local cancel = nil
     local node = nil
@@ -229,7 +232,6 @@ end
 -- @param node The Call Function list
 -- @return The Files Editor's list
 function module.build(node: table): table
-    -- body function
 
     local editor = nil
     local first = nil
@@ -237,9 +239,7 @@ function module.build(node: table): table
     -- The file lists made again (a file made or deleted)
     local function show_files(): void
         editor:clear_from(first)
-
-        -- @param
-        -- @return
+        
         for _, file in ipairs(files().list()) do
             file_list(editor, file, show_files)
         end
@@ -268,7 +268,6 @@ function module.build(node: table): table
     end)
 
     return editor
-    -- what returns
 end
 
 return module

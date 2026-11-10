@@ -46,26 +46,34 @@ local last_tables = {}
 -- "Variable: 147462", "Variable: table of integers" for a table (what it holds is in the Value list right
 -- under), "Variable: -" before a call or when it gave nothing
 local function result_line(key: string): string
+
     local value = last_results[key]
+
     if value == nil then
         return text("loop.result_line"):format(text("loop.no_result"))
     end
+
     if last_tables[key] ~= nil then
         return text("loop.result_line"):format(last_types[key] or "")
     end
+
     if #value > MAX_RESULT_CHARS then
         value = value:sub(1, MAX_RESULT_CHARS) .. "..."
     end
+
     return text("loop.result_line"):format(value)
 end
 
 -- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
 -- The same key -> the Value list in the function's list: { list, shape, texts, lines }
 local result_tables = {}
+
 -- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like
 local update_result_list
+
 -- The same key -> how deep its Value list opens tables (none - MAX_VARIABLE_DEPTH); set_result_depth changes it
 local result_depths = {}
+
 -- The same key -> the Table Depth, Call Functions In Tables and Change Variable Values items of its list:
 -- { build = function() -> remove, remove = function or nil }. They're made while the function's last result
 -- is a table and taken away when it isn't. Made at the end of the list, so they're right under the Value
@@ -77,11 +85,13 @@ local function show_depth_items(key: string): void
     if entry == nil then
         return
     end
+
     local on = last_tables[key] ~= nil
     if on and entry.remove == nil then
         entry.remove = entry.build()
         return
     end
+
     if not on and entry.remove ~= nil then
         pcall(entry.remove)
         entry.remove = nil
@@ -90,11 +100,14 @@ end
 
 -- The same key -> true when the functions in its Value list are buttons that call them
 local call_in_tables = {}
+
 -- The same key -> true when the other values in its Value list are fields to change them in
 local edit_in_tables = {}
+
 -- What is typed for the functions in the Value lists, by "<key><path>": the panel's state (Arguments, toggles,
 -- its loop; see call_function.panel). Kept, so it stays when the list is made again
 local table_fn_states = {}
+
 -- The same key -> a number for the commands of its function lists ("tablefnargs3_1"): unique across lists
 local scope_numbers = {}
 
@@ -115,15 +128,19 @@ local function show_result(key: string, results: table): void
         return
     end
     last_results[key] = value
+
     -- Each value's type, as many as it gave ("integer, string")
     local types = {}
     for i = 2, results.n do
         table.insert(types, type_text(results[i]))
     end
+
     last_types[key] = table.concat(types, ", ")
     last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
+
     update_result_list(key)
     show_depth_items(key)
+
     local ref = result_lines[key]
     if ref ~= nil then
         local ok, err = pcall(menu.set_menu_name, ref, result_line(key))
@@ -209,23 +226,29 @@ end
 local kept_keys = {}
 
 function module.add_result_lines(node: table, key: string, kept: ?bool): void
+
     result_lines[key] = node:divider(result_line(key))
+
     -- A table it gave: its entries in a list right under (hidden while it gave none)
     result_tables[key] = { list = node:list(text("loop.result_list"):format(0)), shape = nil, texts = {}, lines = {} }
     if kept then
         kept_keys[key] = true
     end
+
     update_result_list(key)
 end
 
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
+
     local lines, tables, depth = {}, {}, {}
+
     for key in pairs(kept_keys) do
         lines[key] = result_lines[key]
         tables[key] = result_tables[key]
         depth[key] = depth_items[key]
     end
+
     result_lines = lines
     result_tables = tables
     depth_items = depth
@@ -244,19 +267,24 @@ local VARIABLES_REFRESH_MS = 250
 -- @return path -> the ref of each line, to change its value later; and the set of paths whose name carries
 --         the value ("name: value"), which is changed with it
 local function build_variables(list: table, items: table, scope: ?string, call_on: ?bool, edit_on: ?bool): table
+    
     local lines = {}
     local named = {}
+    
     if #items == 0 then
         list:readonly_name(label("no_variables"))
         return lines, named
     end
+
     local nodes = { [""] = list }
     local number = 0
+
     for _, item in ipairs(items) do
         local parent = nodes[item.parent]
         if item.kind == "list" then
             nodes[item.path] = parent:list(item.name)
         elseif item.kind == "line" and item.holder ~= nil and not item.is_function and edit_on then
+
             -- A value: a field with it typed as an expression (5, true, "text", v3.new(1, 2, 3), nil)
             number += 1
             named[item.path] = true
@@ -279,11 +307,14 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
                     log:error(text("edit.failed"):format(item.name, tostring(why)))
                     return
                 end
+
                 log:notify(text("edit.done"):format(item.name, describe_item(args[1], 0, {})))
                 update_result_list(scope)
             end, label("edit.help"), item.text)
         elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on then
+
             named[item.path] = true
+
             -- A function: a list with the panel of Debug > Call Function (Argument, Call, Call After, Loop, ...),
             -- without the name and the notice in Stand
             number += 1
@@ -295,7 +326,9 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
                     panel.opened()
                 end
             end)
+
             lines[item.path] = entry.handle
+
             panel = Atdar.loader.load("ui/stand/script/call_function").panel(entry, {
                 key = id,
                 state = table_fn_states[id],
@@ -327,16 +360,20 @@ update_result_list = function(key)
     if ui == nil then
         return
     end
+
     local tbl = last_tables[key]
     if tbl == nil then
         pcall(menu.set_visible, ui.list.handle, false)
         return
     end
+
     local entries = table_entries(tbl)
+
     local items = {}
     if #entries == 0 then
         table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
     end
+
     for i, entry in ipairs(entries) do
         if i > MAX_TABLE_ENTRIES then
             table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
@@ -344,19 +381,23 @@ update_result_list = function(key)
         end
         collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, result_depths[key], tbl, entry.raw_key)
     end
+
     pcall(menu.set_visible, ui.list.handle, true)
     pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
+
     -- With Call Functions In Tables / Change Variables In Tables on, the lines are lists or fields: the
     -- other shape
     local call_on = call_in_tables[key] == true
     local edit_on = edit_in_tables[key] == true
     local shape = shape_of(items)
+
     if call_on then
         shape = shape .. "\ncall"
     end
     if edit_on then
         shape = shape .. "\nedit"
     end
+
     if shape ~= ui.shape then
         ui.list:clear()
         ui.shape = shape
@@ -367,6 +408,7 @@ update_result_list = function(key)
         end
         return
     end
+
     for _, item in ipairs(items) do
         if item.kind == "line" and ui.texts[item.path] ~= item.text then
             ui.texts[item.path] = item.text
@@ -383,22 +425,30 @@ end
 -- changed values change in place, a field or entry that came or went makes the list again
 -- @param hidden_of function(mod): the fields not shown, as a set (the module's debug.hide)
 function module.variables_list(node: table, module_name: string, hidden_of): void
+
     local list = nil
+
     -- The current opening: a newer one (or going back) ends the refresh of the one before
     local opened = nil
+
     list = node:list(label("variables.name"), {}, label("variables.help"), function()
         opened = nil
         list:clear()
     end, function()
+
         local this = {}
+
         opened = this
         list:clear()
+
         local items = collect_variables(module_name, hidden_of) or {}
         local shape = shape_of(items)
         local texts = {}
+
         for _, item in ipairs(items) do
             texts[item.path] = item.text
         end
+
         local lines = build_variables(list, items)
         local next_look = util.current_time_millis() + VARIABLES_REFRESH_MS
 
@@ -406,15 +456,18 @@ function module.variables_list(node: table, module_name: string, hidden_of): voi
             if clicks.is_stopping() or opened ~= this then
                 return false
             end
+
             local now = util.current_time_millis()
             if now < next_look then
                 return true
             end
+
             next_look = now + VARIABLES_REFRESH_MS
             local fresh = collect_variables(module_name, hidden_of)
             if fresh == nil then
                 return false
             end
+
             local fresh_shape = shape_of(fresh)
             if fresh_shape ~= shape then
                 -- Something came or went: made again
@@ -427,12 +480,14 @@ function module.variables_list(node: table, module_name: string, hidden_of): voi
                 end
                 return true
             end
+
             for _, item in ipairs(fresh) do
                 if item.kind == "line" and texts[item.path] ~= item.text then
                     texts[item.path] = item.text
                     pcall(menu.set_value, lines[item.path], item.text)
                 end
             end
+            
             return true
         end)
     end)

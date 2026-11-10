@@ -42,6 +42,7 @@ local class JsonFile
     -- @return The file's table; nil if there is no file (or it's damaged) and no usable backup
     function read(): ?table
         local text = read_text(self.path)
+
         if text ~= nil then
             local data = json_parser.decode(text)
             if data ~= nil then
@@ -51,6 +52,7 @@ local class JsonFile
 
         local backup_text = read_text($"{self.path}.bak")
         local backup = backup_text ~= nil ? json_parser.decode(backup_text) : nil
+
         if text == nil then
             -- No file, e.g. the script stopped between the two renames of write()
             if backup ~= nil then
@@ -73,6 +75,7 @@ local class JsonFile
         if pretty == nil then
             pretty = self.pretty
         end
+
         local ok, text = pcall(json.encode, data, pretty ? "pretty" : nil)
         if not ok then
             log:error($"{self.path} not written, the data can't be stored as JSON: {text}")
@@ -86,12 +89,15 @@ local class JsonFile
 
         local tmp = $"{self.path}.tmp"
         local file = io.open(tmp, "w")
+
         if not file then
             log:error($"{self.path} not written, can't create {tmp}")
             return false
         end
+
         local written = file:write(text)
         local closed = file:close()
+
         if not written or not closed then
             os.remove(tmp)
             log:error($"{self.path} not written, writing {tmp} failed")
@@ -100,6 +106,7 @@ local class JsonFile
 
         -- Move the current file out of the way: os.rename may refuse to replace it
         local moved_to = nil
+
         if filesystem.exists(self.path) then
             local current = read_text(self.path)
             if current ~= nil and json_parser.decode(current) ~= nil then
@@ -127,6 +134,7 @@ local class JsonFile
             log:error($"{self.path} not written: {err}")
             return false
         end
+        
         return true
     end
 

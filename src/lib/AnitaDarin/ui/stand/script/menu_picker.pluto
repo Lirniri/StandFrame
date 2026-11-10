@@ -32,16 +32,21 @@ end
 
 -- "AnitaDarin: loaded, in core" - a menu's name with its state, or just the name
 local function with_state(name: string, loaded: bool, in_core: bool): string
+
     local states = {}
+
     if loaded then
         table.insert(states, text("state.loaded"))
     end
+
     if in_core then
         table.insert(states, text("state.in_core"))
     end
+
     if #states == 0 then
         return name
     end
+
     return text("state.name"):format(name, table.concat(states, ", "))
 end
 
@@ -59,20 +64,24 @@ local picker_rows = {}
 -- so the states are always current
 -- @param loader The menu_loader controller the entries act through
 function module.fill(node: table, loader: table): void
+
     local builtin = menu_loader.has_builtin()
     local manifest = builtin and menu_loader.core_manifest()
     local packs = menu_loader.find_packs()
+
     -- With no menu at all, the divider itself says so
     local divider_key = "menus.divider"
     if not builtin and #packs == 0 then
         divider_key = "no_menus"
     end
+
     -- The entries' captions are made with text(), so they're made again when the shown language changes
     picker_rows = {}
     -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
     if not manifest then
         node:divider(label(divider_key))
     end
+
     if builtin then
         local loaded_builtin = loader.is_loaded("builtin")
         local function builtin_caption(): string
@@ -96,16 +105,25 @@ function module.fill(node: table, loader: table): void
             table.insert(picker_rows, { ref = ref, caption = builtin_caption })
         end
     end
+
     for _, info in ipairs(packs) do
+
         local version = info.version or text("pack.unknown_version")
         local author = info.author or text("pack.unknown_author")
+
         local function pack_help(): string
             return text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
         end
+
         local help = pack_help()
         local loaded = loader.is_loaded("pack", info.folder)
         local in_core = manifest and manifest.pack == info.name
-        local ref = node:list_action(with_state(info.name, loaded, in_core), pack_options(), function(index)
+
+        local ref = node:list_action(
+            with_state(info.name, loaded, in_core),
+            pack_options(),
+        function(index)
+            -- body function
             if index == 1 then
                 loader.load_pack(info)
             elseif index == 2 then
@@ -116,12 +134,14 @@ function module.fill(node: table, loader: table): void
                 open_features_folder(info)
             end
         end, { pack_command(info) }, help)
+
         table.insert(picker_rows, { ref = ref, caption = || -> with_state(info.name, loaded, in_core), help = pack_help })
     end
 end
 
 i18n.on_change(function()
     for _, row in ipairs(picker_rows) do
+        
         -- The refs may belong to a section that was already removed
         pcall(menu.set_menu_name, row.ref, row.caption())
         if row.help then

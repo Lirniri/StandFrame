@@ -28,16 +28,26 @@ local module = {}
 -- Prefix and separator of each owner: "script" (Base Commands), "menu" (Found Commands) and "user"
 -- (User Commands)
 local config = {
+
     use_prefix = true,
-    script = { prefix = "atdar", separator = "." }, -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
-    menu = { prefix = "atdar", separator = "" },
-    user = { prefix = "", separator = "" },
+
+    script = {
+        prefix = "atdar", separator = "."
+    }, -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
+    menu = {
+        prefix = "atdar", separator = "" 
+    },
+    user = { 
+        prefix = "", separator = "" 
+    },
 }
 
 -- ref -> base names it was created with
 local tracked = {}
+
 -- ref -> "menu" or "script": whose item it is, so whose custom names apply
 local owner = {}
+
 -- Whose items are being made: "menu" while the loaded menu builds, "user" while the user's commands
 -- are made, nil for the script's
 local building = nil
@@ -51,7 +61,9 @@ local legacy = { menu = nil, script = nil }
 
 -- An owner's names: the older commands.json first, then each commands/<base>.json (they win)
 local function read_names(dir: string, old_file: table): table
+
     local names = {}
+
     for base, name in pairs(old_file:read() or {}) do
         if type(base) == "string" then
             local clean_base = command_box.sanitize(base)
@@ -60,6 +72,7 @@ local function read_names(dir: string, old_file: table): table
             end
         end
     end
+
     if filesystem.is_dir(dir) then
         for _, path in ipairs(filesystem.list_files(dir)) do
             local base = path:match("([^\\/]+)%.json$")
@@ -70,6 +83,7 @@ local function read_names(dir: string, old_file: table): table
             end
         end
     end
+
     return names
 end
 
@@ -91,21 +105,26 @@ local function custom_of_owner(who: string): table
     if who == "menu" then
         return custom.menu
     end
+
     if who == "user" then
         return NO_CUSTOM
     end
+
     return script_custom()
 end
 
 -- @return Sanitized base names without empty ones and duplicates (parsers/stand/command_box);
 -- a name with nothing usable in it is warned about when warn is set
 local function clean_bases(bases: table, warn: bool): table
+
     local clean, skipped = command_box.bases(bases)
+
     if warn then
         for _, base in ipairs(skipped) do
             log:warn($"command '{base}' has no allowed characters (a-z, 0-9, _), skipped")
         end
     end
+
     return clean
 end
 
@@ -143,20 +162,25 @@ end
 -- The same for an owner given ("script", "menu", "user"), whoever makes items now: a name worked out
 -- without changing whose items are being made
 function module.names_as(bases: table, who: string): table
+
     local names = {}
+
     for _, clean in ipairs(clean_bases(bases, true)) do
         table.insert(names, full_name(effective(clean, who), who))
         for _, word in ipairs(words_for(clean, who)) do
             table.insert(names, full_name(word, who))
         end
     end
+
     return names
 end
 
 -- Remembers an item so refresh() can rename it; items without valid commands aren't tracked
 function module.track(ref, bases: table): void
+
     -- Quiet: names() already warned about these when the item was created
     local clean = clean_bases(bases, false)
+
     if #clean > 0 then
         tracked[ref] = clean
         owner[ref] = current_owner()
@@ -176,6 +200,7 @@ local function is_valid(ref): bool
     if type(menu.is_ref_valid) ~= "function" then
         return true
     end
+
     local ok, valid = pcall(menu.is_ref_valid, ref)
     return ok and valid == true
 end
@@ -195,13 +220,16 @@ function module.names_of(ref): ?table
     if not clean then
         return nil
     end
+
     local names = {}
+
     for _, name in ipairs(clean) do
         table.insert(names, full_name(effective(name, owner[ref]), owner[ref]))
         for _, word in ipairs(words_for(name, owner[ref])) do
             table.insert(names, full_name(word, owner[ref]))
         end
     end
+
     return names
 end
 
@@ -212,13 +240,16 @@ function module.bases_of(ref): ?table
     if not clean then
         return nil
     end
+
     local names = {}
+
     for _, name in ipairs(clean) do
         table.insert(names, effective(name, owner[ref]))
         for _, word in ipairs(words_for(name, owner[ref])) do
             table.insert(names, word)
         end
     end
+
     return names
 end
 
@@ -245,13 +276,16 @@ end
 
 -- @return The item's extra words ("gm", "immortal"), a copy; {} when it has none
 function module.words_of(ref): table
+
     local base = module.base_of(ref)
     local words = {}
+
     if base ~= nil then
         for _, word in ipairs(words_for(base, owner[ref])) do
             table.insert(words, word)
         end
     end
+
     return words
 end
 
@@ -292,17 +326,22 @@ end
 
 -- Writes one command's file: its name and words; with neither left the file goes
 local function write_entry(dir: string, base: string, entry): bool
+
     local file = new JsonFile($"{dir}{base}.json")
+
     if entry == nil then
         if file:exists() then
             file:remove()
         end
         return true
     end
+
     local data = { words = entry.words }
+
     if entry.name then
         data.name = entry.name
     end
+
     return file:write(data)
 end
 
@@ -310,12 +349,16 @@ end
 -- moved over first (every name in it gets its own file), then removed
 -- @return Whether it was written
 local function save(who: string, base: string): bool
+
     local dir = dirs[who]
+
     if dir == nil then
         return false
     end
+
     local names = custom_of_owner(who)
     local old_file = legacy[who]
+
     if old_file ~= nil and old_file:exists() then
         for other, entry in pairs(names) do
             if not write_entry(dir, other, entry) then
@@ -324,6 +367,7 @@ local function save(who: string, base: string): bool
         end
         old_file:remove()
     end
+
     return write_entry(dir, base, names[base])
 end
 
@@ -332,8 +376,11 @@ end
 -- (atdarsettings) are different commands, so neither keeps the other from a name. Stand's own commands
 -- count too: a custom name can't take one of them
 local function taken_by_other(ref, name: string): bool
+
     prune()
+
     local full = full_name(name, owner[ref] or "script")
+
     for other in pairs(tracked) do
         if other ~= ref then
             for _, other_full in ipairs(module.names_of(other) or {}) do
@@ -343,12 +390,14 @@ local function taken_by_other(ref, name: string): bool
             end
         end
     end
+
     if type(menu.ref_by_command_name) == "function" then
         local ok, found = pcall(menu.ref_by_command_name, full)
         if ok and found ~= nil and found ~= ref and menu.is_ref_valid(found) then
             return true
         end
     end
+
     return false
 end
 
@@ -377,9 +426,11 @@ function module.set_custom(ref, name: string): (bool, ?string)
     if not clean then
         return false, "unknown"
     end
+
     local base = clean[1]
     local new_name = command_box.sanitize(name)
     local entry = entry_of(ref)
+
     if new_name == "" or new_name == base then
         entry.name = nil
     else
@@ -397,11 +448,14 @@ function module.set_custom(ref, name: string): (bool, ?string)
         end
         entry.name = new_name
     end
+
     tidy(ref)
     pcall(menu.set_command_names, ref, module.names_of(ref))
+
     if not save(owner[ref], base) then
         return false, "not_saved"
     end
+
     return true, nil
 end
 
@@ -413,38 +467,49 @@ function module.add_word(ref, word: string): (bool, ?string)
     if not clean then
         return false, "unknown"
     end
+
     local new_word = command_box.sanitize(word)
     if new_word == "" then
         return false, "invalid"
     end
+
     for _, name in ipairs(module.bases_of(ref)) do
         if name == new_word then
             return false, "own"
         end
     end
+
     if new_word == clean[1] then
         return false, "own"
     end
+
     if taken_by_other(ref, new_word) then
         return false, "taken"
     end
+
     table.insert(entry_of(ref).words, new_word)
     pcall(menu.set_command_names, ref, module.names_of(ref))
+
     if not save(owner[ref], clean[1]) then
         return false, "not_saved"
     end
+
     return true, nil
 end
 
 -- Takes an extra word off an item
 -- @return true, or false and why: "unknown" (it has no such word), "not_saved"
 function module.remove_word(ref, word: string): (bool, ?string)
+
     local clean = tracked[ref]
+
     if not clean then
         return false, "unknown"
     end
+
     local entry = custom_of_owner(owner[ref])[clean[1]]
     local found = false
+
     for i, own in ipairs(entry and entry.words or {}) do
         if own == word then
             table.remove(entry.words, i)
@@ -452,14 +517,18 @@ function module.remove_word(ref, word: string): (bool, ?string)
             break
         end
     end
+
     if not found then
         return false, "unknown"
     end
+
     tidy(ref)
     pcall(menu.set_command_names, ref, module.names_of(ref))
+
     if not save(owner[ref], clean[1]) then
         return false, "not_saved"
     end
+
     return true, nil
 end
 
@@ -525,9 +594,12 @@ local PROFILE_KEYS = {
 
 -- Prefixes and separators come from the script profile and follow its changes; an empty prefix means none
 local profile = Atdar.profile
+
 if profile and profile.get then
     for key, target in pairs(PROFILE_KEYS) do
+
         local value = profile.get(key)
+
         if target.what == "prefix" then
             -- No command_box_found_prefix in the profile (an old one): the same as the script's
             config[target.who].prefix = command_box.sanitize(value or profile.get("command_box_prefix") or "")
@@ -535,11 +607,13 @@ if profile and profile.get then
             config[target.who].separator = SEPARATORS[value] and value or ""
         end
     end
+
     profile.on_change(function(key: string, value)
         local target = PROFILE_KEYS[key]
         if target == nil then
             return
         end
+        
         if target.what == "prefix" then
             module.set_prefix(value or "", target.who)
         else

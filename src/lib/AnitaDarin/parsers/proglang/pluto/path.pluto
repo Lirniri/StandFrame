@@ -38,11 +38,15 @@ end
 -- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them)
 -- @return The path, and the text in the brackets
 function module.split(name: string)
+    
     expect("split", "name", name, "string")
+
     local path, inline = name:match("^(.-)%s*%((.*)%)%s*$")
+
     if path == nil then
         return name, nil
     end
+
     return path, inline
 end
 
@@ -50,15 +54,19 @@ end
 -- the owner to pass as self. Brackets at the end are not part of the path
 -- @return Whether there is something at the path, what it is, and its owner (nil for a plain path)
 function module.resolve(typed: string)
+
     expect("resolve", "typed", typed, "string")
+
     local path = module.split(typed)
     local owner_path = path
     local method = nil
+
     local colon = path:find(":", 1, true)
     if colon ~= nil then
         owner_path = path:sub(1, colon - 1)
         method = path:sub(colon + 1)
     end
+
     local current = Atdar
     local first = true
     for key in owner_path:gmatch("[^%.]+") do
@@ -81,13 +89,16 @@ function module.resolve(typed: string)
             return false
         end
     end
+
     if method == nil then
         return true, current
     end
+
     local fn = step(current, method)
     if type(fn) ~= "function" then
         return false
     end
+
     return true, fn, current
 end
 
@@ -102,8 +113,11 @@ local function scan(tbl: table, prefix: string, depth: int, name: string, out: t
     if seen[tbl] then
         return
     end
+
     seen[tbl] = true
+
     local keys = {}
+
     -- A table of the script's may be a proxy that can't be walked: it's skipped then
     local walked = pcall(function()
         for key in pairs(tbl) do
@@ -112,10 +126,13 @@ local function scan(tbl: table, prefix: string, depth: int, name: string, out: t
             end
         end
     end)
+
     if not walked then
         return
     end
+
     table.sort(keys)
+
     for _, key in ipairs(keys) do
         local ok, value = pcall(function() return tbl[key] end)
         if ok then
@@ -133,13 +150,17 @@ end
 -- util.toast, PLAYER.PLAYER_PED_ID). Each part in alphabetical order, so the first is the same every time
 -- @return The paths, the first is the one to use; empty when there's none
 function module.find(name: string): table
+
     expect("find", "name", name, "string")
+
     local out = {}
     if name == "" or name:find("[%.:%s]") then
         return out
     end
+
     local seen = {}
     scan(Atdar, "", FIND_DEPTH.atdar, name, out, seen)
+
     local globals = {}
     for key, value in pairs(_G) do
         if type(key) == "string" and type(value) == "table" and not FIND_SKIP[key] then
@@ -150,6 +171,7 @@ function module.find(name: string): table
     for _, key in ipairs(globals) do
         scan(_G[key], $"{key}.", FIND_DEPTH.globals, name, out, seen)
     end
+
     return out
 end
 

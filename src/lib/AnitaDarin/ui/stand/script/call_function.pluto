@@ -47,6 +47,7 @@ local module = {}
 
 -- Strings under "script_menu.call_function"
 local label, text = i18n.scope("script_menu.call_function")
+
 -- The strings of the Modules list's function lists, shared: Call After, Call When Opened, Loop
 local mlabel, mtext = i18n.scope("modules")
 
@@ -56,6 +57,7 @@ local mlabel, mtext = i18n.scope("modules")
 -- draws on the screen as Stand's debug text, which Stand lets move), Result Length On Screen (how many characters
 -- of the result are drawn), Save Functions (the list is kept in a file)
 local settings = { stand = true, short_names = true, save = false }
+
 -- Show Call Time, Show Result On Screen and Result Length On Screen are kept in ui/stand/core/call_display: the loops of a
 -- module's functions use them too
 local display = Atdar.loader.load("ui/stand/core/call_display")
@@ -75,6 +77,7 @@ end
 
 -- The key the result of this list is kept under (its Variable line and Value list)
 local RESULT_KEY = "debug.call_function"
+
 -- Longer notices are cut to this many characters
 local MAX_NOTICE_CHARS = 200
 
@@ -91,11 +94,14 @@ end
 -- what is typed in the Arguments field
 -- @return The arguments, how many there are, and what was wrong
 local function read_args(spec: table, name: string)
+
     local state = spec.state
+
     if spec.sig ~= nil then
         state.texts ??= {}
         return arguments().read(spec.sig, state.texts)
     end
+
     return args_parser().parse(call_args(state.args, name))
 end
 
@@ -111,51 +117,64 @@ end
 
 -- Gives the results out: the Variable line (and the Value list of a table) and the notice
 local function deliver(spec: table, results: table, was_call: bool): void
+
     local values = Atdar.loader.load("ui/stand/modules/values")
+
     values.show_result(spec.key, results)
+
     local name = spec.name()
     local message = text("done"):format(name)
+
     if results.n > 1 then
         message = text("result"):format(name, values.results_text(results))
     elseif not was_call then
         message = text("empty"):format(name)
     end
+
     -- A long one (a table) is cut: all of it is in the Value list
     local cut = utf8.offset(message, MAX_NOTICE_CHARS + 1)
     if cut ~= nil then
         message = message:sub(1, cut - 1) .. "..."
     end
+
     -- In Stand (not the game's feed) when the Notice In Stand setting is on
     if spec.in_stand ~= nil and spec.in_stand() then
         log:notify(message, "stand")
         return
     end
+
     log:notify(message)
 end
 
 -- A function is called with the arguments, in a thread of its own (it may wait); anything else
 -- (a table, a variable) is read. Either way the value is what comes out
 local function call(spec: table): void
+
     local name = spec.name()
+
     -- No name: nothing to show, what was there is taken away (the Variable line, the Value list, Table Depth...)
     if name == "" then
         Atdar.loader.load("ui/stand/modules/values").show_result(spec.key, table.pack(true))
         return
     end
+
     local found, value, owner = spec.target()
     if not found then
         log:warn(text("not_found"):format(name))
         return
     end
+
     if type(value) ~= "function" then
         deliver(spec, table.pack(true, value), false)
         return
     end
+
     local args, count, err = read_args(spec, name)
     if err ~= nil then
         log:error(text("bad_args"):format(name, err))
         return
     end
+
     util.create_thread(function()
         local results = run(value, owner, args, count)
         if not results[1] then
@@ -206,13 +225,16 @@ end
 -- Calls the function every frame (every: nil) or once every `every` ms, until stopped; an error ends it.
 -- It works like the loop of a module's function: a table or a variable is read, the Variable line follows
 local function start_loop(spec: table, every: ?int): void
+
     local state = spec.state
     local name = spec.name()
+
     if name == "" then
         log:warn(text("no_name"))
         sync_toggle(state, false)
         return
     end
+
     local loop_run = { every = every, next = 0 }
     state.loop = loop_run
     sync_toggle(state, true)
@@ -223,26 +245,33 @@ local function start_loop(spec: table, every: ?int): void
         show_status(state, "every", every)
         log:notify(mtext("loop.started_every"):format(name, every))
     end
+
     local values = Atdar.loader.load("ui/stand/modules/values")
+
     call_loop.start(loop_run, || -> state.loop == loop_run, function()
+
         local found, value, owner = spec.target()
+
         if not found then
             end_loop(state, loop_run, "failed")
             log:warn(text("not_found"):format(name))
             return false
         end
+
         if type(value) ~= "function" then
             local read = table.pack(true, value)
             loop_run.result = $"{name} -> {values.results_text(read)}"
             values.show_result(spec.key, read)
             return true
         end
+
         local args, count, err = read_args(spec, name)
         if err ~= nil then
             end_loop(state, loop_run, "failed")
             log:error(text("bad_args"):format(name, err))
             return false
         end
+
         -- How long a call takes, on screen (info text), while Show Call Time is on
         local results = call_loop.timed($"{name}()", || -> run(value, owner, args, count))
         if not results[1] then
@@ -250,23 +279,28 @@ local function start_loop(spec: table, every: ?int): void
             log:error(text("failed"):format(name, tostring(results[2])))
             return false
         end
+
         -- Tables unpacked, functions as their signatures (describe); a call that gives nothing shows nothing
         if results.n > 1 then
             loop_run.result = $"{name} -> {values.results_text(results)}"
         else
             loop_run.result = nil
         end
+
         values.show_result(spec.key, results)
         return true
     end)
 end
 
 local function stop_loop(spec: table): void
+
     local state = spec.state
+
     if state.loop == nil then
         log:notify(mtext("loop.not_running"):format(spec.name()))
         return
     end
+
     end_loop(state, state.loop)
     log:notify(mtext("loop.stopped"):format(spec.name()))
 end
@@ -287,6 +321,7 @@ end
 -- @return { call = function(), opened = function(), name_typed = function() }: Call, what the list does when
 --         opened, and what a Function Name field does when typed
 function module.panel(list: table, spec: table): table
+
     local state = spec.state
     local values = Atdar.loader.load("ui/stand/modules/values")
 
@@ -364,6 +399,7 @@ function module.panel(list: table, spec: table): table
     -- The loop: its status line (as the loop is now), Loop, Loop With Interval
     local status_kind = "stopped"
     local status_every = nil
+
     if state.loop ~= nil and state.loop.every ~= nil then
         status_kind = "every"
         status_every = state.loop.every
@@ -450,23 +486,29 @@ local show_added = nil
 -- @param typed The text typed
 -- @return The full path, and how many functions have the name (1 for a path that's there or in the file, 0 for none)
 local function expand(typed: string)
+
     local paths = path_parser()
+
     local path = paths.split(typed:match("^%s*(.-)%s*$"))
     if path == "" or paths.resolve(path) or not settings.short_names then
         return path, paths.resolve(path) and 1 or 0
     end
+
     local own = registry_files.short_names()[path]
     if own ~= nil and paths.resolve(own) then
         return (paths.split(own)), 1
     end
+
     local registered = registry_files.registry()[path]
     if registered ~= nil and paths.resolve(registered.path) then
         return (paths.split(registered.path)), 1
     end
+
     local found = paths.find(path)
     if #found == 0 then
         return path, 0
     end
+
     return found[1], #found
 end
 
@@ -491,11 +533,13 @@ end
 -- a button that calls it when it takes none (or is a table or a variable, which the button reads).
 -- Named with its number in the list, the arguments and the return type
 local function add_item(list: table, entry: table, number: int): void
+
     local paths = path_parser()
     local short = shown(entry.path)
     local found, value, owner = paths.resolve(entry.path)
     local sig = nil
     local returns = nil
+
     if found and type(value) == "function" then
         sig = arguments().signature_of(value, owner ~= nil)
         returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
@@ -506,13 +550,16 @@ local function add_item(list: table, entry: table, number: int): void
             returns = returns or registered.returns
         end
     end
+
     local name = $"{number}: {short}"
     if sig ~= nil and arguments().has_fields(sig) then
         name = $"{name}({arguments().params_text(sig)})"
     end
+
     if returns ~= nil then
         name = $"{name}: {returns}"
     end
+
     local spec = {
         key = $"debug.call_function.{entry.id}",
         state = entry.state,
@@ -523,22 +570,27 @@ local function add_item(list: table, entry: table, number: int): void
         sig = sig,
         in_stand = in_stand,
     }
+
     if sig == nil or not arguments().has_fields(sig) then
         list:action(name, || -> call(spec), {}, label("added.button_help"))
         return
     end
+
     local panel = nil
     local node = list:list(name, {}, label("added.help"), nil, function()
         if panel ~= nil then
             panel.opened()
         end
     end)
+
     panel = module.panel(node, spec)
 end
 
 -- The Call A Function list: the function typed by its name, with the panel
 local function build_by_name(node: table): void
+
     local panel = nil
+
     local list = node:list(label("by_name.name"), {}, label("by_name.help"), nil, function()
         if panel ~= nil then
             panel.opened()
@@ -578,10 +630,12 @@ local function save_added(): void
     if not settings.save then
         return
     end
+
     local paths = {}
     for _, entry in ipairs(added) do
         table.insert(paths, entry.path)
     end
+
     registry_files.write_saved(paths)
 end
 
@@ -592,12 +646,15 @@ local function load_saved(): void
     if loaded then
         return
     end
+
     loaded = true
+
     local data = registry_files.read_saved()
     settings.save = data.save == true
     if not settings.save then
         return
     end
+
     for _, path in ipairs(data.functions or {}) do
         if type(path) == "string" then
             last_id += 1
@@ -608,7 +665,9 @@ end
 
 -- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added
 local function build_functions(node: table): void
+
     load_saved()
+
     local list = node:list(label("functions.name"), {}, label("functions.help"))
     local first = nil
 
@@ -655,15 +714,18 @@ local function build_functions(node: table): void
         if not clicks.is_user_action(click_type) then
             return
         end
+
         local typed = value:match("^%s*(.-)%s*$")
         if typed == "" then
             return
         end
+
         local number = math.tointeger(tonumber(typed))
         if number == nil or added[number] == nil then
             log:warn(text("clear.none"):format(typed))
             return
         end
+
         local entry = table.remove(added, number)
         save_added()
         show_added()
@@ -675,6 +737,7 @@ local function build_functions(node: table): void
             return
         end
         added = {}
+
         save_added()
         show_added()
         log:notify(text("clear_all.done"))
@@ -687,10 +750,12 @@ local function build_functions(node: table): void
             return
         end
         settings.save = on
+
         if on then
             save_added()
             return
         end
+
         registry_files.switch_off_saved()
     end, {}, label("save.help"), settings.save)
 
@@ -704,14 +769,19 @@ end
 -- Makes the list in node
 -- @return The list's handle
 function module.build(node: table): any
+    
     local list = node:list(label("name"), {}, label("help"))
+
     build_by_name(list)
     build_functions(list)
+    
     -- How to write the arguments, as a notice in Stand (there's room for it there)
     list:action(label("guide.name"), function()
         log:notify(text("guide.text"), "stand")
     end, {}, label("guide.help"))
+    
     list:divider(label("settings.divider"))
+    
     list:toggle(label("short_names.name"), function(on, click_type)
         if clicks.is_stopping() or settings.short_names == on then
             return
@@ -722,6 +792,7 @@ function module.build(node: table): any
             show_added()
         end
     end, {}, label("short_names.help"), settings.short_names)
+    
     list:toggle(label("show_time.name"), function(on)
         display.show_time = on
     end, {}, label("show_time.help"), display.show_time)
@@ -735,6 +806,7 @@ function module.build(node: table): any
     list:toggle(label("stand.name"), function(on)
         settings.stand = on
     end, {}, label("stand.help"), settings.stand)
+    
     -- The JSON files of Call Function (short names, the Stand API, the user's own) as a tree to edit
     Atdar.loader.load("ui/stand/script/call_function_editor").build(list)
     return list.handle

@@ -12,14 +12,19 @@ local module = {}
 -- Yields, so call it from a tick or thread, not the script's main body
 -- @return Whether the asset loaded
 function module.wait_loaded(what: string, is_loaded: function, timeout: int): bool
+
     local deadline = util.current_time_millis() + timeout
+    
     while not is_loaded() and util.current_time_millis() < deadline do
         util.yield()
     end
+
     if is_loaded() then
         return true
     end
+
     log:warn($"{what} didn't load in {timeout} ms")
+
     return false
 end
 

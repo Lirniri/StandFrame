@@ -218,15 +218,19 @@ end
 -- The arguments as typed, split at the commas between them, not those inside brackets or quotes, and
 -- trimmed; nothing is worked out: 'FAKE.add(1, 2), "a, b"' -> { "FAKE.add(1, 2)", '"a, b"' }
 function module.split(input: string): table
+
     expect("split", "input", input, "string")
+
     local pieces = {}
     local depth, quote, start = 0, nil, 1
+
     for i = 1, #input do
         local c = input:sub(i, i)
         if quote ~= nil then
             if c == quote then
                 quote = nil
             end
+
         elseif c == '"' or c == "'" then
             quote = c
         elseif c == "(" or c == "{" or c == "[" then
@@ -238,7 +242,9 @@ function module.split(input: string): table
             start = i + 1
         end
     end
+
     table.insert(pieces, input:sub(start))
+
     local trimmed = {}
     for _, piece in ipairs(pieces) do
         local clean = piece:match("^%s*(.-)%s*$")
@@ -246,6 +252,7 @@ function module.split(input: string): table
             table.insert(trimmed, clean)
         end
     end
+
     return trimmed
 end
 

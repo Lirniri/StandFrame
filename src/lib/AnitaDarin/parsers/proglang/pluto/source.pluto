@@ -27,15 +27,19 @@ local source_lines = {}
 local function lines_of(path: string)
     local text = Atdar.modules ~= nil and Atdar.modules.loaded_text_of(path) or nil
     local cached = source_lines[path]
+
     if text == nil and cached ~= nil then
         return cached.lines
     end
+
     if cached ~= nil and cached.text == text then
         return cached.lines
     end
+
     if text == nil then
         text = Atdar.loader.load("core/filesystem/file").read(path)
     end
+
     local lines = false
     if text ~= nil then
         lines = {}
@@ -43,6 +47,7 @@ local function lines_of(path: string)
             table.insert(lines, (line:gsub("\r$", "")))
         end
     end
+
     source_lines[path] = { text = text, lines = lines }
     return lines
 end
@@ -56,10 +61,12 @@ local function header_of(fn)
     if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
         return nil
     end
+
     local lines = lines_of(info.source:sub(2))
     if not lines then
         return nil
     end
+
     local joined = ""
     for i = info.linedefined, math.min(info.linedefined + 5, #lines) do
         joined ..= lines[i] .. " "
@@ -68,6 +75,7 @@ local function header_of(fn)
             return inside:sub(2, -2), rest, before
         end
     end
+
     return nil
 end
 
@@ -86,21 +94,26 @@ function module.return_type(fn): ?string
     if after == nil then
         return nil
     end
+
     local written = after:match("^%s*:%s*([%w_?|%.]+)")
     if written ~= nil then
         return written
     end
+
     local commented = before:match("%-%-%[%[([^%]]-)%]%]%s*$")
     if commented ~= nil then
         return comment_type(commented)
     end
+
     return nil
 end
 
 -- The parameters' text cut at the commas outside brackets, braces and quotes ("a: int, b = f(1, 2)" -> 2 pieces)
 local function split_params(text: string): table
+
     local pieces = {}
     local depth, quote, start = 0, nil, 1
+
     for i = 1, #text do
         local c = text:sub(i, i)
         if quote ~= nil then
@@ -118,6 +131,7 @@ local function split_params(text: string): table
             start = i + 1
         end
     end
+
     table.insert(pieces, text:sub(start))
     return pieces
 end
@@ -127,12 +141,16 @@ end
 -- no type isn't in it
 -- @return The table (empty if nothing is written or the file can't be read)
 function module.param_types(fn): table
+
     expect("param_types", "fn", fn, "function")
+
     local types = {}
+
     local inside = header_of(fn)
     if inside == nil then
         return types
     end
+
     for _, piece in ipairs(split_params(inside)) do
         -- "name: type" or "name: type = default"
         local name, type_text = piece:match("^%s*([%a_][%w_]*)%s*:%s*([^=]*)")
@@ -149,6 +167,7 @@ function module.param_types(fn): table
             end
         end
     end
+
     return types
 end
 
@@ -156,18 +175,23 @@ end
 -- { speed = "1.5", loud = "false" }, as the text written. A parameter with none, or with = nil, isn't in it
 -- @return The table (empty if nothing is written or the file can't be read)
 function module.param_defaults(fn): table
+
     expect("param_defaults", "fn", fn, "function")
+
     local defaults = {}
+
     local inside = header_of(fn)
     if inside == nil then
         return defaults
     end
+
     for _, piece in ipairs(split_params(inside)) do
         local name, written = piece:match("^%s*([%a_][%w_]*)[^=]*=%s*(.-)%s*$")
         if name ~= nil and written ~= "" and written ~= "nil" then
             defaults[name] = written
         end
     end
+    
     return defaults
 end
 

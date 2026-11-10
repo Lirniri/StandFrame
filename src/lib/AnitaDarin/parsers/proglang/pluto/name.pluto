@@ -13,12 +13,16 @@ local module = {}
 
 -- The words of a name, lower case, as a set: "get_handle" / "getHandle" -> { get = true, handle = true }
 function module.words(name: string): table
+
     expect("words", "name", name, "string")
+
     local words = {}
     local spaced = name:gsub("(%l)(%u)", "%1_%2")
+
     for word in spaced:gmatch("[^_]+") do
         words[word:lower()] = true
     end
+    
     return words
 end
 

@@ -24,6 +24,7 @@ end
 
 -- @return Info of every folder in packs_dir that has an info.json with a name, sorted by name
 function module.find_packs(packs_dir: string): table
+
     local packs = {}
 
     -- A lean install has no packs folder, list_files fails on it
@@ -33,9 +34,12 @@ function module.find_packs(packs_dir: string): table
 
     for _, path in ipairs(filesystem.list_files(packs_dir)) do
         if filesystem.is_dir(path) then
+
             local info = read_json($"{path}\\info.json")
+
             if type(info) == "table" and type(info.name) == "string" then
                 info.dir = $"{path}\\"
+
                 -- The pack's id, e.g. for the profile's auto_copy_menu
                 info.folder = path:match("([^\\/]+)$")
                 table.insert(packs, info)
@@ -69,7 +73,9 @@ end
 -- Runs each feature file; a broken file or a taken feature id skips only that file
 -- @return Number of files that ran without errors
 function module.load_feature_files(files: table): int
+
     local loaded = 0
+
     for _, path in ipairs(files) do
         -- Timed (loader.report): compiling and running the file, with the lib files it loads
         local ok, err = Atdar.loader.measure(path, function()
@@ -79,12 +85,14 @@ function module.load_feature_files(files: table): int
             end
             return pcall(chunk)
         end)
+
         if ok then
             loaded += 1
         else
             log:error($"feature file failed: {path}\n{err}")
         end
     end
+
     return loaded
 end
 
@@ -131,34 +139,45 @@ end
 -- Deletes the files a pack copy added to the script, then the manifest itself
 -- @return true and the number of deleted files, or false and a reason
 function module.remove_copied_core(lib_dir: string, store_dir: string): (bool, any)
+
     local manifest = module.read_core_manifest(lib_dir)
+
     if not manifest then
         return false, "the built-in menu wasn't copied from a pack"
     end
+
     local removed = 0
+
     for _, path in ipairs(copied_paths(manifest, lib_dir, store_dir)) do
         if os.remove(path) then
             removed += 1
         end
     end
+
     new JsonFile(manifest_path(lib_dir)):remove()
+
     return true, removed
 end
 
 -- What copying a pack into the script copies: { from, to } for its features, menu files and translations
 local function copy_plan(info: table, lib_dir: string, store_dir: string): table
+
     local plan = {}
     local features_dir = $"{info.dir}features\\"
+
     for _, path in ipairs(info.feature_files) do
         table.insert(plan, { from = path, to = $"{lib_dir}features\\{path:sub(#features_dir + 1)}" })
     end
+
     local layout = module.layout_dir(info.dir)
     for _, path in ipairs(module.find_feature_files(layout)) do
         table.insert(plan, { from = path, to = $"{lib_dir}ui\\stand\\menu_from_store\\{path:sub(#layout + 1)}" })
     end
+
     -- The menu's translations, where the built-in menu looks for them
     local language_dir = $"{info.dir}language\\"
     local core_language_dir = module.core_language_dir(store_dir)
+
     if filesystem.is_dir(language_dir) then
         for _, path in ipairs(filesystem.list_files(language_dir)) do
             if path:match("%.json$") then
@@ -166,6 +185,7 @@ local function copy_plan(info: table, lib_dir: string, store_dir: string): table
             end
         end
     end
+
     return plan
 end
 
@@ -177,28 +197,38 @@ end
 -- Whether the copy of this pack in the script is the same as the pack: the same files, each with the
 -- same content. Then copying again would change nothing and can be skipped
 function module.core_copy_is_current(info: table, lib_dir: string, store_dir: string): bool
+
     local manifest = module.read_core_manifest(lib_dir)
+
     if not manifest or manifest.pack ~= info.name then
         return false
     end
+
     local plan = copy_plan(info, lib_dir, store_dir)
     local paths = copied_paths(manifest, lib_dir, store_dir)
+
     if #plan ~= #paths then
         return false
     end
+
     local listed = {}
+
     for _, path in ipairs(paths) do
         listed[path] = true
     end
+
     for _, step in ipairs(plan) do
         if not listed[step.to] then
             return false
         end
+        
         local copied = read_bytes(step.to)
+        
         if copied == nil or copied ~= read_bytes(step.from) then
             return false
         end
     end
+
     return true
 end
 
@@ -222,6 +252,7 @@ function module.copy_pack_to_core(info: table, lib_dir: string, store_dir: strin
     end
 
     local copied = {}
+
     for _, step in ipairs(plan) do
         if not copy_file(step.from, step.to) then
             -- Don't leave a half-copied menu behind
@@ -234,6 +265,7 @@ function module.copy_pack_to_core(info: table, lib_dir: string, store_dir: strin
     end
 
     local files, store_files = {}, {}
+
     for _, step in ipairs(plan) do
         if step.in_store then
             table.insert(store_files, step.to:sub(#store_dir + 1))
@@ -241,13 +273,16 @@ function module.copy_pack_to_core(info: table, lib_dir: string, store_dir: strin
             table.insert(files, step.to:sub(#lib_dir + 1))
         end
     end
+
     -- Without the manifest the copy couldn't be removed later, so a failed write undoes it
     if not new JsonFile(manifest_path(lib_dir)):write({ pack = info.name, files = files, store_files = store_files }) then
         for _, path in ipairs(copied) do
             os.remove(path)
         end
+        
         return false, "couldn't save the list of copied files"
     end
+
     return true, #plan
 end
 

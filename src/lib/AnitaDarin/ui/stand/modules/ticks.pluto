@@ -25,16 +25,20 @@ local tick_statuses = {}
 -- Shows how the manual on_tick of the module is: state "running" / "running_for" (seconds left) /
 -- "stopped" / "failed"
 local function show_tick_status(module_name: string, state: string, seconds_left: ?int): void
+
     local ref = tick_statuses[module_name]
     if ref == nil then
         return
     end
+
     local value = text($"tick.state.{state}")
     if seconds_left ~= nil then
         value = value:format(seconds_left)
     end
+
     -- The list may belong to a section that was already removed
     pcall(menu.set_menu_name, ref, text("entry.status_line"):format(value))
+
     -- The module's Status: "running by hand" while a run goes on
     hooks.status_changed(module_name)
 end
@@ -47,10 +51,13 @@ end
 
 -- The on_tick() list: Start With Init, Start Loop Only, Start For A While (seconds), Stop, then the Status
 function module.list(entry: table, mod: table, title: string): void
+
     local name = mod.name
     local node = entry:list(title, {}, label("tick.help"))
+
     node:action(label("tick.start_init.name"), || -> runs.start(name, nil, true), {}, label("tick.start_init.help"))
     node:action(label("tick.start.name"), || -> runs.start(name, nil, false), {}, label("tick.start.help"))
+
     node:track(menu.click_slider(node.handle, label("tick.start_for.name"), {}, label("tick.start_for.help"),
         1, 600, 10, 1, function(seconds, click_type)
         if not clicks.is_user_action(click_type) then
@@ -58,8 +65,10 @@ function module.list(entry: table, mod: table, title: string): void
         end
         runs.start(name, seconds, false)
     end))
+
     node:action(label("tick.stop.name"), || -> runs.stop_told(name), {}, label("tick.stop.help"))
     tick_statuses[name] = node:divider(text("entry.status_line"):format(text("tick.state.stopped")))
+    
     local run = runs.run_of(name)
     if run ~= nil and run.ends ~= nil then
         show_tick_status(name, "running_for", math.max(runs.seconds_left(run), 1))

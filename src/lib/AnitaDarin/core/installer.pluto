@@ -18,11 +18,13 @@ local function rename_plan(old_name: string, new_name: string): table
     local plan = {
         { from = $"{scripts}{old_name}.pluto", to = $"{scripts}{new_name}.pluto" },
     }
+
     for _, dir in ipairs({ $"{scripts}lib\\", filesystem.store_dir(), filesystem.resources_dir() }) do
         if filesystem.exists($"{dir}{old_name}") then
             table.insert(plan, { from = $"{dir}{old_name}", to = $"{dir}{new_name}" })
         end
     end
+
     return plan
 end
 
@@ -30,15 +32,19 @@ end
 -- a failed step undoes the ones before it, so the script is never left half-renamed
 -- @return true, or false and a reason; a folder that couldn't be renamed comes third, from Lua Scripts on
 function module.rename(new_name: string): (bool, string, ?string)
+
     local old_name = Atdar.name
+
     if not module.valid_name(new_name) then
         return false, $"'{new_name}' isn't a valid name, use letters, digits and _"
     end
+
     if new_name == old_name then
         return false, "the name is the same"
     end
 
     local plan = rename_plan(old_name, new_name)
+
     for _, step in ipairs(plan) do
         if filesystem.exists(step.to) then
             return false, $"{step.to} already exists"
@@ -50,6 +56,7 @@ function module.rename(new_name: string): (bool, string, ?string)
     -- restarts under the new name)
     Logger.stop_file()
     local done = {}
+
     for _, step in ipairs(plan) do
         local ok, err = os.rename(step.from, step.to)
         if not ok then
@@ -67,6 +74,7 @@ function module.rename(new_name: string): (bool, string, ?string)
         end
         table.insert(done, step)
     end
+
     log:info($"renamed {old_name} -> {new_name} ({#done} part(s))")
     -- Leaving: from here on notifications go to Stand only (utils/util.toast)
     Atdar.leaving = true
@@ -132,17 +140,23 @@ end
 -- Can't be undone; the menu asks first. The script keeps running from memory until stop()
 -- @return true and the number of deleted files, or false and a reason
 function module.delete(keep_user_data: bool = true): (bool, any)
+
     local name = Atdar.name
+
     -- The name is part of every path below: never delete with an empty or odd one
     if not module.valid_name(name) then
         return false, $"'{name}' isn't a valid script name"
     end
+
     local scripts = filesystem.scripts_dir()
     local store = $"{filesystem.store_dir()}{name}\\"
+
     -- The open log file would stay behind (and lines after this would make it again)
     Logger.stop_file()
+
     local removed = 0
     local left = {}
+
     for _, dir in ipairs({ $"{scripts}lib\\{name}\\", store, $"{filesystem.resources_dir()}{name}\\" }) do
         if filesystem.exists(dir) then
             local keep = (keep_user_data and dir == store) ? is_user_data : nil
@@ -154,7 +168,9 @@ function module.delete(keep_user_data: bool = true): (bool, any)
             end
         end
     end
+
     local launcher = $"{scripts}{name}.pluto"
+
     if filesystem.exists(launcher) and os.remove(launcher) then
         removed += 1
     end
@@ -163,8 +179,10 @@ function module.delete(keep_user_data: bool = true): (bool, any)
     else
         log:info($"deleted {name}: {removed} file(s)")
     end
+
     -- Leaving: from here on notifications go to Stand only (utils/util.toast)
     Atdar.leaving = true
+    
     return true, removed
 end
 

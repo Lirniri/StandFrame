@@ -75,6 +75,7 @@ end
 -- What the available version changes, nothing before a check
 -- @return Lines { kind = "update"|"remove", path }
 function module.changes(): table
+
     local lines = {}
 
     if module.plan == nil then
@@ -94,6 +95,7 @@ end
 
 -- Whether the automatic check is on and it's been update_check_days since the last one
 function module.is_check_due(): bool
+
     local days = Atdar.profile.get("update_check_days") or 0
     local last = Atdar.profile.get("update_last_check") or 0
 
@@ -242,6 +244,7 @@ end
 -- Starts the thread of the automatic check: a round soon after the start, then every AUTO_TICK.
 -- It ends by itself once the check is switched off
 local function run_auto(): void
+    
     auto_running = true
 
     util.create_thread(function()

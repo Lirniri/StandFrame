@@ -24,16 +24,13 @@ module.LENGTH_MAX = 500
 -- @param fn What to run
 -- @return Nothing: fn is run either way
 function module.timed(name: string, fn: function): void
-    -- body function
 
     if module.show_time and profiling ~= nil then
         profiling.tick(name, fn)
         return
-        -- what returns
     end
 
     fn()
-    -- what returns
 end
 
 -- Draws the text for this frame (the debug text shows for one frame only: call this every frame), while
@@ -41,7 +38,6 @@ end
 -- @param shown The text; nil draws nothing
 -- @return Nothing
 function module.draw(shown: ?string): void
-    -- body function
 
     if not module.show_result or shown == nil or util.draw_debug_text == nil then
         return
@@ -54,7 +50,6 @@ function module.draw(shown: ?string): void
     end
 
     util.draw_debug_text(shown)
-    -- what returns
 end
 
 return module

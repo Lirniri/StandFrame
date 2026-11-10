@@ -53,10 +53,13 @@ end
 
 -- debug.hide as a set: { [name] = true }
 local function hidden_of(mod: table): table
+
     local hidden = {}
+
     for _, name in ipairs(debug_of(mod).hide or {}) do
         hidden[name] = true
     end
+
     return hidden
 end
 
@@ -67,6 +70,7 @@ local function number_of(name: string): int
             return i
         end
     end
+
     return 0
 end
 
@@ -77,7 +81,9 @@ end
 
 -- "1: VehicleManager: running", and "· file changed" when its file differs from the code running
 local function caption(mod: table): string
+
     local name = text("entry.name"):format(number_of(mod.name), mod.name, text($"status.{mod.status}"))
+
     if Atdar.modules.file_changed(mod.name) then
         return $"{name} {text("entry.changed")}"
     end
@@ -89,15 +95,18 @@ local function status_line(mod: table): string
     if tick_runs.is_running(mod.name) then
         return text("entry.status_line"):format(text("status.manual"))
     end
+
     return text("entry.status_line"):format(text($"status.{mod.status}"))
 end
 
 local function help(mod: table): string
+
     local deps = #mod.deps > 0 ? table.concat(mod.deps, ", ") : text("entry.no_deps")
     local lines = {
         text("entry.deps"):format(deps),
         text(mod:has_tick() ? "entry.ticks" : "entry.no_tick"),
     }
+
     if mod.error then
         table.insert(lines, text("entry.error"):format(mod.error))
     end
@@ -107,17 +116,23 @@ end
 -- Statuses also change on their own (a module can fail in its tick), so Refresh and every action
 -- update all entries. The refs may belong to a section that was already removed: a failed update is skipped
 local function refresh(): void
+
     local modules = Atdar.modules
+
     for name, ref in pairs(view.entries or {}) do
         if modules.has(name) then
+
             local mod = modules.get(name)
+
             pcall(menu.set_menu_name, ref, caption(mod))
             pcall(menu.set_help_text, ref, help(mod))
+
             local status_ref = (view.statuses or {})[name]
             if status_ref ~= nil then
                 pcall(menu.set_menu_name, status_ref, status_line(mod))
             end
         end
+
     end
 end
 
@@ -156,7 +171,9 @@ end
 
 -- "create(model, coords, heading)"
 local function signature(fn: table): string
+
     local params = table.concat(fn.params, ", ")
+
     if fn.vararg then
         params = params == "" ? "..." : $"{params}, ..."
     end
@@ -167,19 +184,25 @@ end
 -- In a thread of its own, since a function may wait (e.g. for a model to load)
 local function call(module_name: string, fn: table, args: table, count: int): void
     util.create_thread(function()
+
         local modules = Atdar.modules
+    
         if not modules.has(module_name) then
             return
         end
+
         local mod = modules.get(module_name)
         local name = $"{short_name(module_name)}.{signature(fn)}"
         local results = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
+
         if not results[1] then
             -- An error, so it goes to Stand when Errors Always In Stand is on
             log:error(text("call.failed"):format(name, tostring(results[2])))
             return
         end
+
         values.show_result($"{module_name}.{fn.name}", results)
+
         if results.n <= 1 then
             log:notify(text("call.done"):format(name))
         else
@@ -195,7 +218,9 @@ ticks.bind({
     refresh = refresh,
     -- The module's Status divider: "running by hand" while a run goes on
     status_changed = function(module_name)
+
         local status_ref = (view.statuses or {})[module_name]
+
         if status_ref ~= nil and Atdar.modules.has(module_name) then
             pcall(menu.set_menu_name, status_ref, status_line(Atdar.modules.get(module_name)))
         end
@@ -220,6 +245,7 @@ local function sync_loop_toggle(key: string, on: bool): void
     if ref == nil then
         return
     end
+
     syncing[key] = true
     pcall(menu.set_value, ref, on)
     syncing[key] = nil
@@ -239,16 +265,20 @@ local function item_name(fn: table): string
     if fn.returns == nil then
         return signature(fn)
     end
+
     return $"{signature(fn)}: {fn.returns}"
 end
 
 -- The function with the Arguments typed for it; arguments that can't be worked out are told, nothing is called
 local function call_with_args(module_name: string, fn: table, key: string): void
+
     local args, count, err = arguments.read(fn.sig, call_args[key] or {})
+
     if err ~= nil then
         log:error(text("call.bad_args"):format($"{short_name(module_name)}.{signature(fn)}", err))
         return
     end
+
     call(module_name, fn, args, count)
 end
 
@@ -258,16 +288,19 @@ end
 
 -- state: "running" / "every" (ms) / "stopped" / "failed"
 local function show_loop_status(key: string, state: string, every: ?int): void
+
     -- The Loop toggle follows: on while it runs (also with an interval), off when it ended in any way
     sync_loop_toggle(key, state == "running" or state == "every")
     local ref = loop_statuses[key]
     if ref == nil then
         return
     end
+
     local value = text($"loop.state.{state}")
     if every ~= nil then
         value = value:format(every)
     end
+
     local ok, err = pcall(menu.set_menu_name, ref, text("loop.status_line"):format(value))
     if not ok then
         log:debug($"{key}: Loop Status line not updated: {tostring(err)}")
@@ -276,10 +309,12 @@ end
 
 -- Calls the function every frame (every: nil) or once every `every` ms. A newer loop replaces the old one
 local function start_loop(module_name: string, fn: table, every: ?int): void
+
     local key = loop_key(module_name, fn.name)
     local name = $"{short_name(module_name)}.{signature(fn)}"
     local run = { module = module_name, every = every, next = 0 }
     function_loops[key] = run
+
     if every == nil then
         show_loop_status(key, "running")
         log:notify(text("loop.started"):format(name))
@@ -296,42 +331,51 @@ local function start_loop(module_name: string, fn: table, every: ?int): void
             show_loop_status(key, "stopped")
             return false
         end
+
         local mod = modules.get(module_name)
         local args, count, args_err = arguments.read(fn.sig, call_args[key] or {})
+
         if args_err ~= nil then
             function_loops[key] = nil
             show_loop_status(key, "failed")
             log:error(text("call.bad_args"):format(name, args_err))
             return false
         end
+
         -- How long a call takes, on screen (info text); Debug > Call Function > Settings decide what's shown
         local results = call_loop.timed($"{module_name}.{fn.name}()", function()
             return table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
         end)
+
         if not results[1] then
             function_loops[key] = nil
             show_loop_status(key, "failed")
             log:error(text("call.failed"):format(name, tostring(results[2])))
             return false
         end
+
         -- Tables unpacked, functions as their signatures (describe); a call that gives nothing shows nothing
         if results.n > 1 then
             run.result = $"{module_name}.{signature(fn)} -> {values.results_text(results)}"
         else
             run.result = nil
         end
+
         values.show_result(key, results)
         return true
     end)
 end
 
 local function stop_loop(module_name: string, fn: table): void
+
     local key = loop_key(module_name, fn.name)
     local name = $"{short_name(module_name)}.{signature(fn)}"
+
     if function_loops[key] == nil then
         log:notify(text("loop.not_running"):format(name))
         return
     end
+
     function_loops[key] = nil
     show_loop_status(key, "stopped")
     log:notify(text("loop.stopped"):format(name))
@@ -358,48 +402,59 @@ local function is_live(fn: table, fn_opts: table): bool
     if fn_opts.live ~= nil then
         return fn_opts.live == true
     end
+
     for word in pairs(name_parser.words(fn.name)) do
         if LIVE_WORDS[word] then
             return true
         end
     end
+
     return false
 end
 
 -- Calls a live function every LIVE_MS while its list is open (opened() says it still is): quietly, only
 -- the Variable line changes. An error or arguments that can't be worked out leave it as it is
 local function keep_live(module_name: string, fn: table, key: string, opened): void
+
     local next_call = 0
+
     util.create_tick_handler(function()
         if clicks.is_stopping() or not opened() then
             return false
         end
+
         local now = util.current_time_millis()
         if now < next_call then
             return true
         end
+
         next_call = now + LIVE_MS
         local modules = Atdar.modules
         if not modules.has(module_name) then
             return false
         end
+
         local args, count, err = arguments.read(fn.sig, call_args[key] or {})
         if err ~= nil then
             return true
         end
+
         local mod = modules.get(module_name)
         local results = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
         if results[1] then
             values.show_result(key, results)
         end
+
         return true
     end)
 end
 
 local function function_list(entry: table, mod: table, fn: table): void
+
     local module_name = mod.name
     local key = loop_key(module_name, fn.name)
     local fn_opts = (debug_of(mod).functions or {})[fn.name] or {}
+
     -- What the module says of its parameters: "handle - the vehicle's handle", one per line
     local param_lines = {}
     for _, param in ipairs(fn.params) do
@@ -408,16 +463,20 @@ local function function_list(entry: table, mod: table, fn: table): void
             table.insert(param_lines, $"{param} - {about}")
         end
     end
+
     local params_text = table.concat(param_lines, "\n")
+
     -- The list's help: the module's description of the function, or what the list does
     local help_text = fn_opts.help or text("loop.help")
     if params_text ~= "" then
         help_text = $"{help_text}\n{params_text}"
     end
+
     -- The module's default arguments, until something is typed (kept by key, so Reload keeps what's typed)
     if call_args[key] == nil then
         call_args[key] = fn_opts.args ~= nil and arguments.texts_from(fn.sig, fn_opts.args) or {}
     end
+
     -- The current opening of the list: going back (or opening again) ends the live calls of the one before
     local opening = nil
     local live = is_live(fn, fn_opts)
@@ -433,6 +492,7 @@ local function function_list(entry: table, mod: table, fn: table): void
             keep_live(module_name, fn, key, || -> opening == this)
         end
     end)
+
     if arguments.has_fields(fn.sig) then
         -- A field for each parameter, by its type: Call and the loops use what's typed. Stand's text fields
         -- take their text through the command box, so each needs a command: short and the same each time -
@@ -451,6 +511,7 @@ local function function_list(entry: table, mod: table, fn: table): void
             about = |name| -> (fn_opts.params or {})[name],
         })
     end
+
     -- The settings of calling, under the arguments: Call After Typing (when there are arguments), Call, ...
     node:divider(label("loop.settings"))
     if arguments.has_fields(fn.sig) then
@@ -459,6 +520,7 @@ local function function_list(entry: table, mod: table, fn: table): void
         end, {}, label("loop.call_on_enter.help"), call_on_enter[key] == true)
     end
     node:action(label("loop.call"), || -> call_with_args(module_name, fn, key), {}, label("call.button.help"))
+
     -- Once, after the ms picked; the arguments are worked out then, not at the click
     node:track(menu.click_slider(node.handle, label("loop.call_after.name"), {}, label("loop.call_after.help"),
         100, 60000, 1000, 100, function(ms, click_type)
@@ -473,18 +535,21 @@ local function function_list(entry: table, mod: table, fn: table): void
             end
         end)
     end))
+
     node:toggle(label("loop.call_on_open.name"), function(on)
         call_on_open[key] = on or nil
     end, {}, label("loop.call_on_open.help"), call_on_open[key] == true)
     node:toggle(label("loop.call_on_focus.name"), function(on)
         call_on_focus[key] = on or nil
     end, {}, label("loop.call_on_focus.help"), call_on_focus[key] == true)
+
     -- The cursor on the function's list (not inside it)
     menu.on_focus(node.handle, function()
         if call_on_focus[key] then
             call_with_args(module_name, fn, key)
         end
     end)
+
     -- How its loop is: the status line, Loop, Loop With Interval. Above what it gave, so the table settings
     -- made under the Value list are the last items
     loop_statuses[key] = node:divider(text("loop.status_line"):format(text("loop.state.stopped")))
@@ -494,12 +559,14 @@ local function function_list(entry: table, mod: table, fn: table): void
     elseif run ~= nil then
         show_loop_status(key, "running")
     end
+
     -- On: every frame; off: the loop stops, also one started with an interval. Made as the loop is now
     syncing[key] = true
     loop_toggles[key] = node:toggle(label("loop.loop.name"), function(on)
         if clicks.is_stopping() or syncing[key] then
             return
         end
+
         -- Only a real change: the toggle following a loop (e.g. one with an interval) starts nothing,
         -- even if Stand calls this later than the switch
         local running = function_loops[key] ~= nil
@@ -520,21 +587,26 @@ local function function_list(entry: table, mod: table, fn: table): void
 
     -- What it gave last and, for a table, its Value list right under
     values.add_result_lines(node, key)
+
     -- The table settings, while the last result is a table, at the end: right under the Value list.
     -- How deep a table it gave opens in the Value list (kept by key), the functions in the table become lists
     -- with their own Arguments and Call, the other values become fields to type a new value in
     -- (the functions of a table it gave get the same panel as Debug > Call Function: Argument, Call, Loop...)
     values.bind_depth_items(key, function()
+
         local first = #node.children + 1
+
         -- Shown only while the last result is a table
         node:track(menu.slider(node.handle, label("loop.table_depth.name"), {}, label("loop.table_depth.help"),
             1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
             if clicks.is_stopping() then
                 return
             end
+
             -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
             values.set_result_depth(key, depth, not clicks.is_user_click(click_type))
         end))
+
         -- The functions in the table become lists with their own Arguments and Call
         node:toggle(label("loop.call_in_tables.name"), function(on, click_type)
             if clicks.is_stopping() then
@@ -542,6 +614,7 @@ local function function_list(entry: table, mod: table, fn: table): void
             end
             values.set_call_in_tables(key, on, not clicks.is_user_click(click_type))
         end, {}, label("loop.call_in_tables.help"), values.call_in_tables(key))
+
         -- The other values in the table become fields to type a new value in
         node:toggle(label("loop.edit_in_tables.name"), function(on, click_type)
             if clicks.is_stopping() then
@@ -549,6 +622,7 @@ local function function_list(entry: table, mod: table, fn: table): void
             end
             values.set_edit_in_tables(key, on, not clicks.is_user_click(click_type))
         end, {}, label("loop.edit_in_tables.help"), values.edit_in_tables(key))
+
         return function() node:clear_from(first) end
     end)
 end
@@ -565,16 +639,71 @@ local no_categories = {}
 
 -- The lists in their order: { key, name (a text or a label), words = { [word] = true } }
 local categories = {
-    { key = "add", name = label("categories.add"), words = { add = true } },
-    { key = "getters", name = label("categories.getters"), words = { get = true } },
-    { key = "setters", name = label("categories.setters"), words = { set = true, can = true, update = true } },
-    { key = "checks", name = label("categories.checks"), words = { is = true, has = true, does = true } },
-    { key = "loading", name = label("categories.loading"), words = { load = true } },
-    { key = "saving", name = label("categories.saving"), words = { save = true } },
+    {
+        key = "add",
+        name = label("categories.add"),
+        words = {
+            add = true
+        }
+    },
+    {
+        key = "getters",
+        name = label("categories.getters"),
+        words = {
+            get = true 
+        }
+    },
+    {
+        key = "setters",
+        name = label("categories.setters"),
+        words = { 
+            set = true, can = true, update = true 
+        }
+    },
+    {
+        key = "checks",
+        name = label("categories.checks"),
+        words = {
+            is = true, has = true, does = true
+        }
+    },
+    { 
+        key = "loading",
+        name = label("categories.loading"),
+        words = {
+            load = true
+        } 
+    },
+    { 
+        key = "saving",
+        name = label("categories.saving"),
+        words = {
+            save = true
+        } 
+    },
+
     -- remove: takes it out of a list (forgets it), the thing stays; delete: destroys it
-    { key = "remove", name = label("categories.remove"), words = { remove = true } },
-    { key = "create", name = label("categories.create"), words = { create = true, spawn = true, make = true } },
-    { key = "delete", name = label("categories.delete"), words = { delete = true } },
+    { 
+        key = "remove",
+        name = label("categories.remove"),
+        words = { 
+            remove = true
+        } 
+    },
+    { 
+        key = "create",
+        name = label("categories.create"),
+        words = { 
+            create = true, spawn = true, make = true 
+        } 
+    },
+    { 
+        key = "delete",
+        name = label("categories.delete"),
+        words = { 
+            delete = true
+        } 
+    },
 }
 
 -- Adds words to a category, or a category of its own when there's none with that key (at the end).
@@ -584,18 +713,21 @@ local categories = {
 -- @param name The list's name (a text or a label); for a new category, its key when none is given
 local function add_category_to(list: table, key: string, words: table, name): void
     local category = nil
+
     for _, other in ipairs(list) do
         if other.key == key then
             category = other
             break
         end
     end
+
     if category == nil then
         category = { key = key, name = name or key, words = {} }
         table.insert(list, category)
     elseif name ~= nil then
         category.name = name
     end
+    
     for _, word in ipairs(words) do
         category.words[word:lower()] = true
     end
@@ -607,7 +739,9 @@ end
 
 -- The categories for a module: everyone's, then its own debug.categories (copies, nothing shared changes)
 local function categories_of(mod: table): table
+    
     local list = {}
+    
     for _, category in ipairs(categories) do
         local words = {}
         for word in pairs(category.words) do
@@ -615,15 +749,19 @@ local function categories_of(mod: table): table
         end
         table.insert(list, { key = category.key, name = category.name, words = words })
     end
+    
     for _, own in ipairs(debug_of(mod).categories or {}) do
         add_category_to(list, own.key, own.words, own.name)
     end
+    
     return list
 end
 
 -- The first category with a word of the name, nil if none has one
 local function category_of(categories_list: table, name: string)
+    
     local words = name_parser.words(name)
+    
     for _, category in ipairs(categories_list) do
         for word in pairs(category.words) do
             if words[word] then
@@ -631,26 +769,43 @@ local function category_of(categories_list: table, name: string)
             end
         end
     end
+    
     return nil
 end
 
 -- The hooks the manager calls, to call by hand too (they don't change the module's status)
 local HOOKS = {
-    { name = "on_start", params = {}, vararg = false },
-    { name = "on_tick", params = {}, vararg = false },
-    { name = "on_stop", params = {}, vararg = false },
+    {
+        name = "on_start",
+        params = {},
+        vararg = false 
+    },
+    {
+        name = "on_tick",
+        params = {},
+        vararg = false
+    },
+    {
+        name = "on_stop",
+        params = {},
+        vararg = false
+    },
 }
 
 -- The Module Functions list (its Variables, then a list per function of the module), then the Base Functions
 -- divider with the hooks
 local function functions_of(entry: table, mod: table): void
+
     local functions_node = entry:list(label("functions.name"), {}, label("functions.help"))
     values.variables_list(functions_node, mod.name, hidden_of)
 
     -- The functions to show (debug.hide left out), by name; _ ones apart
     local hidden = hidden_of(mod)
+
     local function shown(list: table): table
+
         local out = {}
+
         for _, fn in ipairs(list) do
             if not hidden[fn.name] then
                 fn.returns = source_parser.return_type(mod[fn.name])
@@ -659,11 +814,14 @@ local function functions_of(entry: table, mod: table): void
                 table.insert(out, fn)
             end
         end
+
         return out
     end
+
     local all_public = Module.functions_of(mod)
     local all_internal = Module.functions_of(mod, "internal")
     local all_private = Module.functions_of(mod, "private")
+
     -- Each function's number for its command: its place among all of the module's functions by name,
     -- hidden ones too, so hiding or grouping doesn't change the commands
     local numbered = {}
@@ -672,19 +830,24 @@ local function functions_of(entry: table, mod: table): void
             table.insert(numbered, fn)
         end
     end
+
     table.sort(numbered, |a, b| -> a.name < b.name)
+
     for i, fn in ipairs(numbered) do
         fn.number = i
     end
+
     local functions = shown(all_public)
     local internal = shown(all_internal)
     local private = shown(all_private)
+
     local by_name = {}
     for _, list in ipairs({ functions, internal, private }) do
         for _, fn in ipairs(list) do
             by_name[fn.name] = fn
         end
     end
+
     -- Functions put in a group: not again under Functions / Internal Functions
     local placed = {}
     local function rest_of(list: table): table
@@ -713,10 +876,12 @@ local function functions_of(entry: table, mod: table): void
     -- The rest under Functions: first a list per category with functions in it (Getters, Setters...),
     -- then the ones in none ("No functions" when there are none at all)
     local rest = rest_of(functions)
+
     -- Categories off for this module: every function in the one list
     local module_categories = no_categories[mod.name] and {} or categories_of(mod)
     local in_category = {}
     local loose = {}
+
     for _, fn in ipairs(rest) do
         local category = category_of(module_categories, fn.name)
         if category == nil then
@@ -726,12 +891,14 @@ local function functions_of(entry: table, mod: table): void
             table.insert(in_category[category.key], fn)
         end
     end
+
     if #rest > 0 or #groups == 0 then
         functions_node:divider(label("functions.divider"))
     end
     if #functions == 0 and #groups == 0 then
         functions_node:readonly_name(label("no_functions"))
     end
+
     for _, category in ipairs(module_categories) do
         local fns = in_category[category.key]
         if fns ~= nil then
@@ -741,13 +908,17 @@ local function functions_of(entry: table, mod: table): void
             end
         end
     end
+
     for _, fn in ipairs(loose) do
         function_list(functions_node, mod, fn)
     end
+
     -- At the bottom: the module's helpers named with _, then its private ones named with __
     -- (callable the same way)
     for _, part in ipairs({ { list = internal, key = "internal_functions" }, { list = private, key = "private_functions" } }) do
+
         local rest_part = rest_of(part.list)
+
         if #rest_part > 0 then
             functions_node:divider(label(part.key))
             for _, fn in ipairs(rest_part) do
@@ -763,10 +934,13 @@ local function functions_of(entry: table, mod: table): void
     else
         hooks_node = entry:list(label("base_functions.name"), {}, label("base_functions.help"))
     end
+
     for _, hook in ipairs(HOOKS) do
+
         -- The module's own type, or the one Module declares the hook with (a module's override may leave it out)
         local returns = source_parser.return_type(mod[hook.name]) or source_parser.return_type(Module[hook.name])
         local named = { name = hook.name, params = hook.params, vararg = hook.vararg, returns = returns }
+
         -- on_tick runs every frame, so it's a list to start and stop, not a button
         if hook.name == "on_tick" then
             ticks.list(hooks_node, mod, item_name(named))
@@ -779,19 +953,24 @@ end
 -- After Reload: the module's code is new, so its Base Functions and Module Functions are made again.
 -- Its loops by hand end first (they belonged to the old code and their Status lines go with the items)
 local function rebuild_functions(name: string): void
+
     local section = (view.sections or {})[name]
     local modules = Atdar.modules
+
     if section == nil or not modules.has(name) then
         return
     end
+
     section.entry:clear_from(section.first)
     functions_of(section.entry, modules.get(name))
 end
 
 -- A module's items in its list (entry): Status, Start / Restart / Stop / Reload, then its functions
 local function fill_module(entry: table, name: string): void
+
     local mod = Atdar.modules.get(name)
     view.statuses[name] = entry:divider(status_line(mod))
+
     for _, action in ipairs(ACTIONS) do
         entry:action(label(action.key), function()
             action.run(name)
@@ -801,7 +980,9 @@ local function fill_module(entry: table, name: string): void
             refresh()
         end)
     end
+
     entry:divider(label("functions.divider"))
+
     -- Before the functions, so making them again (below) leaves it where it is
     entry:toggle(label("no_categories.name"), function(on)
         if clicks.is_stopping() or (no_categories[name] == true) == on then
@@ -810,6 +991,7 @@ local function fill_module(entry: table, name: string): void
         no_categories[name] = on or nil
         rebuild_functions(name)
     end, {}, label("no_categories.help"), no_categories[name] == true)
+
     -- Where the functions start, so Reload can make them again
     view.sections[name] = { entry = entry, first = #entry.children + 1 }
     functions_of(entry, mod)
@@ -817,7 +999,9 @@ end
 
 -- Reloads the modules wanted(name) picks and tells how many; the notices are <strings>.done and <strings>.none
 local function reload_modules(wanted, strings: string): void
+
     local reloaded = 0
+
     for _, name in ipairs(Atdar.modules.names()) do
         if wanted(name) then
             ACTIONS_BY_KEY.reload.run(name)
@@ -825,11 +1009,14 @@ local function reload_modules(wanted, strings: string): void
             reloaded += 1
         end
     end
+
     refresh()
+
     if reloaded == 0 then
         log:notify(text($"{strings}.none"))
         return
     end
+
     log:notify(text($"{strings}.done"):format(reloaded))
 end
 
@@ -868,7 +1055,9 @@ end
 
 -- The open list's items: actions, then a list per module
 local function fill(node: table): void
+
     local modules = Atdar.modules
+
     -- Left from a time the user didn't go back out of it (the menu closed): made again
     node:clear()
     view = { list = node, entries = {}, statuses = {}, sections = {} }
@@ -877,7 +1066,9 @@ local function fill(node: table): void
     node:action(label("open_folder.name"), function()
         util.open_folder($"{Atdar.filesystem.paths.lib}modules")
     end, {}, label("open_folder.help"))
+
     node:action(label("refresh.name"), || -> refresh_with_new(node), {}, label("refresh.help"))
+
     node:action(label("stop_all.name"), function()
         -- On_tick run by hand stops too: nothing of the modules keeps running
         tick_runs.stop_all()
@@ -886,13 +1077,16 @@ local function fill(node: table): void
         refresh()
         log:notify(text("stop_all.done"))
     end, {}, label("stop_all.help"))
+
     node:action(label("reload_changed.name"), function()
         reload_modules(modules.file_changed, "reload_changed")
         refresh_with_new(node)
     end, {}, label("reload_changed.help"))
+
     -- A module made in code has no file to read again
     node:action(label("reload_all.name"), || -> reload_modules(|name| -> modules.file_of(name) ~= nil, "reload_all"),
         {}, label("reload_all.help"))
+
     node:divider(label("list.divider"))
 
     -- Files added since the start are run first, so their modules are in the list
@@ -902,6 +1096,7 @@ local function fill(node: table): void
     for _, name in ipairs(names) do
         add_entry(node, name)
     end
+
     if #names == 0 then
         node:readonly_name(label("empty"))
     end
@@ -934,12 +1129,16 @@ end
 -- only while it's open. Named like in the Modules list ("1: VehicleManager: running")
 -- @return The list (a MenuNode), nil if there's no such module
 function module.module_in(node: table, name: string): ?table
+
     local modules = Atdar.modules
+
     if not modules.has(name) then
         log:warn($"module_in: there's no module '{name}'")
         return nil
     end
+
     local entry = nil
+
     entry = node:list(caption(modules.get(name)), {}, help(modules.get(name)), function()
         empty(entry)
         -- Its name is out of the list it's in: made again here, with the status and file now
@@ -952,6 +1151,7 @@ function module.module_in(node: table, name: string): ?table
         view = { list = entry, entries = { [name] = entry.handle }, statuses = {}, sections = {} }
         fill_module(entry, name)
     end)
+    
     return entry
 end
 
