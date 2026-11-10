@@ -204,6 +204,10 @@ local function update_fields(): bool
         and not pcall(menu.set_value, view.log_info_at_once, Atdar.profile.get("log_info_at_once") == true) then
         ok = false
     end
+    if view.updater_log_both_ways
+        and not pcall(menu.set_value, view.updater_log_both_ways, Atdar.profile.get("updater_log_both_ways") == true) then
+        ok = false
+    end
     if view.notify_errors
         and not pcall(menu.set_value, view.notify_errors, Atdar.profile.get("notify_errors_in_stand") == true) then
         ok = false
@@ -703,6 +707,17 @@ function module.log_keep_days(node: table): void
         end, { "logkeepdays" }, label("log_keep_days.help"))
     show_profile_value(view.sliders.log_keep_days, "log_keep_days", Atdar.profile.get("log_keep_days"))
     updating = false
+end
+
+-- Write updater changes to both log file and Stand
+function module.updater_log_both_ways(node: table): void
+    view.updater_log_both_ways = node:toggle(label("updater_log_both_ways.name"), function(on)
+        if updating or Atdar.profile.get("updater_log_both_ways") == on then
+            return
+        end
+
+        Atdar.profile.set("updater_log_both_ways", on)
+    end, { "updaterlogbothways" }, label("updater_log_both_ways.help"), Atdar.profile.get("updater_log_both_ways") == true)
 end
 
 -- Info lines on disk at once too (core/logger): warnings and errors always are, the rest within a second

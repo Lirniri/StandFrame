@@ -28,6 +28,7 @@ local DEFAULTS = {
     log_keep_days = 7,          -- days of log files kept in store/<script>/logs (today counts); 0 = all
     -- Every log line on disk at once; otherwise warnings and errors only, the rest within a second
     log_info_at_once = false,
+    updater_log_both_ways = true, -- write updater changes to both log file and Stand
     auto_update = false,        -- a new version found by a check is installed by itself (updater_menu)
     update_check_on_start = true, -- check for a new version every time the script starts
     update_check_days = 1,      -- check for a new version once in this many days; 0 = never

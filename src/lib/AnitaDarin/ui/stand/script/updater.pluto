@@ -24,6 +24,8 @@
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local manager = Atdar.loader.load("core/update_manager")
+local file = Atdar.loader.load("core/filesystem/file")
+local paths = Atdar.loader.load("core/filesystem/paths")
 
 local log = new Logger("Updater")
 
@@ -91,10 +93,7 @@ local function refresh_info(): void
     pcall(menu.set_value, view.last_check, last_check_text())
 end
 
--- Says what the available version changes: the files in one notification in Stand (the game's feed
--- cuts a long text), the first MAX_LINES of them
-local MAX_LINES = 30
-
+-- Saves what the available version changes to a log file in store/AnitaDarin/logs
 local function show_changes(): void
     local lines = manager.changes()
 
@@ -103,37 +102,41 @@ local function show_changes(): void
         return
     end
 
+    local date = os.date("%Y-%m-%d")
+    local filename = $"{Atdar.name}_{date}_updater.log"
+    local logpath = $"{paths.store}logs/{filename}"
+
     local parts = {}
 
-    for i, line in ipairs(lines) do
-        if i > MAX_LINES then
-            table.insert(parts, text("changes.more"):format(#lines - MAX_LINES))
-            break
-        end
+    for _, line in ipairs(lines) do
         table.insert(parts, text($"changes.{line.kind}"):format(line.path))
     end
 
-    log:notify(table.concat(parts, "\n"), "stand")
+    local content = table.concat(parts, "\n")
+    local ok = file.write(logpath, content)
+
+    if ok then
+        log:notify(text("changes.saved"):format(filename), "stand")
+    else
+        log:notify(text("changes.error"), "stand")
+    end
 end
 
 function module.build(node: table): table
+
     local profile = Atdar.profile
     local list = node:list(label("name"), { "updater" }, label("help"))
     view.installed = list:readonly(label("info.installed"), "")
     view.available = list:readonly(label("info.available"), "")
     view.last_check = list:readonly(label("info.last_check"), "")
+
     refresh_info()
     manager.on_change(refresh_info)
     list:action(label("changes.name"), show_changes, { "updaterchanges" }, label("changes.help"))
+    
     list:divider(label("check_divider"))
     threaded(list, "check", "updatercheck", manager.check)
-    list:toggle(label("on_start.name"), function(on)
-        -- Stand also calls it at every start: only a real change is saved
-        if profile.get("update_check_on_start") == on then
-            return
-        end
-        profile.set("update_check_on_start", on)
-    end, { "updaterstart" }, label("on_start.help"), profile.get("update_check_on_start") ~= false)
+
     -- The branch updates come from, its name in the item: "Update Branch: main"
     view.branch = list:list_action(branch_caption(), branch_options(), function(index)
         local branch = BRANCHES[index]
@@ -141,6 +144,14 @@ function module.build(node: table): table
         pcall(menu.set_menu_name, view.branch, branch_caption())
         log:notify(text("branch.set"):format(branch))
     end, { "updaterbranch" }, label("branch.help"))
+    
+    list:toggle(label("on_start.name"), function(on)
+        -- Stand also calls it at every start: only a real change is saved
+        if profile.get("update_check_on_start") == on then
+            return
+        end
+        profile.set("update_check_on_start", on)
+    end, { "updaterstart" }, label("on_start.help"), profile.get("update_check_on_start") ~= false)
 
     list:divider(label("divider"))
     threaded(list, "install", "updaterinstall", manager.install_and_restart)
@@ -151,6 +162,7 @@ function module.build(node: table): table
         end
         profile.set("update_check_before", on)
     end, { "updaterbefore" }, label("before.help"), profile.get("update_check_before") ~= false)
+    
     list:toggle(label("auto.name"), function(on)
         -- Stand also calls it at every start, restoring the state it keeps: only a real change is saved
         if profile.get("auto_update") == on then
@@ -158,6 +170,7 @@ function module.build(node: table): table
         end
         profile.set("auto_update", on)
     end, { "updaterauto" }, label("auto.help"), profile.get("auto_update") == true)
+    
     -- Applied on a click with the days picked: 0 - never
     list:click_slider(label("check_days.name"), 0, 30, profile.get("update_check_days") or 1, 1, function(days)
         profile.set("update_check_days", days)

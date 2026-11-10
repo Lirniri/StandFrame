@@ -321,6 +321,10 @@
             "name": "Write Info At Once",
             "help": "Every log line goes to the file at once, not within a second. Warnings and errors always go at once. Slower, but nothing is lost if the game crashes"
         },
+        "updater_log_both_ways": {
+            "name": "Write Both Ways",
+            "help": "Save updater changes to both the log file and Stand's notifications"
+        },
         "script": {
             "divider": "Script"
         },
@@ -1027,7 +1031,9 @@
             "none": "No changes to show: nothing to update, or updates weren't checked yet",
             "update": "Update: %s",
             "remove": "Remove: %s",
-            "more": "...and %d more"
+            "more": "...and %d more",
+            "saved": "Log file created: %s",
+            "error": "Couldn't save log file"
         },
         "check_divider": "Check",
         "on_start": {
