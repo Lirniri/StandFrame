@@ -1,0 +1,465 @@
+local Module = Atdar.loader.load("core/module")
+
+-- The folder saved peds go to, inside the module's
+local SAVE_FOLDER = "peds"
+
+-- What's saved of a ped: { handle, model, name (when Stand knows it), x, y, z, heading }.
+-- The handle is the one the game gave it this session: the game gives a new one when it's spawned again.
+-- nil when its position can't be read
+local function ped_data(handle: int): ?table
+
+    local n_entity = Atdar.natives.entity
+    local model = n_entity.get_model(handle)
+    local coords = n_entity.get_coords(handle, true, 1.3)
+
+    if coords == nil then
+        return nil
+    end
+
+    local data = {
+        handle = handle,
+        model = model,
+        x = coords.x, y = coords.y, z = coords.z,
+        heading = n_entity.get_heading(handle)
+    }
+    local name = util.reverse_joaat(model)
+
+    if name ~= nil and name ~= "" then
+        data.name = name
+    end
+
+    return data
+    -- @return ?table
+end
+
+local class PedManager extends Module
+
+    function __construct(ped: int = 0)
+        parent:__construct({
+            name = "PedManager",
+            -- Stand runs the first tick right away, while the script is still starting: skipped, so the
+            -- natives load a frame later, not in the start's time
+            skip_first_tick = true,
+            -- Inside the options: a bare `debug = ...` here would replace Lua's debug library for the whole script
+            debug = {
+                hide = {
+                    "_free_name",
+                    "_unorder",
+                    "_trim"
+                }
+            }
+        })
+        -- State lives in fields; set defaults here
+
+        -- Ped>State
+        self.ped_id = ped
+        self.current_ped = 0 -- the ped watched last time, for auto_remember
+
+        -- Ped>State
+        self.last_handle = -1
+        self.prev_handle = -1
+
+        -- Ped>Flags
+        self.auto_remember = false
+        self.count_remember = 15
+        self.remember_prev = true
+
+        -- Ped>Tables
+        self.peds = {}
+        self.order = {} -- the handles, the oldest first: tells which one to forget past count_remember
+    end
+
+    -- The ped watched at the start is remembered a frame later (on_tick): the natives it needs
+    -- aren't loaded while the script starts
+    function on_start()
+        self.current_ped = 0
+    end
+
+    -- Forgets the peds that left the game, remembers the one watched when it changes (auto_remember)
+    function on_tick()
+
+        -- State
+        if not self:does_last_exist() then
+            self:remove_last_ped()
+        end
+
+        if not self:does_prev_exist() then
+            self:remove_prev_ped()
+        end
+
+        if self.auto_remember then
+            self:_remember_current_ped()
+        end
+    end
+
+    function on_stop()
+        -- body
+    end
+
+    -- Is
+
+    -- Whether the ped the manager looks at is in the game
+    function does_ped_exist(): bool
+        return Atdar.natives.entity.ped.does_exist(self:get_ped_id())
+    end
+
+    -- Whether the ped remembered last is still in the game
+    function does_last_exist(): bool
+
+        local handle = self:get_last_handle()
+
+        if handle == nil then
+            return false
+        end
+
+        return Atdar.natives.entity.ped.does_exist(handle)
+    end
+
+    -- Whether the ped remembered before the last one is still in the game
+    function does_prev_exist(): bool
+
+        local handle = self:get_prev_handle()
+
+        if handle == nil then
+            return false
+        end
+
+        return Atdar.natives.entity.ped.does_exist(handle)
+    end
+
+    -- Whether the ped before the last one is remembered too
+    function is_remember_prev(): bool
+        return self.remember_prev
+    end
+
+    -- Whether the ped the manager looks at is remembered by itself when it changes
+    function is_auto_remember(): bool
+        return self.auto_remember
+    end
+
+    -- Get
+
+    -- The ped the manager looks at: the one given to set_ped_id, or the player's own when none is set (0)
+    function get_ped_id(): int
+        if self.ped_id ~= 0 then
+            return self.ped_id
+        end
+        return Atdar.natives.player.get_ped_id()
+        -- @return a player's ped, or the one set_ped_id gave
+    end
+
+    -- The last ped remembered (add_ped), or nil if there's none
+    function get_last_handle(): ?int
+        if self.last_handle == -1 then
+            return nil
+        end
+        return self.last_handle
+        -- @return ?int
+    end
+
+    -- The ped remembered before the last one, or nil if there's none
+    function get_prev_handle(): ?int
+        if self.prev_handle == -1 then
+            return nil
+        end
+        return self.prev_handle
+        -- @return ?int
+    end
+
+    -- Every ped remembered, as a list of handles
+    function get_handles(): table
+
+        local handles = {}
+
+        for handle in pairs(self.peds) do
+            table.insert(handles, handle)
+        end
+
+        return handles
+        -- @return table of handles
+    end
+
+    -- Set
+
+    -- The ped the manager looks at; only a whole number (a handle), like add_ped takes
+    function set_ped_id(ped: int): void
+        if math.type(ped) ~= "integer" then
+            self.log:warn(self:text("not_ped", "'%s' isn't a ped's handle, not set"):format(tostring(ped)))
+            return
+        end
+        self.ped_id = ped
+    end
+
+    -- Whether the ped before the last one is remembered too
+    function set_remember_prev(toggle: bool): void
+        self.remember_prev = toggle
+        -- @return void
+    end
+
+    -- Remember the ped the manager looks at by itself when it changes
+    function set_auto_remember(toggle: bool): void
+        self.auto_remember = toggle
+        -- @return void
+    end
+
+    -- Remembers a ped the script made or the player became
+    function add_ped(handle: int): void
+
+        -- Only a real handle: a whole number, not -1 / 0 ("none" from Stand and from the game's natives).
+        -- Anything else (a function, a text typed in the menu) would break every function reading the table
+        if math.type(handle) ~= "integer" or handle == -1 or handle == 0 then
+            self.log:warn(self:text("not_handle", "'%s' isn't a ped's handle, not remembered"):format(tostring(handle)))
+            return
+        end
+
+        -- Added again: it moves to the end of the order, so the ones used lately are forgotten last
+        self:_unorder(handle)
+        table.insert(self.order, handle)
+
+        self.peds[handle] = true
+        self:update_ped(handle)
+        self:_trim()
+        -- @return void
+    end
+
+    -- How many peds are remembered at most; past it the oldest are forgotten (only from the table)
+    function set_count_remember(count: int): void
+
+        if math.type(count) ~= "integer" or count < 1 then
+            self.log:warn(self:text("not_count", "'%s' isn't a count from 1, not set"):format(tostring(count)))
+            return
+        end
+
+        self.count_remember = count
+        self:_trim()
+        -- @return void
+    end
+
+    -- Forgets a ped (only from the table: the ped stays in the game)
+    function remove_ped(handle: int): void
+        self.peds[handle] = nil
+        self:_unorder(handle)
+
+        if self.last_handle == handle then
+            self.last_handle = -1
+        end
+        if self.prev_handle == handle then
+            self.prev_handle = -1
+        end
+        -- @return void
+    end
+
+    -- Forgets the ped remembered last (only from the table: the ped stays in the game)
+    function remove_last_ped(): void
+        if self.last_handle == -1 then
+            return
+        end
+
+        self:remove_ped(self.last_handle)
+        -- @return void
+    end
+
+    -- Forgets the ped remembered before the last one (only from the table)
+    function remove_prev_ped(): void
+        if self.prev_handle == -1 then
+            return
+        end
+
+        self:remove_ped(self.prev_handle)
+        -- @return void
+    end
+
+    -- Forgets all peds
+    function remove_all_peds(): void
+        self.peds = {}
+        self.order = {}
+        self.last_handle = -1
+        self.prev_handle = -1
+        -- @return void
+    end
+
+    -- Actions
+
+    -- Makes handle the last ped; the one before it becomes the penultimate (only when remember_prev is on)
+    function update_ped(handle: int): void
+        if handle == self.last_handle then
+            return
+        end
+
+        if self.remember_prev then
+            self.prev_handle = self.last_handle
+        end
+
+        self.last_handle = handle
+        -- @return void
+    end
+
+    -- Remembers the ped the manager looks at once when it changes (not every frame it stays the same).
+    -- self.current_ped: the one watched last time, 0 - none
+    function _remember_current_ped(): void
+        local ped = self:get_ped_id()
+
+        if ped == self.current_ped then
+            return
+        end
+
+        self.current_ped = ped
+
+        if ped == 0 then
+            return
+        end
+
+        local is_new = self.peds[ped] == nil
+
+        -- Coming back to one remembered already makes it the last again
+        self:add_ped(ped)
+
+        if is_new then
+            self.log:debug($"remembered the ped: {ped}")
+        end
+
+        -- @return void
+    end
+
+    -- Deletes a ped from the game and forgets it. The player's own ped is never deleted
+    -- @return Whether it was deleted (one already gone is only forgotten)
+    function delete(handle: ?int): bool
+
+        local n_ped = Atdar.natives.entity.ped
+
+        if math.type(handle) ~= "integer" then
+            return false
+        end
+
+        self:remove_ped(handle)
+
+        if not n_ped.does_exist(handle) then
+            return false
+        end
+
+        if n_ped.is_player(handle) then
+            self.log:warn(self:text("is_player", "%s is a player's ped, not deleted"):format(tostring(handle)))
+            return false
+        end
+
+        Atdar.natives.entity.delete(handle)
+        return true
+        -- @return bool
+    end
+
+    -- Deletes the ped remembered last from the game and forgets it
+    function delete_last(): bool
+        return self:delete(self:get_last_handle())
+    end
+
+    -- Deletes every remembered ped from the game and forgets them
+    -- @return How many were deleted (ones already gone are only forgotten)
+    function delete_all(): int
+        local deleted = 0
+
+        for _, handle in ipairs(self:get_handles()) do
+            if self:delete(handle) then
+                deleted += 1
+            end
+        end
+
+        return deleted
+        -- @return int
+    end
+
+    -- Saving
+
+    -- Saves one ped to its own file in the module's peds folder (modules/PedManager/peds/):
+    -- the model, where it stands and which way it faces.
+    -- @param name The file's name; nil - the model's name, with _2, _3... when that one is taken
+    -- @return The file's name (without .json), nil if the ped doesn't exist, its position can't be read or the file couldn't be written
+    function save_ped(handle: int, name: ?string): ?string
+        if math.type(handle) ~= "integer" or not Atdar.natives.entity.ped.does_exist(handle) then
+            self.log:warn(self:text("not_in_game", "%s isn't a ped in the game"):format(tostring(handle)))
+            return nil
+        end
+
+        local data = ped_data(handle)
+
+        if data == nil then
+            self.log:warn(self:text("no_position", "Couldn't read the position of %s, not saved"):format(tostring(handle)))
+            return nil
+        end
+
+        local file_name = name
+
+        if file_name == nil or file_name == "" then
+            file_name = self:_free_name(data.name or $"ped_{data.model}")
+        end
+
+        -- Characters Windows doesn't allow in a file's name
+        file_name = file_name:gsub('[<>:"/\\|?*]', "_")
+
+        local file = self:json_file($"{SAVE_FOLDER}/{file_name}")
+        if file == nil then
+            self.log:warn(self:text("no_folder", "The module isn't loaded from a file: there's no folder to save to"))
+            return nil
+        end
+
+        if not file:write(data) then
+            self.log:warn(self:text("not_written", "Couldn't write %s"):format(file.path))
+            return nil
+        end
+
+        self.log:info(self:text("saved", "Saved to %s"):format(file.path))
+        return file_name
+    end
+
+    -- Saves every remembered ped that still exists, each to its own file (save_ped)
+    -- @return How many were saved
+    function save_peds(): int
+        local saved = 0
+
+        for handle in pairs(self.peds) do
+            if math.type(handle) == "integer"
+                and Atdar.natives.entity.ped.does_exist(handle)
+                and self:save_ped(handle) ~= nil then
+                saved += 1
+            end
+        end
+
+        return saved
+    end
+
+    -- Takes the handle out of the order list
+    function _unorder(handle: int): void
+
+        for i, ordered in ipairs(self.order) do
+            if ordered == handle then
+                table.remove(self.order, i)
+                return
+            end
+        end
+        -- @return void
+    end
+
+    -- Forgets the oldest peds while there are more than count_remember
+    function _trim(): void
+
+        while #self.order > self.count_remember do
+            self:remove_ped(self.order[1])
+        end
+        -- @return void
+    end
+
+    -- "mp_m_freemode_01", or "mp_m_freemode_01_2", "_3"... when the file is there already
+    function _free_name(base: string): string
+        local name = base
+        local number = 1
+
+        while self:json_file($"{SAVE_FOLDER}/{name}"):exists() do
+            number += 1
+            name = $"{base}_{number}"
+        end
+
+        return name
+    end
+
+end
+
+return Atdar.modules.add(new PedManager())

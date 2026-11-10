@@ -632,6 +632,19 @@ stand.click(reloader_entry)
 stand.back(reloader_entry)
 stand.equal(stand.name_of(reloader_entry), "5: reloader: running", "and the mark goes when it's as loaded again")
 
+-- A file added to the modules folder after the start: Refresh runs it and its module joins the list
+stand.write_file($"{reload_dir}newcomer.pluto",
+    "local Module = Atdar.loader.load('core/module')\nreturn Atdar.modules.add(new Module({ name = 'newcomer' }))\n")
+stand.check(stand.find_item(list, "newcomer") == nil, "a new file's module isn't there before Refresh")
+stand.clear_logs()
+stand.click(stand.child(list, "Refresh"))
+stand.check(stand.find_item(list, "newcomer") ~= nil, "Refresh adds the module of a new file to the list")
+stand.check(Atdar.modules.get("newcomer"):is_running(), "and it's started")
+stand.check(stand.find_log("Modules from new files: 1"), "and says how many")
+stand.clear_logs()
+stand.click(stand.child(list, "Refresh"))
+stand.check(not stand.find_log("Modules from new files"), "nothing new: it stays quiet")
+
 -- Reload: the code is read again, its functions in the menu are made again
 local entry_reloader = stand.find_item(list, "5: reloader: ")
 local function reloader_fns() return stand.child(entry_reloader, "Module Functions") end

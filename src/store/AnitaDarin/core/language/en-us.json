@@ -448,7 +448,7 @@
         },
         "refresh": {
             "name": "Refresh",
-            "help": "Updates every module's status"
+            "help": "Updates every module's status and adds the modules of new files in the modules folder"
         },
         "stop_all": {
             "name": "Stop All",
@@ -471,6 +471,7 @@
             "divider": "Modules"
         },
         "empty": "No modules registered",
+        "new_files": "Modules from new files: %d",
         "start": "Start",
         "stop": "Stop",
         "restart": "Restart",

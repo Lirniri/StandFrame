@@ -833,6 +833,39 @@ local function reload_modules(wanted, strings: string): void
     log:notify(text($"{strings}.done"):format(reloaded))
 end
 
+-- Runs the module files that came into the modules folders since the script started and tells how many
+-- modules they added
+-- @return How many modules were added
+local function load_new_files(): int
+    local added = Atdar.modules.load_new()
+    if added > 0 then
+        log:notify(text("new_files"):format(added))
+    end
+    return added
+end
+
+-- A list for one module in the node, with its status, actions and functions. Opening it and going back out
+-- look at the statuses and files again: they change while one is inside (a module failing, a file synced),
+-- and a name left behind would say what was
+local function add_entry(node: table, name: string): void
+    local mod = Atdar.modules.get(name)
+    local entry = node:list(caption(mod), {}, help(mod), refresh, refresh)
+    view.entries[name] = entry.handle
+    fill_module(entry, name)
+end
+
+-- Refresh: the new module files are run and their modules join the end of the list (the list the user is
+-- in isn't made again: Stand doesn't take that cleanly), then every status is updated
+local function refresh_with_new(node: table): void
+    load_new_files()
+    for _, name in ipairs(Atdar.modules.names()) do
+        if view.entries[name] == nil then
+            add_entry(node, name)
+        end
+    end
+    refresh()
+end
+
 -- The open list's items: actions, then a list per module
 local function fill(node: table): void
     local modules = Atdar.modules
@@ -844,7 +877,7 @@ local function fill(node: table): void
     node:action(label("open_folder.name"), function()
         util.open_folder($"{Atdar.filesystem.paths.lib}modules")
     end, {}, label("open_folder.help"))
-    node:action(label("refresh.name"), refresh, {}, label("refresh.help"))
+    node:action(label("refresh.name"), || -> refresh_with_new(node), {}, label("refresh.help"))
     node:action(label("stop_all.name"), function()
         -- On_tick run by hand stops too: nothing of the modules keeps running
         tick_runs.stop_all()
@@ -853,21 +886,21 @@ local function fill(node: table): void
         refresh()
         log:notify(text("stop_all.done"))
     end, {}, label("stop_all.help"))
-    node:action(label("reload_changed.name"), || -> reload_modules(modules.file_changed, "reload_changed"),
-        {}, label("reload_changed.help"))
+    node:action(label("reload_changed.name"), function()
+        reload_modules(modules.file_changed, "reload_changed")
+        refresh_with_new(node)
+    end, {}, label("reload_changed.help"))
     -- A module made in code has no file to read again
     node:action(label("reload_all.name"), || -> reload_modules(|name| -> modules.file_of(name) ~= nil, "reload_all"),
         {}, label("reload_all.help"))
     node:divider(label("list.divider"))
 
+    -- Files added since the start are run first, so their modules are in the list
+    load_new_files()
+
     local names = modules.names()
     for _, name in ipairs(names) do
-        local mod = modules.get(name)
-        -- Opening it and going back out look at the statuses and files again: they change while one is
-        -- inside (a module failing, a file synced), and a name left behind would say what was
-        local entry = node:list(caption(mod), {}, help(mod), refresh, refresh)
-        view.entries[name] = entry.handle
-        fill_module(entry, name)
+        add_entry(node, name)
     end
     if #names == 0 then
         node:readonly_name(label("empty"))
