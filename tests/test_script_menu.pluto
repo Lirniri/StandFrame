@@ -230,13 +230,13 @@ stand.check(night.default == 19 and night.value == 21, "the slider too: Stand de
 menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
-stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
+stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core | Menus", "Load Menu")
 -- Opening it looks for the menus again: the entries are made again, not added a second time
 find("Load Menu").on_click()
-stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu: opened, the menus made again")
+stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core | Menus", "Load Menu: opened, the menus made again")
 local update_list = find("Update")
 stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check | Check For Updates"
-    .. " | Check On Start | Update Branch: main | Update | Update | Check Before Updating | Update Automatically"
+    .. " | Update Branch: main | Check On Start | Update | Update | Check Before Updating | Update Automatically"
     .. " | Check For Updates Every (Days)",
     "Update: the version lines, Changes, Check For Updates and its branch, then the Update divider with Update and its settings")
 stand.equal(update_list.children[9].kind, "divider", "the Update divider under the branch")
@@ -280,7 +280,7 @@ for _, child in find("Debug").children do
 end
 stand.equal(names_in(logs_list), "Name In Logs: "
     .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
-    .. " | Keep Logs (Days) | Write Info At Once | Clear Current Log File | Clear All Log Files", "Debug > Logs")
+    .. " | Keep Logs (Days) | Write Both Ways | Write Info At Once | Clear Current Log File | Clear All Log Files", "Debug > Logs")
 local debug_settings = stand.child(find("Debug"), "Settings")
 stand.equal(names_in(debug_settings), "Languages", "Debug > Settings")
 stand.equal(names_in(stand.child(debug_settings, "Languages")), "Show Keys | Send | Send Translation Path | Send File Path", "Debug > Settings > Languages")
@@ -1204,7 +1204,7 @@ menu.show_warning = real_warning
 
 -- Update's settings are kept in the profile already (last: they leave it changed)
 local update_list = find("Update")
-local on_start = update_list.children[7]
+local on_start = update_list.children[8]
 stand.equal(on_start.value, profile.get("update_check_on_start") ~= false, "Check On Start shows the profile's value")
 local start_was = profile.get("update_check_on_start")
 stand.click(on_start)
@@ -1232,7 +1232,7 @@ stand.check(stand.toasts[#stand.toasts]:find("every 3 days", 1, true), "and says
 stand.click(check_days, 0)
 stand.check(stand.toasts[#stand.toasts]:find("won't be checked", 1, true), "0: never")
 profile.set("update_check_days", days_before)
-local branch_item = update_list.children[8]
+local branch_item = update_list.children[7]
 stand.equal(stand.name_of(branch_item), "Update Branch: main", "Update Branch shows the profile's branch")
 stand.click(branch_item, 2)
 stand.equal(profile.get("update_branch"), "experiment", "picking experiment saves it")

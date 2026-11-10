@@ -237,6 +237,7 @@ function module.build(section: table, opts: table): void
 
     profile_menu.header(section)
     
+    -- Settings
     local settings = section:list(i18n.label("profile.settings.name"), { "settings" },
         i18n.label("profile.settings.help"))
     profile_menu.appearance(settings)
@@ -246,6 +247,7 @@ function module.build(section: table, opts: table): void
 
     profile_menu.profiles(section, opts.refresh)
 
+    -- Menu Loader
     -- Its commands all start with menuloader: menuloader, menuloaderunload, menuloaderautocopy,
     -- menuloaderbuiltin, menuloader<pack folder>
     -- The menus are looked for again each time the list is opened, so a pack put into store shows without
@@ -266,6 +268,7 @@ function module.build(section: table, opts: table): void
     first_menu = #load_menu.children + 1
     opts.fill_menus(load_menu)
 
+    -- Command Box
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
     profile_menu.command_box(command_box)
     command_box:divider(label("commands.divider"))
@@ -289,6 +292,7 @@ function module.build(section: table, opts: table): void
         part.list:divider(label("commands.divider"))
     end
 
+    -- Open Folder
     local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
     local paths = Atdar.filesystem.paths
     open_folder(folders, "lib", paths.lib)
@@ -298,12 +302,14 @@ function module.build(section: table, opts: table): void
 
     updater_menu.build(section)
 
+    -- Debug
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
     profile_menu.debug(debug)
     local logs = debug:list(label("logs.name"), {}, label("logs.help"))
     debug:divider(label("options_from_other_menu.divider"))
     profile_menu.log_name(logs)
     profile_menu.log_keep_days(logs)
+    profile_menu.updater_log_both_ways(logs)
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
@@ -314,6 +320,8 @@ function module.build(section: table, opts: table): void
     modules_place.build(debug, call_function.build)
     modules_place.debug_only(delete_script(debug))
 
+
+    -- Settings
     -- The script's cards and posts in the game's feed, all taken away (other scripts' and the game's stay).
     -- Told in Stand: a notice in the feed would be one more to take away
     section:action(label("clear_feed.name"), function()

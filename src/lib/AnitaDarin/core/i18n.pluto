@@ -47,7 +47,9 @@ local listeners = {}
 -- reads English and the language shown, not every translation there is. A damaged file gives no
 -- strings (JsonFile warns)
 local function read_languages(source: table): void
+
     local files = {}
+
     if filesystem.is_dir(source.dir) then
         for _, path in ipairs(filesystem.list_files(source.dir)) do
             local code = path:match("([^\\/]+)%.json$")
@@ -56,14 +58,17 @@ local function read_languages(source: table): void
             end
         end
     end
+
     source.files = files
     source.flat = {}
     source.languages = setmetatable({}, {
         __index = function(languages, code)
+
             local path = files[code]
             if path == nil then
                 return nil
             end
+
             local strings = new JsonFile(path):read() or {}
             rawset(languages, code, strings)
             return strings
@@ -75,15 +80,18 @@ end
 -- the language list names every language, and needs nothing else from most of them
 -- @return The name, or nil if the source doesn't have it
 local function name_in(source: table, code: string): ?string
+
     local strings = rawget(source.languages, code)
     if strings ~= nil then
         local name = strings.language_name
         return type(name) == "string" and name or nil
     end
+
     local path = source.files[code]
     if path == nil then
         return nil
     end
+
     local text = Atdar.loader.load("core/filesystem/file").read(path)
     if text == nil then
         return nil
@@ -93,6 +101,7 @@ end
 
 -- Nested strings as one table, "menu.self.godmode" -> text, so a key is found by one index instead of being split on every call
 local function flatten(data: table, path: string, result: table): table
+
     for key, value in pairs(data) do
         local full = path == "" and tostring(key) or $"{path}.{tostring(key)}"
         if type(value) == "table" then
@@ -101,45 +110,56 @@ local function flatten(data: table, path: string, result: table): table
             result[full] = value
         end
     end
+
     return result
 end
 
 -- The language's strings by full key, made the first time they're asked for (reload makes them again)
 local function flat_of(source: table, code: string): ?table
+
     local flat = source.flat[code]
     if flat ~= nil then
         return flat
     end
+
     local strings = source.languages[code]
     if strings == nil then
         return nil
     end
+
     flat = flatten(strings, "", {})
     source.flat[code] = flat
+
     return flat
 end
 
 local function lookup(data: table, key: string)
+
     local value = data
+
     for part in key:gmatch("[^%.]+") do
         if type(value) ~= "table" then
             return nil
         end
         value = value[part]
     end
+
     return value
 end
 
 -- The key as a source holds it: a source with a prefix ("module.VehicleManager") has only the keys under
 -- it, with the prefix taken off ("module.VehicleManager.wreck" -> "wreck"); nil when the key isn't its
 local function key_in(source: table, key: string): ?string
+
     local prefix = source.prefix
     if prefix == nil then
         return key
     end
+
     if key:sub(1, #prefix + 1) == $"{prefix}." then
         return key:sub(#prefix + 2)
     end
+
     return nil
 end
 
@@ -154,12 +174,15 @@ local function find(code: string, key: string): ?string
             return text
         end
     end
+
     return nil
 end
 
 -- @return Every language code that has a file in any source, except English (the files aren't read)
 local function translated_codes(): table
+
     local codes, seen = {}, {}
+
     for _, source in ipairs(sources) do
         for code in pairs(source.files) do
             if code ~= ENGLISH and not seen[code] then
@@ -168,6 +191,7 @@ local function translated_codes(): table
             end
         end
     end
+
     return codes
 end
 
@@ -179,12 +203,15 @@ end
 
 -- Our file code for Stand's current language (Stand's "ru" -> "ru-ru"), or nil if there's no file for it
 local function current_code(): ?string
+
     local current = lang.get_current()
+
     for _, code in ipairs(translated_codes()) do
         if stand_code(code) == current then
             return code
         end
     end
+    
     return nil
 end
 
@@ -192,11 +219,14 @@ end
 -- language. The label itself stays the English text, so Stand's profiles still match the items.
 -- Without a chosen language this puts back the translation for Stand's language (or the English text)
 local function apply_current(label: int, key: string, english: string): void
+
     local code = forced or current_code()
     local text = code and find(code, key) or english
+
     if show_keys then
         text = key
     end
+
     -- Fails for English (see can_choose_language); then there's nothing to put
     if pcall(lang.set_translate, lang.get_current()) then
         lang.translate(label, text)
@@ -205,10 +235,12 @@ end
 
 -- Puts the language's texts on every label made, as its translation into that language in Stand
 local function translate_made(code: string): void
+
     -- A code Stand has no language for can't take translations: it's still there to be chosen
     if not pcall(lang.set_translate, stand_code(code)) then
         return
     end
+
     for label, entry in pairs(made) do
         local text = find(code, entry.key)
         if text then
@@ -223,10 +255,12 @@ local translated_for = nil
 
 -- The labels made in Stand's current language, if they aren't yet (Stand switched since)
 local function ensure_translated(): void
+
     local current = lang.get_current()
     if current == translated_for then
         return
     end
+
     translated_for = current
     local code = current_code()
     if code ~= nil then
@@ -245,13 +279,17 @@ end
 -- its "wreck" is "module.VehicleManager.wreck"), so a module's strings never mix with anyone else's
 -- @return Handle for remove_source
 function module.add_source(dir: string, required: bool = false, prefix: ?string): table
+
     local source = { dir = dir, prefix = prefix }
+
     read_languages(source)
+
     -- English is read at once: every label needs it, and a damaged file is reported when it's added
     local english = source.languages[ENGLISH]
     if required and english == nil then
         log:warn($"language file not found: {dir}{ENGLISH}.json")
     end
+
     table.insert(sources, source)
     labels = {}
     return source
@@ -270,6 +308,7 @@ end
 -- @return Stand label for key, for menu items: Stand shows it in its language and profiles keep the English text.
 -- English text comes from en-us.json, then fallback, then the key itself
 function module.label(key: string, fallback: ?string = nil): int
+
     local cached = labels[key]
     if cached then
         recent[cached] = key
@@ -288,14 +327,17 @@ function module.label(key: string, fallback: ?string = nil): int
         label = lang.register(english)
     end
     made[label] = { key = key, english = english }
+
     -- Its translation into Stand's language now; same English text means the same label, so its
     -- translations are shared too. Other languages come when Stand switches to them (ensure_translated)
     ensure_translated()
+
     local code = current_code()
     local text = code and find(code, key)
     if text and pcall(lang.set_translate, stand_code(code)) then
         lang.translate(label, text)
     end
+
     if forced or show_keys then
         apply_current(label, key, english)
     end
@@ -309,10 +351,12 @@ end
 -- from. The key asked for last is the one for the item being made: label() is called just before it
 -- @return Whether the item gets the hover notice
 function module.watch_path(ref, label): bool
+
     local key = type(label) == "number" and recent[label] or nil
     if key == nil then
         return false
     end
+
     menu.on_focus(ref, function()
         local parts = {}
         if send_path then
@@ -330,13 +374,16 @@ function module.watch_path(ref, label): bool
         local newline = profile and profile.get and profile.get("notify_stand_newline") == true
         log:notify(table.concat(parts, newline ? "\n" : " | "), "stand")
     end)
+
     return true
 end
 
 -- @return The file the string at key is in, in the language shown (English when that language doesn't have
 -- it), from Lua Scripts on: store/AnitaDarin/core/language/ru-ru.json; nil if no file has it
 function module.file_of(key: string): ?string
+
     local shown = forced or current_code() or ENGLISH
+
     for _, code in ipairs({ shown, ENGLISH }) do
         for i = #sources, 1, -1 do
             local source = sources[i]
@@ -352,6 +399,7 @@ function module.file_of(key: string): ?string
             end
         end
     end
+
     return nil
 end
 
@@ -388,6 +436,7 @@ end
 function module.languages(): table
     local list = {}
     local seen = {}
+
     for _, source in ipairs(sources) do
         for code in pairs(source.files) do
             if not seen[code] then
@@ -396,6 +445,7 @@ function module.languages(): table
             end
         end
     end
+
     -- The name, newest source first, read without decoding files not needed yet
     for _, language in ipairs(list) do
         for i = #sources, 1, -1 do
@@ -406,6 +456,7 @@ function module.languages(): table
             end
         end
     end
+
     table.sort(list, function(a, b)
         if (a.code == ENGLISH) ~= (b.code == ENGLISH) then
             return a.code == ENGLISH
@@ -418,19 +469,23 @@ end
 -- Shows the script in one language whatever Stand's is; "auto" (or nil) follows Stand's language again.
 -- Applies to items already in the menu too
 function module.set_language(code: ?string): void
+
     if code == "auto" or code == "" then
         code = nil
     end
+
     requested = code
     if code and not module.has_language(code) then
         log:warn($"no language file '{code}.json', following Stand's language")
         code = nil
     end
+
     local can_choose = module.can_choose_language()
     if code and not can_choose then
         log:warn(module.text("profile.language.unavailable"))
         code = nil
     end
+
     forced = code
     -- With Stand in English nothing was ever put on the labels, so there's nothing to restore either
     if can_choose then
@@ -438,6 +493,7 @@ function module.set_language(code: ?string): void
             apply_current(label, source.key, source.english)
         end
     end
+
     for _, fn in ipairs(listeners) do
         fn()
     end
@@ -506,6 +562,7 @@ function module.create_language(code: string, name: ?string, from: ?string)
     if module.has_language(code) then
         return nil, "exists"
     end
+
     from = from or ENGLISH
     local made_count = 0
     for _, source in ipairs(sources) do
@@ -524,6 +581,7 @@ function module.create_language(code: string, name: ?string, from: ?string)
             end
         end
     end
+
     module.reload()
     return made_count, nil
 end
@@ -533,7 +591,9 @@ end
 -- the same in both languages on purpose ("Stand", "%s") counts as not, the list shows it
 -- @return { total, translated, missing = { keys, as the script asks for them } }
 function module.progress(code: string): table
+
     local result = { total = 0, translated = 0, missing = {} }
+
     local function walk(english: table, translated, path: string, prefix: ?string): void
         for key, value in pairs(english) do
             local full = path == "" and tostring(key) or $"{path}.{tostring(key)}"
@@ -550,12 +610,14 @@ function module.progress(code: string): table
             end
         end
     end
+
     for _, source in ipairs(sources) do
         local english = source.languages[ENGLISH]
         if english ~= nil then
             walk(english, source.languages[code], "", source.prefix)
         end
     end
+
     table.sort(result.missing)
     return result
 end
@@ -579,7 +641,9 @@ end
 -- Stand's language can change while the script runs: the chosen language is put on its new language
 -- (or becomes possible / impossible to show). A string compare per frame
 local stand_language = lang.get_current()
+
 util.create_tick_handler(function()
+
     local current = lang.get_current()
     if current ~= stand_language then
         stand_language = current
@@ -593,6 +657,7 @@ util.create_tick_handler(function()
             end
         end
     end
+
     return true
 end)
 
@@ -615,9 +680,11 @@ end
 -- @return The English value at key as is (newest source first), or nil
 function module.get(key: string)
     for i = #sources, 1, -1 do
+
         local strings = sources[i].languages[ENGLISH]
         local own_key = key_in(sources[i], key)
         local value = strings and own_key and lookup(strings, own_key)
+        
         if value ~= nil then
             return value
         end

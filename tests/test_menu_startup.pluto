@@ -160,10 +160,10 @@ Atdar.debug = false
 
 -- The setting itself, in Settings
 local item = stand.find_item(stand.root, "Copy Menu To Core")
-stand.equal(item and stand.name_of(item), "Copy Menu To Core: AnitaDarin", "Settings show the copied pack")
+stand.equal(item and stand.name_of(item), "Copy Menu To Core", "Settings show the copied pack")
 stand.click(item, 1)
 stand.equal(Atdar.profile.get("auto_copy_menu"), "", "picking Off clears it")
-stand.equal(stand.name_of(item), "Copy Menu To Core: Off", "and the caption follows")
+stand.equal(stand.name_of(item), "Copy Menu To Core", "and the caption stays the same")
 
 -- The user's steps: the copied built-in menu is loaded, then removed from core.
 -- No menu is left, so the root shows the same notice as a start without a built-in menu

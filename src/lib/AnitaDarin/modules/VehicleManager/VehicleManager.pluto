@@ -6,6 +6,7 @@ local SAVE_FOLDER = "vehicles"
 -- What's saved of a vehicle: { handle, model, name (when Stand knows it), x, y, z, heading }.
 -- The handle is the one the game gave it this session: the game gives a new one when it's spawned again
 local function vehicle_data(handle: int): table
+
     local n_entity = Atdar.natives.entity
     local model = n_entity.get_model(handle)
     local coords = ENTITY.GET_ENTITY_COORDS(handle, true)
@@ -17,6 +18,7 @@ local function vehicle_data(handle: int): table
     end
 
     return data
+    -- @return table
 end
 
 local class VehicleManager extends Module
@@ -47,7 +49,9 @@ local class VehicleManager extends Module
         -- Vehicle>Flags
         self.auto_remember = false
         self.count_remember = 15
+
         self.remember_prev = true
+
         -- Vehicle>Tables
         self.vehicles = {}
         self.order = {} -- the handles, the oldest first: tells which one to forget past count_remember

@@ -23,8 +23,8 @@
             "notice": "Built-in menu not loaded"
         },
         "auto_copy": {
-            "name": "Copy Menu To Core: %s",
-            "help": "At every start this menu from store is copied into the script and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
+            "name": "Copy Menu To Core",
+            "help": "At every start this menu from store is copied into lib %s and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
             "off": "Off",
             "missing": "%s (not in store)",
             "later": "'%s' will be copied to core at the next start",
@@ -330,6 +330,10 @@
         "log_info_at_once": {
             "name": "Write Info At Once",
             "help": "Every log line goes to the file at once, not within a second. Warnings and errors always go at once. Slower, but nothing is lost if the game crashes"
+        },
+        "updater_log_both_ways": {
+            "name": "Write Both Ways",
+            "help": "Save updater changes to both the log file and Stand's notifications"
         },
         "script": {
             "divider": "Script"
@@ -1037,7 +1041,9 @@
             "none": "No changes to show: nothing to update, or updates weren't checked yet",
             "update": "Update: %s",
             "remove": "Remove: %s",
-            "more": "...and %d more"
+            "more": "...and %d more",
+            "saved": "Log file created: %s",
+            "error": "Couldn't save log file"
         },
         "check_divider": "Check",
         "on_start": {

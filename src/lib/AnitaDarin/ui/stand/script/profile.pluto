@@ -147,18 +147,15 @@ local function show_profile_value(ref, key: string, value): void
     end
 end
 
--- "Copy Menu To Core: AnitaDarin", "...: Off", or the saved folder marked missing if it's gone from store
+-- Just shows "Copy Menu To Core" regardless of what's selected
 local function auto_copy_caption(): string
-    local id = Atdar.profile.get("auto_copy_menu")
-    if type(id) ~= "string" or id == "" then
-        return i18n.text("menu_loader.auto_copy.name"):format(i18n.text("menu_loader.auto_copy.off"))
-    end
-    for _, pack in ipairs(view.packs) do
-        if pack.folder == id then
-            return i18n.text("menu_loader.auto_copy.name"):format(pack.name)
-        end
-    end
-    return i18n.text("menu_loader.auto_copy.name"):format(i18n.text("menu_loader.auto_copy.missing"):format(id))
+    return i18n.text("menu_loader.auto_copy.name")
+end
+
+-- Its help has the script's name in it, so it's a text made again with the language (and with Show Keys,
+-- where it becomes the key like any other help)
+local function auto_copy_help(): string
+    return i18n.text("menu_loader.auto_copy.help"):format(Atdar.name)
 end
 
 -- The refs may belong to a section that was already removed, so a failed update is just skipped
@@ -192,6 +189,9 @@ local function update_captions(): void
         pcall(menu.set_visible, ref, is_message)
     end
     rename(view.auto_copy, auto_copy_caption())
+    if view.auto_copy then
+        pcall(menu.set_help_text, view.auto_copy, auto_copy_help())
+    end
 end
 
 -- After another profile is loaded its values go into the fields
@@ -216,6 +216,10 @@ local function update_fields(): bool
     end
     if view.log_info_at_once
         and not pcall(menu.set_value, view.log_info_at_once, Atdar.profile.get("log_info_at_once") == true) then
+        ok = false
+    end
+    if view.updater_log_both_ways
+        and not pcall(menu.set_value, view.updater_log_both_ways, Atdar.profile.get("updater_log_both_ways") == true) then
         ok = false
     end
     if view.notify_errors
@@ -645,7 +649,7 @@ function module.auto_copy(node: table): void
         else
             log:notify(i18n.text("menu_loader.auto_copy.disabled"))
         end
-    end, { "menuloaderautocopy" }, i18n.label("menu_loader.auto_copy.help"))
+    end, { "menuloaderautocopy" }, auto_copy_help())
 end
 
 -- ─── Command Box: prefix and separator ───────────────────────────────────────
@@ -734,6 +738,17 @@ function module.log_keep_days(node: table): void
         end, { "logkeepdays" }, label("log_keep_days.help"))
     show_profile_value(view.sliders.log_keep_days, "log_keep_days", Atdar.profile.get("log_keep_days"))
     updating = false
+end
+
+-- Write updater changes to both log file and Stand
+function module.updater_log_both_ways(node: table): void
+    view.updater_log_both_ways = node:toggle(label("updater_log_both_ways.name"), function(on)
+        if updating or Atdar.profile.get("updater_log_both_ways") == on then
+            return
+        end
+
+        Atdar.profile.set("updater_log_both_ways", on)
+    end, { "updaterlogbothways" }, label("updater_log_both_ways.help"), Atdar.profile.get("updater_log_both_ways") == true)
 end
 
 -- Info lines on disk at once too (core/logger): warnings and errors always are, the rest within a second

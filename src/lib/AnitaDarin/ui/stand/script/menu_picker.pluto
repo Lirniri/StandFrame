@@ -99,7 +99,10 @@ function module.fill(node: table, loader: table): void
     for _, info in ipairs(packs) do
         local version = info.version or text("pack.unknown_version")
         local author = info.author or text("pack.unknown_author")
-        local help = text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
+        local function pack_help(): string
+            return text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
+        end
+        local help = pack_help()
         local loaded = loader.is_loaded("pack", info.folder)
         local in_core = manifest and manifest.pack == info.name
         local ref = node:list_action(with_state(info.name, loaded, in_core), pack_options(), function(index)
@@ -113,7 +116,7 @@ function module.fill(node: table, loader: table): void
                 open_features_folder(info)
             end
         end, { pack_command(info) }, help)
-        table.insert(picker_rows, { ref = ref, caption = || -> with_state(info.name, loaded, in_core) })
+        table.insert(picker_rows, { ref = ref, caption = || -> with_state(info.name, loaded, in_core), help = pack_help })
     end
 end
 
