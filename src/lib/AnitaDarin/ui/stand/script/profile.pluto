@@ -359,7 +359,7 @@ end
 -- Command Box: a prefix, where it goes, a separator
 
 -- The three items of one kind of commands
--- @param key The profile key of the prefix ("command_box_prefix"): "<key>_at_end" is where it goes
+-- @param key The profile key of the prefix ("command_box_base_prefix"): "<key>_at_end" is where it goes
 -- @param separator_key The profile key of the separator, strings: the separator's strings
 -- @param command The base of the commands: cbprefix, cbprefixatend
 local function prefix_items(node: table, key: string, separator_key: string, strings: string, command: string,
@@ -378,7 +378,7 @@ end
 
 -- Of the script's own commands (Base Commands): cbprefix, cbprefixatend, cbseparator
 function module.command_box_base_prefix(node: table): void
-    prefix_items(node, "command_box_prefix", "command_box_separator", "separator", "cbprefix", "cbseparator")
+    prefix_items(node, "command_box_base_prefix", "command_box_base_separator", "separator", "cbprefix", "cbseparator")
 end
 
 -- Of the loaded menu's commands (Found Commands): cbfoundprefix, cbfoundprefixatend, cbfoundseparator

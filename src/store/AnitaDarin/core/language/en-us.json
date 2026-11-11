@@ -134,7 +134,7 @@
             "name": "Short Name",
             "help": "Short name, e.g. for log and notification lines"
         },
-        "command_box_prefix": {
+        "command_box_base_prefix": {
             "name": "Base Commands Prefix",
             "help": "Prefix of the script's own commands (Base Commands); empty for none. Commands are renamed right away"
         },

@@ -36,6 +36,8 @@ local function rebuild()
         unload = function() UNLOADED = true end,
     })
 end
+-- The tests read command names with the prefix in front, also the example made at the first build: the default may be either
+Atdar.profile.set("command_box_base_prefix_at_end", false)
 rebuild()
 -- The Modules list's items (the biggest file, with its parsers) aren't loaded with the section
 local MODULES_MENU = "AnitaDarin/ui/stand/modules/list"
@@ -79,7 +81,7 @@ profile.set("notify_subject_color_day", "white")
 profile.set("notify_subject_color_night", "white")
 profile.set("auto_copy_menu", "")
 profile.set("notify", "stand")
-profile.set("command_box_separator", "")
+profile.set("command_box_base_separator", "")
 profile.set("command_box_found_separator", "")
 profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
@@ -330,10 +332,10 @@ stand.equal(debug_row.help, "Debug Mode", "its help is the item's name")
 stand.check(row("settings"), "lists also show their command")
 -- Prefix At The End: the prefix goes after the command's name, the commands are renamed at once
 local full_before = stand.find_item(debug_row, "Command").value
-local prefix_now, separator_now = profile.get("command_box_prefix"), profile.get("command_box_separator")
+local prefix_now, separator_now = profile.get("command_box_base_prefix"), profile.get("command_box_base_separator")
 stand.equal(full_before, $"{prefix_now}{separator_now}debug", "the prefix in front by default")
 stand.click(stand.child(found, "Prefix At The End"))
-stand.equal(profile.get("command_box_prefix_at_end"), true, "Prefix At The End: kept in the profile")
+stand.equal(profile.get("command_box_base_prefix_at_end"), true, "Prefix At The End: kept in the profile")
 stand.equal(stand.find_item(debug_row, "Command").value, $"debug{separator_now}{prefix_now}", "the prefix goes after the name")
 stand.check(stand.by_command($"debug{separator_now}{prefix_now}") ~= nil, "Stand has the command under the new name")
 stand.equal(stand.find_item(stand.child(find("Command Box"), "Found Commands"), "Prefix At The End").value, false,
@@ -1356,14 +1358,14 @@ profile.set("auto_copy_menu", "AnitaDarin")
 find("Load Menu").on_click()
 stand.check(stand.find_item(find("Load Menu"), "GonePack (not in store)") == nil, "a pack that is there has none")
 stand.click(stand.find_item(find("Command Box"), "Separator"), 2)
-stand.equal(profile.get("command_box_separator"), "_", "Separator is set from Command Box")
+stand.equal(profile.get("command_box_base_separator"), "_", "Separator is set from Command Box")
 
 -- ─── Reset To Defaults: a second click within 5 seconds ──────────────────────
 
 local main_entry = entry("main (active)")
 local reset = stand.child(main_entry, "Reset To Defaults")
 profile.set("log_name", "display")
-profile.set("command_box_separator", "")
+profile.set("command_box_base_separator", "")
 stand.clear_logs()
 stand.click(reset)
 stand.equal(profile.get("log_name"), "display", "the first click resets nothing")
@@ -1375,10 +1377,12 @@ stand.equal(stand.name_of(reset), "Reset To Defaults", "going back out of the li
 stand.click(reset)
 stand.click(reset)
 stand.equal(profile.get("log_name"), profile.default("log_name"), "the second click resets the active profile")
-stand.equal(profile.get("command_box_separator"), profile.default("command_box_separator"), "every value")
+stand.equal(profile.get("command_box_base_separator"), profile.default("command_box_base_separator"), "every value")
 local log_name_shown = profile.default("log_name") == "display" and "Display Name" or "Short Name"
 stand.equal(stand.name_of(stand.find_item(find("Debug"), "Name In Logs")), $"Name In Logs: {log_name_shown}", "and the menu shows it")
 stand.check(profile.is_dirty(), "kept on Save, like any change")
+-- The defaults are back, the prefix place too: the tests after this read names with the prefix in front
+profile.set("command_box_base_prefix_at_end", false)
 
 -- ─── Rename Script: no warning while the script stops ────────────────────────
 

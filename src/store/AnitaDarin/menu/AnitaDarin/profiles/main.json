@@ -3,5 +3,5 @@
     "display_name": "AnitaDarin",
     "short_name": "AniDar",
     "language": "English-US",
-    "command_box_prefix": "atdar"
+    "command_box_base_prefix": "atdar"
 }

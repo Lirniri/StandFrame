@@ -12,9 +12,9 @@ local DEFAULTS = {
     defaults_version = 0,
     display_name = Atdar.name,  -- shown to the user: settings section, built-in menu entry
     short_name = "AniDar",
-    command_box_prefix = "atdar",
-    command_box_prefix_at_end = false, -- the prefix after the name: godmode.atdar instead of atdar.godmode
-    command_box_separator = ".",     -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
+    command_box_base_prefix = "atdar",
+    command_box_base_prefix_at_end = true, -- the prefix after the name: godmode.atdar instead of atdar.godmode
+    command_box_base_separator = ".",     -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
     -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
     command_box_found_prefix = "atdar",
     command_box_found_prefix_at_end = false,
@@ -118,9 +118,13 @@ DEFAULTS.defaults_version = #OLD_DEFAULTS
 
 -- Keys renamed: a profile with the old name gets its value under the new one when it loads (2026-11-08:
 -- the command box's keys all start with command_box_)
+-- (2026-11-11: the script's own commands are the base ones: command_box_base_*)
 local RENAMED_KEYS = {
-    command_prefix = "command_box_prefix",
-    command_separator = "command_box_separator",
+    command_prefix = "command_box_base_prefix",
+    command_separator = "command_box_base_separator",
+    command_box_prefix = "command_box_base_prefix",
+    command_box_prefix_at_end = "command_box_base_prefix_at_end",
+    command_box_separator = "command_box_base_separator",
     found_command_prefix = "command_box_found_prefix",
     found_command_separator = "command_box_found_separator",
     user_command_prefix = "command_box_user_prefix",

@@ -592,9 +592,9 @@ end
 
 -- Profile keys of each owner's prefix, its place and separator
 local PROFILE_KEYS = {
-    command_box_prefix = { who = "script", what = "prefix" },
-    command_box_prefix_at_end = { who = "script", what = "at_end" },
-    command_box_separator = { who = "script", what = "separator" },
+    command_box_base_prefix = { who = "script", what = "prefix" },
+    command_box_base_prefix_at_end = { who = "script", what = "at_end" },
+    command_box_base_separator = { who = "script", what = "separator" },
     command_box_found_prefix = { who = "menu", what = "prefix" },
     command_box_found_prefix_at_end = { who = "menu", what = "at_end" },
     command_box_found_separator = { who = "menu", what = "separator" },
@@ -618,7 +618,7 @@ if profile and profile.get then
 
         if target.what == "prefix" then
             -- No command_box_found_prefix in the profile (an old one): the same as the script's
-            config[target.who].prefix = command_box.sanitize(value or profile.get("command_box_prefix") or "")
+            config[target.who].prefix = command_box.sanitize(value or profile.get("command_box_base_prefix") or "")
         elseif target.what == "at_end" then
             config[target.who].at_end = value == true
         else
