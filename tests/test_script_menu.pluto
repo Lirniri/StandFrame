@@ -85,7 +85,7 @@ profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
 local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
 stand.equal(names_in(notifications), "Type: Stand | Emoticons | Errors Always In Stand | Notification Examples | Stand | Text On A New Line"
-    .. " | Game | Notification Type: Post | General | Game > Style: Message/Post | Picture: " .. default_picture_title
+    .. " | Game | Notification Type: Post | General | Message Options | Picture: " .. default_picture_title
     .. " | Icon: Chat | Day Subject Color: White | Night Subject Color: White",
     "Notifications, the game's feed under the Game divider: the type, General, then what the message card has")
 -- The two dividers in General are named by the language file as it is now: only their place is checked
@@ -158,6 +158,7 @@ local game = notifications
 stand.click(stand.find_item(game, "Notification Type"), 1)
 stand.equal(profile.get("notify_feed_style"), "message", "Notification Type picks a message card")
 stand.equal(stand.name_of(stand.find_item(game, "Notification Type")), "Notification Type: Message", "and the caption follows")
+stand.equal(stand.find_item(game, "Message Options").visible, true, "the divider of the Message's own options is shown")
 -- Picture: the message card's only, so shown only while Message is picked; picking one asks the game to load it
 local requested_dicts = {}
 _G.GRAPHICS = {
@@ -192,6 +193,7 @@ stand.click(night_subject, 3)
 stand.click(stand.find_item(game, "Notification Type"), 2)
 stand.equal(picture.visible, false, "Picture hides while Post is picked")
 stand.equal(stand.find_item(game, "Icon").visible, false, "Icon too")
+stand.equal(stand.find_item(game, "Message Options").visible, false, "and the divider of the Message's own options goes with them")
 stand.check(not day_subject.visible and not night_subject.visible, "the subject colors too")
 local background = stand.find_item(game, "Day Background Color")
 stand.equal(background.transparency, true, "the colours have Opacity, as in Stand")
@@ -417,6 +419,28 @@ stand.frame()
 stand.equal(called[2] and called[2].n, 2, "the brackets' content is the arguments when the Arguments field is empty")
 stand.equal(called[2] and called[2][1], 5, "the first one a number")
 stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
+-- A function typed by name with known parameters: the Arguments field becomes a field for each of them
+local function by_name_text(): string
+    local names = {}
+    for _, child in by_name.children do
+        table.insert(names, stand.name_of(child))
+    end
+    return table.concat(names, " | ")
+end
+local typed_calls = {}
+Atdar.test_fields = function(count: int, note: string) table.insert(typed_calls, table.pack(count, note)) return count end
+function_name.on_change("test_fields", 0)
+stand.check(by_name_text():find("count | Number | note | Text", 1, true) and not by_name_text():find(" | Arguments | ", 1, true),
+    "a function typed by name: a field for each parameter in place of Arguments")
+function_name.on_change("test_fields(4, hello)", 0)
+local fields_item = stand.child(by_name, "Number")
+stand.check(fields_item ~= nil and fields_item.value == "4", "typed as a call: the brackets fill the fields")
+function_name.on_change("test_call", 0)
+stand.check(by_name_text():find(" | Arguments | ", 1, true) and not by_name_text():find("count", 1, true),
+    "another function with no parameters known: the one Arguments field again")
+function_name.on_change("test_fields", 0)
+stand.equal(stand.child(by_name, "Number").value, "0", "back to the first: its fields start fresh, what was typed for the other isn't kept")
+Atdar.test_fields = nil
 -- A table result: the table settings are made at the end, right under the Value list; a plain one takes them away
 Atdar.test_table = function() return { 1, 2 } end
 Atdar.test_plain_value = function() return 5 end

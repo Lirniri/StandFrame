@@ -282,7 +282,7 @@ function module.build(section: table, opts: table): void
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
-    local from_menu = debug:list("Options From Menu", {}, "")
+    local from_menu = debug:list(label("options_from_menu.name"), {}, label("options_from_menu.help"))
 
     local from_menu__settings = from_menu:list(label("settings.name"), {}, label("settings.help"))
     local from_menu__languages = from_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))

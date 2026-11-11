@@ -144,7 +144,8 @@ local function feed(list: table): void
     view.color(feed_general_list, "notify_flash_color_day", "feed.flash_color_day", { "notifyfeedflashday" })
     view.color(feed_general_list, "notify_flash_color_night", "feed.flash_color_night", { "notifyfeedflashnight" })
 
-    list:divider("Game > Style: Message/Post")
+    -- Above the options only the Message style has (Picture, Icon, Subject Color); a Post has none, so it's hidden then
+    view.shown_when(list:divider(label("feed.message.divider")), is_message)
     
     view.shown_when(view.choice(list, "notify_feed_picture", {
         strings = "feed.picture",

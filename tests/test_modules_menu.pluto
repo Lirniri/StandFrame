@@ -555,6 +555,28 @@ edit_field.on_change('"b"', 0)
 stand.equal(edited[2], "b", "a value typed in it goes into the table")
 stand.check(stand.find_log('[2]') and stand.find_log('"b"') and not stand.find_log("ERROR"), "and the change is told, the new value in quotes")
 stand.click(stand.child(add_node, "Change Variable Values"))
+-- Call Functions In Tables: a function in the table is a list with a field for each parameter it says
+local table_calls = {}
+local with_functions = { go = function(speed: int, note: string) table.insert(table_calls, table.pack(speed, note)) end,
+    vague = function(...) end }
+counter.add = function() return with_functions end
+stand.frame()
+stand.click(stand.child(add_node, "Call Functions In Tables"))
+local go_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "go: function(speed, note)")
+stand.check(go_list ~= nil and go_list.kind == "list", "Call Functions In Tables: a function in the table is a list")
+local go_names = {}
+for _, child in go_list.children do
+    table.insert(go_names, stand.name_of(child))
+end
+local go_text = table.concat(go_names, " | ")
+stand.check(go_text:find("speed | Number | note | Text", 1, true), "with a field for each of its parameters")
+local vague_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "vague: function(...)")
+local vague_names = {}
+for _, child in vague_list.children do
+    table.insert(vague_names, stand.name_of(child))
+end
+stand.check(table.concat(vague_names, " | "):find("Arguments", 1, true), "one that says nothing of its parameters: the one Arguments field")
+stand.click(stand.child(add_node, "Call Functions In Tables"))
 counter.add = function() return { 1, "a", { x = 2 } } end
 stand.frame()
 -- Types in words: a table by what it holds

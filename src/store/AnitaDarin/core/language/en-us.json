@@ -311,6 +311,9 @@
             "flash_color_night": {
                 "name": "Night Flash Color",
                 "help": "The color notifications flash in at night when Flash Notifications is on"
+            },
+            "message": {
+                "divider": "Message Options"
             }
         },
         "debug": {
@@ -716,7 +719,8 @@
     "script_menu": {
         "stub": "Not made yet",
         "options_from_menu": {
-            "divider": "Options from menus"
+            "name": "Options From Menu",
+            "help": "Settings of the script that the loaded menu needs, like Languages"
         },
         "command_box": {
             "name": "Command Box",

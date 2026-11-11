@@ -231,6 +231,11 @@ function module.panel(list: table, spec: table): table
     fill()
 
     return {
+        -- The arguments' fields made again, after the function changed (spec.sig is new)
+        rebuild = function()
+            list:clear_from(first)
+            fill()
+        end,
         call = || -> calls.call(spec),
         opened = function()
             if state.on_open then
@@ -276,6 +281,7 @@ end
 local function build_by_name(node: table): void
 
     local panel = nil
+    local spec = nil
     local state = calls.main_state
 
     local list = node:list(label("by_name.name"), {}, label("by_name.help"), nil, function()
@@ -290,21 +296,32 @@ local function build_by_name(node: table): void
             return
         end
 
-        if calls.set_main_name(value) and panel ~= nil then
+        local named, changed = calls.set_main_name(value)
+
+        -- Another function: its parameters are the fields now (a table or a variable has none: the one field)
+        if changed and panel ~= nil then
+            spec.sig = calls.main_signature()
+            panel.rebuild()
+        end
+
+        if named and panel ~= nil then
             panel.name_typed()
         end
     end, label("function.help"), state.name or "")
 
-    panel = module.panel(list, {
+    spec = {
         key = calls.RESULT_KEY,
         state = state,
+        sig = calls.main_signature(),
         name = || -> state.name or "",
         target = calls.main_target,
         args_command = "callfuncargs",
         with_name = true,
         in_stand = calls.in_stand,
         kept = true,
-    })
+    }
+
+    panel = module.panel(list, spec)
 end
 
 -- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added

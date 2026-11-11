@@ -17,6 +17,11 @@ local results = Atdar.loader.load("ui/logic/stand/results")
 
 local log = new Logger("Modules")
 
+-- The fields of a function's arguments, loaded when a table's function first needs them
+local function arguments(): table
+    return Atdar.loader.load("ui/stand/core/arguments")
+end
+
 local module = {}
 
 -- For the callers that have this file at hand: the same as the logic's
@@ -239,6 +244,8 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
 
             local id = $"{scope}{item.path}"
             local panel = nil
+            -- A field for each parameter the code says (nil for a function that says nothing: one Arguments field)
+            local sig = arguments().signature_of(item.holder[item.raw_key])
             local entry = parent:list($"{item.name}: {item.text}", {}, label("loop.help"), nil, function()
                 if panel ~= nil then
                     panel.opened()
@@ -250,6 +257,7 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
             panel = Atdar.loader.load("ui/stand/script/call_function").panel(entry, {
                 key = id,
                 state = results.fn_state(id),
+                sig = sig,
                 name = || -> item.name,
                 -- The function as it is in its table now; a plain call, without self
                 target = function()

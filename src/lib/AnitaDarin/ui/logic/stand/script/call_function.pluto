@@ -350,16 +350,73 @@ end
 
 -- The Function Name was typed; the name taken away takes the result with it, whatever the toggles say
 -- @return Whether there is a name now
-function module.set_main_name(value: string): bool
+-- @return Whether there is a name now, and whether the fields of the arguments must be made again: the name
+-- is another function than before, so what was typed for the last one doesn't belong to it
+function module.set_main_name(value: string)
 
-    module.main_state.name = value
+    local state = module.main_state
+    local path, inline = module.expand(value), select(2, path_parser().split(value))
+    local changed = path ~= state.path
+    local with_inline = inline ~= nil and inline ~= ""
+
+    state.name = value
 
     if value == "" then
         results().clear(module.RESULT_KEY)
-        return false
     end
 
-    return true
+    -- Another function: what was typed for the last one doesn't belong to it
+    if changed then
+        state.path = path
+        state.texts = nil
+        state.args = nil
+    end
+
+    -- Typed as a call, "players.get_position(0)": what's in the brackets fills the fields (the Arguments
+    -- field of a function whose parameters aren't known)
+    if with_inline then
+        local sig = module.main_signature()
+
+        if sig ~= nil then
+            state.texts = arguments().texts_from(sig, inline)
+        else
+            state.args = inline
+        end
+    end
+
+    return value ~= "", changed or with_inline
+end
+
+-- The signature of what a path names: from the code, and for a function that says nothing of its parameters
+-- (a C function of Stand) from the files (registry)
+-- @return The signature and the return type (either may be nil); nil when the path isn't a function
+function module.signature_of_path(path: string)
+
+    local found, value, owner = path_parser().resolve(path)
+
+    if not found or type(value) ~= "function" then
+        return nil, nil
+    end
+
+    local sig = arguments().signature_of(value, owner ~= nil)
+    local returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
+    local registered = #sig.params == 0 and registry().registered_signature(path) or nil
+
+    if registered ~= nil then
+        sig = registered.sig
+        returns = returns or registered.returns
+    end
+
+    return sig, returns
+end
+
+-- The signature of the function the Function Name names now, nil for anything else (a table, a variable, nothing)
+function module.main_signature(): ?table
+
+    local path = module.expand(module.main_state.name or "")
+    local sig = module.signature_of_path(path)
+
+    return sig
 end
 
 -- The functions added
@@ -517,20 +574,7 @@ function module.describe(entry: table, number: int): table
 
     local paths = path_parser()
     local short = module.shown(entry.path)
-    local found, value, owner = paths.resolve(entry.path)
-    local sig = nil
-    local returns = nil
-
-    if found and type(value) == "function" then
-        sig = arguments().signature_of(value, owner ~= nil)
-        returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
-
-        local registered = #sig.params == 0 and registry().registered_signature(entry.path) or nil
-        if registered ~= nil then
-            sig = registered.sig
-            returns = returns or registered.returns
-        end
-    end
+    local sig, returns = module.signature_of_path(entry.path)
 
     local has_fields = sig ~= nil and arguments().has_fields(sig)
     local name = $"{number}: {short}"

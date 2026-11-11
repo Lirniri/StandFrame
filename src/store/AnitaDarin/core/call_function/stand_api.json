@@ -18,6 +18,33 @@
         ],
         "returns": "void"
     },
+    "players.exists": {
+        "params": [
+            {
+                "name": "player_id",
+                "type": "int"
+            }
+        ],
+        "returns": "bool"
+    },
+    "players.get_name": {
+        "params": [
+            {
+                "name": "player_id",
+                "type": "int"
+            }
+        ],
+        "returns": "string"
+    },
+    "players.get_position": {
+        "params": [
+            {
+                "name": "player_id",
+                "type": "int"
+            }
+        ],
+        "returns": "Vector3"
+    },
     "players.user": {
         "params": [],
         "returns": "int"
