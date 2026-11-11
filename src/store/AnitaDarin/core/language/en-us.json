@@ -1153,6 +1153,7 @@
             },
             "divider": "Versions",
             "item_help": "Installs this version, then the script restarts",
+            "warning": "Install version %s? The script's files are replaced and it restarts; profiles and settings stay",
             "installed": "%s (installed)"
         },
         "branch": {

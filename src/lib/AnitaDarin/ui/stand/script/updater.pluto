@@ -96,8 +96,20 @@ local function version_list(list: table): void
     end
 
     versions = list:list({ key = "version", commands = { "updaterversions" }, on_open = || -> fill_versions() })
-    versions:text_input({ key = "version.input", commands = { "updaterversion" },
-        on_change = |value, click_type| -> updater.update_to_version(value, click_type) })
+
+    local input = nil
+    input = versions:text_input({ key = "version.input", commands = { "updaterversion" },
+        on_change = function(value, click_type)
+
+            local typed = updater.typed_version(value, click_type)
+
+            if typed == nil then
+                return
+            end
+
+            input:warn(click_type, updater.update_warning(typed), || -> updater.update_to(typed))
+        end })
+
     versions:toggle({ key = "version.sync", commands = { "updatersync" }, default = updater.versions_synced(),
         on_change = function(on)
             if updater.set_versions_synced(on) and updater.versions_loaded() then
@@ -115,8 +127,12 @@ local function version_list(list: table): void
 
     part = versions:section(function(node)
         for _, row in ipairs(rows) do
-            node:action({ name = row.caption, help = label("version.item_help"),
-                on_click = || -> updater.update_to(row.version) })
+
+            local item = nil
+
+            item = node:action({ name = row.caption, help = label("version.item_help"),
+                on_click = |click_type| -> item:warn(click_type, updater.update_warning(row.version),
+                    || -> updater.update_to(row.version)) })
         end
     end)
 end

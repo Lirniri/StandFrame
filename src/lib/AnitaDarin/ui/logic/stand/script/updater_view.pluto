@@ -203,20 +203,26 @@ function module.set_versions_synced(on: bool): bool
     return true
 end
 
--- The version typed in the field. Not Stand putting the text back
-function module.update_to_version(value: string, click_type): void
+-- The version typed in the field, for the menu to warn before installing it
+-- @return The version trimmed, nil if it's empty or Stand put the text back
+function module.typed_version(value: string, click_type): ?string
 
     if not clicks.is_user_action(click_type) then
-        return
+        return nil
     end
 
     local typed = value:match("^%s*(.-)%s*$")
 
     if typed == "" then
-        return
+        return nil
     end
 
-    module.update_to(typed)
+    return typed
+end
+
+-- The text of the warning before installing a version
+function module.update_warning(version: string): string
+    return text("version.warning"):format(version)
 end
 
 -- How many of the newest versions the list shows (Limit Shown To), 7 until it's changed
