@@ -76,6 +76,10 @@ local function refresh_info(): void
     pcall(menu.set_menu_name, view.progress, updater.progress_caption())
 end
 
+-- Whether the manager already calls refresh_info: build() runs at every rebuild of the settings, and a listener
+-- added each time would be called that many times for every downloaded file
+local listening = false
+
 function module.build(node: table): table
 
     local list = node:list(label("name"), { "updater" }, label("help"))
@@ -84,7 +88,10 @@ function module.build(node: table): table
     view.available = list:readonly(updater.available_caption(), "")
     view.last_check = list:readonly(updater.last_check_caption(), "")
     refresh_info()
-    manager.on_change(refresh_info)
+    if not listening then
+        listening = true
+        manager.on_change(refresh_info)
+    end
     list:action(label("changes.name"), updater.save_changes, { "updaterchanges" }, label("changes.help"))
 
     list:divider(label("check_divider"))

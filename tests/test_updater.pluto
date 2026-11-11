@@ -166,6 +166,12 @@ stand.check(not ok and apply_err:find("no answer", 1, true), "no answer: fails w
 served[$"{BASE}updater/manifest.json"] = "not json"
 plan, err = updater.check(opts)
 stand.check(plan == nil and err:find("not a manifest", 1, true), "a broken manifest: says so")
+served[$"{BASE}updater/manifest.json"] = json.encode({ project = "AnitaDarin", files = { ["lib/AnitaDarin/x.pluto"] = { size = 1 } } })
+plan, err = updater.check(opts)
+stand.check(plan == nil and err:find("bad entry", 1, true), "a file without its hash: the manifest is refused, not half read")
+served[$"{BASE}updater/manifest.json"] = json.encode({ format = 99, project = "AnitaDarin", files = {} })
+plan, err = updater.check(opts)
+stand.check(plan == nil and err:find("format", 1, true), "a format this updater doesn't know: refused")
 served[$"{BASE}updater/manifest.json"] = json.encode({ project = "Other", files = {} })
 plan, err = updater.check(opts)
 stand.check(plan == nil and err:find("'Other'", 1, true), "another project's manifest: refused")
@@ -178,6 +184,18 @@ access = true
 _G.async_http.dispatch = function() end
 local body, fetch_err = updater.fetch("raw.githubusercontent.com", "/x", 1000)
 stand.check(body == nil and fetch_err == "timed out", "no answer in time: timed out")
+
+-- Stand can't cancel it: the request keeps the slot, so a new one doesn't start on top of it (that crashes Stand)
+local sent = #requests
+body, fetch_err = updater.fetch("raw.githubusercontent.com", "/y", 1000)
+stand.check(body == nil and fetch_err == "timed out" and #requests == sent, "a request still out holds the slot: the next one waits and starts nothing")
+
+-- The late answer comes: it only frees the slot, nobody is waiting for it
+async_http.pending()
+_G.async_http.dispatch = function() async_http.pending() end
+served["/late"] = "ok"
+body = updater.fetch("raw.githubusercontent.com", "/late", 1000)
+stand.check(body == "ok", "after the late answer the slot is free again")
 
 -- The releases made: updater/versions.json, newest first
 _G.async_http.dispatch = function() async_http.pending() end

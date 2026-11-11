@@ -13,15 +13,15 @@ return Atdar.features.add(new Feature({
     on_tick = function(self)
         local n_player = Atdar.natives.player
         local player = n_player.get_id()
-        if not n_player.is_godmode(player) then
-            log:debug($"id: {self.id}: half-godmode is given :)")
-            n_player.set_half_godmode(player, true)
+        if not n_player.is_invincible(player) then
+            log:debug($"{self.id}: half-godmode is given :)")
+            n_player.set_invincible_bus_has_reactions(player, true)
         end
     end,
 
     on_disable = function(self)
         local n_player = Atdar.natives.player
-        n_player.set_half_godmode(n_player.get_id(), false)
-        log:debug($"id: {self.id}: half-godmode is removed :(")
+        n_player.set_invincible_bus_has_reactions(n_player.get_id(), false)
+        log:debug($"{self.id}: half-godmode is removed :(")
     end,
 }))

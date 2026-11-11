@@ -96,11 +96,28 @@ end
 -- Pluto's io.remove also removes (empty) folders; plain Lua's os.remove can't on Windows
 local remove_path = io.remove or os.remove
 
+-- The folders of store/<name>/ that hold the user's data at any depth (a pack's profiles too): profiles, the
+-- names and words of commands, the user's own saved functions. The same as USER_FOLDERS in core/updater and
+-- build.py, except logs: a deleted script has no use for them
+local USER_FOLDERS = { profiles = true, commands = true, user = true }
+
 -- Whether a path inside store/<name>/ is the user's data, written by the script while it runs:
--- config.json (and its .bak), profiles/ and user/ (the user's own data: short names, saved functions)
+-- config.json (and its .bak) and anything in a profiles, commands or user folder
 local function is_user_data(relative: string): bool
+
     local first = relative:match("^[\\/]*([^\\/]+)")
-    return first == "profiles" or first == "user" or (first ~= nil and first:match("^config%.json") ~= nil)
+
+    if first ~= nil and first:match("^config%.json") ~= nil then
+        return true
+    end
+
+    for part in relative:gmatch("[^\\/]+") do
+        if USER_FOLDERS[part] then
+            return true
+        end
+    end
+
+    return false
 end
 
 -- Deletes a folder with everything in it: files first, then the folders from the deepest up.
@@ -136,7 +153,7 @@ local function remove_tree(dir: string, keep: ?function = nil): (int, bool)
 end
 
 -- Deletes the script: its launcher and its lib, store and resources folders. keep_user_data keeps
--- the profiles, user/ and config.json in store (what build.py never touches either), so a reinstall finds them.
+-- the profiles, commands, user folders and config.json in store (build.py keeps them too), so a reinstall finds them.
 -- Can't be undone; the menu asks first. The script keeps running from memory until stop()
 -- @return true and the number of deleted files, or false and a reason
 function module.delete(keep_user_data: bool = true): (bool, any)

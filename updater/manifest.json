@@ -37,8 +37,8 @@
       "size": 23700
     },
     "lib/AnitaDarin/core/installer.pluto": {
-      "sha256": "645b57b7f3be602b692df5fbf99fc4488dcb7650dd1e7e74fa62766e90629f85",
-      "size": 7603
+      "sha256": "ee25232837083d5d74eb6fd4e1e58c3d9aa6846f988fa5ba9757d3652a6be401",
+      "size": 8073
     },
     "lib/AnitaDarin/core/loader.pluto": {
       "sha256": "5025505492cfe611456c31bbcebedad5e1d738ebf950775a9afb6ea24057bcd3",
@@ -57,24 +57,24 @@
       "size": 13464
     },
     "lib/AnitaDarin/core/profile.pluto": {
-      "sha256": "765ff03cd7501e09b290e9480bc0054fc593074a5f67c3fd740f05098c6e3833",
-      "size": 16162
+      "sha256": "f1ee4d6e0858883fd9525d3a50b5195e932ac34b3e10b324338c9c10d54f9a9b",
+      "size": 16261
     },
     "lib/AnitaDarin/core/update_manager.pluto": {
-      "sha256": "6f59efa5bfcc2c2b1c51b442d57f6cb9d73aa7680b73469db12c96021b9c9026",
-      "size": 17255
+      "sha256": "f9fb3628e79e1583477e0acb4327d1afdb6ea336d880b4a56d38181129a4702a",
+      "size": 18865
     },
     "lib/AnitaDarin/core/updater.pluto": {
-      "sha256": "3e7effa3612904958bfd59f7436f1745f79836856a5ae01f97879ce1180b30d4",
-      "size": 15814
+      "sha256": "c99cda688956311b63d1f6886b00638683d67b01073219b5c8bf8006250d0b5f",
+      "size": 19755
     },
     "lib/AnitaDarin/features/feature.pluto": {
       "sha256": "7597c2c78dd63bc8f17847cfce0047ea393197f7776eefbaa0aeb64f14c938aa",
       "size": 6224
     },
     "lib/AnitaDarin/features/registry.pluto": {
-      "sha256": "8a08cc2d757fee62b82d4cda6b84b666b730c5da90c60bc9784c53450cdfae19",
-      "size": 914
+      "sha256": "f5c734de23890b4cc5f1fd703e3a0d54e0b7ef5f29a32d18c83f0127a132aeea",
+      "size": 1193
     },
     "lib/AnitaDarin/globals.pluto": {
       "sha256": "229c50c33f3df2393f3285097a6b5a14bb235e17a4d8330641e5b33b5611bf1b",
@@ -341,8 +341,8 @@
       "size": 4010
     },
     "lib/AnitaDarin/natives/player.pluto": {
-      "sha256": "2d868dd08253cf623aa56551c66a716a05f056f3fa869dda389a3bf44fe9187d",
-      "size": 22379
+      "sha256": "3054864602dfce12d9f89bdba6030b53351154e968bafabe4b29de580cd0c65f",
+      "size": 22599
     },
     "lib/AnitaDarin/natives/player/camera.pluto": {
       "sha256": "4d69d04049027d26d6509bd53451514ce874e3cd92bff89de1be7530d6867da8",
@@ -597,8 +597,8 @@
       "size": 985
     },
     "lib/AnitaDarin/parsers/json.pluto": {
-      "sha256": "7bd05bb13e2431d0880b67179357361b782ec68f44f4d54595bb619712d80061",
-      "size": 1257
+      "sha256": "cf992f145f6fa8a2b530e92837fda8210596be94471244aacbf3bd44a253b8e5",
+      "size": 2465
     },
     "lib/AnitaDarin/parsers/proglang.pluto": {
       "sha256": "d99e2ef899f7c03e0c8f5ad6f61c0c00454b6180c017d0e3364785bdf35ba1a3",
@@ -649,8 +649,8 @@
       "size": 20943
     },
     "lib/AnitaDarin/ui/logic/stand/menu_entries.pluto": {
-      "sha256": "130a000429998c576c8eae87038228bd21fe66b6cb08d87c403f4501a48e395b",
-      "size": 2747
+      "sha256": "bb5b793c83996158e570229a980d3af42803a56c2b5bff1e73f8947f82b30832",
+      "size": 2843
     },
     "lib/AnitaDarin/ui/logic/stand/menu_loader.pluto": {
       "sha256": "b70c0880c69aa6eb36b5a2d84a1e672f5a6869610c651e014ec6eb5562316f94",
@@ -705,8 +705,8 @@
       "size": 5618
     },
     "lib/AnitaDarin/ui/logic/stand/script/updater_view.pluto": {
-      "sha256": "d2df24c6740f0a30dada3737bd8793503a1099b0cdedddbe6d30097b70a6faee",
-      "size": 7662
+      "sha256": "cac5a5069a066c7a065c4cd3fa664601254bea010247c115c3823835b7d63bf2",
+      "size": 9159
     },
     "lib/AnitaDarin/ui/logic/stand/script/user_commands.pluto": {
       "sha256": "52538221ab37bc0071435090c9970b7fd5d81c4f8b1f7649d49e5030300f528e",
@@ -785,8 +785,8 @@
       "size": 5153
     },
     "lib/AnitaDarin/ui/stand/script/menu_picker.pluto": {
-      "sha256": "33f87e16a859ed320b72e5532ece9b750e298ab051d265095e23e732164dc430",
-      "size": 3300
+      "sha256": "c90ed43a9f338282be7c21db564593c02d5f9dd7dbba7bc8e259cedac0e4faf4",
+      "size": 3403
     },
     "lib/AnitaDarin/ui/stand/script/profile.pluto": {
       "sha256": "c728c657645166e36520d9ae336c694668ee27430551d61afca264f150050669",
@@ -797,8 +797,8 @@
       "size": 14535
     },
     "lib/AnitaDarin/ui/stand/script/updater.pluto": {
-      "sha256": "3b170b693c4389b52fc087e3e8359b871f144c298aa0d3850c117787a0727d12",
-      "size": 7549
+      "sha256": "a43e499db1820561391c22f8aed46229c19a292c0f32ef634ff0eda4cbabf71d",
+      "size": 8550
     },
     "lib/AnitaDarin/ui/stand/script/user_commands.pluto": {
       "sha256": "abc0a9c61536f9406216550fe34a0d82f2fcc1eea8abefab05b9a06676b0f1f8",
@@ -869,8 +869,8 @@
       "size": 274
     },
     "lib/AnitaDarin/utils/util/game/world.pluto": {
-      "sha256": "67273ce89ddc331ef1efb32da0bd22cc049d6cbcf2320598b4e704c6d4473bd9",
-      "size": 34
+      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
+      "size": 41
     },
     "store/AnitaDarin/config.json": {
       "sha256": "4fbca1df08dfb512495481512718057f19bb5ef7d7cd601c72a2eb1943e124a8",
@@ -885,20 +885,20 @@
       "size": 2279
     },
     "store/AnitaDarin/core/language/en-us.json": {
-      "sha256": "35299986f790104a3f2f6743ba0e3d2a219bd57e3bd28ccb1ddbc41999497b0f",
-      "size": 55897
+      "sha256": "feda8f78b35d4dad7f4ec7609237c408f5c94acce61a42fc6fe276a6a4544317",
+      "size": 56206
     },
     "store/AnitaDarin/core/language/ru-ru.json": {
-      "sha256": "e1c4f749e95d135032e6bd4f3f01f9a12ad790f56792919c383446e2b838d883",
-      "size": 78266
+      "sha256": "5ccce4261685a0479e6f2459b11094a5afa2e927ed0b0ce170ee511c1499503e",
+      "size": 78704
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/godmode.pluto": {
-      "sha256": "46b59ac53ddcbc2a07b3b83c6e6657d1485dfad584605fcea76cd713f3aac6bd",
-      "size": 787
+      "sha256": "af4798df2387ac5342bd253cb96102e090c4a459919db2c6777b8c46f550bc4d",
+      "size": 788
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/half_godmode.pluto": {
-      "sha256": "d69509c6d3124fe986ba6768e95488aa8b28ef544d6b9eba15f2618063ef2cbc",
-      "size": 816
+      "sha256": "fd2d2b4d29b4afeaf867b06f21d381fb302468eabb117d27e011cbf7f9251e13",
+      "size": 843
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/movement/disables/disable_sprint.pluto": {
       "sha256": "f645d427b6ac736d8e0cb141608ed35b1fd0b1f0ce5fa20631001245c12085a0",
@@ -913,28 +913,28 @@
       "size": 945
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/state/infinite_stamina.pluto": {
-      "sha256": "08573508c154e09d3201e5c5af69b65f1fff7b12dd34b86830e2caf4d163400f",
-      "size": 1331
+      "sha256": "67edcae5bc850e97b0463978de3df2484e67e3e5d0d4548ec962f6f4a932ee27",
+      "size": 1232
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/state/regeneration_health.pluto": {
       "sha256": "122e9135e7ab55ec2a64539deeff225be6e4baba25ad4abe7909b1b00cecb029",
       "size": 1357
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/state/reset_stamina.pluto": {
-      "sha256": "f5e2bda87638a1f27e0c0ed047b2f57b9b4590f460eb4fc6e5ebb670a99fd5a5",
-      "size": 503
+      "sha256": "021159adea51359854d7d7b975cf76ce3d8c509676f2f710510912770debbc11",
+      "size": 508
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/state/restore_armor.pluto": {
-      "sha256": "dbad35238836bd5ab3e7b05a627a23da361265bfaa65030daa353c7a6097a821",
-      "size": 503
+      "sha256": "1019e7b315de5cbe12172c4a87d9da12dbfdf50c660fc0e5ce50cfdcb7ed58fb",
+      "size": 508
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/state/restore_health.pluto": {
-      "sha256": "3340f3c8e14d2f50fb1fc7ed75c01539de81e01b154f4dfd660677a8c93159d3",
-      "size": 718
+      "sha256": "fb9b3ad0f49569fc896ccd46a0e4a57c3897d2c7b43c48a0205da1bf733c5469",
+      "size": 723
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/state/restore_stamina.pluto": {
-      "sha256": "24d0d9cd27465e428ea802b256f3567103d570530c65f1cfa4cd25d02e4129c1",
-      "size": 509
+      "sha256": "abc4b19d1a2b2824b30a5477ad29609e2338467a0b28a7b1aa749e98da85e74d",
+      "size": 514
     },
     "store/AnitaDarin/menu/AnitaDarin/features/vehicle/explode.pluto": {
       "sha256": "d964bc52d740631f946e8c0357bfefc7d22fc2d096365724ad97dffd8ed2e127",
@@ -971,10 +971,6 @@
     "store/AnitaDarin/menu/AnitaDarin/menu/stand/vehicle.pluto": {
       "sha256": "3d588123b96fe89d074fe1f08c18ea0fc834435356990791083ee3692f5216b0",
       "size": 735
-    },
-    "store/AnitaDarin/menu/AnitaDarin/profiles/main.json": {
-      "sha256": "1fe4bcdda7668a86916166bb14332b1828eeb5d528a4849adc703a3bc182c7e6",
-      "size": 167
     },
     "store/AnitaDarin/menu/Example/features/example/hello.pluto": {
       "sha256": "bae2320af242f35f409a42367966ae9ce684ed3a62d06cef53d0ec127f3112e1",

@@ -14,7 +14,7 @@ local class ResetStamina extends Feature
     end
 
     function on_trigger()
-        local player = Atdar.game.players.user
+        local player = Atdar.util.game.players.user
         player.reset_stamina()
     end
 end

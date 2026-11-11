@@ -227,7 +227,7 @@ end
 -- Downloads the manifest and compares it with the installed files, remembering the result.
 -- Yields: call it from a thread
 -- @return The plan, or nil and why not
-local function run_check()
+local function run_check_unguarded()
 
     -- Checked here too, for the reason to be shown in the user's language
     if not updater.has_access() then
@@ -245,6 +245,21 @@ local function run_check()
     remember_check(plan)
     Atdar.profile.set("update_last_check", os.time())
     return plan, nil
+end
+
+-- run_check that never throws: a broken manifest or a failing write is a failed check, not a thread that dies
+-- with busy left on
+-- @return The plan, or nil and why not
+local function run_check()
+
+    local ok, plan, err = pcall(run_check_unguarded)
+
+    if not ok then
+        log:info($"check failed: {plan}")
+        return nil, tostring(plan)
+    end
+
+    return plan, err
 end
 
 -- Checks and tells what was found. Yields: call it from a thread
@@ -294,7 +309,7 @@ local function apply_plan(plan: table): string
     module.progress = { done = 0, total = #plan.download }
     changed()
 
-    local ok, apply_err, reason = updater.apply(plan, function(done: int, total: int)
+    local called, ok, apply_err, reason = pcall(updater.apply, plan, function(done: int, total: int)
 
         module.progress = { done = done, total = total }
         changed()
@@ -308,6 +323,11 @@ local function apply_plan(plan: table): string
         end
     end)
     module.busy = false
+
+    -- An error thrown inside the update is a failed update; nothing was put in place before the swap
+    if not called then
+        ok, apply_err, reason = false, tostring(ok), nil
+    end
 
     if not ok then
         module.progress = nil
@@ -525,7 +545,15 @@ function module.install_version(typed: string): string
     local err = nil
 
     for _, ref in ipairs(refs_of(typed)) do
-        plan, err = updater.check({ name = Atdar.name, branch = ref })
+
+        local ok, found, why = pcall(updater.check, { name = Atdar.name, branch = ref })
+
+        if ok then
+            plan, err = found, why
+        else
+            plan, err = nil, tostring(found)
+        end
+
         if plan ~= nil then
             break
         end

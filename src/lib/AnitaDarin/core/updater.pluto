@@ -37,6 +37,9 @@ module.DEFAULTS = {
     timeout = 15000,
 }
 
+-- The manifest format this updater reads (FORMAT in updater/manifest.py)
+module.FORMAT = 1
+
 -- The folders of Lua Scripts that hold a <name> folder of the script
 local ROOTS = { "lib", "store", "resources" }
 
@@ -167,50 +170,76 @@ end
 -- Whether a request is running: Stand's async_http holds one at a time, and a second init made while it
 -- runs crashes Stand (the versions list asked twice at once, a check during a list)
 local fetching = false
+-- When the running request started, and which one it is: an answer that comes after its caller gave up
+-- (or after a newer request took over) is told apart by its number and only frees the slot
+local fetching_since = 0
+local request_id = 0
+
+-- How long a request may hold the slot before it's taken for lost (its answer never came), ms
+local STUCK_MS = 60000
 
 -- GETs https://<host><path> and waits for the answer, one request at a time: another thread's request
--- is waited for first. Yields: call it from a thread
+-- is waited for first. A request that timed out keeps the slot until its answer comes (or STUCK_MS passes),
+-- as Stand can't cancel it and a new one started on top of it crashes Stand. Yields: call it from a thread
 -- @return The body, or nil and why not
 function module.fetch(host: string, path: string, timeout: int = 15000)
 
     local waiting_since = util.current_time_millis()
 
     while fetching do
-        if util.current_time_millis() - waiting_since > timeout then
+        local now = util.current_time_millis()
+
+        -- Its answer never came: the slot is taken back, and the old request's number no longer matches
+        if now - fetching_since > STUCK_MS then
+            break
+        end
+        if now - waiting_since > timeout then
             return nil, "timed out"
         end
         util.yield()
     end
 
+    request_id += 1
     fetching = true
+    fetching_since = util.current_time_millis()
 
-    local done, body, err = false, nil, nil
-    
+    local mine = request_id
+    local done, abandoned, body, err = false, false, nil, nil
+
+    -- Frees the slot when this request is still the current one; the caller only hears of it if it still waits
+    local function finish(result: ?string, reason: ?string): void
+        if mine == request_id then
+            fetching = false
+        end
+        if abandoned then
+            return
+        end
+        body, err, done = result, reason, true
+    end
+
     async_http.init(host, path, function(result, headers, status)
         if status ~= nil and status ~= 200 then
-            err = $"HTTP {status}"
+            finish(nil, $"HTTP {status}")
         else
-            body = result
+            finish(result, nil)
         end
-        done = true
     end, function(reason)
-        err = reason or "failed"
-        done = true
+        finish(nil, reason or "failed")
     end)
-    
+
     async_http.dispatch()
-    
+
     local started = util.current_time_millis()
-    
+
     while not done do
         if util.current_time_millis() - started > timeout then
-            fetching = false
+            -- The slot stays taken: the request is still running in Stand
+            abandoned = true
             return nil, "timed out"
         end
         util.yield()
     end
 
-    fetching = false
     return body, err
 end
 
@@ -309,6 +338,17 @@ function module.check(opts: ?table)
 
     if manifest.project ~= o.project then
         return nil, $"manifest: it's for '{tostring(manifest.project)}', not '{o.project}'"
+    end
+
+    if manifest.format ~= nil and manifest.format ~= module.FORMAT then
+        return nil, $"manifest: format {tostring(manifest.format)} isn't supported, update the script by hand"
+    end
+
+    -- Every file needs its hash: one without it would fail the whole plan later
+    for path, entry in pairs(manifest.files) do
+        if type(path) ~= "string" or type(entry) ~= "table" or type(entry.sha256) ~= "string" then
+            return nil, $"manifest: bad entry '{tostring(path)}'"
+        end
     end
 
     return module.plan(manifest, o), nil

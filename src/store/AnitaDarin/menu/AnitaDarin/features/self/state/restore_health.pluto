@@ -19,7 +19,7 @@ local class RestoreHealth extends Feature
         local ped = n_player.get_ped_id()
         local is_max_health = n_ped.is_max_health(ped)
         if not is_max_health then
-            Atdar.game.players.user.restore_health()
+            Atdar.util.game.players.user.restore_health()
         end
     end
 end

@@ -246,8 +246,8 @@ find("Load Menu").on_click()
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu: opened, the menus made again")
 local update_list = find("Update")
 stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check | Check For Updates"
-    .. " | Branch: main | Check On Start | Update | Update | Check Before Updating"
-    .. " | Check For Updates Every (Days) | Update Automatically | Update To Version",
+    .. " | Branch: main | Check On Start | Update | Progress | Update | Check Before Updating"
+    .. " | Check For Updates Every (Days) | Progress In Notifications | Update Automatically | Update To Version",
     "Update: the version lines, Changes, Check For Updates and its branch, then the Update divider with Update and its settings")
 stand.equal(update_list.children[9].kind, "divider", "the Update divider under the branch")
 local version_list = stand.child(update_list, "Update To Version")
@@ -313,7 +313,7 @@ stand.toasts = {}
 stand.click(stand.find_item(update_list, "Check For Updates"))
 stand.check(stand.toasts[#stand.toasts]:find("Couldn't check for updates", 1, true), "Check For Updates says why it failed")
 stand.toasts = {}
-stand.click(update_list.children[10])
+stand.click(update_list.children[11])
 stand.check(stand.toasts[#stand.toasts]:find("Couldn't check for updates", 1, true), "Update checks first and stops when it can't")
 stand.equal(names_in(find("Command Box")), "Base Commands | Found Commands | User Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
@@ -1492,19 +1492,19 @@ local start_was = profile.get("update_check_on_start")
 stand.click(on_start)
 stand.equal(profile.get("update_check_on_start"), not start_was, "and switching it saves it")
 stand.click(on_start)
-local check_before = update_list.children[11]
+local check_before = update_list.children[12]
 stand.equal(check_before.value, profile.get("update_check_before") ~= false, "Check Before Updating shows the profile's value")
 local before_was = profile.get("update_check_before")
 stand.click(check_before)
 stand.equal(profile.get("update_check_before"), not before_was, "and switching it saves it")
 stand.click(check_before)
-local auto_update = update_list.children[13]
+local auto_update = update_list.children[15]
 stand.equal(auto_update.value, profile.get("auto_update") == true, "Update Automatically shows the profile's value")
 local auto_before = profile.get("auto_update")
 stand.click(auto_update)
 stand.equal(profile.get("auto_update"), not auto_before, "and switching it saves it")
 stand.click(auto_update)
-local check_days = update_list.children[12]
+local check_days = update_list.children[13]
 stand.equal(check_days.kind, "click_slider", "Check For Updates Every is a click slider")
 stand.equal(check_days.value, profile.get("update_check_days"), "showing the profile's days")
 local days_before = profile.get("update_check_days")

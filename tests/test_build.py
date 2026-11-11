@@ -41,6 +41,15 @@ def run(*args):
 
 target = fresh_target("build_target")
 code, _ = run("sync", "--target", str(target))
+own_pack = target / "store" / "AnitaDarin" / "menu" / "MyPack" / "info.json"
+own_pack.parent.mkdir(parents=True, exist_ok=True)
+own_pack.write_text('{"name": "Mine"}', encoding="utf-8")
+remembered = target / "store" / "AnitaDarin" / "updater" / "installed.json"
+remembered.parent.mkdir(parents=True, exist_ok=True)
+remembered.write_text('{"version": "0.1.0", "files": {}}', encoding="utf-8")
+pack_profile = target / "store" / "AnitaDarin" / "menu" / "AnitaDarin" / "profiles" / "mine.json"
+pack_profile.parent.mkdir(parents=True, exist_ok=True)
+pack_profile.write_text("{}", encoding="utf-8")
 check(code == 0, "sync into an empty Lua Scripts")
 check((target / "AnitaDarin.pluto").exists(), "the launcher is installed")
 check((target / "lib" / "AnitaDarin" / "bootstrap.pluto").exists(), "lib is installed")
@@ -81,7 +90,10 @@ check(own_names.exists(), "clean keeps the user folder")
 check(log_file.exists(), "clean keeps the script's log files")
 check(user_command.exists(), "clean keeps the commands folder: names, words and user commands")
 check(not (target / "AnitaDarin.pluto").exists() and not (target / "lib" / "AnitaDarin").exists(), "clean removes the script")
-check(not (target / "store" / "AnitaDarin" / "menu").exists(), "clean removes the store files that come from the project")
+check(not (target / "store" / "AnitaDarin" / "menu" / "AnitaDarin" / "info.json").exists(), "clean removes the store files that come from the project")
+check(own_pack.exists(), "clean keeps a menu pack of one's own (src doesn't have it)")
+check(remembered.exists(), "clean keeps what the updater remembers: the installed version")
+check(pack_profile.exists(), "clean keeps a pack's profiles, at any depth")
 check("Mine" in profile.read_text(encoding="utf-8") and config.exists(), "clean keeps profiles and settings")
 run("sync", "--target", str(target))
 check(not (target / "lib" / "AnitaDarin" / "gone.pluto").exists(), "after clean + sync a removed file is gone (rebuild)")

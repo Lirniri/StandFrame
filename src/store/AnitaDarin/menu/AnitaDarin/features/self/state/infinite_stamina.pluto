@@ -36,7 +36,6 @@ local class InfiniteStamina extends Feature
         local is_sprinting = n_ped.is_sprinting(n_player.get_ped_id())
 
         self:set_stamina(is_sprinting)
-        util.toast(tostring(n_player.movement.get_infinite_sprint_stamina(n_player.get_ped_id())))
     end
 
     function on_disable()

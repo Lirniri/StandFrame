@@ -10,6 +10,47 @@ local json = require "pluto:json"
 
 local module = {}
 
+-- Whether every bracket the text opens is closed, outside of strings: '{"a":{"b":1}' (a cut-off file that
+-- still starts with { and ends with }) is not
+local function is_balanced(text: string): bool
+
+    local depth = 0
+    local position = 1
+    local in_string = false
+
+    while true do
+
+        -- Only the characters that matter: strings are jumped over, not walked through
+        local at = text:find(in_string and '["\\]' or '[%[%]{}"]', position)
+
+        if at == nil then
+            break
+        end
+
+        local char = text:sub(at, at)
+        position = at + 1
+
+        if in_string then
+            if char == "\\" then
+                position = at + 2
+            else
+                in_string = false
+            end
+        elseif char == '"' then
+            in_string = true
+        elseif char == "{" or char == "[" then
+            depth += 1
+        else
+            depth -= 1
+            if depth < 0 then
+                return false
+            end
+        end
+    end
+
+    return depth == 0 and not in_string
+end
+
 -- pluto:json doesn't throw on bad input: it returns nil or the part it could parse, so a cut-off
 -- file would load with keys silently missing ('{"a":1,"b":' gives { a = 1 }). Checked here instead
 -- @return The decoded table, or nil if the text isn't one whole JSON object or array
@@ -22,17 +63,22 @@ function module.decode(text: string): ?table
         return nil
     end
 
+    if not is_balanced(trimmed) then
+        return nil
+    end
+
     local data = json.decode(trimmed)
 
     if type(data) ~= "table" then
         return nil
     end
 
-    -- '{bad}' decodes to an empty table
-    local compact = trimmed:gsub("%s", "")
-    
-    if next(data) == nil and compact ~= "{}" and compact ~= "[]" then
-        return nil
+    -- '{bad}' decodes to an empty table; the whitespace is stripped only for that case, not for every file
+    if next(data) == nil then
+        local compact = trimmed:gsub("%s", "")
+        if compact ~= "{}" and compact ~= "[]" then
+            return nil
+        end
     end
 
     return data
