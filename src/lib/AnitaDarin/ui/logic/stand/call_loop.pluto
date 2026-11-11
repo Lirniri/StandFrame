@@ -7,6 +7,9 @@
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local display = Atdar.loader.load("ui/stand/core/call_display")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("CallLoop")
 
 local module = {}
 
@@ -59,7 +62,15 @@ function module.start(loop_run: table, is_current: function, step: function): vo
             loop_run.next = now + loop_run.every
         end
 
-        if not step() then
+        -- An error in a step ends the loop and goes to the log, instead of failing at every frame
+        local ok, go_on = pcall(step)
+
+        if not ok then
+            log:error($"the loop stopped: {tostring(go_on)}")
+            return false
+        end
+
+        if not go_on then
             return false
         end
 
