@@ -484,28 +484,41 @@ stand.click(stand.child(by_name, "Loop"))
 stand.debug_texts = {}
 stand.frame()
 stand.equal(#stand.debug_texts, 0, "stopped: nothing drawn")
--- Show Result On Screen and Show Call Time: each can be turned off
-stand.equal(stand.child(call_list, "Show Result On Screen").value, true, "Show Result On Screen is on by default")
-stand.equal(stand.child(call_list, "Show Call Time").value, true, "Show Call Time is on by default")
+-- Disable Result On Screen For All and Disable Call Time For All: each turns it off for every function
+stand.equal(stand.child(call_list, "Disable Result On Screen For All").value, false, "Disable Result On Screen For All is off by default")
+stand.equal(stand.child(call_list, "Disable Call Time For All").value, false, "Disable Call Time For All is off by default")
 local timed = {}
 _G.profiling = { tick = function(label_text, fn) table.insert(timed, label_text) fn() end }
 Atdar.test_loop = function() return 7 end
 stand.click(stand.child(by_name, "Loop"))
 stand.frame()
 stand.equal(timed[#timed], "test_loop()", "Show Call Time on: the call is timed, with its name")
-stand.click(stand.child(call_list, "Show Call Time"))
+stand.click(stand.child(call_list, "Disable Call Time For All"))
 stand.equal(Atdar.loader.load("ui/stand/core/call_display").show_time, false, "(the setting is shared: ui/stand/core/call_display)")
 timed = {}
 stand.frame()
 stand.equal(#timed, 0, "off: not timed")
-stand.click(stand.child(call_list, "Show Result On Screen"))
+stand.click(stand.child(call_list, "Disable Result On Screen For All"))
 stand.debug_texts = {}
 stand.frame()
-stand.equal(#stand.debug_texts, 0, "Show Result On Screen off: nothing drawn")
-stand.click(stand.child(call_list, "Show Result On Screen"))
-stand.click(stand.child(call_list, "Show Call Time"))
+stand.equal(#stand.debug_texts, 0, "Disable Result On Screen For All on: nothing drawn")
+stand.click(stand.child(call_list, "Disable Result On Screen For All"))
+stand.click(stand.child(call_list, "Disable Call Time For All"))
 stand.frame()
-stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "and on again: drawn")
+stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "and off again: drawn")
+-- A function's own switches, in its panel
+stand.click(stand.child(by_name, "Show Result On Screen"))
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "Show Result On Screen off in the function: nothing drawn")
+stand.click(stand.child(by_name, "Show Result On Screen"))
+stand.click(stand.child(by_name, "Show Call Time"))
+timed = {}
+stand.frame()
+stand.equal(#timed, 0, "Show Call Time off in the function: not timed")
+stand.click(stand.child(by_name, "Show Call Time"))
+stand.frame()
+stand.equal(timed[#timed], "test_loop()", "and on again: timed")
 -- Result Length On Screen: a long result is cut, so it doesn't run off the screen
 local length = stand.child(call_list, "Result Length On Screen")
 stand.check(length.kind == "slider" and length.value == 100, "Result Length On Screen is a slider, 100 by default")

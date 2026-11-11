@@ -191,6 +191,15 @@ local function function_list(entry: table, mod: table, fn: table): void
             state.on_focus = on or nil
         end, {}, label("loop.call_on_focus.help"), state.on_focus == true)
 
+        -- What its loop puts on the screen: the time of a call and what it gave
+        node:toggle(label("loop.show_time.name"), function(on)
+            state.show_time = on
+        end, {}, label("loop.show_time.help"), state.show_time ~= false)
+
+        node:toggle(label("loop.show_result.name"), function(on)
+            state.show_result = on
+        end, {}, label("loop.show_result.help"), state.show_result ~= false)
+
         -- How its loop is: the status line, Loop, Loop With Interval. Above what it gave, so the table settings
         -- made under the Value list are the last items
         loop_statuses[key] = node:divider(call_loop.status_line(logic.loop_status(key)))

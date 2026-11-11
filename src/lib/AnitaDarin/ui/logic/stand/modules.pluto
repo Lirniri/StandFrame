@@ -285,7 +285,7 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
     local key = module.key_of(module_name, fn.name)
     local name = notice_name(module_name, fn)
     local state = module.state_of(mod, fn)
-    local run = { module = module_name, every = every, next = 0 }
+    local run = { module = module_name, every = every, next = 0, shows_result = || -> state.show_result ~= false }
 
     loops[key] = run
 
@@ -319,7 +319,7 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
         -- How long a call takes, on screen (info text); Debug > Call Function > Settings decide what's shown
         local given = call_loop.timed($"{module_name}.{fn.name}()", function()
             return table.pack(pcall(current[fn.name], current, table.unpack(args, 1, count)))
-        end)
+        end, state.show_time ~= false)
 
         if not given[1] then
             end_loop(key, "failed")

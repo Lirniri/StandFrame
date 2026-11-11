@@ -171,6 +171,15 @@ function module.panel(list: table, spec: table): table
             state.on_focus = on
         end, {}, mlabel("loop.call_on_focus.help"), state.on_focus == true)
 
+        -- What its loop puts on the screen: the time of a call and what it gave
+        list:toggle(mlabel("loop.show_time.name"), function(on)
+            state.show_time = on
+        end, {}, mlabel("loop.show_time.help"), state.show_time ~= false)
+
+        list:toggle(mlabel("loop.show_result.name"), function(on)
+            state.show_result = on
+        end, {}, mlabel("loop.show_result.help"), state.show_result ~= false)
+
         -- The loop: its status line (as the loop is now), Loop, Loop With Interval
         status_ref = list:divider(calls.status_line(calls.loop_status(state)))
 
@@ -403,13 +412,14 @@ function module.build(node: table): any
         end
     end, {}, label("short_names.help"), settings.short_names)
 
+    -- Off by default; on: no function shows it, whatever its own switch says
     list:toggle(label("show_time.name"), function(on)
-        display.show_time = on
-    end, {}, label("show_time.help"), display.show_time)
+        display.show_time = not on
+    end, {}, label("show_time.help"), not display.show_time)
 
     list:toggle(label("show_result.name"), function(on)
-        display.show_result = on
-    end, {}, label("show_result.help"), display.show_result)
+        display.show_result = not on
+    end, {}, label("show_result.help"), not display.show_result)
 
     list:slider(label("result_length.name"), display.LENGTH_MIN, display.LENGTH_MAX, display.result_length, 10,
         function(value)

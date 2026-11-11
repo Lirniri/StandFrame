@@ -519,6 +519,19 @@ timed_names = {}
 stand.frame()
 stand.equal(#timed_names, 0, "off: not timed")
 display.show_time = true
+-- A function's own Show Call Time and Show Result On Screen: off for this function only
+stand.click(stand.child(add_node, "Show Call Time"))
+timed_names = {}
+stand.frame()
+stand.equal(#timed_names, 0, "Show Call Time off in the function: not timed, the setting for all still on")
+stand.click(stand.child(add_node, "Show Call Time"))
+stand.click(stand.child(add_node, "Show Result On Screen"))
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "Show Result On Screen off in the function: nothing drawn")
+stand.click(stand.child(add_node, "Show Result On Screen"))
+stand.frame()
+stand.equal(#stand.debug_texts, 1, "and on again: drawn")
 _G.profiling = nil
 -- A table is unpacked
 stand.click(stand.child(add_node, "Loop"))

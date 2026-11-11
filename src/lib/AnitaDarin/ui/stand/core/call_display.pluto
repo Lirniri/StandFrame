@@ -11,7 +11,9 @@
 
 local module = {}
 
--- Show Call Time, Show Result On Screen: the switches; Result Length On Screen: how many characters are drawn
+-- Disable Call Time For All and Disable Result On Screen For All turn these off (false); a function's own
+-- Show Call Time and Show Result On Screen only matter while they're on.
+-- Result Length On Screen: how many characters are drawn
 module.show_time = true
 module.show_result = true
 module.result_length = 100
@@ -19,13 +21,15 @@ module.result_length = 100
 module.LENGTH_MIN = 20
 module.LENGTH_MAX = 500
 
--- Runs fn; with Show Call Time on, Stand shows how long it took this frame, under the name
+-- Runs fn; with Show Call Time on (the function's own switch, shown, and the one for all), Stand shows how
+-- long it took this frame, under the name
 -- @param name What the time is shown under
 -- @param fn What to run
+-- @param shown The function's own Show Call Time
 -- @return Nothing: fn is run either way
-function module.timed(name: string, fn: function): void
+function module.timed(name: string, fn: function, shown: bool = true): void
 
-    if module.show_time and profiling ~= nil then
+    if shown and module.show_time and profiling ~= nil then
         profiling.tick(name, fn)
         return
     end

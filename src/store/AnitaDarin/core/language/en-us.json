@@ -585,6 +585,14 @@
                 "name": "Call When Hovered",
                 "help": "Calls the function every time the cursor comes onto its list"
             },
+            "show_time": {
+                "name": "Show Call Time",
+                "help": "While its loop runs, shows how long each call of this function takes, as Stand's debug text on the screen. Off for every function: Debug > Call Function > Settings"
+            },
+            "show_result": {
+                "name": "Show Result On Screen",
+                "help": "While its loop runs, shows what this function gave, as Stand's debug text on the screen. Off for every function: Debug > Call Function > Settings"
+            },
             "loop": {
                 "name": "Loop",
                 "help": "Calls the function every frame while it's on"
@@ -974,12 +982,12 @@
                 "bad_param": "%s (short_name.json): parameter %d has no \"name\", so the registry's parameters for it are left out"
             },
             "show_time": {
-                "name": "Show Call Time",
-                "help": "While a loop runs, shows how long each call takes, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"
+                "name": "Disable Call Time For All",
+                "help": "On: no loop shows how long its calls take, whatever the Show Call Time of each function says. Off: each function's own Show Call Time decides. In the loops of Call Function and of a module's functions"
             },
             "show_result": {
-                "name": "Show Result On Screen",
-                "help": "While a loop runs, shows what the function gave, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"
+                "name": "Disable Result On Screen For All",
+                "help": "On: no loop draws what its function gave, whatever the Show Result On Screen of each function says. Off: each function's own Show Result On Screen decides. In the loops of Call Function and of a module's functions"
             },
             "result_length": {
                 "name": "Result Length On Screen",

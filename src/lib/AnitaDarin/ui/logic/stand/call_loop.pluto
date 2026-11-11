@@ -26,9 +26,17 @@ function module.status_line(kind: string, every: ?int): string
     return text("loop.status_line"):format(value)
 end
 
+-- Draws what the loop's last call gave, unless the function's own Show Result On Screen is off
+local function draw_result(loop_run: table): void
+    if loop_run.shows_result == nil or loop_run.shows_result() then
+        display.draw(loop_run.result)
+    end
+end
+
 -- Starts the loop in a tick handler
 -- @param loop_run The loop's state: every (ms, nil for every frame), next (ms of the next call), result (the
---                 text drawn between the calls, nil draws nothing)
+--                 text drawn between the calls, nil draws nothing), shows_result (function() -> whether
+--                 the function's Show Result On Screen is on; nil: on)
 -- @param is_current Whether this loop is still the wanted one: false once it's stopped or a newer one replaced it
 -- @param step One call; false ends the loop (it failed, or what it calls is gone)
 function module.start(loop_run: table, is_current: function, step: function): void
@@ -44,7 +52,7 @@ function module.start(loop_run: table, is_current: function, step: function): vo
             local now = util.current_time_millis()
 
             if now < loop_run.next then
-                display.draw(loop_run.result)
+                draw_result(loop_run)
                 return true
             end
 
@@ -55,7 +63,7 @@ function module.start(loop_run: table, is_current: function, step: function): vo
             return false
         end
 
-        display.draw(loop_run.result)
+        draw_result(loop_run)
         return true
     end)
 end
@@ -63,14 +71,15 @@ end
 -- Runs the call with its time shown on screen (while Show Call Time is on)
 -- @param name What the time is shown under
 -- @param call The call, returns its packed results
+-- @param shown The function's own Show Call Time
 -- @return What call returned
-function module.timed(name: string, call: function): table
+function module.timed(name: string, call: function, shown: bool = true): table
     
     local results = nil
 
     display.timed(name, function()
         results = call()
-    end)
+    end, shown)
 
     return results
 end

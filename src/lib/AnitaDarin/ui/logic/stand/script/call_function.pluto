@@ -248,7 +248,7 @@ function module.start_loop(spec: table, every: ?int): void
         return
     end
 
-    local loop_run = { every = every, next = 0 }
+    local loop_run = { every = every, next = 0, shows_result = || -> state.show_result ~= false }
     state.loop = loop_run
 
     if every == nil then
@@ -284,7 +284,7 @@ function module.start_loop(spec: table, every: ?int): void
         end
 
         -- How long a call takes, on screen (info text), while Show Call Time is on
-        local given = call_loop.timed($"{name}()", || -> run(value, owner, args, count))
+        local given = call_loop.timed($"{name}()", || -> run(value, owner, args, count), state.show_time ~= false)
         if not given[1] then
             end_loop(state, loop_run, "failed")
             log:error(text("failed"):format(name, tostring(given[2])))
