@@ -873,7 +873,7 @@
             },
             "function": {
                 "name": "Имя функции",
-                "help": "Путь через точку. Таблицы Stand: util.toast, entities.get_user_vehicle_as_handle. Таблицы скрипта: game.repair_vehicle; те, что названы как у Stand, доступны через Atdar в начале: Atdar.util.hash. Первым может быть имя модуля: VehicleManager.get. С двоеточием функция вызывается как метод: VehicleManager:get"
+                "help": "Путь через точку. Таблицы Stand: util.toast, entities.get_user_vehicle_as_handle. Таблицы скрипта: game.repair_vehicle; те, что названы как у Stand, доступны через Atdar в начале: Atdar.util.hash. Первым может быть имя модуля: VehicleManager.get. С двоеточием функция вызывается как метод: VehicleManager:get. Имя без пути ищет функцию, в том числе среди нативов скрипта: set_explosive_melee_this_frame"
             },
             "args": {
                 "name": "Аргумент",

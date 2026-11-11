@@ -145,7 +145,7 @@ stand.check(stand.find_log("with alpha: 00000080"), "to_hex with alpha")
 stand.check(stand.find_log("not a colour: nil"), "from_hex of something else")
 
 -- The natives examples need the game; every function they call has to exist
-for _, name in { "05_natives", "08_natives_more" } do
+for _, name in { "05_natives", "08_natives_more", "09_natives_all" } do
     local text = stand.read_file($"{stand.ROOT}/examples/basics/{name}.pluto")
     local calls = 0
     for chain in text:gmatch("natives%.([%w_%.]+)%(") do

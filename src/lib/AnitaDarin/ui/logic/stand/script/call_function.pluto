@@ -13,7 +13,8 @@
 --
 -- The name is a path from Atdar with dots (game.repair_vehicle, game.some_table). A module's name may come
 -- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get)
--- (parsers/proglang/pluto/path).
+-- (parsers/proglang/pluto/path). A short name alone is looked for in the script's natives too
+-- (get_forward_z -> Atdar.natives.entity.get_forward_z).
 -- Strings: core/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
 
 local i18n = Atdar.loader.load("core/i18n")

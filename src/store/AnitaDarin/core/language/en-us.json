@@ -873,7 +873,7 @@
             },
             "function": {
                 "name": "Function Name",
-                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get"
+                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame"
             },
             "args": {
                 "name": "Argument",

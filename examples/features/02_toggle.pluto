@@ -13,11 +13,11 @@ return Atdar.features.add(new Feature({
     kind = "toggle",
 
     on_save_state = function(self)
-        self.saved_max = PLAYER.GET_MAX_WANTED_LEVEL()
+        self.saved_max = Atdar.natives.player.wanted_level.get_max()
     end,
 
     on_enable = function(self)
-        PLAYER.SET_MAX_WANTED_LEVEL(0)
+        Atdar.natives.player.wanted_level.set_max_wanted_level(0)
     end,
 
     on_disable = function(self)
@@ -25,6 +25,6 @@ return Atdar.features.add(new Feature({
     end,
 
     on_load_state = function(self)
-        PLAYER.SET_MAX_WANTED_LEVEL(self.saved_max or 5)
+        Atdar.natives.player.wanted_level.set_max_wanted_level(self.saved_max or 5)
     end,
 }))

@@ -173,6 +173,12 @@ stand.equal(pluto.path.find("other_fn")[1], "TEST_FIND.other_fn", "path.find: a 
 stand.equal(pluto.path.find("table_not_fn")[1], nil, "path.find: a table isn't a function")
 stand.equal(#pluto.path.find("no_such_fn"), 0, "path.find: none - empty")
 stand.equal(#pluto.path.find("test_path.found_fn"), 0, "path.find: a name with a dot isn't a short name")
+-- the script's natives are looked into by their files, loaded or not
+Atdar.natives = Atdar.natives or Atdar.loader.auto({}, "natives")
+local native_path = pluto.path.find("get_forward_z")[1]
+stand.equal(native_path, "Atdar.natives.entity.get_forward_z", "path.find: a native of the script by its short name")
+stand.equal(pluto.path.resolve(native_path), true, "path.find: and the path it gives resolves")
+stand.equal(pluto.path.find("get_rpm")[1], "Atdar.natives.entity.vehicle.engine.get_rpm", "path.find: a function in a table of a natives module")
 Atdar.test_path = nil
 TEST_FIND = nil
 
