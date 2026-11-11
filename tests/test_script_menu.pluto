@@ -403,7 +403,7 @@ stand.check(stand.child(by_name, "Notice In Stand") == nil, "the Notice In Stand
 local call_button
 for _, child in by_name.children do
     -- "Call" is also the divider above it
-    if child.kind == "action" and stand.name_of(child) == "Call" then
+    if child.kind == "click_slider" and stand.name_of(child) == "Call" then
         call_button = child
     end
 end

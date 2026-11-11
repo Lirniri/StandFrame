@@ -154,14 +154,14 @@ function module.panel(list: table, spec: table): table
             state.on_enter = on
         end, {}, label("on_enter.help"), state.on_enter == true)
 
-        list:action(mlabel("loop.call"), || -> calls.call(spec), {}, label("call.help"))
-
-        -- Once, after the ms picked
-        list:click_slider(mlabel("loop.call_after.name"), 100, 60000, 1000, 100, function(ms, click_type)
-            if clicks.is_user_action(click_type) then
-                calls.call_after(spec, ms)
-            end
-        end, {}, mlabel("loop.call_after.help"))
+        -- Call; with a number of ms picked, Call After
+        Atdar.loader.load("ui/stand/core/call_slider").build(list, {
+            name_now = mlabel("loop.call"),
+            name_after = mlabel("loop.call_after.name"),
+            help = label("call.help"),
+            call = || -> calls.call(spec),
+            call_after = |ms| -> calls.call_after(spec, ms),
+        })
 
         list:toggle(mlabel("loop.call_on_open.name"), function(on)
             state.on_open = on

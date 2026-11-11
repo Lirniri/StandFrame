@@ -201,14 +201,22 @@ stand.check(add_args.commands[1]:find("moduleargsfor3_2_1$") ~= nil, $"a short c
 stand.check(add_note.commands[1]:find("moduleargsfor3_2_2$") ~= nil, $"the next parameter's: {add_note.commands[1]}")
 local reset_node = stand.child(counter_functions, "reset()")
 stand.equal(reset_node.kind, "list", "without: a list")
-stand.equal(names_in(reset_node), "Call Settings | Call | Call After | Call When Opened | Call When Hovered | Loop Status: stopped | Loop | Loop With Interval | Variable: —",
+stand.equal(names_in(reset_node), "Call Settings | Call | Call When Opened | Call When Hovered | Show Call Time | Show Result On Screen | Loop Status: stopped | Loop | Loop With Interval | Variable: —",
     "Call Settings, Call, Call After, Call When Opened / Hovered, the loop (status, Loop, Loop With Interval), then what it gave last")
 -- Call After: once, after the ms picked
 counter.count = 5
 local clock_before = stand.clock
 stand.clear_logs()
-stand.click(stand.child(reset_node, "Call After"), 500)
-stand.check(stand.find_log("Module 3.reset(): called in 500 ms"), "Call After tells when")
+stand.click(stand.child(reset_node, "Call"), 500)
+stand.check(stand.find_log("Module 3.reset(): called in 500 ms"), "Call with a number of ms picked: it tells when")
+-- The item is named Call at 0 and Call After with a number picked (Stand checks it while the item is on screen)
+local call_item = stand.child(reset_node, "Call")
+menu.set_value(call_item, 500)
+stand.view_tick(call_item)
+stand.equal(stand.name_of(call_item), "Call After", "a number picked: the item is named Call After")
+menu.set_value(call_item, 0)
+stand.view_tick(call_item)
+stand.equal(stand.name_of(call_item), "Call", "back to 0: Call")
 stand.check(stand.clock - clock_before >= 500 and counter.count == 0, "and calls the function after that wait")
 counter.count = 0
 stand.equal(stand.child(reset_node, "Loop").kind, "toggle", "Loop is a toggle")

@@ -173,15 +173,14 @@ local function function_list(entry: table, mod: table, fn: table): void
             end, {}, label("loop.call_on_enter.help"), state.on_enter == true)
         end
 
-        node:action(label("loop.call"), || -> logic.call_typed(mod, fn), {}, label("call.button.help"))
-
-        -- Once, after the ms picked
-        node:track(menu.click_slider(node.handle, label("loop.call_after.name"), {}, label("loop.call_after.help"),
-            100, 60000, 1000, 100, function(ms, click_type)
-            if clicks.is_user_action(click_type) then
-                logic.call_after(mod, fn, ms)
-            end
-        end))
+        -- Call; with a number of ms picked, Call After
+        Atdar.loader.load("ui/stand/core/call_slider").build(node, {
+            name_now = label("loop.call"),
+            name_after = label("loop.call_after.name"),
+            help = label("call.button.help"),
+            call = || -> logic.call_typed(mod, fn),
+            call_after = |ms| -> logic.call_after(mod, fn, ms),
+        })
 
         node:toggle(label("loop.call_on_open.name"), function(on)
             state.on_open = on or nil

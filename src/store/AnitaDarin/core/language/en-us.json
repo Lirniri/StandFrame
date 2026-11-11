@@ -553,7 +553,7 @@
         },
         "call": {
             "button": {
-                "help": "Calls the function once; what it gives shows in a notification and on the Variable line"
+                "help": "Calls the function once; what it gives shows in a notification and on the Variable line. With a number of milliseconds picked (Left / Right) it is called after that long"
             },
             "done": "%s: done",
             "result": "%s -> %s",
@@ -573,8 +573,7 @@
             },
             "call": "Call",
             "call_after": {
-                "name": "Call After",
-                "help": "Calls the function once after so many milliseconds"
+                "name": "Call After"
             },
             "call_scheduled": "%s: called in %d ms",
             "call_on_open": {
@@ -1030,7 +1029,7 @@
             "call": {
                 "divider": "Call",
                 "name": "Call",
-                "help": "Calls a function once, reads a table or a variable; the result is in the notice, in the Variable line and, for a table, in the Value list"
+                "help": "Calls a function once, reads a table or a variable; the result is in the notice, in the Variable line and, for a table, in the Value list. With a number of milliseconds picked (Left / Right) it is called after that long, not at once"
             },
             "table": {
                 "divider": "Tables"

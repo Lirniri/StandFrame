@@ -331,6 +331,11 @@ _G.menu = {
     -- Where the cursor was sent last (stand.focused)
     focus = function(it) stand.focused = it end,
     -- Called when the cursor comes onto the item (stand.hover)
+    -- Run by stand.view_tick(it): what Stand does every tick while the item is on screen
+    on_tick_in_viewport = function(it, fn)
+        it.view_ticks ??= {}
+        table.insert(it.view_ticks, fn)
+    end,
     on_focus = function(it, fn)
         it.on_focus_handlers ??= {}
         table.insert(it.on_focus_handlers, fn)
@@ -360,6 +365,13 @@ function stand.click(it, option: ?int): void
         end
     else
         error($"stand.click: can't click a {it.kind}")
+    end
+end
+
+-- One tick of an item on screen: its menu.on_tick_in_viewport handlers run
+function stand.view_tick(it): void
+    for _, fn in it.view_ticks or {} do
+        fn()
     end
 end
 
