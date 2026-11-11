@@ -1083,6 +1083,8 @@
             "unknown": "unknown",
             "not_checked": "not checked",
             "never": "never",
+            "progress": "Progress",
+            "no_progress": "not updating",
             "up_to_date": "%s (up to date)"
         },
         "changes": {
@@ -1112,6 +1114,10 @@
         "before": {
             "name": "Check Before Updating",
             "help": "Update checks for a newer version first, and does nothing if there is none"
+        },
+        "progress_notify": {
+            "name": "Progress In Notifications",
+            "help": "Tells how far the download of an update has come, every 10%"
         },
         "auto": {
             "name": "Update Automatically",
@@ -1158,6 +1164,7 @@
             "up_to_date": "The script is up to date (version %s)",
             "found": "Version %s is out: %d file(s) to change. Press Update to install it",
             "installing": "Updating: downloading %d file(s)",
+            "progress": "Updating: %d%% (%d of %d files)",
             "installed": "Updated to version %s. The script restarts",
             "install_failed": "Couldn't update: %s. Nothing was changed",
             "stale": "The new version is still reaching GitHub's servers, so the downloaded files don't match yet. Nothing was changed. Wait a few minutes, press Check, then Update again",

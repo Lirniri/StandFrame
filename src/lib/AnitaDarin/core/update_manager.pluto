@@ -25,6 +25,12 @@ module.plan = nil
 -- Whether a check or an install is running
 module.busy = false
 
+-- How far the download of an update has come: { done, total }, nil when none is running
+module.progress = nil
+
+-- Percent steps between two progress notifications
+local NOTIFY_STEP = 10
+
 -- Seconds in a day
 local DAY = 86400
 
@@ -283,8 +289,30 @@ local function apply_plan(plan: table): string
 
     log:notify(text("msg.installing"):format(#plan.download))
 
-    local ok, apply_err, reason = updater.apply(plan)
+    local notified = 0
+
+    module.progress = { done = 0, total = #plan.download }
+    changed()
+
+    local ok, apply_err, reason = updater.apply(plan, function(done: int, total: int)
+
+        module.progress = { done = done, total = total }
+        changed()
+
+        local percent = done * 100 // total
+
+        -- Not every file: an update is many of them, it would flood the notifications
+        if Atdar.profile.get("update_progress_notify") ~= false and (percent - notified >= NOTIFY_STEP or done == total) then
+            notified = percent
+            log:notify(text("msg.progress"):format(percent, done, total))
+        end
+    end)
     module.busy = false
+
+    if not ok then
+        module.progress = nil
+        changed()
+    end
 
     if not ok and reason == "stale" then
         log:error(text("msg.stale"))
@@ -299,7 +327,7 @@ local function apply_plan(plan: table): string
     module.plan = nil
     forget_check()
     changed()
-    log:success(text("msg.installed"):format(tostring(plan.version)))
+    log:success(text("msg.installed"):format(tostring(plan.version)), "stand")
     return "installed"
 end
 

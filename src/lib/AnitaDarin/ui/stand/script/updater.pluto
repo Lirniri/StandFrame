@@ -10,9 +10,11 @@
 --   Check On Start                 (profile: update_check_on_start)
 --   Branch: main                   (profile: update_branch)
 --   ── Update ──
+--   Progress: [=====-----] 50%     (read-only, the download of an update)
 --   Update
 --   Check Before Updating          (profile: update_check_before)
---   Update Automatically          (profile: auto_update)
+--   Progress In Notifications      (profile: update_progress_notify)
+--   Update Automatically         (profile: auto_update)
 --   Check For Updates Every (Days) (profile: update_check_days)
 --   Update To Version              (a list)
 --     Version                      (a version, a tag, a branch or a commit to install, an older one too)
@@ -25,7 +27,7 @@
 -- in a thread and shows what it found. The texts of the lines and what the other items do are in
 -- ui/logic/stand/script/updater_view.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
--- updaterbranch, updaterbefore, updaterchanges, updaterstart, updaterversion, updatersync
+-- updaterbranch, updaterbefore, updaterprogress, updaterchanges, updaterstart, updaterversion, updatersync
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -38,7 +40,7 @@ local module = {}
 local label = i18n.scope("updater_menu")
 
 -- The info lines and the branch picker made by build
-local view = { branch = nil, installed = nil, available = nil, last_check = nil }
+local view = { branch = nil, installed = nil, available = nil, last_check = nil, progress = nil }
 
 -- An item running a function of the manager in a thread: the check and the install download, so they yield
 local function threaded(node: table, key: string, command: string, run: function): void
@@ -67,6 +69,8 @@ local function refresh_info(): void
     pcall(menu.set_value, view.installed, updater.installed_text())
     pcall(menu.set_value, view.available, updater.available_text())
     pcall(menu.set_value, view.last_check, updater.last_check_text())
+    pcall(menu.set_value, view.progress, updater.progress_text())
+    pcall(menu.set_menu_name, view.progress, updater.progress_caption())
 end
 
 function module.build(node: table): table
@@ -92,6 +96,7 @@ function module.build(node: table): table
     flag(list, "on_start", "update_check_on_start", "updaterstart", true)
 
     list:divider(label("divider"))
+    view.progress = list:readonly(label("info.progress"), updater.progress_text())
     threaded(list, "install", "updaterinstall", manager.install_and_restart)
     flag(list, "before", "update_check_before", "updaterbefore", true)
 
@@ -99,6 +104,7 @@ function module.build(node: table): table
     list:click_slider(label("check_days.name"), 0, 30, Atdar.profile.get("update_check_days") or 1, 1,
         |days| -> updater.set_check_days(days), { "updaterdays" }, label("check_days.help"))
 
+    flag(list, "progress_notify", "update_progress_notify", "updaterprogress", true)
     flag(list, "auto", "auto_update", "updaterauto", false)
     
     -- A version typed, or picked from the releases made: that release is installed, an older one too

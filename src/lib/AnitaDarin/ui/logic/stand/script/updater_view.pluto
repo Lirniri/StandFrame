@@ -54,6 +54,34 @@ function module.last_check_text(): string
     return os.date("%Y-%m-%d %H:%M", time)
 end
 
+-- The bar of the update's download: "[=====-----] 50%", empty while none runs
+function module.progress_text(): string
+
+    local progress = manager.progress
+
+    if progress == nil or progress.total == 0 then
+        return text("info.no_progress")
+    end
+
+    local width = 10
+    local filled = progress.done * width // progress.total
+    local percent = progress.done * 100 // progress.total
+
+    return $"[{("="):rep(filled)}{("-"):rep(width - filled)}] {percent}%"
+end
+
+-- The progress line's name: "Progress", with a ":" added while an update is downloading
+function module.progress_caption(): string
+
+    local caption = text("info.progress")
+
+    if manager.progress == nil then
+        return caption
+    end
+
+    return $"{caption}:"
+end
+
 -- Branch
 
 -- "Branch: main"
