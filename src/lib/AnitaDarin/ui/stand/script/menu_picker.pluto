@@ -42,18 +42,24 @@ function module.fill(node: table, loader: table): void
         local loaded = loader.is_loaded("builtin")
         local caption = || -> entries.builtin_caption(loaded)
 
+        -- A list with the script's name as its divider, then what can be done with the menu
+        local help = || -> label("builtin.help")
+
         if manifest then
-            local help = || -> entries.copied_help(manifest)
-            local ref = node:list_action(caption(), { label("options.load"), label("options.remove_from_core") },
-                |index| -> entries.copied_option(loader, index), { "menuloaderbuiltin" }, help())
-
-            table.insert(picker_rows, { ref = ref, caption = caption, help = help })
-            node:divider(label(divider_key))
-        else
-            local ref = node:action(caption(), loader.load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
-
-            table.insert(picker_rows, { ref = ref, caption = caption })
+            help = || -> entries.copied_help(manifest)
         end
+
+        local ref = node:list(caption(), { "menuloaderbuiltinlist" }, help())
+
+        ref:divider(entries.builtin_title())
+        ref:action(label("options.load"), loader.load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
+
+        if manifest then
+            ref:action(label("options.remove_from_core"), || -> entries.copied_option(loader, 2), {}, help())
+            node:divider(label(divider_key))
+        end
+
+        table.insert(picker_rows, { ref = ref, caption = caption, help = help })
     end
 
     for _, info in ipairs(packs) do

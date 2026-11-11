@@ -368,6 +368,42 @@ function module.remember(plan: table): void
     installed_file(plan.opts):write({ version = plan.version, files = plan.manifest.files })
 end
 
+-- Clears what a cut-off update left next to a file: .update (written, not put in place) is removed; .old (the
+-- file set aside) is put back when the file itself is missing, else removed
+function module.clean_leftovers(target: string): void
+
+    os.remove($"{target}.update")
+
+    if not filesystem.exists($"{target}.old") then
+        return
+    end
+
+    if filesystem.exists(target) then
+        os.remove($"{target}.old")
+        return
+    end
+
+    os.rename($"{target}.old", target)
+end
+
+-- Undoes the swaps made so far: the old files come back, the new ones and the .update files go
+-- @param swapped { target, had_old } of each file already replaced
+-- @param written The .update paths written
+function module.roll_back(swapped: table, written: table): void
+
+    for _, item in ipairs(swapped) do
+        os.remove(item.target)
+
+        if item.had_old then
+            os.rename($"{item.target}.old", item.target)
+        end
+    end
+
+    for _, temp in ipairs(written) do
+        os.remove(temp)
+    end
+end
+
 -- Carries the plan out: downloads its files and checks each against the manifest; only when all came
 -- right writes them (first next to their places, then over them) and removes the old ones, then
 -- remembers the release as installed. Yields: call it from a thread. Restart the script after it
@@ -397,6 +433,11 @@ function module.apply(plan: table, on_progress: ?function)
         end
     end
 
+    -- Leftovers of an update that was cut off (a crash) are cleared first
+    for _, path in ipairs(plan.download) do
+        module.clean_leftovers(module.target_of(path, o))
+    end
+
     -- Written next to their places first: a failure leaves the script as it was
     local written = {}
     for _, path in ipairs(plan.download) do
@@ -413,11 +454,37 @@ function module.apply(plan: table, on_progress: ?function)
         
         table.insert(written, temp)
     end
+
+    -- Each old file is set aside as .old and the new one put in its place; if any step fails, everything
+    -- done goes back and the script stays as it was
+    local swapped = {}
+
     for _, path in ipairs(plan.download) do
+
         local target = module.target_of(path, o)
-        os.remove(target)
-        os.rename($"{target}.update", target)
+        local had_old = filesystem.exists(target)
+
+        if had_old and not os.rename(target, $"{target}.old") then
+            module.roll_back(swapped, written)
+            return false, $"{path}: couldn't replace the file (is it in use?). Nothing was changed"
+        end
+
+        if not os.rename($"{target}.update", target) then
+            if had_old then
+                os.rename($"{target}.old", target)
+            end
+            module.roll_back(swapped, written)
+            return false, $"{path}: couldn't put the new file in place. Nothing was changed"
+        end
+
+        table.insert(swapped, { target = target, had_old = had_old })
     end
+
+    -- All in place: the old copies aren't needed
+    for _, item in ipairs(swapped) do
+        os.remove($"{item.target}.old")
+    end
+
     for _, path in ipairs(plan.remove) do
         os.remove(module.target_of(path, o))
     end

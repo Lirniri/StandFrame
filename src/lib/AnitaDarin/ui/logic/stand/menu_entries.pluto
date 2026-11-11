@@ -30,9 +30,14 @@ function module.with_state(name: string, loaded: bool, in_core: bool): string
     return text("state.name"):format(name, table.concat(states, ", "))
 end
 
--- The built-in menu's entry: "<script> (built-in)", with its state
+-- The built-in menu's list: "Built-in", with its state
 function module.builtin_caption(loaded: bool): string
-    return module.with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name), loaded, false)
+    return module.with_state(text("builtin.name"), loaded, false)
+end
+
+-- The divider inside the built-in menu's list: the script's name
+function module.builtin_title(): string
+    return Atdar.profile.get("display_name") or Atdar.name
 end
 
 -- The help of a built-in menu that is a copy of a pack
@@ -49,13 +54,13 @@ function module.pack_help(info: table): string
     return text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
 end
 
--- A pack's command: menuloader and its folder, lower case, letters and digits only
--- ("Example Pack" -> "menuloaderexamplepack")
+-- A pack's command: loadmenu and its folder, lower case, letters and digits only
+-- ("Example Pack" -> "loadmenuexamplepack")
 function module.pack_command(info: table): string
 
     local word = info.folder:lower():gsub("[^%w]", "")
 
-    return $"menuloader{word}"
+    return $"loadmenu{word}"
 end
 
 -- What a pack's options do, in the menu's order: Load, Copy To Core, Open Menu Folder, Open Features Folder

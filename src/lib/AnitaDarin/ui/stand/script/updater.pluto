@@ -67,8 +67,11 @@ local function refresh_info(): void
     end
 
     pcall(menu.set_value, view.installed, updater.installed_text())
+    pcall(menu.set_menu_name, view.installed, updater.installed_caption())
     pcall(menu.set_value, view.available, updater.available_text())
+    pcall(menu.set_menu_name, view.available, updater.available_caption())
     pcall(menu.set_value, view.last_check, updater.last_check_text())
+    pcall(menu.set_menu_name, view.last_check, updater.last_check_caption())
     pcall(menu.set_value, view.progress, updater.progress_text())
     pcall(menu.set_menu_name, view.progress, updater.progress_caption())
 end
@@ -77,9 +80,9 @@ function module.build(node: table): table
 
     local list = node:list(label("name"), { "updater" }, label("help"))
 
-    view.installed = list:readonly(label("info.installed"), "")
-    view.available = list:readonly(label("info.available"), "")
-    view.last_check = list:readonly(label("info.last_check"), "")
+    view.installed = list:readonly(updater.installed_caption(), "")
+    view.available = list:readonly(updater.available_caption(), "")
+    view.last_check = list:readonly(updater.last_check_caption(), "")
     refresh_info()
     manager.on_change(refresh_info)
     list:action(label("changes.name"), updater.save_changes, { "updaterchanges" }, label("changes.help"))

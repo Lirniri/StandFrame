@@ -26,6 +26,30 @@ function module.installed_text(): string
     return manager.installed_version() or text("info.unknown")
 end
 
+-- "Installed Version", with a ":" added when the version is known
+function module.installed_caption(): string
+
+    local caption = text("info.installed")
+
+    if manager.installed_version() == nil then
+        return caption
+    end
+
+    return $"{caption}:"
+end
+
+-- "Available Version", with a ":" added when a check found one
+function module.available_caption(): string
+
+    local caption = text("info.available")
+
+    if manager.available_version() == nil then
+        return caption
+    end
+
+    return $"{caption}:"
+end
+
 -- The version found by the last check, "not checked" before one, marked when it's the one installed
 function module.available_text(): string
 
@@ -40,6 +64,18 @@ function module.available_text(): string
     end
 
     return version
+end
+
+-- "Last Check", with a ":" added once a check ran
+function module.last_check_caption(): string
+
+    local caption = text("info.last_check")
+
+    if manager.last_check_time() == 0 then
+        return caption
+    end
+
+    return $"{caption}:"
 end
 
 -- "never" when no check ran, else the time of the last one
@@ -257,7 +293,8 @@ end
 
 -- Changes
 
--- Saves what the available version changes to a log file in store/<script>/logs and says its name
+-- Saves what the available version changes to store/<script>/updater/changes.txt (made again each time)
+-- and says its path
 function module.save_changes(): void
 
     local lines = manager.changes()
@@ -267,15 +304,14 @@ function module.save_changes(): void
         return
     end
 
-    local date = os.date("%Y-%m-%d")
-    local filename = $"{Atdar.name}_{date}_updater.log"
+    local filename = "updater/changes.txt"
     local parts = {}
 
     for _, line in ipairs(lines) do
         table.insert(parts, text($"changes.{line.kind}"):format(line.path))
     end
 
-    if not file.write($"{paths.store}logs/{filename}", table.concat(parts, "\n")) then
+    if not file.write($"{paths.store}{filename}", table.concat(parts, "\n")) then
         log:notify(text("changes.error"), "stand")
         return
     end

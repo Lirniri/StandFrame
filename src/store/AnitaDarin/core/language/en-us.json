@@ -37,7 +37,7 @@
         },
         "no_menus": "No menus found",
         "builtin": {
-            "name": "%s (built-in)",
+            "name": "Built-in",
             "help": "The menu that ships with the script",
             "copied": {
                 "help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded."
@@ -1094,8 +1094,8 @@
             "update": "Update: %s",
             "remove": "Remove: %s",
             "more": "...and %d more",
-            "saved": "Log file created: %s",
-            "error": "Couldn't save log file"
+            "saved": "Changes saved: %s",
+            "error": "Couldn't save the changes file"
         },
         "check_divider": "Check",
         "on_start": {
