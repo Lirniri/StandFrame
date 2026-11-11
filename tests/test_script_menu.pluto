@@ -276,7 +276,7 @@ stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin d
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
-    "Debug Mode | Stop After Changes | Load Timing | Reload Natives | Logs | Options From Menu | Debug | Call Function"
+    "Debug Mode | Stop After Changes | Load Timing | Reload Natives | Logs | Debug | Options From Menu | Call Function"
     .. " | Modules | Delete Script", "Debug")
 -- The divider is called Logs too: the list is the one that opens
 local logs_list
@@ -374,14 +374,14 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Call Function, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
+local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
     end
     return true
 end
-stand.check(all_visible(false), "divider, Call Function, Modules and Delete Script are hidden without debug mode")
+stand.check(all_visible(false), "Options From Menu, the divider, Call Function, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
@@ -701,7 +701,7 @@ add_function.on_change("test_typed", 0)
 menu.set_value(stand.child(functions_list, "1: test_typed(count, name)").children[2], "6")
 rebuild()
 debug_list = find("Debug")
-debug_only = { debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
+debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 call_list = stand.find_item(debug_list, "Call Function")
 functions_list = stand.child(call_list, "Functions")
 local rebuilt_item = stand.child(functions_list, "1: test_typed(count, name)")

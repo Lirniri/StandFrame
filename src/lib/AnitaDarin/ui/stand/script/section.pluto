@@ -282,14 +282,20 @@ function module.build(section: table, opts: table): void
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
-    local from_menu = debug:list(label("options_from_menu.name"), {}, label("options_from_menu.help"))
+    -- Options From Menu: what the loaded menu needs of the script, like Languages
+    local function options_from_menu(parent: table)
 
-    local from_menu__settings = from_menu:list(label("settings.name"), {}, label("settings.help"))
-    local from_menu__languages = from_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))
-    language_menu.show_keys(from_menu__languages)
+        local from_menu = parent:list(label("options_from_menu.name"), {}, label("options_from_menu.help"))
+        local settings_list = from_menu:list(label("settings.name"), {}, label("settings.help"))
+        local languages_list = settings_list:list(label("settings.languages.name"), {}, label("settings.languages.help"))
 
-    -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
-    modules_place.build(debug, call_function.build)
+        language_menu.show_keys(languages_list)
+
+        return from_menu.handle
+    end
+
+    -- Under the "Debug" divider, shown only in debug mode: Options From Menu, Call Function, Modules; then Delete Script
+    modules_place.build(debug, { options_from_menu, call_function.build })
     modules_place.debug_only(delete_script(debug))
 
     -- Settings

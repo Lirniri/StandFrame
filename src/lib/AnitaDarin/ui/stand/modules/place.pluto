@@ -61,9 +61,9 @@ function module.module_in(node: table, name: string): ?table
 end
 
 -- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode).
--- before_list: an optional function(parent) that makes an item right under the divider, above Modules;
--- it returns the item's handle, which is shown in debug mode too
-function module.build(parent: table, before_list: ?function): void
+-- before_list: a function(parent), or an array of them, that make items right under the divider, above Modules,
+-- each in its order; every one returns the item's handle, which is shown in debug mode too
+function module.build(parent: table, before_list: ?function|table): void
 
     -- The manager failed to load: the loader left an empty table
     if Atdar.modules == nil or type(Atdar.modules.names) ~= "function" then
@@ -72,10 +72,17 @@ function module.build(parent: table, before_list: ?function): void
 
     -- A section made again (a profile created or deleted): the old place's items are gone
     place = { divider = parent:divider(label("debug.divider")), extra = {} }
-    if before_list ~= nil then
-        table.insert(place.extra, before_list(parent))
+
+    local makers = before_list
+
+    if type(before_list) == "function" then
+        makers = { before_list }
     end
-    
+
+    for _, make in ipairs(makers or {}) do
+        table.insert(place.extra, make(parent))
+    end
+
     place.list = module.list_in(parent)
     update_visibility()
 end
