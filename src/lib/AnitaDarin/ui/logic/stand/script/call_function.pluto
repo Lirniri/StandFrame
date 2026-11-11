@@ -344,9 +344,22 @@ function module.shown(path: string): string
     return (paths.split(path))
 end
 
+-- The full path the Function Name names now. The path worked out when the name was typed is used while it's
+-- still there: a loop calls at every tick, and a short name's search walks the tables
+function module.main_path(): string
+
+    local state = module.main_state
+
+    if state.path ~= nil and state.path ~= "" and path_parser().resolve(state.path) then
+        return state.path
+    end
+
+    return (module.expand(state.name or ""))
+end
+
 -- What the Function Name of Call A Function names now: found, value, owner
 function module.main_target()
-    return path_parser().resolve((module.expand(module.main_state.name or "")))
+    return path_parser().resolve(module.main_path())
 end
 
 -- The Function Name was typed; the name taken away takes the result with it, whatever the toggles say
@@ -414,8 +427,7 @@ end
 -- The signature of the function the Function Name names now, nil for anything else (a table, a variable, nothing)
 function module.main_signature(): ?table
 
-    local path = module.expand(module.main_state.name or "")
-    local sig = module.signature_of_path(path)
+    local sig = module.signature_of_path(module.main_path())
 
     return sig
 end

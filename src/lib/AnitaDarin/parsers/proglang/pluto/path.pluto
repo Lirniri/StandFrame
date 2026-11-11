@@ -183,6 +183,94 @@ local function natives_modules(): table
     return natives_files
 end
 
+-- Adds every function of tbl, and of the tables in it down to depth, to index by its short name
+local function index_functions(tbl: table, prefix: string, depth: int, index: table, seen: table): void
+
+    if seen[tbl] then
+        return
+    end
+
+    seen[tbl] = true
+
+    local keys = {}
+
+    -- A table of the script's may be a proxy that can't be walked: it's skipped then
+    local walked = pcall(function()
+        for key in pairs(tbl) do
+            if type(key) == "string" and key:sub(1, 2) ~= "__" then
+                table.insert(keys, key)
+            end
+        end
+    end)
+
+    if not walked then
+        return
+    end
+
+    table.sort(keys)
+
+    for _, key in ipairs(keys) do
+        local ok, value = pcall(function() return tbl[key] end)
+        if ok then
+            if type(value) == "function" then
+                index[key] ??= {}
+                table.insert(index[key], $"{prefix}{key}")
+            elseif type(value) == "table" and depth > 1 then
+                index_functions(value, $"{prefix}{key}.", depth - 1, index, seen)
+            end
+        end
+    end
+end
+
+-- Short name -> the paths of the natives' functions of that name, made once: a search that walked every
+-- natives module each time cost milliseconds, and a loop that names its function by a short name searches
+-- at every call. Each file's module is looked into on its own: the other modules lying in it (entity.vehicle
+-- in entity) are left to their files, so none is cut short by being met first from the folder above
+local natives_index = nil
+
+local function natives_by_name(): table
+
+    if natives_index ~= nil then
+        return natives_index
+    end
+
+    -- No natives yet (a script without them): nothing is kept, so they're found once they're there
+    if Atdar.natives == nil then
+        return {}
+    end
+
+    natives_index = {}
+
+    local loaded = {}
+    local is_module = {}
+
+    for _, file in ipairs(natives_modules()) do
+        local path = $"Atdar.natives.{file}"
+        local found, tbl = module.resolve(path)
+        if found and type(tbl) == "table" then
+            table.insert(loaded, { path = path, tbl = tbl })
+            is_module[tbl] = true
+        end
+    end
+
+    for _, entry in ipairs(loaded) do
+        local seen = {}
+        for tbl in pairs(is_module) do
+            seen[tbl] = tbl ~= entry.tbl or nil
+        end
+        index_functions(entry.tbl, $"{entry.path}.", FIND_DEPTH.natives, natives_index, seen)
+    end
+
+    return natives_index
+end
+
+-- Forgets the natives' files and functions found, for the next search to look again: after the natives
+-- are loaded again (Reload Natives), whose functions are other ones then
+function module.forget_natives(): void
+    natives_files = nil
+    natives_index = nil
+end
+
 -- The full paths of the functions with this short name (no dot or colon in it), to call by it: what Atdar
 -- has first (game.repair_vehicle), then the script's natives (Atdar.natives.entity.get_forward_z), then the
 -- globals one level down (entities.get_user_vehicle_as_handle, util.toast, PLAYER.PLAYER_PED_ID). Each part
@@ -206,29 +294,8 @@ function module.find(name: string): table
 
     scan(Atdar, "", FIND_DEPTH.atdar, name, out, seen)
 
-    -- Each file's module is looked into on its own: the other modules lying in it (entity.vehicle in entity)
-    -- are left to their files, so none is cut short by being met first from the folder above
-    local loaded = {}
-    local is_module = {}
-
-    for _, file in ipairs(natives_modules()) do
-        local path = $"Atdar.natives.{file}"
-        local found, tbl = module.resolve(path)
-        if found and type(tbl) == "table" then
-            table.insert(loaded, { path = path, tbl = tbl })
-            is_module[tbl] = true
-        end
-    end
-
-    for _, entry in ipairs(loaded) do
-        local own_seen = {}
-        for key in pairs(seen) do
-            own_seen[key] = true
-        end
-        for tbl in pairs(is_module) do
-            own_seen[tbl] = tbl ~= entry.tbl or nil
-        end
-        scan(entry.tbl, $"{entry.path}.", FIND_DEPTH.natives, name, out, own_seen)
+    for _, path in ipairs(natives_by_name()[name] or {}) do
+        table.insert(out, path)
     end
 
     local globals = {}

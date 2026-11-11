@@ -70,6 +70,7 @@ end
 -- The native wrappers read from disk again, to try a change without restarting the script
 function module.reload_natives(): void
     local count = Atdar.loader.reload(Atdar.natives, "natives")
+    Atdar.loader.load("parsers/proglang/pluto/path").forget_natives()
     log:success(text("reload_natives.done"):format(count))
 end
 
