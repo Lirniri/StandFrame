@@ -102,11 +102,12 @@ function module.build(node: table): table
     local versions = nil
     local first_version = 0
 
-    -- Made again at every opening, so the list is what the repo has now
-    local function fill_versions(): void
+    -- Made again at every opening, so the list is what the repo has now; kept: with the versions of the last
+    -- opening (Limit Shown To changed: nothing new to ask the network)
+    local function fill_versions(kept: bool = false): void
         util.create_thread(function()
 
-            local rows = updater.version_rows()
+            local rows = updater.version_rows(kept)
 
             -- The list may be gone by now (the section was made again)
             pcall(function()
@@ -119,7 +120,7 @@ function module.build(node: table): table
         end)
     end
 
-    versions = list:list(label("version.name"), { "updaterversions" }, label("version.help"), nil, fill_versions)
+    versions = list:list(label("version.name"), { "updaterversions" }, label("version.help"), nil, || -> fill_versions())
     versions:text_input(label("version.input.name"), { "updaterversion" }, function(value, click_type)
         updater.update_to_version(value, click_type)
     end, label("version.input.help"))

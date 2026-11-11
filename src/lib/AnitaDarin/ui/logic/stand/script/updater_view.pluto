@@ -129,11 +129,39 @@ function module.update_to_version(value: string, click_type): void
     module.update_to(typed)
 end
 
+-- How many of the newest versions the list shows (Limit Shown To), 7 until it's changed
+function module.versions_shown(): int
+    return Atdar.profile.get("update_versions_shown") or 7
+end
+
+-- Whether a list of versions was loaded (the list was opened): until then there is nothing to make again
+function module.versions_loaded(): bool
+    return manager.versions_found ~= nil
+end
+
+-- Limit Shown To changed: by the user, or by Stand's own Reset Settings, Set To Min / Max. Any change is
+-- the value to keep; only the script stopping is not
+-- @return Whether the value changed, for the list to be made again
+function module.set_versions_shown(count: int): bool
+
+    if clicks.is_stopping() or count == module.versions_shown() then
+        return false
+    end
+
+    Atdar.profile.set("update_versions_shown", count)
+    return true
+end
+
 -- The released versions for the list under the field: { version, caption } newest first, the installed one
 -- marked. Yields: call it from a thread. Empty (and told) when they can't be loaded
 function module.version_rows(): table
 
-    local versions, err = manager.fetch_versions()
+    local versions = kept and manager.versions_found or nil
+    local err = nil
+
+    if versions == nil then
+        versions, err = manager.fetch_versions()
+    end
 
     if versions == nil then
         log:warn(text("msg.versions_failed"):format(tostring(err)))
@@ -146,11 +174,11 @@ function module.version_rows(): table
     for _, version in ipairs(versions) do
         local caption = version
 
-        if version == installed then
-            caption = text("version.installed"):format(version)
+        if entry.version == installed then
+            caption = text("version.installed"):format(caption)
         end
 
-        table.insert(rows, { version = version, caption = caption })
+        table.insert(rows, { version = entry.version, caption = caption })
     end
 
     return rows
