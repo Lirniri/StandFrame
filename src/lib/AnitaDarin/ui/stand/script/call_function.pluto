@@ -113,6 +113,39 @@ function module.panel(list: table, spec: table): table
         end
     end
 
+    -- The Arguments list of the latest making, and its fields. A field that becomes a list (a function called in
+    -- it) makes only these again, not the whole panel
+    local args_list = nil
+    local fill_args
+
+    fill_args = function()
+
+        if spec.sig ~= nil then
+            -- A field for each parameter, by its type
+            state.texts ??= {}
+            arguments().build(args_list, {
+                sig = spec.sig,
+                texts = state.texts,
+                command = |index| -> $"{spec.args_command}_{index}",
+                on_typed = typed,
+                on_reshape = function()
+                    args_list:clear()
+                    fill_args()
+                end,
+            })
+            return
+        end
+
+        args_list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
+            if not clicks.is_user_action(click_type) then
+                return
+            end
+
+            state.args = value
+            typed()
+        end, label("args.help"), state.args or "")
+    end
+
     fill = function()
 
         -- The same order as a function in the Modules list: Arguments, the Call Settings divider, Call, Call After,
@@ -124,29 +157,8 @@ function module.panel(list: table, spec: table): table
             end, {}, label("on_enter_name.help"), state.on_enter_name == true)
         end
 
-        if spec.sig ~= nil then
-            -- A field for each parameter, by its type
-            state.texts ??= {}
-            arguments().build(list, {
-                sig = spec.sig,
-                texts = state.texts,
-                command = |index| -> $"{spec.args_command}_{index}",
-                on_typed = typed,
-                on_reshape = function()
-                    list:clear_from(first)
-                    fill()
-                end,
-            })
-        else
-            list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
-                if not clicks.is_user_action(click_type) then
-                    return
-                end
-
-                state.args = value
-                typed()
-            end, label("args.help"), state.args or "")
-        end
+        args_list = list:list(mlabel("loop.args"), {}, mlabel("loop.args_help"))
+        fill_args()
 
         -- The settings of calling, under the arguments
         list:divider(mlabel("loop.settings"))

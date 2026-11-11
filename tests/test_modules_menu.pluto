@@ -179,11 +179,15 @@ counter.label = nil
 counter.items = nil
 local add_node = stand.child(stand.child(counter_functions, "Add"), "add(amount, note)")
 stand.equal(add_node.kind, "list", "with parameters: a list too")
-stand.equal(names_in(add_node), "amount | Argument * | note | Argument * | Call Settings | Call After Typing | Call | Call After | Call When Opened"
-    .. " | Call When Hovered | Loop Status: stopped | Loop | Loop With Interval | Variable: —",
-    "a divider with the parameter's name and a field for each, on top")
--- The field under a parameter's divider
+stand.equal(names_in(add_node), "Arguments | Call Settings | Call After Typing | Call | Call When Opened"
+    .. " | Call When Hovered | Show Call Time | Show Result On Screen | Loop Status: stopped | Loop | Loop With Interval | Variable: —",
+    "the Arguments list on top, then the call settings")
+stand.equal(stand.child(add_node, "Arguments").kind, "list", "Arguments is a list")
+stand.equal(names_in(stand.child(add_node, "Arguments")), "amount | Argument * | note | Argument *",
+    "in it a divider with the parameter's name and a field for each")
+-- The field under a parameter's divider, in the function's Arguments list
 local function field_under(node, param: string)
+    node = stand.child(node, "Arguments") or node
     for i, child in node.children do
         if child.kind == "divider" and stand.name_of(child) == param then
             return node.children[i + 1]
@@ -586,14 +590,14 @@ stand.click(stand.child(add_node, "Call Functions In Tables"))
 local go_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "go: function(speed, note)")
 stand.check(go_list ~= nil and go_list.kind == "list", "Call Functions In Tables: a function in the table is a list")
 local go_names = {}
-for _, child in go_list.children do
+for _, child in stand.child(go_list, "Arguments").children do
     table.insert(go_names, stand.name_of(child))
 end
 local go_text = table.concat(go_names, " | ")
 stand.check(go_text:find("speed | Number | note | Text", 1, true), "with a field for each of its parameters")
 local vague_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "vague: function(...)")
 local vague_names = {}
-for _, child in vague_list.children do
+for _, child in stand.child(vague_list, "Arguments").children do
     table.insert(vague_names, stand.name_of(child))
 end
 stand.check(table.concat(vague_names, " | "):find("Arguments", 1, true), "one that says nothing of its parameters: the one Arguments field")
@@ -1005,7 +1009,7 @@ stand.back(list)
 stand.click(list)
 local typed_entry = stand.find_item(list, "typed: ")
 local mix_node = stand.find_item(stand.child(typed_entry, "Module Functions"), "mix(")
-stand.equal(names_in(mix_node):match("^(.-) | Call Settings"),
+stand.equal(names_in(stand.child(mix_node, "Arguments")),
     "whole | Number | ratio | Float Number | label | Text | flag | Boolean | pos | 3D Vector | items | Table | handler | Function"
     .. " | thing | Userdata | free | Argument * | extra | Argument * | ... | Arguments",
     "each parameter: its name, then a field named by its type; int|string is no one type; ... is Arguments at the end")

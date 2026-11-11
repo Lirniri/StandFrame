@@ -142,26 +142,36 @@ local function function_list(entry: table, mod: table, fn: table): void
     fill = function()
 
         if arguments.has_fields(fn.sig) then
+
+            -- The fields are in the Arguments list. A field that becomes a list (a function called in it) makes
+            -- only these again
+            local args_list = node:list(label("loop.args"), {}, label("loop.args_help"))
+            local fill_args
+
             -- A field for each parameter, by its type: Call and the loops use what's typed. Stand's text fields
             -- take their text through the command box, so each needs a command: short and the same each time -
             -- "moduleargsfor3_2_1": the module's number, the function's, the parameter's. They're not among the
             -- found commands
-            arguments.build(node, {
-                sig = fn.sig,
-                texts = state.texts,
-                command = |index| -> $"moduleargsfor{logic.number_of(mod.name)}_{fn.number or 0}_{index}",
-                -- Typed by the user (not Stand putting the field back), with Call After Typing on
-                on_typed = function()
-                    if state.on_enter then
-                        logic.call_typed(mod, fn)
-                    end
-                end,
-                about = |name| -> logic.param_about(mod, fn, name),
-                on_reshape = function()
-                    node:clear()
-                    fill()
-                end,
-            })
+            fill_args = function()
+                arguments.build(args_list, {
+                    sig = fn.sig,
+                    texts = state.texts,
+                    command = |index| -> $"moduleargsfor{logic.number_of(mod.name)}_{fn.number or 0}_{index}",
+                    -- Typed by the user (not Stand putting the field back), with Call After Typing on
+                    on_typed = function()
+                        if state.on_enter then
+                            logic.call_typed(mod, fn)
+                        end
+                    end,
+                    about = |name| -> logic.param_about(mod, fn, name),
+                    on_reshape = function()
+                        args_list:clear()
+                        fill_args()
+                    end,
+                })
+            end
+
+            fill_args()
         end
 
         -- The settings of calling, under the arguments: Call After Typing (when there are arguments), Call, ...

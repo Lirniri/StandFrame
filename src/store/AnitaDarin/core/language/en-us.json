@@ -566,6 +566,7 @@
         "loop": {
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
             "args": "Arguments",
+            "args_help": "The arguments the function is called with",
             "settings": "Call Settings",
             "call_on_enter": {
                 "name": "Call After Typing",

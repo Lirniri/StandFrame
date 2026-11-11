@@ -387,7 +387,7 @@ stand.check(all_visible(false), "Options From Menu, the divider, Call Function, 
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Show Call Time | Show Result On Screen | Result Length On Screen | Notice In Stand | Files Editor",
+stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Disable Call Time For All | Disable Result On Screen For All | Result Length On Screen | Notice In Stand | Files Editor",
     "Call Function: two lists, the Arguments Guide, then the settings")
 -- Arguments Guide: how to write the arguments, as a notice in Stand
 stand.toasts = {}
@@ -422,9 +422,13 @@ stand.equal(called[2] and called[2].n, 2, "the brackets' content is the argument
 stand.equal(called[2] and called[2][1], 5, "the first one a number")
 stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
 -- A function typed by name with known parameters: the Arguments field becomes a field for each of them
+-- The fields are in the Arguments list of the panel
+local function args_list()
+    return stand.child(by_name, "Arguments")
+end
 local function by_name_text(): string
     local names = {}
-    for _, child in by_name.children do
+    for _, child in args_list().children do
         table.insert(names, stand.name_of(child))
     end
     return table.concat(names, " | ")
@@ -432,16 +436,16 @@ end
 local typed_calls = {}
 Atdar.test_fields = function(count: int, note: string) table.insert(typed_calls, table.pack(count, note)) return count end
 function_name.on_change("test_fields", 0)
-stand.check(by_name_text():find("count | Number | note | Text", 1, true) and not by_name_text():find(" | Arguments | ", 1, true),
-    "a function typed by name: a field for each parameter in place of Arguments")
+stand.equal(args_list().kind, "list", "Arguments is a list")
+stand.check(by_name_text():find("count | Number | note | Text", 1, true) and by_name_text() ~= "Arguments",
+    "a function typed by name: a field for each parameter in its Arguments list")
 function_name.on_change("test_fields(4, hello)", 0)
-local fields_item = stand.child(by_name, "Number")
+local fields_item = stand.child(args_list(), "Number")
 stand.check(fields_item ~= nil and fields_item.value == "4", "typed as a call: the brackets fill the fields")
 function_name.on_change("test_call", 0)
-stand.check(by_name_text():find(" | Arguments | ", 1, true) and not by_name_text():find("count", 1, true),
-    "another function with no parameters known: the one Arguments field again")
+stand.equal(by_name_text(), "Arguments", "another function with no parameters known: the one Arguments field again")
 function_name.on_change("test_fields", 0)
-stand.equal(stand.child(by_name, "Number").value, "0", "back to the first: its fields start fresh, what was typed for the other isn't kept")
+stand.equal(stand.child(args_list(), "Number").value, "0", "back to the first: its fields start fresh, what was typed for the other isn't kept")
 Atdar.test_fields = nil
 -- A table result: the table settings are made at the end, right under the Value list; a plain one takes them away
 Atdar.test_table = function() return { 1, 2 } end
@@ -584,33 +588,37 @@ stand.check(stand.find_log("is in the list already") and #functions_list.childre
 add_function.on_change("test_plain", 4)
 add_function.on_change("", 0)
 stand.equal(#functions_list.children, 8, "Stand putting the field back adds nothing, nor does an empty one")
+-- The fields of an added function are in its Arguments list
+local function fields_of(item) return stand.child(item, "Arguments") end
 local typed_item = stand.child(functions_list, "1: test_typed(count, name, ...)")
 local plain_item = stand.child(functions_list, "2: test_plain: int")
 stand.equal(plain_item.kind, "action", "a function without parameters is a button")
 stand.equal(typed_item.kind, "list", "one with parameters is a list")
+local typed_fields = stand.child(typed_item, "Arguments")
+stand.equal(typed_fields.kind, "list", "its parameters are in an Arguments list")
 stand.equal(stand.child(functions_list, "3: GET_THING(...)").kind, "list", "a function of any arguments (...) is a list: Stand's natives say nothing of theirs")
-stand.equal(stand.name_of(typed_item.children[1]) .. " | " .. stand.name_of(typed_item.children[2]), "count | Number",
+stand.equal(stand.name_of(typed_fields.children[1]) .. " | " .. stand.name_of(typed_fields.children[2]), "count | Number",
     "its first parameter: a divider and a Number field, int being written")
-stand.equal(stand.name_of(typed_item.children[3]) .. " | " .. stand.name_of(typed_item.children[4]), "name | Text", "the next: Text")
-stand.equal(stand.name_of(typed_item.children[5]) .. " | " .. stand.name_of(typed_item.children[6]), "... | Arguments", "and the rest")
+stand.equal(stand.name_of(typed_fields.children[3]) .. " | " .. stand.name_of(typed_fields.children[4]), "name | Text", "the next: Text")
+stand.equal(stand.name_of(typed_fields.children[5]) .. " | " .. stand.name_of(typed_fields.children[6]), "... | Arguments", "and the rest")
 stand.check(stand.child(typed_item, "Call") ~= nil and stand.child(typed_item, "Loop") ~= nil, "then the panel: Call, Loop...")
 stand.check(stand.child(typed_item, "Notice In Stand") == nil, "without the Notice In Stand toggle: it's in the settings")
 stand.click(plain_item)
 stand.frame()
 stand.equal(plain_calls, 1, "the button calls the function")
-menu.set_value(typed_item.children[2], "4")
-menu.set_value(typed_item.children[4], "hello there")
-menu.set_value(typed_item.children[6], "true, 9")
+menu.set_value(typed_fields.children[2], "4")
+menu.set_value(typed_fields.children[4], "hello there")
+menu.set_value(typed_fields.children[6], "true, 9")
 stand.click(stand.child(typed_item, "Call"))
 stand.frame()
 stand.check(#typed_calls == 1 and typed_calls[1][1] == 4 and typed_calls[1][2] == "hello there" and typed_calls[1][3] == true
     and typed_calls[1][4] == 9, "Call passes what's typed in the fields, in order")
-menu.set_value(typed_item.children[2], "x")
+menu.set_value(typed_fields.children[2], "x")
 stand.clear_logs()
 stand.click(stand.child(typed_item, "Call"))
 stand.frame()
 stand.check(#typed_calls == 1 and stand.find_log("count: a whole number is needed"), "a wrong value is told, nothing is called")
-menu.set_value(typed_item.children[2], "4")
+menu.set_value(typed_fields.children[2], "4")
 -- Clear takes one out by its number, the others are numbered again and keep what's typed
 stand.clear_logs()
 clear_one.on_change("7", 0)
@@ -619,10 +627,10 @@ clear_one.on_change("x", 0)
 stand.equal(#functions_list.children, 8, "so is what isn't a number")
 clear_one.on_change("1", 4)
 stand.equal(#functions_list.children, 8, "Stand putting the field back takes nothing out")
-menu.set_value(stand.child(functions_list, "3: GET_THING(...)").children[1], "5")
+menu.set_value(fields_of(stand.child(functions_list, "3: GET_THING(...)")).children[1], "5")
 clear_one.on_change("1", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...)", "Clear: the function gone, the others numbered again")
-stand.equal(stand.child(functions_list, "2: GET_THING(...)").children[1].value, "5", "the others keep what's typed in their fields")
+stand.equal(fields_of(stand.child(functions_list, "2: GET_THING(...)")).children[1].value, "5", "the others keep what's typed in their fields")
 add_function.on_change("test_typed", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "one added again goes to the end")
 -- Use Short Names: on, the last name only; off, the whole path is shown; the list follows at once
@@ -630,7 +638,7 @@ stand.equal(stand.child(call_list, "Use Short Names").value, true, "Use Short Na
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.equal(added_names(), "1: test_plain: int | 2: NATIVE_TEST.GET_THING(...) | 3: test_typed(count, name, ...)",
     "off: the native's whole path")
-stand.check(stand.child(functions_list, "2: NATIVE_TEST.GET_THING(...)").children[1].value == "5", "the fields keep what's typed")
+stand.check(fields_of(stand.child(functions_list, "2: NATIVE_TEST.GET_THING(...)")).children[1].value == "5", "the fields keep what's typed")
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "on again: the short name")
 stand.click(clear_all)
@@ -713,14 +721,14 @@ Atdar.test_saved = nil
 -- Made again (the section being built again): the functions added and what's typed in their fields stay
 Atdar.test_typed = function(count: int, name: string) end
 add_function.on_change("test_typed", 0)
-menu.set_value(stand.child(functions_list, "1: test_typed(count, name)").children[2], "6")
+menu.set_value(fields_of(stand.child(functions_list, "1: test_typed(count, name)")).children[2], "6")
 rebuild()
 debug_list = find("Debug")
 debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 call_list = stand.find_item(debug_list, "Call Function")
 functions_list = stand.child(call_list, "Functions")
 local rebuilt_item = stand.child(functions_list, "1: test_typed(count, name)")
-stand.check(rebuilt_item ~= nil and rebuilt_item.children[2].value == "6", "rebuilt: the function and the text in its field are kept")
+stand.check(rebuilt_item ~= nil and fields_of(rebuilt_item).children[2].value == "6", "rebuilt: the function and the text in its field are kept")
 stand.click(stand.child(functions_list, "Clear All"))
 Atdar.test_typed = nil
 
@@ -743,8 +751,8 @@ stand.click(clear_all)
 stand.clear_logs()
 add_function.on_change("reg_one", 0)
 stand.equal(added_names(), "1: test_reg_fn(a): int", "a registry name: its path, the params and the return type from the registry")
-stand.equal(stand.child(functions_list, "1: test_reg_fn(a): int").children[2].value, "3", "the field starts with the registry's default")
-stand.equal(stand.name_of(stand.child(functions_list, "1: test_reg_fn(a): int").children[2]), "Number", "named by the registry's type")
+stand.equal(fields_of(stand.child(functions_list, "1: test_reg_fn(a): int")).children[2].value, "3", "the field starts with the registry's default")
+stand.equal(stand.name_of(fields_of(stand.child(functions_list, "1: test_reg_fn(a): int")).children[2]), "Number", "named by the registry's type")
 add_function.on_change("reg_none", 0)
 stand.equal(stand.child(functions_list, "2: test_reg_none: int").kind, "action", "params [] in the registry: a function that takes none is a button")
 add_function.on_change("reg_bad", 0)
@@ -772,18 +780,18 @@ local function call_outer()
     stand.click(stand.child(outer_item(), "Call"))
     return outer_calls[#outer_calls]
 end
-stand.equal(stand.name_of(outer_item().children[2]), "Number", "a parameter is one field")
-outer_item().children[2].on_change("seven()", 0)
+stand.equal(stand.name_of(fields_of(outer_item()).children[2]), "Number", "a parameter is one field")
+fields_of(outer_item()).children[2].on_change("seven()", 0)
 stand.equal(call_outer()[1], 7, "a short name of the files in an argument: seven() is test_seven()")
-outer_item().children[2].on_change("seven", 0)
+fields_of(outer_item()).children[2].on_change("seven", 0)
 stand.equal(call_outer()[1], 7, "in a field that takes no text the brackets may be left out")
 stand.clear_logs()
-outer_item().children[2].on_change("math.nothing(1)", 0)
+fields_of(outer_item()).children[2].on_change("math.nothing(1)", 0)
 call_outer()
 stand.check(stand.find_log("'math.nothing' isn't a function"), "a mistyped name is told by the name")
 -- A call of a function whose parameters are known: the field becomes a list
-outer_item().children[2].on_change("test_inner(21)", 0)
-local nested = outer_item().children[2]
+fields_of(outer_item()).children[2].on_change("test_inner(21)", 0)
+local nested = fields_of(outer_item()).children[2]
 stand.equal(nested.kind, "list", "a call typed in a field: the field is a list")
 stand.equal(stand.name_of(nested), "Number: test_inner(21)", "named by the kind and the expression")
 stand.equal(names_in(nested), "Expression | entity | Number | alive | Boolean", "in it the expression, then the called function's parameters")
@@ -807,14 +815,14 @@ stand.equal(stand.name_of(nested), "Number: test_inner(test_inner(4, false), tru
 stand.equal(call_outer()[1], -8, "and the whole is what's called")
 -- A short name as the function called
 nested.children[1].on_change("inner(6)", 0)
-nested = outer_item().children[2]
+nested = fields_of(outer_item()).children[2]
 stand.check(nested.kind == "list" and stand.name_of(nested) == "Number: inner(6)" and nested.children[3].value == "6",
     "the Expression typed again: the fields follow; a short name is a function too")
 stand.equal(call_outer()[1], 12, "called through the short name")
 -- Back to a plain value: one field again
 nested.children[1].on_change("3", 0)
-stand.check(outer_item().children[2].kind ~= "list" and outer_item().children[2].value == "3", "a plain value typed: one field again")
-stand.equal(stand.child(outer_item(), "Call").kind, "action", "the rest of the list is made again under the fields")
+stand.check(fields_of(outer_item()).children[2].kind ~= "list" and fields_of(outer_item()).children[2].value == "3", "a plain value typed: one field again")
+stand.equal(stand.child(outer_item(), "Call").kind, "click_slider", "the rest of the list is made again under the fields")
 stand.equal(call_outer()[1], 3, "and it's what is passed")
 stand.click(clear_all)
 os.remove($"{registry_dir}short_name.json")
@@ -836,7 +844,7 @@ forget_files()
 Atdar.test_api_fn = function(...) end
 add_function.on_change("test_api_fn", 0)
 stand.equal(added_names(), "1: test_api_fn(speed): bool", "stand_api: the params and the return type of a path")
-stand.equal(stand.child(functions_list, "1: test_api_fn(speed): bool").children[2].value, "1.5", "and the default")
+stand.equal(fields_of(stand.child(functions_list, "1: test_api_fn(speed): bool")).children[2].value, "1.5", "and the default")
 stand.click(clear_all)
 Atdar.test_api_fn = nil
 stand.write_file($"{api_dir}stand_api.json", "{broken")
