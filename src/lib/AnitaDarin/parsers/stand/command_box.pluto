@@ -1,7 +1,7 @@
 -- lib/AnitaDarin/parsers/stand/command_box.pluto
 --
 -- Command names for Stand's command box, as people type them and files keep them. Stand takes
--- only a-z, 0-9 and _ in a command; ui/stand/core/commands builds the full names from what this gives.
+-- only a-z, 0-9 and _ in a command; ui/logic/stand/commands builds the full names from what this gives.
 --   sanitize(text)            - a name Stand takes: "God Mode!" -> "godmode"
 --   bases(names)              - an item's base names cleaned: sanitized, no empty ones, no repeats
 --   entry(base, name, words)  - one command's file, commands/<base>.json { name, words }, cleaned
@@ -27,8 +27,11 @@ end
 -- has none") and is left out quietly
 -- @return The clean names, and the names given that had nothing usable in them (to warn about)
 function module.bases(names: table)
+
     expect("bases", "names", names, "table")
+
     local clean, seen, skipped = {}, {}, {}
+
     for i, base in ipairs(names) do
         expect("bases", $"names[{i}]", base, "string")
         local name = module.sanitize(base)
@@ -41,6 +44,7 @@ function module.bases(names: table)
             table.insert(clean, name)
         end
     end
+
     return clean, skipped
 end
 
@@ -51,21 +55,28 @@ end
 -- @param words The extra words as written
 -- @return The entry, or nil when nothing's left
 function module.entry(base: string, name, words): ?table
+
     expect("entry", "base", base, "string")
+
     if base == "" then
         error("[parsers/stand/command_box] entry: base must be a command's base name, got \"\"", 2)
     end
+
     local entry = { name = nil, words = {} }
+
     if type(name) == "string" then
         local clean = module.sanitize(name)
         if clean ~= "" and clean ~= base then
             entry.name = clean
         end
     end
+
     local seen = { [base] = true }
+
     if entry.name then
         seen[entry.name] = true
     end
+
     for _, word in ipairs(type(words) == "table" and words or {}) do
         local clean = type(word) == "string" and module.sanitize(word) or ""
         if clean ~= "" and not seen[clean] then
@@ -73,9 +84,11 @@ function module.entry(base: string, name, words): ?table
             table.insert(entry.words, clean)
         end
     end
+    
     if entry.name == nil and #entry.words == 0 then
         return nil
     end
+
     return entry
 end
 

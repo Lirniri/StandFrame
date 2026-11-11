@@ -1,0 +1,1021 @@
+local load = Atdar.loader.load
+local Logger = load("core/logger")
+
+local world = load("natives/world")
+
+local log = new Logger("natives/entity")
+
+local module = {}
+
+-- State
+
+function module.does_exist(entity: int): bool
+    return ENTITY.DOES_ENTITY_EXIST(entity)
+end
+
+function module.is_dead(entity: int, p1: bool = false): bool
+    return ENTITY.IS_ENTITY_DEAD(entity, p1)
+end
+
+function module.is_in_air(entity: int)
+    return ENTITY.IS_ENTITY_IN_AIR(entity)
+end
+
+-- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
+function module.is_on_ground(entity: int, alive, max_height: number|bool = false): bool
+    if module.is_in_air(entity) then
+        return false
+    end
+
+    local coords = module.get_coords(entity, alive)
+    local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
+    if not found or coords.z < ground_z then
+        return false
+    end
+    return max_height == false or (coords.z - ground_z) <= max_height
+end
+
+function module.does_belong_this_script(entity: int, p1: bool): bool
+    return ENTITY.DOES_ENTITY_BELONG_TO_THIS_SCRIPT(entity, p1)
+end
+
+function module.does_have_drawable(entity: int): bool
+    return ENTITY.DOES_ENTITY_HAVE_DRAWABLE(entity)
+end
+
+function module.does_have_physics(entity: int): bool
+    return ENTITY.DOES_ENTITY_HAVE_PHYSICS(entity)
+end
+
+function module.does_have_skeleton(entity: int): bool
+    return ENTITY.DOES_ENTITY_HAVE_SKELETON(entity)
+end
+
+function module.does_have_anim_director(entity: int): bool
+    return ENTITY.DOES_ENTITY_HAVE_ANIM_DIRECTOR(entity)
+end
+
+function module.has_anim_finished(entity: int, anim_dict: string, anim_name: string, p3: int): bool
+    return ENTITY.HAS_ENTITY_ANIM_FINISHED(entity, anim_dict, anim_name, p3)
+end
+
+function module.has_been_damaged_by_any_object(entity: int): bool
+    return ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_OBJECT(entity)
+end
+
+function module.has_been_damaged_by_any_ped(entity: int): bool
+    return ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(entity)
+end
+
+function module.has_been_damaged_by_any_vehicle(entity: int): bool
+    return ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_VEHICLE(entity)
+end
+
+function module.has_been_damaged(entity1: int, entity2: int, p2: bool): bool
+    return ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(entity1, entity2, p2)
+end
+
+function module.has_clear_los(entity1: int, entity2: int, trace_type: int): bool
+    return ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(entity1, entity2, trace_type)
+end
+
+function module.has_clear_los_to_adjust_for_cover(entity1: int, entity2: int, trace_type: int): bool
+    return ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY_ADJUST_FOR_COVER(entity1, entity2, trace_type)
+end
+
+-- Has the entity1 got a clear line of sight to the other entity2 from the direction entity1 is facing
+function module.has_clear_los_to_in_front(entity1: int, entity2: int): bool
+    return ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY_IN_FRONT(entity1, entity2)
+end
+
+-- Called on tick
+function module.has_collided_with_anything(entity: int): bool
+    return ENTITY.HAS_ENTITY_COLLIDED_WITH_ANYTHING(entity)
+end
+
+function module.is_an_entity(handle: int): bool
+    return ENTITY.IS_AN_ENTITY(handle)
+end
+
+function module.is_mission(entity: int): bool
+    return ENTITY.IS_ENTITY_A_MISSION_ENTITY(entity)
+end
+
+function module.is_object(entity: int): bool
+    return ENTITY.IS_ENTITY_AN_OBJECT(entity)
+end
+
+-- Checks if entity is within x/y/zSize distance of x/y/z
+function module.is_at_coord(
+    entity: int, x_pos: float, y_pos: float, z_pos: float, x_size: float, y_size: float,
+    z_size: float, p7: bool, p8: bool, p9: int
+): bool
+    -- body function:
+    return ENTITY.IS_ENTITY_AT_COORD(entity, x_pos, y_pos, z_pos, x_size, y_size, z_size, p7, p8, p9)
+end
+
+-- Checks if entity1 is within the box defined by x/y/zSize of entity2
+function module.is_entity_at_entity(
+    entity1: int, entity2: int, x_size: float, y_size: float, z_size: float, p5: bool, p6: bool,
+    p7: int
+): bool
+    -- body function:
+    return ENTITY.IS_ENTITY_AT_ENTITY(entity1, entity2, x_size, y_size, z_size, p5, p6, p7)
+end
+
+-- Whether the entity is attached to any other entity
+function module.is_attached(entity: int): bool
+    return ENTITY.IS_ENTITY_ATTACHED(entity)
+end
+
+function module.is_attached_to_any_object(entity: int): bool
+    return ENTITY.IS_ENTITY_ATTACHED_TO_ANY_OBJECT(entity)
+end
+
+function module.is_attached_to_any_ped(entity: int): bool
+    return ENTITY.IS_ENTITY_ATTACHED_TO_ANY_PED(entity)
+end
+
+function module.is_attached_to_any_vehicle(entity: int): bool
+    return ENTITY.IS_ENTITY_ATTACHED_TO_ANY_VEHICLE(entity)
+end
+
+function module.is_entity_attached_to_entity(from: int, to: int): bool
+    return ENTITY.IS_ENTITY_ATTACHED_TO_ENTITY(from, to)
+end
+
+function module.is_in_angled_area(
+    entity: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float,
+    debug: bool, include_z: bool, p10: any
+): bool
+    -- body function:
+    return ENTITY.IS_ENTITY_IN_ANGLED_AREA(entity, x1, y1, z1, x2, y2, z2, width, debug, include_z, p10)
+end
+
+function module.is_in_area(
+    entity: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, p7: bool,
+    p8: bool, p9: any
+): bool
+    -- body function:
+    return ENTITY.IS_ENTITY_IN_AREA(entity, x1, y1, z1, x2, y2, z2, p7, p8, p9)
+end
+
+function module.is_in_zone(entity: int, zone: string): bool
+    return ENTITY.IS_ENTITY_IN_ZONE(entity, zone)
+end
+
+function module.is_in_water(entity: int): bool
+    return ENTITY.IS_ENTITY_IN_WATER(entity)
+end
+
+function module.is_on_screen(entity: int): bool
+    return ENTITY.IS_ENTITY_ON_SCREEN(entity)
+end
+
+function module.is_playing_anim(entity: int, anim_dict: string, anim_name: string, task_flag: int): bool
+    return ENTITY.IS_ENTITY_PLAYING_ANIM(entity, anim_dict, anim_name, task_flag)
+end
+
+function module.is_static(entity: int): bool
+    return ENTITY.IS_ENTITY_STATIC(entity)
+end
+
+function module.is_touching(entity: int, target_entity: int): bool
+    return ENTITY.IS_ENTITY_TOUCHING_ENTITY(entity, target_entity)
+end
+
+function module.is_touching_model(entity: int, model_hash: int): bool
+    return ENTITY.IS_ENTITY_TOUCHING_MODEL(entity, model_hash)
+end
+
+function module.is_upright(entity: int, angle: float): bool
+    return ENTITY.IS_ENTITY_UPRIGHT(entity, angle)
+end
+
+function module.is_upsidedown(entity: int): bool
+    return ENTITY.IS_ENTITY_UPSIDEDOWN(entity)
+end
+
+function module.is_visible(entity: int): bool
+    return ENTITY.IS_ENTITY_VISIBLE(entity)
+end
+
+function module.is_visible_to_script(entity: int): bool
+    return ENTITY.IS_ENTITY_VISIBLE_TO_SCRIPT(entity)
+end
+
+function module.is_occluded(entity: int): bool
+    return ENTITY.IS_ENTITY_OCCLUDED(entity)
+end
+
+function module.would_be_occluded(entity_model_hash: int, x: float, y: float, z: float, p4: bool): bool
+    return ENTITY.WOULD_ENTITY_BE_OCCLUDED(entity_model_hash, x, y, z, p4)
+end
+
+function module.is_waiting_for_world_collision(entity: int): bool
+    return ENTITY.IS_ENTITY_WAITING_FOR_WORLD_COLLISION(entity)
+end
+
+function module.has_anim_event_fired(entity: int, action_hash: int): bool
+    return ENTITY.HAS_ANIM_EVENT_FIRED(entity, action_hash)
+end
+
+function module.has_collision_loaded_around(entity: int): bool
+    return ENTITY.HAS_COLLISION_LOADED_AROUND_ENTITY(entity)
+end
+
+-- Get
+
+-- @param rotation_order The order the axes are turned in, 0 - 5; 2 is what scripts mostly use
+function module.get_rotation(entity: int, rotation_order: int = 2): vector3
+    return ENTITY.GET_ENTITY_ROTATION(entity, rotation_order)
+end
+
+-- How fast the entity turns around each axis
+function module.get_rotation_velocity(entity: int): vector3
+    return ENTITY.GET_ENTITY_ROTATION_VELOCITY(entity)
+end
+
+-- @param from_eulers Worked out from its rotation (GET_ENTITY_HEADING_FROM_EULERS)
+function module.get_heading(
+    entity: int,
+    from_eulers: bool = false
+): float
+    if from_eulers then
+        return ENTITY.GET_ENTITY_HEADING_FROM_EULERS(entity)
+    end
+    return ENTITY.GET_ENTITY_HEADING(entity)
+end
+
+-- The model's hash
+function module.get_model(entity: int): int
+    return ENTITY.GET_ENTITY_MODEL(entity)
+end
+
+function module.get_net_id(entity): int
+    return NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(entity)
+end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then return nil end
+    return NETWORK.NET_TO_ENT(net_id)
+end
+
+function module.get_health(entity: int): int
+    return ENTITY.GET_ENTITY_HEALTH(entity)
+end
+
+function module.get_max_health(entity: int): int
+    return ENTITY.GET_ENTITY_MAX_HEALTH(entity)
+end
+
+-- @desc Returns the coordinates of an entity, optionally snapped to the ground.
+-- @param max_height Maximum height above ground to snap (false — snap at any height)
+function module.get_coords(
+    entity: int, alive: bool = false, max_height: number|bool = 1.3
+): ?vector3
+    -- body
+    if alive and module.is_dead(entity) then
+        return nil
+    end
+    local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))
+    world.snap_to_ground(coords, max_height)
+    return coords
+end
+
+function module.get_last_hit(entity: int): int
+    return ENTITY._GET_LAST_ENTITY_HIT_BY_ENTITY(entity)
+end
+
+function module.get_last_material_hit(entity: int): int
+    return ENTITY.GET_LAST_MATERIAL_HIT_BY_ENTITY(entity)
+end
+
+function module.get_collision_normal_of_last_hit(entity: int): vector3
+    return ENTITY.GET_COLLISION_NORMAL_OF_LAST_HIT_FOR_ENTITY(entity)
+end
+
+function module.get_anim_current_time(entity: int, anim_dict: string, anim_name: string): float
+    return ENTITY.GET_ENTITY_ANIM_CURRENT_TIME(entity, anim_dict, anim_name)
+end
+
+function module.get_anim_total_time(entity: int, anim_dict: string, anim_name: string): float
+    return ENTITY.GET_ENTITY_ANIM_TOTAL_TIME(entity, anim_dict, anim_name)
+end
+
+function module.get_anim_duration(anim_dict: string, anim_name: string): float
+    return ENTITY.GET_ANIM_DURATION(anim_dict, anim_name)
+end
+
+function module.get_attached(entity: int): int
+    return ENTITY.GET_ENTITY_ATTACHED_TO(entity)
+end
+
+-- Gets the entity's forward vector
+function module.get_forward_vector(entity: int): vector3
+    return ENTITY.GET_ENTITY_FORWARD_VECTOR(entity)
+end
+
+-- Gets the X-component of the entity's forward vector
+function module.get_forward_x(entity: int): float
+    return ENTITY.GET_ENTITY_FORWARD_X(entity)
+end
+
+-- Gets the Y-component of the entity's forward vector
+function module.get_forward_y(entity: int): float
+    return ENTITY.GET_ENTITY_FORWARD_Y(entity)
+end
+
+-- Gets the Z-component of the entity's forward vector. There is no native for it, so it is read from the whole vector
+function module.get_forward_z(entity: int): float
+    return ENTITY.GET_ENTITY_FORWARD_VECTOR(entity).z
+end
+
+function module.get_height(
+    entity: int, x: float, y: float, z: float, at_top: bool, in_world_coords: bool
+): float
+    -- body function:
+    return ENTITY.GET_ENTITY_HEIGHT(entity, x, y, z, at_top, in_world_coords)
+end
+
+-- Return height (z-dimension) above ground
+function module.get_height_above_ground(entity: int): float
+    return ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(entity)
+end
+
+-- @param forward_vector Pointer: pass memory.alloc(size) and read the result back
+-- @param right_vector Pointer: pass memory.alloc(size) and read the result back
+-- @param up_vector Pointer: pass memory.alloc(size) and read the result back
+-- @param position Pointer: pass memory.alloc(size) and read the result back
+function module.get_matrix(
+    entity: int, forward_vector: int, right_vector: int, up_vector: int, position: int
+): void
+    -- body function:
+    ENTITY.GET_ENTITY_MATRIX(entity, forward_vector, right_vector, up_vector, position)
+end
+
+-- Converts world coords (posX - Z) to coords relative to the entity
+function module.get_offset_from_given_world_coords(
+    entity: int, pos_x: float, pos_y: float, pos_z: float
+): vector3
+    -- body function:
+    return ENTITY.GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(entity, pos_x, pos_y, pos_z)
+end
+
+-- Offset values are relative to the entity
+function module.get_offset_from_in_world_coords(
+    entity: int, offset_x: float, offset_y: float, offset_z: float
+): vector3
+    -- body function:
+    return ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(entity, offset_x, offset_y, offset_z)
+end
+
+function module.get_pitch(entity: int): float
+    return ENTITY.GET_ENTITY_PITCH(entity)
+end
+
+-- @param x Pointer: pass memory.alloc(size) and read the result back
+-- @param y Pointer: pass memory.alloc(size) and read the result back
+-- @param z Pointer: pass memory.alloc(size) and read the result back
+-- @param w Pointer: pass memory.alloc(size) and read the result back
+function module.get_quaternion(entity: int, x: int, y: int, z: int, w: int): void
+    ENTITY.GET_ENTITY_QUATERNION(entity, x, y, z, w)
+end
+
+-- Displays the current ROLL axis of the entity [-180.0000/180.0000+]
+function module.get_roll(entity: int): float
+    return ENTITY.GET_ENTITY_ROLL(entity)
+end
+
+-- @param script Pointer: pass memory.alloc(size) and read the result back
+function module.get_script(entity: int, script: int): string
+    return ENTITY.GET_ENTITY_SCRIPT(entity, script)
+end
+
+function module.get_speed(entity: int): float
+    return ENTITY.GET_ENTITY_SPEED(entity)
+end
+
+function module.get_speed_vector(entity: int, relative: bool): vector3
+    return ENTITY.GET_ENTITY_SPEED_VECTOR(entity, relative)
+end
+
+function module.get_upright_value(entity: int): float
+    return ENTITY.GET_ENTITY_UPRIGHT_VALUE(entity)
+end
+
+function module.get_velocity(entity: int): vector3
+    return ENTITY.GET_ENTITY_VELOCITY(entity)
+end
+
+-- Simply returns whatever is passed to it (Regardless of whether the handle is valid or not)
+function module.get_object_index_from_index(entity: int): int
+    return ENTITY.GET_OBJECT_INDEX_FROM_ENTITY_INDEX(entity)
+end
+
+-- Simply returns whatever is passed to it (Regardless of whether the handle is valid or not)
+function module.get_ped_index_from_index(entity: int): int
+    return ENTITY.GET_PED_INDEX_FROM_ENTITY_INDEX(entity)
+end
+
+-- Simply returns whatever is passed to it (Regardless of whether the handle is valid or not)
+function module.get_vehicle_index_from_index(entity: int): int
+    return ENTITY.GET_VEHICLE_INDEX_FROM_ENTITY_INDEX(entity)
+end
+
+-- Returns the coordinates of an entity-bone
+function module.get_world_position_bone(entity: int, bone_index: int): vector3
+    return ENTITY.GET_WORLD_POSITION_OF_ENTITY_BONE(entity, bone_index)
+end
+
+function module.get_nearest_player(entity: int): int
+    return ENTITY.GET_NEAREST_PLAYER_TO_ENTITY(entity)
+end
+
+function module.get_nearest_player_to_on_team(entity: int, team: int): int
+    return ENTITY.GET_NEAREST_PLAYER_TO_ENTITY_ON_TEAM(entity, team)
+end
+
+function module.get_nearest_participant(entity: int): int
+    return ENTITY.GET_NEAREST_PARTICIPANT_TO_ENTITY(entity)
+end
+
+function module.get_type(entity: int): int
+    return ENTITY.GET_ENTITY_TYPE(entity)
+end
+
+function module.get_population_type(entity: int): int
+    return ENTITY.GET_ENTITY_POPULATION_TYPE(entity)
+end
+
+-- Get how much of the entity is submerged.  1.0f is whole entity
+function module.get_submerged_level(entity: int): float
+    return ENTITY.GET_ENTITY_SUBMERGED_LEVEL(entity)
+end
+
+-- Returns the index of the bone. If the bone was not found, -1 will be returned
+function module.get_bone_index_by_name(entity: int, bone_name: string): int
+    return ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(entity, bone_name)
+end
+
+function module.get_can_be_damaged(entity: int): bool
+    return ENTITY.GET_ENTITY_CAN_BE_DAMAGED(entity)
+end
+
+function module.get_collision_disabled(entity: int): bool
+    return ENTITY.GET_ENTITY_COLLISION_DISABLED(entity)
+end
+
+-- @param bullet_proof Pointer: pass memory.alloc(size) and read the result back
+-- @param fire_proof Pointer: pass memory.alloc(size) and read the result back
+-- @param explosion_proof Pointer: pass memory.alloc(size) and read the result back
+-- @param collision_proof Pointer: pass memory.alloc(size) and read the result back
+-- @param melee_proof Pointer: pass memory.alloc(size) and read the result back
+-- @param steam_proof Pointer: pass memory.alloc(size) and read the result back
+-- @param p7 Pointer: pass memory.alloc(size) and read the result back
+-- @param drown_proof Pointer: pass memory.alloc(size) and read the result back
+function module.get_proofs(
+    entity: int, bullet_proof: int, fire_proof: int, explosion_proof: int, collision_proof: int,
+    melee_proof: int, steam_proof: int, p7: int, drown_proof: int
+): bool
+    -- body function:
+    return ENTITY.GET_ENTITY_PROOFS(entity, bullet_proof, fire_proof, explosion_proof, collision_proof, melee_proof, steam_proof, p7, drown_proof)
+end
+
+-- Returns the LOD distance of an entity
+function module.get_lod_dist(entity: int): int
+    return ENTITY.GET_ENTITY_LOD_DIST(entity)
+end
+
+function module.get_alpha(entity: int): int
+    return ENTITY.GET_ENTITY_ALPHA(entity)
+end
+
+-- Gets the world rotation of the specified bone of the specified entity
+function module.get_bone_rotation(entity: int, bone_index: int): vector3
+    return ENTITY.GET_ENTITY_BONE_ROTATION(entity, bone_index)
+end
+
+-- Gets the world position of the specified bone of the specified entity
+function module.get_bone_postion(entity: int, bone_index: int): vector3
+    return ENTITY.GET_ENTITY_BONE_POSTION(entity, bone_index)
+end
+
+-- Gets the local rotation of the specified bone of the specified entity
+function module.get_bone_object_rotation(entity: int, bone_index: int): vector3
+    return ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(entity, bone_index)
+end
+
+function module.get_bone_object_postion(entity: int, bone_index: int): vector3
+    return ENTITY.GET_ENTITY_BONE_OBJECT_POSTION(entity, bone_index)
+end
+
+function module.get_bone_count(entity: int): int
+    return ENTITY.GET_ENTITY_BONE_COUNT(entity)
+end
+
+-- Gets the handle of an entity with a specific model hash attached to another entity, such as an object attached to a ped
+function module.get_type_attached(entity: int, model_hash: int): int
+    return ENTITY.GET_ENTITY_OF_TYPE_ATTACHED_TO_ENTITY(entity, model_hash)
+end
+
+-- Set
+
+-- @param "value" Health to set; nil or true restores the maximum
+function module.set_health(
+    entity: int, value: ?int,
+    instigator: int = 0, weapon_type: int = 0
+): void
+    -- body
+    if value == nil or value == true then
+        value = module.get_max_health(entity)
+        log:debug($"set_health: value is {value}!")
+    end
+    ENTITY.SET_ENTITY_HEALTH(entity, value, instigator, weapon_type)
+end
+
+-- @param "value" Health to set; nil or true restores the maximum
+function module.set_max_health(
+    entity: int, value: ?int, 
+    instigator: int = 0, weapon_type: int = 0
+): void
+    -- body
+    if value == nil or value == true then
+        value = module.get_max_health(entity)
+        log:debug($"set_max_health: value is {value}!")
+    end
+    ENTITY.SET_ENTITY_MAX_HEALTH(entity, value)
+end
+
+-- @desc Sets the coordinates of an entity, optionally snapped to the ground.
+-- @param max_height Maximum height above ground to snap (false — don't snap)
+-- @return false if coords is nil, true otherwise
+function module.set_coords(entity: int,
+    coords: ?vector3, max_height: number|bool = 1.3,
+    clear_area: bool = false,
+    x_axis: bool = false,
+    y_axis: bool = false,
+    z_axis: bool = false
+): bool
+    -- body
+    if coords == nil then
+        return false
+    end
+
+    local pos = v3.new(coords)
+    world.snap_to_ground(pos, max_height)
+
+    ENTITY.SET_ENTITY_COORDS(entity, pos.x, pos.y, pos.z, x_axis, y_axis, z_axis, clear_area)
+    return true
+end
+
+function module.set_requires_more_expensive_river_check(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_REQUIRES_MORE_EXPENSIVE_RIVER_CHECK(entity, toggle)
+end
+
+function module.set_should_freeze_waiting_on_collision(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_SHOULD_FREEZE_WAITING_ON_COLLISION(entity, toggle)
+end
+
+function module.set_anim_current_time(
+    entity: int, anim_dictionary: string, anim_name: string, time: float
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_ANIM_CURRENT_TIME(entity, anim_dictionary, anim_name, time)
+end
+
+function module.set_anim_speed(
+    entity: int, anim_dictionary: string, anim_name: string, speed_multiplier: float
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_ANIM_SPEED(entity, anim_dictionary, anim_name, speed_multiplier)
+end
+
+function module.set_as_mission(entity: int, p1: bool, p2: bool): void
+    ENTITY.SET_ENTITY_AS_MISSION_ENTITY(entity, p1, p2)
+end
+
+-- @param entity Pointer: pass memory.alloc(size) and read the result back
+function module.set_as_no_longer_needed(entity: int): void
+    ENTITY.SET_ENTITY_AS_NO_LONGER_NEEDED(entity)
+end
+
+function module.set_can_be_damaged(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_CAN_BE_DAMAGED(entity, toggle)
+end
+
+function module.set_can_be_damaged_by_relationship_group(
+    entity: int, b_can_be_damaged: bool, rel_group: int
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(entity, b_can_be_damaged, rel_group)
+end
+
+function module.set_can_only_be_damaged_by_script_participants(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(entity, toggle)
+end
+
+-- Sets whether the entity can be targeted without being in line-of-sight
+function module.set_can_be_targeted_without_los(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_CAN_BE_TARGETED_WITHOUT_LOS(entity, toggle)
+end
+
+function module.set_collision(entity: int, toggle: bool, keep_physics: bool): void
+    ENTITY.SET_ENTITY_COLLISION(entity, toggle, keep_physics)
+end
+
+function module.set_completely_disable_collision(entity: int, toggle: bool, keep_physics: bool): void
+    ENTITY.SET_ENTITY_COMPLETELY_DISABLE_COLLISION(entity, toggle, keep_physics)
+end
+
+function module.set_coords_without_plants_reset(
+    entity: int, x_pos: float, y_pos: float, z_pos: float, alive: bool, dead_flag: bool,
+    ragdoll_flag: bool, clear_area: bool
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_COORDS_WITHOUT_PLANTS_RESET(entity, x_pos, y_pos, z_pos, alive, dead_flag, ragdoll_flag, clear_area)
+end
+
+-- Axis - Invert Axis Flags
+function module.set_coords_no_offset(
+    entity: int, x_pos: float, y_pos: float, z_pos: float, x_axis: bool, y_axis: bool, z_axis: bool
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_COORDS_NO_OFFSET(entity, x_pos, y_pos, z_pos, x_axis, y_axis, z_axis)
+end
+
+function module.set_dynamic(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_DYNAMIC(entity, toggle)
+end
+
+-- Set the heading of an entity in degrees also known as "Yaw"
+function module.set_heading(entity: int, heading: float): void
+    ENTITY.SET_ENTITY_HEADING(entity, heading)
+end
+
+function module.set_invincible(entity: int, toggle: bool, dont_reset_on_cleanup: bool): void
+    ENTITY.SET_ENTITY_INVINCIBLE(entity, toggle, dont_reset_on_cleanup)
+end
+
+function module.set_is_target_priority(entity: int, p1: bool, p2: float): void
+    ENTITY.SET_ENTITY_IS_TARGET_PRIORITY(entity, p1, p2)
+end
+
+function module.set_lights(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_LIGHTS(entity, toggle)
+end
+
+function module.set_load_collision_flag(entity: int, toggle: bool, p2: any): void
+    ENTITY.SET_ENTITY_LOAD_COLLISION_FLAG(entity, toggle, p2)
+end
+
+function module.set_max_speed(entity: int, speed: float): void
+    ENTITY.SET_ENTITY_MAX_SPEED(entity, speed)
+end
+
+function module.set_only_damaged_by_player(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(entity, toggle)
+end
+
+function module.set_only_damaged_by_relationship_group(entity: int, p1: bool, p2: any): void
+    ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_RELATIONSHIP_GROUP(entity, p1, p2)
+end
+
+-- Enable / disable each type of damage
+function module.set_proofs(
+    entity: int, bullet_proof: bool, fire_proof: bool, explosion_proof: bool, collision_proof: bool,
+    melee_proof: bool, steam_proof: bool, dont_reset_on_cleanup: bool, water_proof: bool
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_PROOFS(entity, bullet_proof, fire_proof, explosion_proof, collision_proof, melee_proof, steam_proof, dont_reset_on_cleanup, water_proof)
+end
+
+function module.set_quaternion(entity: int, x: float, y: float, z: float, w: float): void
+    ENTITY.SET_ENTITY_QUATERNION(entity, x, y, z, w)
+end
+
+function module.set_records_collisions(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_RECORDS_COLLISIONS(entity, toggle)
+end
+
+function module.set_rotation(
+    entity: int, pitch: float, roll: float, yaw: float, rotation_order: int, p5: bool
+): void
+    -- body function:
+    ENTITY.SET_ENTITY_ROTATION(entity, pitch, roll, yaw, rotation_order, p5)
+end
+
+function module.set_visible(entity: int, toggle: bool, p2: bool): void
+    ENTITY.SET_ENTITY_VISIBLE(entity, toggle, p2)
+end
+
+function module.set_water_reflection_flag(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_WATER_REFLECTION_FLAG(entity, toggle)
+end
+
+function module.set_mirror_reflection_flag(entity: int, p1: bool): void
+    ENTITY.SET_ENTITY_MIRROR_REFLECTION_FLAG(entity, p1)
+end
+
+function module.set_velocity(entity: int, x: float, y: float, z: float): void
+    ENTITY.SET_ENTITY_VELOCITY(entity, x, y, z)
+end
+
+function module.set_angular_velocity(entity: int, x: float, y: float, z: float): void
+    ENTITY.SET_ENTITY_ANGULAR_VELOCITY(entity, x, y, z)
+end
+
+function module.set_has_gravity(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_HAS_GRAVITY(entity, toggle)
+end
+
+function module.set_lod_dist(entity: int, value: int): void
+    ENTITY.SET_ENTITY_LOD_DIST(entity, value)
+end
+
+function module.set_alpha(entity: int, alpha_level: int, skin: bool): void
+    ENTITY.SET_ENTITY_ALPHA(entity, alpha_level, skin)
+end
+
+function module.set_pickup_collides_with_projectiles(p0: any, p1: any): void
+    ENTITY.SET_PICKUP_COLLIDES_WITH_PROJECTILES(p0, p1)
+end
+
+-- Only called once in the scripts
+function module.set_sort_bias(entity: int, p1: float): void
+    ENTITY.SET_ENTITY_SORT_BIAS(entity, p1)
+end
+
+function module.set_always_prerender(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_ALWAYS_PRERENDER(entity, toggle)
+end
+
+function module.set_render_scorched(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_RENDER_SCORCHED(entity, toggle)
+end
+
+function module.set_trafficlight_override(entity: int, state: int): void
+    ENTITY.SET_ENTITY_TRAFFICLIGHT_OVERRIDE(entity, state)
+end
+
+function module.set_is_in_vehicle(entity: int): void
+    ENTITY.SET_ENTITY_IS_IN_VEHICLE(entity)
+end
+
+-- Calling this function disables collision between two entities
+function module.set_no_collision(entity1: int, entity2: int, this_frame_only: bool): void
+    ENTITY.SET_ENTITY_NO_COLLISION_ENTITY(entity1, entity2, this_frame_only)
+end
+
+function module.set_no_collision_with_networked(entity1: int, entity2: int): void
+    ENTITY._SET_ENTITY_NO_COLLISION_WITH_NETWORKED_ENTITY(entity1, entity2)
+end
+
+function module.set_motion_blur(entity: int, toggle: bool): void
+    ENTITY.SET_ENTITY_MOTION_BLUR(entity, toggle)
+end
+
+function module.set_can_auto_vault_on(entity: int, toggle: bool): void
+    ENTITY.SET_CAN_AUTO_VAULT_ON_ENTITY(entity, toggle)
+end
+
+function module.set_can_climb_on(entity: int, toggle: bool): void
+    ENTITY.SET_CAN_CLIMB_ON_ENTITY(entity, toggle)
+end
+
+-- Only called within 1 script for x360. 'fm_mission_controller' and it used on an object
+function module.set_wait_for_collisions_before_probe(entity: int, toggle: bool): void
+    ENTITY.SET_WAIT_FOR_COLLISIONS_BEFORE_PROBE(entity, toggle)
+end
+
+function module.set_noweapondecals(entity: int, p1: bool): void
+    ENTITY.SET_ENTITY_NOWEAPONDECALS(entity, p1)
+end
+
+function module.set_use_max_distance_for_water_reflection(entity: int, p1: bool): void
+    ENTITY.SET_ENTITY_USE_MAX_DISTANCE_FOR_WATER_REFLECTION(entity, p1)
+end
+
+function module.set_can_only_be_damaged(entity1: int, entity2: int): void
+    ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_ENTITY(entity1, entity2)
+end
+
+function module.set_cant_cause_collision_damaged(entity1: int, entity2: int): void
+    ENTITY.SET_ENTITY_CANT_CAUSE_COLLISION_DAMAGED_ENTITY(entity1, entity2)
+end
+
+function module.set_allow_migrate_to_spectator(entity: int, p1: any): void
+    ENTITY.SET_ALLOW_MIGRATE_TO_SPECTATOR(entity, p1)
+end
+
+function module.set_pick_up_by_cargobob_disabled(entity: int, toggle: bool): void
+    ENTITY.SET_PICK_UP_BY_CARGOBOB_DISABLED(entity, toggle)
+end
+
+-- Actions
+
+function module.delete(entity): void
+    entities.delete(entity)
+end
+
+-- Based on carmod_shop script decompile this takes a vehicle parameter. It is called when repair is done on initial enter
+function module.force_ai_and_animation_update(entity: int): void
+    ENTITY.FORCE_ENTITY_AI_AND_ANIMATION_UPDATE(entity)
+end
+
+-- Applies a force to the specified entity
+function module.apply_force_to_center_of_mass(
+    entity: int, force_type: int, x: float, y: float, z: float, p5: bool, is_direction_rel: bool,
+    is_force_rel: bool, p8: bool
+): void
+    -- body function:
+    ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(entity, force_type, x, y, z, p5, is_direction_rel, is_force_rel, p8)
+end
+
+function module.apply_force(
+    entity: int, force_flags: int, x: float, y: float, z: float, off_x: float, off_y: float,
+    off_z: float, bone_index: int, is_direction_rel: bool, ignore_up_vec: bool, is_force_rel: bool,
+    p12: bool, p13: bool
+): void
+    -- body function:
+    ENTITY.APPLY_FORCE_TO_ENTITY(entity, force_flags, x, y, z, off_x, off_y, off_z, bone_index, is_direction_rel, ignore_up_vec, is_force_rel, p12, p13)
+end
+
+-- Attaches entity1 to bone (boneIndex) of entity2
+function module.attach(
+    entity1: int, entity2: int, bone_index: int, x_pos: float, y_pos: float, z_pos: float,
+    x_rot: float, y_rot: float, z_rot: float, p9: bool, use_soft_pinning: bool, collision: bool,
+    is_ped: bool, vertex_index: int, fixed_rot: bool, p15: any
+): void
+    -- body function:
+    ENTITY.ATTACH_ENTITY_TO_ENTITY(entity1, entity2, bone_index, x_pos, y_pos, z_pos, x_rot, y_rot, z_rot, p9, use_soft_pinning, collision, is_ped, vertex_index, fixed_rot, p15)
+end
+
+function module.attach_bone_to_bone(
+    entity1: int, entity2: int, bone_index1: int, bone_index2: int, p4: bool, p5: bool
+): void
+    -- body function:
+    ENTITY.ATTACH_ENTITY_BONE_TO_ENTITY_BONE(entity1, entity2, bone_index1, bone_index2, p4, p5)
+end
+
+function module.attach_bone_to_bone_y_forward(
+    entity1: int, entity2: int, bone_index1: int, bone_index2: int, p4: bool, p5: bool
+): void
+    -- body function:
+    ENTITY.ATTACH_ENTITY_BONE_TO_ENTITY_BONE_Y_FORWARD(entity1, entity2, bone_index1, bone_index2, p4, p5)
+end
+
+function module.attach_to_physically(
+    entity1: int, entity2: int, bone_index1: int, bone_index2: int, x_pos1: float, y_pos1: float,
+    z_pos1: float, x_pos2: float, y_pos2: float, z_pos2: float, x_rot: float, y_rot: float,
+    z_rot: float, break_force: float, fixed_rot: bool, p15: bool, collision: bool, p17: bool,
+    p18: int
+): void
+    -- body function:
+    ENTITY.ATTACH_ENTITY_TO_ENTITY_PHYSICALLY(entity1, entity2, bone_index1, bone_index2, x_pos1, y_pos1, z_pos1, x_pos2, y_pos2, z_pos2, x_rot, y_rot, z_rot, break_force, fixed_rot, p15, collision, p17, p18)
+end
+
+function module.attach_to_physically_override_inverse_mass(
+    first_entity_index: int, second_entity_index: int, first_entity_bone_index: int,
+    second_entity_bone_index: int, second_entity_offset_x: float, second_entity_offset_y: float,
+    second_entity_offset_z: float, first_entity_offset_x: float, first_entity_offset_y: float,
+    first_entity_offset_z: float, vec_rotation_x: float, vec_rotation_y: float,
+    vec_rotation_z: float, physical_strength: float, constrain_rotation: bool,
+    do_initial_warp: bool, collide_with_entity: bool, add_initial_seperation: bool, rot_order: int,
+    inv_mass_scale_a: float, inv_mass_scale_b: float
+): void
+    -- body function:
+    ENTITY.ATTACH_ENTITY_TO_ENTITY_PHYSICALLY_OVERRIDE_INVERSE_MASS(first_entity_index, second_entity_index, first_entity_bone_index, second_entity_bone_index, second_entity_offset_x, second_entity_offset_y, second_entity_offset_z, first_entity_offset_x, first_entity_offset_y, first_entity_offset_z, vec_rotation_x, vec_rotation_y, vec_rotation_z, physical_strength, constrain_rotation, do_initial_warp, collide_with_entity, add_initial_seperation, rot_order, inv_mass_scale_a, inv_mass_scale_b)
+end
+
+-- Called to update entity attachments
+function module.process_attachments(entity: int): void
+    ENTITY.PROCESS_ENTITY_ATTACHMENTS(entity)
+end
+
+function module.clear_last_damage(entity: int): void
+    ENTITY.CLEAR_ENTITY_LAST_DAMAGE_ENTITY(entity)
+end
+
+-- Deletes the specified entity, then sets the handle pointed to by the pointer to NULL
+-- @param entity Pointer: pass memory.alloc(size) and read the result back
+function module.delete_entity(entity: int): void
+    ENTITY.DELETE_ENTITY(entity)
+end
+
+function module.detach(entity: int, dynamic: bool, collision: bool): void
+    ENTITY.DETACH_ENTITY(entity, dynamic, collision)
+end
+
+function module.freeze_position(entity: int, toggle: bool): void
+    ENTITY.FREEZE_ENTITY_POSITION(entity, toggle)
+end
+
+function module.play_anim(
+    entity: int, anim_name: string, anim_dict: string, p3: float, loop: bool, stay_in_anim: bool,
+    p6: bool, delta: float, bitset: any
+): bool
+    -- body function:
+    return ENTITY.PLAY_ENTITY_ANIM(entity, anim_name, anim_dict, p3, loop, stay_in_anim, p6, delta, bitset)
+end
+
+function module.play_synchronized_anim(
+    entity: int, synced_scene: int, animation: string, prop_name: string, p4: float, p5: float,
+    p6: any, p7: float
+): bool
+    -- body function:
+    return ENTITY.PLAY_SYNCHRONIZED_ENTITY_ANIM(entity, synced_scene, animation, prop_name, p4, p5, p6, p7)
+end
+
+function module.play_synchronized_map_anim(
+    x1: float, y1: float, z1: float, x2: float, y2: any, z2: float, p6: string, p7: string,
+    p8: float, p9: float, p10: any, p11: float
+): bool
+    -- body function:
+    return ENTITY.PLAY_SYNCHRONIZED_MAP_ENTITY_ANIM(x1, y1, z1, x2, y2, z2, p6, p7, p8, p9, p10, p11)
+end
+
+function module.stop_synchronized_map_anim(
+    x1: float, y1: float, z1: float, x2: float, y2: any, z2: float
+): bool
+    -- body function:
+    return ENTITY.STOP_SYNCHRONIZED_MAP_ENTITY_ANIM(x1, y1, z1, x2, y2, z2)
+end
+
+function module.stop_anim(entity: int, animation: string, anim_group: string, p3: float): bool
+    return ENTITY.STOP_ENTITY_ANIM(entity, animation, anim_group, p3)
+end
+
+function module.stop_synchronized_anim(entity: int, p1: float, p2: bool): bool
+    return ENTITY.STOP_SYNCHRONIZED_ENTITY_ANIM(entity, p1, p2)
+end
+
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+-- @param p4 Pointer: pass memory.alloc(size) and read the result back
+function module.find_anim_event_phase(
+    anim_dictionary: string, anim_name: string, p2: string, p3: int, p4: int
+): bool
+    -- body function:
+    return ENTITY.FIND_ANIM_EVENT_PHASE(anim_dictionary, anim_name, p2, p3, p4)
+end
+
+function module.reset_alpha(entity: int): void
+    ENTITY.RESET_ENTITY_ALPHA(entity)
+end
+
+-- Similar to RESET_ENTITY_ALPHA
+function module.reset_pickup_glow(entity: int): void
+    ENTITY.RESET_PICKUP_ENTITY_GLOW(entity)
+end
+
+-- Only works with objects!
+function module.create_model_swap(
+    x: float, y: float, z: float, radius: float, original_model: int, new_model: int, p6: bool
+): void
+    -- body function:
+    ENTITY.CREATE_MODEL_SWAP(x, y, z, radius, original_model, new_model, p6)
+end
+
+function module.remove_model_swap(
+    x: float, y: float, z: float, radius: float, original_model: int, new_model: int, p6: bool
+): void
+    -- body function:
+    ENTITY.REMOVE_MODEL_SWAP(x, y, z, radius, original_model, new_model, p6)
+end
+
+function module.create_model_hide(
+    x: float, y: float, z: float, radius: float, model_hash: int, p5: bool
+): void
+    -- body function:
+    ENTITY.CREATE_MODEL_HIDE(x, y, z, radius, model_hash, p5)
+end
+
+function module.create_model_hide_excluding_script_objects(
+    x: float, y: float, z: float, radius: float, model_hash: int, p5: bool
+): void
+    -- body function:
+    ENTITY.CREATE_MODEL_HIDE_EXCLUDING_SCRIPT_OBJECTS(x, y, z, radius, model_hash, p5)
+end
+
+-- This native makes entities visible that are hidden by the native CREATE_MODEL_HIDE
+function module.remove_model_hide(
+    x: float, y: float, z: float, radius: float, model_hash: int, p5: bool
+): void
+    -- body function:
+    ENTITY.REMOVE_MODEL_HIDE(x, y, z, radius, model_hash, p5)
+end
+
+function module.create_forced_object(x: float, y: float, z: float, p3: any, model_hash: int, p5: bool): void
+    ENTITY.CREATE_FORCED_OBJECT(x, y, z, p3, model_hash, p5)
+end
+
+function module.remove_forced_object(x: float, y: float, z: float, p3: float, model_hash: int): void
+    ENTITY.REMOVE_FORCED_OBJECT(x, y, z, p3, model_hash)
+end
+
+function module.enable_bullet_collision(entity: int): void
+    ENTITY.ENABLE_ENTITY_BULLET_COLLISION(entity)
+end
+
+return Atdar.loader.auto(module, "natives/entity")

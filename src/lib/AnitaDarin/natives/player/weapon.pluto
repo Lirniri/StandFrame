@@ -8,4 +8,103 @@ function module.is_free_aiming(player_id: int, entity: ?int): bool
     return PLAYER.IS_PLAYER_FREE_AIMING(player_id)
 end
 
+-- State
+
+function module.is_targetting_entity(player_id: int, entity: int): bool
+    return PLAYER.IS_PLAYER_TARGETTING_ENTITY(player_id, entity)
+end
+
+function module.is_targetting_anything(player_id: int): bool
+    return PLAYER.IS_PLAYER_TARGETTING_ANYTHING(player_id)
+end
+
+function module.is_vehicle_weapon_toggled_to_non_homing(p0: any): bool
+    return PLAYER.IS_PLAYER_VEHICLE_WEAPON_TOGGLED_TO_NON_HOMING(p0)
+end
+
+-- Get
+
+-- Assigns the handle of locked-on melee target to *entity that you pass it
+-- @param entity Pointer: pass memory.alloc(size) and read the result back
+function module.get_target_entity(player_id: int, entity: int): bool
+    return PLAYER.GET_PLAYER_TARGET_ENTITY(player_id, entity)
+end
+
+-- Set
+
+-- Affects the range of auto aim target
+function module.set_lockon_range_override(player_id: int, range: float): void
+    PLAYER.SET_PLAYER_LOCKON_RANGE_OVERRIDE(player_id, range)
+end
+
+function module.set_lockon(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_LOCKON(player_id, toggle)
+end
+
+-- Sets your targeting mode
+function module.set_targeting_mode(target_mode: int): void
+    PLAYER.SET_PLAYER_TARGETING_MODE(target_mode)
+end
+
+function module.set_target_level(target_level: int): void
+    PLAYER.SET_PLAYER_TARGET_LEVEL(target_level)
+end
+
+function module.set_disable_ambient_melee_move(player_id: int, toggle: bool): void
+    PLAYER.SET_DISABLE_AMBIENT_MELEE_MOVE(player_id, toggle)
+end
+
+-- This modifies the damage value of your weapon. Whether it is a multiplier or base damage is unknown
+function module.set_weapon_damage_modifier(player_id: int, modifier: float): void
+    PLAYER.SET_PLAYER_WEAPON_DAMAGE_MODIFIER(player_id, modifier)
+end
+
+function module.set_weapon_defense_modifier(player_id: int, modifier: float): void
+    PLAYER.SET_PLAYER_WEAPON_DEFENSE_MODIFIER(player_id, modifier)
+end
+
+function module.set_weapon_minigun_defense_modifier(player_id: int, modifier: float): void
+    PLAYER.SET_PLAYER_WEAPON_MINIGUN_DEFENSE_MODIFIER(player_id, modifier)
+end
+
+function module.set_melee_weapon_damage_modifier(player_id: int, modifier: float, p2: bool): void
+    PLAYER.SET_PLAYER_MELEE_WEAPON_DAMAGE_MODIFIER(player_id, modifier, p2)
+end
+
+function module.set_melee_weapon_defense_modifier(player_id: int, modifier: float): void
+    PLAYER.SET_PLAYER_MELEE_WEAPON_DEFENSE_MODIFIER(player_id, modifier)
+end
+
+function module.set_weapon_takedown_defense_modifier(player_id: int, p1: float): void
+    PLAYER.SET_PLAYER_WEAPON_TAKEDOWN_DEFENSE_MODIFIER(player_id, p1)
+end
+
+-- Unsets playerPed+330 if the current weapon has certain flags
+function module.set_vehicle_weapon_to_non_homing(p0: any): void
+    PLAYER.SET_PLAYER_VEHICLE_WEAPON_TO_NON_HOMING(p0)
+end
+
+function module.set_homing_disabled_for_all_vehicle_weapons(p0: any, p1: any): void
+    PLAYER.SET_PLAYER_HOMING_DISABLED_FOR_ALL_VEHICLE_WEAPONS(p0, p1)
+end
+
+-- Actions
+
+function module.start_firing_amnesty(duration: int): void
+    PLAYER.START_FIRING_AMNESTY(duration)
+end
+
+-- Inhibits the player from using any method of combat including melee and firearms
+function module.disable_firing(player_id: int, toggle: bool): void
+    PLAYER.DISABLE_PLAYER_FIRING(player_id, toggle)
+end
+
+function module.add_targetable_entity(player_id: int, entity: int): void
+    PLAYER.ADD_PLAYER_TARGETABLE_ENTITY(player_id, entity)
+end
+
+function module.remove_targetable_entity(player_id: int, entity: int): void
+    PLAYER.REMOVE_PLAYER_TARGETABLE_ENTITY(player_id, entity)
+end
+
 return module

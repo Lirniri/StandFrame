@@ -7,8 +7,12 @@
 --   Files Editor >   Create File (a name; the file is made in user/call_function)
 --                    Files (divider), then a list per file: core/short_name.json, user/short_names.json, ...
 --   a file >         Delete File (not for short_name.json and stand_api.json: "Protected File" is there instead)
---                    Add Value, Add Table, Remove, then the entries
---   a table >        the same: Add Value, Add Table, Remove, then its entries
+--                    Add Value, Add Table, Remove, a divider, then the entries
+--   a table >        the same: Add Value, Add Table, Remove, a divider, then its entries
+--
+-- short_name.json and stand_api.json have a shape the logic knows: their own table takes functions only (Add
+-- Function, a ready-made entry), a function's params take parameters only (Add Parameter, typed as the code
+-- writes one: "speed: float = 1.5"), and a function or a parameter takes only its own keys.
 --
 -- An entry that is a value is a text field with the value in it: text in quotes (or a bare word), a number,
 -- true or false; nil takes the entry away. An entry that is a table is a list to open. Every change is
@@ -16,8 +20,9 @@
 -- Strings: core/language "script_menu.call_function.editor"
 
 local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local Logger = Atdar.loader.load("core/logger")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 local confirm = Atdar.loader.load("ui/stand/core/confirm")
 
 local log = new Logger("CallFunctionEditor")
@@ -27,21 +32,8 @@ local module = {}
 -- Strings under "script_menu.call_function.editor"
 local label, text = i18n.scope("script_menu.call_function.editor")
 
--- Click types of Stand's own calls (restoring a field's state, bulk changes): not the user's
-local NOT_USER_CLICKS = { [4] = true }
 
-for _, click_name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
-    if _G[click_name] ~= nil then
-        NOT_USER_CLICKS[_G[click_name]] = true
-    end
-end
-
--- Stand calls text fields again while the script stops: nothing it sends then is the user's
-local stopping = false
-util.on_stop(function() stopping = true end)
-
--- The logic is loaded when the Files Editor is first opened
--- @return The file logic (ui/logic/stand/script/call_function_files)
+-- The file logic (ui/logic/stand/script/call_function_files), loaded when the Files Editor is first opened
 local function files(): table
     return Atdar.loader.load("ui/logic/stand/script/call_function_files")
 end
@@ -57,16 +49,13 @@ local function next_command(): string
 end
 
 -- A text field of the editor; not one of the found commands (tracked without its command)
--- @param node The list to put it in
 -- @param name Its name: a label, or the text of a key
--- @param help Its help
 -- @param default What's in it
 -- @param on_typed function(value) the user typed in it
--- @return Nothing
 local function field(node: table, name, help, default: string, on_typed: function): void
     node:track_named(name, menu.text_input(node.handle, name, commands.names({ next_command() }), help,
         function(value, click_type)
-        if stopping or NOT_USER_CLICKS[click_type] then
+        if not clicks.is_user_action(click_type) then
             return
         end
 
@@ -86,40 +75,66 @@ end
 
 -- Saves the file the context belongs to; says so when it can't
 -- @param context { id, data }
--- @return Nothing
 local function save(context: table): void
     if not files().write(context.id, context.data) then
         log:error(text("not_saved"):format(context.id))
     end
 end
 
+-- Says why something typed wasn't taken. keys: for "key", the keys that may be there
+local function warn(why: string, keys: ?string): void
+    if why == "key" then
+        log:warn(text("errors.key"):format(keys or ""))
+        return
+    end
+
+    log:warn(text($"errors.{why}"))
+end
+
+-- The divider above a table's entries, by the table's place in its file
+local ENTRIES_DIVIDER = { params = "params.divider" }
+
 -- Puts the controls of a table and its entries in node (made empty by the caller)
--- @param node The list of the table
 -- @param context { id, data }: the file, its whole table, for saving
--- @param tbl The table
--- @return Nothing
-local function fill_table(node: table, context: table, tbl: table): void
-    -- body function
+-- @param place The table's place in the file (files.place_of): what can be added to it
+local function fill_table(node: table, context: table, tbl: table, place: string): void
 
     local show_entries
+    -- The own table of a file with a shape: functions only
+    local shaped_root = place == "root" and files().place_of(context.id, place, "") == "entry"
 
-    field(node, label("add_value.name"), label("add_value.help"), "", function(value)
-        local ok, why = files().add_value(tbl, value)
+    -- A table added (a function, a parameter or an empty one): typed is its name, or the parameter as code
+    local function add_table(typed: string): void
+        local ok, why, keys = files().add_table(tbl, typed, context.id, place)
 
         if not ok then
-            log:warn(text($"errors.{why}"))
+            warn(why, keys)
             return
         end
 
         save(context)
         show_entries()
-    end)
+    end
 
-    field(node, label("add_table.name"), label("add_table.help"), "", function(value)
-        files().add_table(tbl, value)
-        save(context)
-        show_entries()
-    end)
+    if place == "params" then
+        field(node, label("add_param.name"), label("add_param.help"), "", add_table)
+    elseif shaped_root then
+        field(node, label("add_function.name"), label("add_function.help"), "", add_table)
+    else
+        field(node, label("add_value.name"), label("add_value.help"), "", function(value)
+            local ok, why, keys = files().add_value(tbl, value, context.id, place)
+
+            if not ok then
+                warn(why, keys)
+                return
+            end
+
+            save(context)
+            show_entries()
+        end)
+
+        field(node, label("add_table.name"), label("add_table.help"), "", add_table)
+    end
 
     field(node, label("remove.name"), label("remove.help"), "", function(value)
         if not files().remove(tbl, value) then
@@ -130,6 +145,12 @@ local function fill_table(node: table, context: table, tbl: table): void
         save(context)
         show_entries()
     end)
+
+    if shaped_root then
+        node:divider(label("functions.divider"))
+    else
+        node:divider(label(ENTRIES_DIVIDER[place] or "entries.divider"))
+    end
 
     local first = #node.children + 1
 
@@ -143,29 +164,27 @@ local function fill_table(node: table, context: table, tbl: table): void
             node:readonly_name(label("empty"))
         end
 
-        node:divider(label("functions.divider"))
-
-        -- @param
-        -- @return
         for _, entry in ipairs(entries) do
+
             local key = entry.key
             local value = entry.value
 
             if type(value) == "table" then
                 local child = nil
+                local child_place = files().place_of(context.id, place, key)
 
                 child = node:list($"{key_text(key)} ({files().count(value)})", {}, label("table.help"), function()
                     child:clear()
                 end, function()
                     child:clear()
-                    fill_table(child, context, value)
+                    fill_table(child, context, value, child_place)
                 end)
             else
                 field(node, key_text(key), label("value.help"), files().describe(value), function(typed)
                     local ok, why, gone = files().set(tbl, key, typed)
 
                     if not ok then
-                        log:warn(text($"errors.{why}"))
+                        warn(why)
                         return
                     end
 
@@ -178,19 +197,16 @@ local function fill_table(node: table, context: table, tbl: table): void
                 end)
             end
         end
-        -- what returns
     end
 
     show_entries()
-    -- what returns
 end
 
 -- A file's list: Delete File (or Protected File), then its table
--- @param parent The Files Editor's list
 -- @param file { id, name, area, protected }
 -- @param refresh function() the files of the editor made again
--- @return Nothing
 local function file_list(parent: table, file: table, refresh: function): void
+    
     local deleted = false
     local cancel = nil
     local node = nil
@@ -232,15 +248,13 @@ local function file_list(parent: table, file: table, refresh: function): void
             end, label("delete.help"))
         end
 
-        fill_table(node, context, context.data)
+        fill_table(node, context, context.data, "root")
     end)
 end
 
--- Makes the Files Editor list in node
--- @param node The Call Function list
+-- Makes the Files Editor list in node (the Call Function list)
 -- @return The Files Editor's list
 function module.build(node: table): table
-    -- body function
 
     local editor = nil
     local first = nil
@@ -248,9 +262,7 @@ function module.build(node: table): table
     -- The file lists made again (a file made or deleted)
     local function show_files(): void
         editor:clear_from(first)
-
-        -- @param
-        -- @return
+        
         for _, file in ipairs(files().list()) do
             file_list(editor, file, show_files)
         end
@@ -279,7 +291,6 @@ function module.build(node: table): table
     end)
 
     return editor
-    -- what returns
 end
 
 return module

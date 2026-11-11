@@ -1,0 +1,34 @@
+-- lib/AnitaDarin/ui/logic/stand/clicks.pluto
+-- Which calls of an item's handler are the user's. Stand also calls handlers by itself (restoring a
+-- field's state from its profile, bulk changes), and while the script stops it calls text fields again:
+-- nothing it sends then is the user's.
+
+local module = {}
+
+-- Click types of Stand's own calls
+local OWN_CLICKS = { [4] = true }
+for _, name in ipairs({ "CLICK_BULK", "CLICK_AUTO", "CLICK_SCRIPTED" }) do
+    if _G[name] ~= nil then
+        OWN_CLICKS[_G[name]] = true
+    end
+end
+
+local stopping = false
+util.on_stop(function() stopping = true end)
+
+-- Whether the script is stopping
+function module.is_stopping(): bool
+    return stopping
+end
+
+-- Whether the click is the user's, not Stand putting an item back or changing many at once
+function module.is_user_click(click_type): bool
+    return not OWN_CLICKS[click_type]
+end
+
+-- Whether a handler should act on the click: it's the user's and the script isn't stopping
+function module.is_user_action(click_type): bool
+    return not stopping and not OWN_CLICKS[click_type]
+end
+
+return module

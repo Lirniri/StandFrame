@@ -2,6 +2,10 @@ local module = {}
 
 -- State
 
+function module.is_climbing(player_id: int): bool
+    return PLAYER.IS_PLAYER_CLIMBING(player_id)
+end
+
 -- Get
 
 function module.get_sprint_stamina(player_id: int): float
@@ -13,6 +17,48 @@ end
 --     return PED.GET_PED_CONFIG_FLAG(ped, 63)
 -- end
 
+function module.get_sprint_time_remaining(player_id: int): float
+    return PLAYER.GET_PLAYER_SPRINT_TIME_REMAINING(player_id)
+end
+
+function module.get_current_stealth_noise(player_id: int): float
+    return PLAYER.GET_PLAYER_CURRENT_STEALTH_NOISE(player_id)
+end
+
+-- @param tint_index Pointer: pass memory.alloc(size) and read the result back
+function module.get_parachute_tint_index(player_id: int, tint_index: int): void
+    PLAYER.GET_PLAYER_PARACHUTE_TINT_INDEX(player_id, tint_index)
+end
+
+-- @param index Pointer: pass memory.alloc(size) and read the result back
+function module.get_reserve_parachute_tint_index(player_id: int, index: int): void
+    PLAYER.GET_PLAYER_RESERVE_PARACHUTE_TINT_INDEX(player_id, index)
+end
+
+-- @param tint_index Pointer: pass memory.alloc(size) and read the result back
+function module.get_parachute_pack_tint_index(player_id: int, tint_index: int): void
+    PLAYER.GET_PLAYER_PARACHUTE_PACK_TINT_INDEX(player_id, tint_index)
+end
+
+function module.get_has_reserve_parachute(player_id: int): bool
+    return PLAYER.GET_PLAYER_HAS_RESERVE_PARACHUTE(player_id)
+end
+
+-- @param r Pointer: pass memory.alloc(size) and read the result back
+-- @param g Pointer: pass memory.alloc(size) and read the result back
+-- @param b Pointer: pass memory.alloc(size) and read the result back
+function module.get_parachute_smoke_trail_color(player_id: int, r: int, g: int, b: int): void
+    PLAYER.GET_PLAYER_PARACHUTE_SMOKE_TRAIL_COLOR(player_id, r, g, b)
+end
+
+function module.get_parachute_model_override(player_id: int): int
+    return PLAYER.GET_PLAYER_PARACHUTE_MODEL_OVERRIDE(player_id)
+end
+
+function module.get_reserve_parachute_model_override(player_id: int): int
+    return PLAYER.GET_PLAYER_RESERVE_PARACHUTE_MODEL_OVERRIDE(player_id)
+end
+
 -- Set
 
 function module.set_sprint(player_id: int, toggle: bool): void
@@ -22,6 +68,63 @@ end
 -- function module.set_infinite_sprint_stamina(ped: int, toggle: bool): void -- TODO: maybe don't work
 --     PED.SET_PED_CONFIG_FLAG(ped, 63, toggle)
 -- end
+
+-- Swim speed multiplier
+function module.set_swim_multiplier(player_id: int, multiplier: float): void
+    PLAYER.SET_SWIM_MULTIPLIER_FOR_PLAYER(player_id, multiplier)
+end
+
+function module.set_run_sprint_multiplier(player_id: int, multiplier: float): void
+    PLAYER.SET_RUN_SPRINT_MULTIPLIER_FOR_PLAYER(player_id, multiplier)
+end
+
+function module.set_parachute_tint_index(player_id: int, tint_index: int): void
+    PLAYER.SET_PLAYER_PARACHUTE_TINT_INDEX(player_id, tint_index)
+end
+
+function module.set_reserve_parachute_tint_index(player_id: int, index: int): void
+    PLAYER.SET_PLAYER_RESERVE_PARACHUTE_TINT_INDEX(player_id, index)
+end
+
+function module.set_parachute_pack_tint_index(player_id: int, tint_index: int): void
+    PLAYER.SET_PLAYER_PARACHUTE_PACK_TINT_INDEX(player_id, tint_index)
+end
+
+function module.set_has_reserve_parachute(player_id: int): void
+    PLAYER.SET_PLAYER_HAS_RESERVE_PARACHUTE(player_id)
+end
+
+function module.set_can_leave_parachute_smoke_trail(player_id: int, enabled: bool): void
+    PLAYER.SET_PLAYER_CAN_LEAVE_PARACHUTE_SMOKE_TRAIL(player_id, enabled)
+end
+
+function module.set_parachute_smoke_trail_color(player_id: int, r: int, g: int, b: int): void
+    PLAYER.SET_PLAYER_PARACHUTE_SMOKE_TRAIL_COLOR(player_id, r, g, b)
+end
+
+function module.set_auto_give_parachute_when_enter_plane(player_id: int, toggle: bool): void
+    PLAYER.SET_AUTO_GIVE_PARACHUTE_WHEN_ENTER_PLANE(player_id, toggle)
+end
+
+function module.set_stealth_perception_modifier(player_id: int, value: float): void
+    PLAYER.SET_PLAYER_STEALTH_PERCEPTION_MODIFIER(player_id, value)
+end
+
+function module.set_parachute_variation_override(player_id: int, p1: int, p2: any, p3: any, p4: bool): void
+    PLAYER.SET_PLAYER_PARACHUTE_VARIATION_OVERRIDE(player_id, p1, p2, p3, p4)
+end
+
+function module.set_parachute_model_override(player_id: int, model: int): void
+    PLAYER.SET_PLAYER_PARACHUTE_MODEL_OVERRIDE(player_id, model)
+end
+
+function module.set_reserve_parachute_model_override(player_id: int, model: int): void
+    PLAYER.SET_PLAYER_RESERVE_PARACHUTE_MODEL_OVERRIDE(player_id, model)
+end
+
+function module.set_parachute_pack_model_override(player_id: int, model: int): void
+    PLAYER.SET_PLAYER_PARACHUTE_PACK_MODEL_OVERRIDE(player_id, model)
+end
 
 -- Actions
 
@@ -33,6 +136,34 @@ end
 function module.reset_sprint_stamina(player_id: int): void
     local player = player_id
     return PLAYER.RESET_PLAYER_STAMINA(player)
+end
+
+function module.assisted_movement_close_route(): void
+    PLAYER.ASSISTED_MOVEMENT_CLOSE_ROUTE()
+end
+
+function module.assisted_movement_flush_route(): void
+    PLAYER.ASSISTED_MOVEMENT_FLUSH_ROUTE()
+end
+
+function module.increase_jump_suppression_range(player_id: int): void
+    PLAYER.INCREASE_PLAYER_JUMP_SUPPRESSION_RANGE(player_id)
+end
+
+function module.clear_parachute_variation_override(player_id: int): void
+    PLAYER.CLEAR_PLAYER_PARACHUTE_VARIATION_OVERRIDE(player_id)
+end
+
+function module.clear_parachute_model_override(player_id: int): void
+    PLAYER.CLEAR_PLAYER_PARACHUTE_MODEL_OVERRIDE(player_id)
+end
+
+function module.clear_reserve_parachute_model_override(player_id: int): void
+    PLAYER.CLEAR_PLAYER_RESERVE_PARACHUTE_MODEL_OVERRIDE(player_id)
+end
+
+function module.clear_parachute_pack_model_override(player_id: int): void
+    PLAYER.CLEAR_PLAYER_PARACHUTE_PACK_MODEL_OVERRIDE(player_id)
 end
 
 return module

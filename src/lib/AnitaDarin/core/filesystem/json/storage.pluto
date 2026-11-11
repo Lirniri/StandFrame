@@ -35,7 +35,9 @@ function module.new(initial_table: ?table)
     --- A missing file is created empty; a damaged one falls back to its backup (JsonFile warns)
     function instance.load(path: string)
         file = new JsonFile(path)
+        
         data = file:read() or {}
+
         if not file:exists() then
             file:write(data)
         end

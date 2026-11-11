@@ -1,6 +1,8 @@
 -- lib/AnitaDarin/core/filesystem/json/file.pluto
 --
 -- One JSON file on disk, read and written safely. Every JSON file of the script goes through it.
+--   - write() puts the keys of every object in a fixed order: the ones given as key_order first, the rest by
+--     name. The same data always gives the same file, whatever order the table holds its keys in
 --   - write() encodes before touching the file, so an encoding error (NaN, inf, a function, a cycle)
 --     leaves the old file as it was
 --   - the new text goes to <path>.tmp first; the old file becomes <path>.bak, then .tmp takes its place.
@@ -27,12 +29,96 @@ local read_text = plain.read
 
 local log = new Logger("JsonFile")
 
+-- Whether the table is written as a JSON array: only the numbers 1..n as keys (an empty one is too)
+local function is_array(value: table): bool
+
+    local count = 0
+
+    for _ in pairs(value) do
+        count += 1
+    end
+
+    return count == #value
+end
+
+-- The keys of an object in the order they're written: the ones in rank first (by their rank), the rest by name
+local function sorted_keys(value: table, rank: table): table
+
+    local keys = {}
+
+    for key in pairs(value) do
+        if key ~= "__order" then
+            table.insert(keys, tostring(key))
+        end
+    end
+
+    table.sort(keys, function(a, b)
+        local rank_a, rank_b = rank[a], rank[b]
+        if rank_a ~= nil and rank_b ~= nil then
+            return rank_a < rank_b
+        end
+        if rank_a ~= nil or rank_b ~= nil then
+            return rank_a ~= nil
+        end
+        return a < b
+    end)
+
+    return keys
+end
+
+-- A copy of the data for the encoder: every object in it gets __order (pluto:json writes the keys in that
+-- order, and only those), so a file comes out the same after every write instead of in the order the
+-- table happens to hold its keys. Keys that aren't texts become texts: JSON has no others
+-- @param rank key -> its place among the keys written first
+-- @param seen The tables on the way here: one inside itself can't be stored
+local function ordered(value, rank: table, seen: table)
+
+    if type(value) ~= "table" then
+        return value
+    end
+
+    if seen[value] then
+        error("a table inside itself", 0)
+    end
+
+    seen[value] = true
+
+    local copy = {}
+
+    if is_array(value) then
+        for i = 1, #value do
+            copy[i] = ordered(value[i], rank, seen)
+        end
+        seen[value] = nil
+        return copy
+    end
+
+    for key, item in pairs(value) do
+        if key ~= "__order" then
+            copy[tostring(key)] = ordered(item, rank, seen)
+        end
+    end
+
+    copy.__order = sorted_keys(copy, rank)
+    seen[value] = nil
+
+    return copy
+end
+
 local class JsonFile
 
     -- pretty: indented JSON, easier to edit by hand
-    function __construct(path: string, pretty: bool = true)
+    -- @param key_order Keys written first in every object of the file, in this order ({ "name", "type" });
+    -- the rest follow by name. nil: all by name
+    function __construct(path: string, pretty: bool = true, key_order: ?table)
+
         self.path = path
         self.pretty = pretty
+        self.rank = {}
+
+        for place, key in ipairs(key_order or {}) do
+            self.rank[key] = place
+        end
     end
 
     function exists(): bool
@@ -42,6 +128,7 @@ local class JsonFile
     -- @return The file's table; nil if there is no file (or it's damaged) and no usable backup
     function read(): ?table
         local text = read_text(self.path)
+
         if text ~= nil then
             local data = json_parser.decode(text)
             if data ~= nil then
@@ -51,6 +138,7 @@ local class JsonFile
 
         local backup_text = read_text($"{self.path}.bak")
         local backup = backup_text ~= nil ? json_parser.decode(backup_text) : nil
+
         if text == nil then
             -- No file, e.g. the script stopped between the two renames of write()
             if backup ~= nil then
@@ -73,7 +161,11 @@ local class JsonFile
         if pretty == nil then
             pretty = self.pretty
         end
-        local ok, text = pcall(json.encode, data, pretty ? "pretty" : nil)
+
+        local rank = self.rank
+        local ok, text = pcall(function()
+            return json.encode(ordered(data, rank, {}), pretty ? "pretty" : nil)
+        end)
         if not ok then
             log:error($"{self.path} not written, the data can't be stored as JSON: {text}")
             return false
@@ -86,12 +178,15 @@ local class JsonFile
 
         local tmp = $"{self.path}.tmp"
         local file = io.open(tmp, "w")
+
         if not file then
             log:error($"{self.path} not written, can't create {tmp}")
             return false
         end
+
         local written = file:write(text)
         local closed = file:close()
+
         if not written or not closed then
             os.remove(tmp)
             log:error($"{self.path} not written, writing {tmp} failed")
@@ -100,6 +195,7 @@ local class JsonFile
 
         -- Move the current file out of the way: os.rename may refuse to replace it
         local moved_to = nil
+
         if filesystem.exists(self.path) then
             local current = read_text(self.path)
             if current ~= nil and json_parser.decode(current) ~= nil then
@@ -127,6 +223,7 @@ local class JsonFile
             log:error($"{self.path} not written: {err}")
             return false
         end
+        
         return true
     end
 

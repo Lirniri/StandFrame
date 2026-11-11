@@ -1,0 +1,31 @@
+local module = {}
+
+-- State
+
+-- Get
+
+-- @return Index of the active character slot
+function module.get_char_slot(): int
+    return util.get_char_slot()
+end
+
+-- Get>Vehicle
+
+function module.get_personal_vehicle(include_last_vehicle: bool = true, as_pointer: bool = false): int
+    if not util.is_session_started() then
+        return nil
+    end
+
+    local handle = entities.get_user_personal_vehicle_as_handle(include_last_vehicle)
+    if as_pointer then
+        return entities.handle_to_pointer(handle)
+    end
+    
+    return handle
+end
+
+-- Set
+
+-- Actions
+
+return module

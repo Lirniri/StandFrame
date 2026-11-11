@@ -65,7 +65,7 @@ stand.write_file($"{profiles}main.json", '{"short_name": "Ke')
 local profile = Atdar.loader.load("core/profile")
 stand.equal(profile.get("short_name"), "Kept", "profile values survive a damaged file")
 stand.equal(Atdar.debug, true, "and debug mode with them")
-stand.equal(profile.get("command_box_prefix"), "atdar", "missing keys come from the defaults")
+stand.equal(profile.get("command_box_base_prefix"), "atdar", "missing keys come from the defaults")
 
 profile.set("short_name", "New")
 stand.check(profile.is_dirty(), "a change is unsaved until save()")
@@ -102,10 +102,10 @@ stand.check(profile.get("command_box_user_prefix") == "atdar" and profile.get("c
 -- Keys renamed: an old profile's value comes over under the new name, the old key goes from the file
 stand.write_file($"{profiles}renamed.json", '{"command_prefix": "zz", "user_command_separator": "_"}')
 profile.switch("renamed")
-stand.equal(profile.get("command_box_prefix"), "zz", "command_prefix is read as command_box_prefix")
+stand.equal(profile.get("command_box_base_prefix"), "zz", "command_prefix is read as command_box_base_prefix")
 stand.equal(profile.get("command_box_user_separator"), "_", "user_command_separator as command_box_user_separator")
 local renamed_text = read($"{profiles}renamed.json")
-stand.check(renamed_text:find('"command_box_prefix": "zz"', 1, true) and not renamed_text:find('"command_prefix"', 1, true),
+stand.check(renamed_text:find('"command_box_base_prefix": "zz"', 1, true) and not renamed_text:find('"command_prefix"', 1, true),
     "written back under the new names only")
 profile.switch("main")
 

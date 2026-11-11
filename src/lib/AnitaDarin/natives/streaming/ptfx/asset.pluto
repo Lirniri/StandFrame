@@ -38,4 +38,8 @@ function module.remove(name: ?string): void
     end
 end
 
+function module.use_particle_fx(name: string): void
+    GRAPHICS.USE_PARTICLE_FX_ASSET(name)
+end
+
 return module

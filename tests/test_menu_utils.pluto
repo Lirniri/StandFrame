@@ -43,4 +43,15 @@ local r, g, b, a = color.to_game(orange)
 stand.check(r == 255 and g == 128 and b == 0 and a == 255, "to_game")
 stand.equal(color.to_hex(color.from_game(255, 128, 0)), "FF8000", "from_game")
 
+-- Atdar.menu's parts: what a pack builds its menu with, each loaded the first time it's asked for
+stand.equal(rawget(ui, "confirm"), nil, "a part isn't loaded until it's asked for")
+stand.check(rawequal(ui.confirm, Atdar.loader.load("ui/stand/core/confirm")), "Atdar.menu.confirm is ui/stand/core/confirm")
+stand.check(rawget(ui, "confirm") ~= nil, "and it's kept once loaded")
+stand.check(rawequal(ui.builder, Atdar.loader.load("ui/stand/core/menu_builder")), "Atdar.menu.builder")
+stand.check(rawequal(ui.settings, Atdar.loader.load("ui/stand/core/settings")), "Atdar.menu.settings")
+stand.check(rawequal(ui.clicks, Atdar.loader.load("ui/logic/stand/clicks")), "Atdar.menu.clicks")
+local wrapped = new ui.Node(stand.root)
+stand.equal(wrapped:divider("Made through Atdar.menu.Node").kind, "divider", "Atdar.menu.Node wraps a Stand ref")
+stand.equal(ui.nothing_like_this, nil, "a name that is no part is nil")
+
 stand.finish()

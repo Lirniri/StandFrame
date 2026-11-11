@@ -20,10 +20,13 @@ local debug_mode = Atdar.debug == true
 
 -- The "Debug" divider, the Modules list and the items added with debug_only() show in debug mode
 local function update_visibility(): void
+
     local refs = { place.divider, place.list and place.list.handle }
+
     for _, ref in ipairs(place.extra or {}) do
         table.insert(refs, ref)
     end
+
     for _, ref in pairs(refs) do
         pcall(menu.set_visible, ref, debug_mode)
     end
@@ -50,19 +53,36 @@ function module.list_in(node: table): table
     return list
 end
 
+-- Puts one module's list into node: its status, Start / Restart / Stop / Reload and its functions, made only
+-- while it's open (ui/stand/modules/list, which loads now)
+-- @return The list (a MenuNode), nil if there's no such module
+function module.module_in(node: table, name: string): ?table
+    return modules_menu().module_in(node, name)
+end
+
 -- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode).
--- before_list: an optional function(parent) that makes an item right under the divider, above Modules;
--- it returns the item's handle, which is shown in debug mode too
-function module.build(parent: table, before_list: ?function): void
+-- before_list: a function(parent), or an array of them, that make items right under the divider, above Modules,
+-- each in its order; every one returns the item's handle, which is shown in debug mode too
+function module.build(parent: table, before_list: ?function|table): void
+
     -- The manager failed to load: the loader left an empty table
     if Atdar.modules == nil or type(Atdar.modules.names) ~= "function" then
         return
     end
+
     -- A section made again (a profile created or deleted): the old place's items are gone
     place = { divider = parent:divider(label("debug.divider")), extra = {} }
-    if before_list ~= nil then
-        table.insert(place.extra, before_list(parent))
+
+    local makers = before_list
+
+    if type(before_list) == "function" then
+        makers = { before_list }
     end
+
+    for _, make in ipairs(makers or {}) do
+        table.insert(place.extra, make(parent))
+    end
+
     place.list = module.list_in(parent)
     update_visibility()
 end

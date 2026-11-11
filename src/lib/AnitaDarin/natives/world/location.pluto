@@ -1,3 +1,48 @@
 local module = {}
--- body
+
+-- Get
+
+function module.get_at_coords(x: float, y: float, z: float): int
+    return ZONE.GET_ZONE_AT_COORDS(x, y, z)
+end
+
+function module.get_from_name_id(zone_name: string): int
+    return ZONE.GET_ZONE_FROM_NAME_ID(zone_name)
+end
+
+function module.get_popschedule(zone_id: int): int
+    return ZONE.GET_ZONE_POPSCHEDULE(zone_id)
+end
+
+function module.get_name(x: float, y: float, z: float): string
+    return ZONE.GET_NAME_OF_ZONE(x, y, z)
+end
+
+function module.get_scumminess(zone_id: int): int
+    return ZONE.GET_ZONE_SCUMMINESS(zone_id)
+end
+
+-- Returns a hash representing which part of the map the given coords are located
+function module.get_hash_of_map_area_at_coords(x: float, y: float, z: float): int
+    return ZONE.GET_HASH_OF_MAP_AREA_AT_COORDS(x, y, z)
+end
+
+-- Set
+
+function module.set_enabled(zone_id: int, toggle: bool): void
+    ZONE.SET_ZONE_ENABLED(zone_id, toggle)
+end
+
+-- Actions
+
+-- Only used once in the decompiled scripts. Seems to be related to scripted vehicle generators
+function module.override_popschedule_vehicle_model(schedule_id: int, vehicle_hash: int): void
+    ZONE.OVERRIDE_POPSCHEDULE_VEHICLE_MODEL(schedule_id, vehicle_hash)
+end
+
+-- Only used once in the decompiled scripts. Seems to be related to scripted vehicle generators
+function module.clear_popschedule_override_vehicle_model(schedule_id: int): void
+    ZONE.CLEAR_POPSCHEDULE_OVERRIDE_VEHICLE_MODEL(schedule_id)
+end
+
 return module

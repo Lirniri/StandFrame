@@ -28,6 +28,47 @@ end
 --     return WEAPON.HAS_PED_GOT_WEAPON_MANAGER(ped)
 -- end
 
+function module.is_shooting_in_area(
+    ped: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, p7: bool, p8: bool
+): bool
+    -- body function:
+    return PED.IS_PED_SHOOTING_IN_AREA(ped, x1, y1, z1, x2, y2, z2, p7, p8)
+end
+
+function module.is_any_shooting_in_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, p6: bool, p7: bool
+): bool
+    -- body function:
+    return PED.IS_ANY_PED_SHOOTING_IN_AREA(x1, y1, z1, x2, y2, z2, p6, p7)
+end
+
+-- Returns whether the specified ped is shooting
+function module.is_shooting(ped: int): bool
+    return PED.IS_PED_SHOOTING(ped)
+end
+
+-- Checks if the ped is currently equipped with a weapon matching a bit specified using a bitwise-or in typeFlags
+function module.is_armed(ped: int, type_flags: int): bool
+    return WEAPON.IS_PED_ARMED(ped, type_flags)
+end
+
+function module.is_ready_to_shoot(ped: int): bool
+    return WEAPON.IS_PED_WEAPON_READY_TO_SHOOT(ped)
+end
+
+function module.has_been_damaged(ped: int, weapon_hash: int, weapon_type: int): bool
+    return WEAPON.HAS_PED_BEEN_DAMAGED_BY_WEAPON(ped, weapon_hash, weapon_type)
+end
+
+function module.is_component_active(ped: int, weapon_hash: int, component_hash: int): bool
+    return WEAPON.IS_PED_WEAPON_COMPONENT_ACTIVE(ped, weapon_hash, component_hash)
+end
+
+-- This native returns a true or false value
+function module.is_current_silenced(ped: int): bool
+    return WEAPON.IS_PED_CURRENT_WEAPON_SILENCED(ped)
+end
+
 -- Get
 
 -- @return Coordinates of the ped's last weapon impact, or nil if there is none
@@ -39,11 +80,317 @@ function module.last_impact_coord(ped: int): ?vector3
     return nil
 end
 
+function module.get_time_damaged(ped: int, weapon_hash: int): int
+    return PED.GET_TIME_PED_DAMAGED_BY_WEAPON(ped, weapon_hash)
+end
+
+-- @param weapon_hash Pointer: pass memory.alloc(size) and read the result back
+function module.get_current(ped: int, weapon_hash: int, p2: bool): bool
+    return WEAPON.GET_CURRENT_PED_WEAPON(ped, weapon_hash, p2)
+end
+
+function module.get_current_entity_index(ped: int, p1: any): int
+    return WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(ped, p1)
+end
+
+function module.get_best(ped: int, p1: bool): int
+    return WEAPON.GET_BEST_PED_WEAPON(ped, p1)
+end
+
+-- @param weapon_hash Pointer: pass memory.alloc(size) and read the result back
+function module.get_current_vehicle(ped: int, weapon_hash: int): bool
+    return WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(ped, weapon_hash)
+end
+
+function module.get_weapontype_in_slot(ped: int, weapon_slot: int): int
+    return WEAPON.GET_PED_WEAPONTYPE_IN_SLOT(ped, weapon_slot)
+end
+
+function module.get_ammo_in(ped: int, weaponhash: int): int
+    return WEAPON.GET_AMMO_IN_PED_WEAPON(ped, weaponhash)
+end
+
+function module.get_max_ammo_in_clip(ped: int, weapon_hash: int, p2: bool): int
+    return WEAPON.GET_MAX_AMMO_IN_CLIP(ped, weapon_hash, p2)
+end
+
+-- @param ammo Pointer: pass memory.alloc(size) and read the result back
+function module.get_ammo_in_vehicle_clip(vehicle: int, seat: int, ammo: int): bool
+    return WEAPON._GET_AMMO_IN_VEHICLE_WEAPON_CLIP(vehicle, seat, ammo)
+end
+
+-- @param ammo Pointer: pass memory.alloc(size) and read the result back
+function module.get_ammo_in_clip(ped: int, weapon_hash: int, ammo: int): bool
+    return WEAPON.GET_AMMO_IN_CLIP(ped, weapon_hash, ammo)
+end
+
+function module.get_ammo_by_type(ped: int, ammo_type_hash: int): int
+    return WEAPON.GET_PED_AMMO_BY_TYPE(ped, ammo_type_hash)
+end
+
+-- Returns the current ammo type of the specified ped's specified weapon
+function module.get_ammo_type(ped: int, weapon_hash: int): int
+    return WEAPON.GET_PED_AMMO_TYPE_FROM_WEAPON(ped, weapon_hash)
+end
+
+-- Returns the base/default ammo type of the specified ped's specified weapon
+function module.get_original_ammo_type(ped: int, weapon_hash: int): int
+    return WEAPON.GET_PED_ORIGINAL_AMMO_TYPE_FROM_WEAPON(ped, weapon_hash)
+end
+
+function module.get_is_gadget_equipped(ped: int, gadget_hash: int): bool
+    return WEAPON.GET_IS_PED_GADGET_EQUIPPED(ped, gadget_hash)
+end
+
+-- Returns the hash of the weapon
+function module.get_selected(ped: int): int
+    return WEAPON.GET_SELECTED_PED_WEAPON(ped)
+end
+
+function module.get_lockon_distance_of_current(ped: int): float
+    return WEAPON.GET_LOCKON_DISTANCE_OF_CURRENT_PED_WEAPON(ped)
+end
+
+function module.get_max_range_of_current(ped: int): float
+    return WEAPON.GET_MAX_RANGE_OF_CURRENT_PED_WEAPON(ped)
+end
+
+-- Drops the current weapon and returns the object
+function module.get_object(ped: int, p1: bool): int
+    return WEAPON.GET_WEAPON_OBJECT_FROM_PED(ped, p1)
+end
+
+function module.get_tint_index(ped: int, weapon_hash: int): int
+    return WEAPON.GET_PED_WEAPON_TINT_INDEX(ped, weapon_hash)
+end
+
+-- Returns -1 if camoComponentHash is invalid/not attached to the weapon
+function module.get_component_tint_index(ped: int, weapon_hash: int, camo_component_hash: int): int
+    return WEAPON.GET_PED_WEAPON_COMPONENT_TINT_INDEX(ped, weapon_hash, camo_component_hash)
+end
+
+function module.get_camo_index(ped: int, weapon_hash: int): int
+    return WEAPON.GET_PED_WEAPON_CAMO_INDEX(ped, weapon_hash)
+end
+
+function module.get_clip_size(weapon_hash: int): int
+    return WEAPON.GET_WEAPON_CLIP_SIZE(weapon_hash)
+end
+
+-- Set
+
+function module.set_block_ambient_peds_from_dropping_weapons_this_frame(): void
+    PED._SET_BLOCK_AMBIENT_PEDS_FROM_DROPPING_WEAPONS_THIS_FRAME()
+end
+
+function module.set_ai_damage_modifier(value: float): void
+    PED.SET_AI_WEAPON_DAMAGE_MODIFIER(value)
+end
+
+function module.set_ai_melee_damage_modifier(modifier: float): void
+    PED.SET_AI_MELEE_WEAPON_DAMAGE_MODIFIER(modifier)
+end
+
+function module.set_firing_pattern(ped: int, pattern_hash: int): void
+    PED.SET_PED_FIRING_PATTERN(ped, pattern_hash)
+end
+
+function module.set_shoot_rate(ped: int, shoot_rate: int): void
+    PED.SET_PED_SHOOT_RATE(ped, shoot_rate)
+end
+
+function module.set_movement_clipset(ped: int, clip_set: string): void
+    PED.SET_PED_WEAPON_MOVEMENT_CLIPSET(ped, clip_set)
+end
+
+function module.set_enable_blocking(ped: int, toggle: bool): void
+    PED.SET_PED_ENABLE_WEAPON_BLOCKING(ped, toggle)
+end
+
+function module.set_shoots_at_coord(ped: int, x: float, y: float, z: float, toggle: bool): void
+    PED.SET_PED_SHOOTS_AT_COORD(ped, x, y, z, toggle)
+end
+
+function module.set_can_switch(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_SWITCH_WEAPON(ped, toggle)
+end
+
+function module.set_current(ped: int, weapon_hash: int, b_force_in_hand: bool): void
+    WEAPON.SET_CURRENT_PED_WEAPON(ped, weapon_hash, b_force_in_hand)
+end
+
+function module.set_current_vehicle(ped: int, weapon_hash: int): bool
+    return WEAPON.SET_CURRENT_PED_VEHICLE_WEAPON(ped, weapon_hash)
+end
+
+function module.set_cycle_vehicle_weapons_only(ped: int): void
+    WEAPON.SET_PED_CYCLE_VEHICLE_WEAPONS_ONLY(ped)
+end
+
+function module.set_ammo(ped: int, weapon_hash: int, ammo: int, p3: bool): void
+    WEAPON.SET_PED_AMMO(ped, weapon_hash, ammo, p3)
+end
+
+function module.set_infinite_ammo(ped: int, toggle: bool, weapon_hash: int): void
+    WEAPON.SET_PED_INFINITE_AMMO(ped, toggle, weapon_hash)
+end
+
+function module.set_infinite_ammo_clip(ped: int, toggle: bool): void
+    WEAPON.SET_PED_INFINITE_AMMO_CLIP(ped, toggle)
+end
+
+function module.set_stun_gun_finite_ammo(p0: any, p1: any): void
+    WEAPON.SET_PED_STUN_GUN_FINITE_AMMO(p0, p1)
+end
+
+-- Has 5 parameters since latest patches
+function module.set_current_visible(ped: int, visible: bool, deselect_weapon: bool, p3: bool, p4: bool): void
+    WEAPON.SET_PED_CURRENT_WEAPON_VISIBLE(ped, visible, deselect_weapon, p3, p4)
+end
+
+function module.set_drops_weapons_when_dead(ped: int, toggle: bool): void
+    WEAPON.SET_PED_DROPS_WEAPONS_WHEN_DEAD(ped, toggle)
+end
+
+function module.set_drops(ped: int): void
+    WEAPON.SET_PED_DROPS_WEAPON(ped)
+end
+
+function module.set_drops_inventory(
+    ped: int, weapon_hash: int, x_offset: float, y_offset: float, z_offset: float, ammo_count: int
+): void
+    -- body function:
+    WEAPON.SET_PED_DROPS_INVENTORY_WEAPON(ped, weapon_hash, x_offset, y_offset, z_offset, ammo_count)
+end
+
+function module.set_ammo_in_vehicle_clip(vehicle: int, seat: int, ammo: int): bool
+    return WEAPON._SET_AMMO_IN_VEHICLE_WEAPON_CLIP(vehicle, seat, ammo)
+end
+
+function module.set_ammo_in_clip(ped: int, weapon_hash: int, ammo: int): bool
+    return WEAPON.SET_AMMO_IN_CLIP(ped, weapon_hash, ammo)
+end
+
+function module.set_ammo_by_type(ped: int, ammo_type_hash: int, ammo: int): void
+    WEAPON.SET_PED_AMMO_BY_TYPE(ped, ammo_type_hash, ammo)
+end
+
+function module.set_ammo_to_drop(ped: int, p1: int): void
+    WEAPON.SET_PED_AMMO_TO_DROP(ped, p1)
+end
+
+function module.set_gadget(ped: int, gadget_hash: int, p2: bool): void
+    WEAPON.SET_PED_GADGET(ped, gadget_hash, p2)
+end
+
+function module.set_tint_index(ped: int, weapon_hash: int, tint_index: int): void
+    WEAPON.SET_PED_WEAPON_TINT_INDEX(ped, weapon_hash, tint_index)
+end
+
+function module.set_component_tint_index(
+    ped: int, weapon_hash: int, camo_component_hash: int, color_index: int
+): void
+    -- body function:
+    WEAPON.SET_PED_WEAPON_COMPONENT_TINT_INDEX(ped, weapon_hash, camo_component_hash, color_index)
+end
+
+function module.set_chance_of_firing_blanks(ped: int, x_bias: float, y_bias: float): void
+    WEAPON.SET_PED_CHANCE_OF_FIRING_BLANKS(ped, x_bias, y_bias)
+end
+
+-- Returns handle of the projectile
+function module.set_shoot_ordnance(ped: int, p1: float): int
+    return WEAPON.SET_PED_SHOOT_ORDNANCE_WEAPON(ped, p1)
+end
+
+function module.set_damage_modifier(weapon: int, damage_modifier: float): void
+    WEAPON._SET_WEAPON_PED_DAMAGE_MODIFIER(weapon, damage_modifier)
+end
+
+function module.set_eqipped_start_spinning_at_full_speed(ped: int): void
+    WEAPON.SET_EQIPPED_WEAPON_START_SPINNING_AT_FULL_SPEED(ped)
+end
+
+function module.set_can_select_inventory(ped: int, weapon_hash: int, toggle: bool): void
+    WEAPON.SET_CAN_PED_SELECT_INVENTORY_WEAPON(ped, weapon_hash, toggle)
+end
+
+function module.set_can_select_all_weapons(ped: int, toggle: bool): void
+    WEAPON.SET_CAN_PED_SELECT_ALL_WEAPONS(ped, toggle)
+end
+
 -- Actions
 
 function module.give(ped: int, weaponHash: int|string, ammoCount: int = 1, isHidden: bool = false, bForceInHand: bool = false): void
     local hash = Atdar.util.hash(weaponHash)
     WEAPON.GIVE_WEAPON_TO_PED(ped, hash, ammoCount, isHidden, bForceInHand)
+end
+
+function module.reset_ai_damage_modifier(): void
+    PED.RESET_AI_WEAPON_DAMAGE_MODIFIER()
+end
+
+function module.reset_ai_melee_damage_modifier(): void
+    PED.RESET_AI_MELEE_WEAPON_DAMAGE_MODIFIER()
+end
+
+function module.reset_movement_clipset(ped: int): void
+    PED.RESET_PED_WEAPON_MOVEMENT_CLIPSET(ped)
+end
+
+function module.stop_firing_when_dropped(ped: int): void
+    PED.STOP_PED_WEAPON_FIRING_WHEN_DROPPED(ped)
+end
+
+function module.add_ammo(ped: int, weapon_hash: int, ammo: int): void
+    WEAPON.ADD_AMMO_TO_PED(ped, weapon_hash, ammo)
+end
+
+function module.give_delayed(ped: int, weapon_hash: int, ammo_count: int, b_force_in_hand: bool): void
+    WEAPON.GIVE_DELAYED_WEAPON_TO_PED(ped, weapon_hash, ammo_count, b_force_in_hand)
+end
+
+function module.remove_all_weapons(ped: int, p1: bool): void
+    WEAPON.REMOVE_ALL_PED_WEAPONS(ped, p1)
+end
+
+-- This native removes a specified weapon from your selected ped
+function module.remove(ped: int, weapon_hash: int): void
+    WEAPON.REMOVE_WEAPON_FROM_PED(ped, weapon_hash)
+end
+
+-- Hides the players weapon during a cutscene
+function module.hide_for_scripted_cutscene(ped: int, toggle: bool): void
+    WEAPON.HIDE_PED_WEAPON_FOR_SCRIPTED_CUTSCENE(ped, toggle)
+end
+
+function module.clear_last_damage(ped: int): void
+    WEAPON.CLEAR_PED_LAST_WEAPON_DAMAGE(ped)
+end
+
+function module.add_ammo_by_type(ped: int, ammo_type_hash: int, ammo: int): void
+    WEAPON.ADD_PED_AMMO_BY_TYPE(ped, ammo_type_hash, ammo)
+end
+
+function module.give_component(ped: int, weapon_hash: int, component_hash: int): void
+    WEAPON.GIVE_WEAPON_COMPONENT_TO_PED(ped, weapon_hash, component_hash)
+end
+
+function module.remove_component(ped: int, weapon_hash: int, component_hash: int): void
+    WEAPON.REMOVE_WEAPON_COMPONENT_FROM_PED(ped, weapon_hash, component_hash)
+end
+
+function module.make_reload(ped: int): bool
+    return WEAPON.MAKE_PED_RELOAD(ped)
+end
+
+function module.give_object(weapon_object: int, ped: int): void
+    WEAPON.GIVE_WEAPON_OBJECT_TO_PED(weapon_object, ped)
+end
+
+-- Gives the specified loadout to the specified ped
+function module.give_loadout(ped: int, loadout_hash: int): void
+    WEAPON.GIVE_LOADOUT_TO_PED(ped, loadout_hash)
 end
 
 return module

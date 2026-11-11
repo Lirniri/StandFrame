@@ -1,0 +1,363 @@
+-- Ped components, props, head blend and other looks
+
+local module = {}
+
+-- State
+
+-- Checks if the component variation is valid, this works great for randomizing components using loops
+function module.is_component_variation_valid(
+    ped: int, component_id: int, drawable_id: int, texture_id: int
+): bool
+    -- body function:
+    return PED.IS_PED_COMPONENT_VARIATION_VALID(ped, component_id, drawable_id, texture_id)
+end
+
+function module.is_hair_tint_for_creator(color_id: int): bool
+    return PED.IS_PED_HAIR_TINT_FOR_CREATOR(color_id)
+end
+
+function module.is_hair_tint_for_barber(color_id: int): bool
+    return PED.IS_PED_HAIR_TINT_FOR_BARBER(color_id)
+end
+
+function module.is_blush_facepaint_tint_for_barber(color_id: int): bool
+    return PED.IS_PED_BLUSH_FACEPAINT_TINT_FOR_BARBER(color_id)
+end
+
+function module.has_head_blend_finished(ped: int): bool
+    return PED.HAS_PED_HEAD_BLEND_FINISHED(ped)
+end
+
+function module.has_preload_variation_data_finished(ped: int): bool
+    return PED.HAS_PED_PRELOAD_VARIATION_DATA_FINISHED(ped)
+end
+
+function module.has_preload_prop_data_finished(ped: int): bool
+    return PED.HAS_PED_PRELOAD_PROP_DATA_FINISHED(ped)
+end
+
+function module.is_using_scuba_gear_variation(p0: any): bool
+    return PED.IS_USING_PED_SCUBA_GEAR_VARIATION(p0)
+end
+
+function module.is_taking_off_helmet(ped: int): bool
+    return PED.IS_PED_TAKING_OFF_HELMET(ped)
+end
+
+function module.is_helmet_visor_up(ped: int): bool
+    return PED.IS_PED_HELMET_VISOR_UP(ped)
+end
+
+function module.is_wearing_helmet(ped: int): bool
+    return PED.IS_PED_WEARING_HELMET(ped)
+end
+
+function module.is_current_head_prop_a_helmet(p0: any): bool
+    return PED.IS_CURRENT_HEAD_PROP_A_HELMET(p0)
+end
+
+-- Get
+
+function module.get_drawable_variation(ped: int, component_id: int): int
+    return PED.GET_PED_DRAWABLE_VARIATION(ped, component_id)
+end
+
+-- List of component/props ID
+function module.get_number_drawable_variations(ped: int, component_id: int): int
+    return PED.GET_NUMBER_OF_PED_DRAWABLE_VARIATIONS(ped, component_id)
+end
+
+-- List of component/props ID
+function module.get_texture_variation(ped: int, component_id: int): int
+    return PED.GET_PED_TEXTURE_VARIATION(ped, component_id)
+end
+
+-- List of component/props ID
+function module.get_number_texture_variations(ped: int, component_id: int, drawable_id: int): int
+    return PED.GET_NUMBER_OF_PED_TEXTURE_VARIATIONS(ped, component_id, drawable_id)
+end
+
+-- List of component/props ID
+function module.get_number_prop_drawable_variations(ped: int, prop_id: int): int
+    return PED.GET_NUMBER_OF_PED_PROP_DRAWABLE_VARIATIONS(ped, prop_id)
+end
+
+function module.get_number_prop_texture_variations(ped: int, prop_id: int, drawable_id: int): int
+    return PED.GET_NUMBER_OF_PED_PROP_TEXTURE_VARIATIONS(ped, prop_id, drawable_id)
+end
+
+-- List of component/props ID
+function module.get_palette_variation(ped: int, component_id: int): int
+    return PED.GET_PED_PALETTE_VARIATION(ped, component_id)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_mp_outfit_data_from_metadata(p0: int, p1: int): bool
+    return PED.GET_MP_OUTFIT_DATA_FROM_METADATA(p0, p1)
+end
+
+-- @param head_blend_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_head_blend_data(ped: int, head_blend_data: int): bool
+    return PED.GET_PED_HEAD_BLEND_DATA(ped, head_blend_data)
+end
+
+-- A getter for _SET_PED_EYE_COLOR. Returns -1 if fails to get
+function module.get_head_blend_eye_color(ped: int): int
+    return PED.GET_HEAD_BLEND_EYE_COLOR(ped)
+end
+
+function module.get_head_overlay(ped: int, overlay_id: int): int
+    return PED.GET_PED_HEAD_OVERLAY(ped, overlay_id)
+end
+
+function module.get_head_overlay_num(overlay_id: int): int
+    return PED.GET_PED_HEAD_OVERLAY_NUM(overlay_id)
+end
+
+function module.get_num_hair_tints(): int
+    return PED.GET_NUM_PED_HAIR_TINTS()
+end
+
+-- @param out_r Pointer: pass memory.alloc(size) and read the result back
+-- @param out_g Pointer: pass memory.alloc(size) and read the result back
+-- @param out_b Pointer: pass memory.alloc(size) and read the result back
+function module.get_hair_tint_color(hair_color_index: int, out_r: int, out_g: int, out_b: int): void
+    PED.GET_PED_HAIR_TINT_COLOR(hair_color_index, out_r, out_g, out_b)
+end
+
+function module.get_tint_index_for_last_gen_hair_texture(
+    model_hash: int, drawable_id: int, texture_id: int
+): int
+    -- body function:
+    return PED.GET_TINT_INDEX_FOR_LAST_GEN_HAIR_TEXTURE(model_hash, drawable_id, texture_id)
+end
+
+-- Type equals 0 for male non-dlc, 1 for female non-dlc, 2 for male dlc, and 3 for female dlc
+function module.get_head_blend_first_index(type: int): int
+    return PED.GET_PED_HEAD_BLEND_FIRST_INDEX(type)
+end
+
+-- Type equals 0 for male non-dlc, 1 for female non-dlc, 2 for male dlc, and 3 for female dlc
+function module.get_head_blend_num_heads(type: int): int
+    return PED.GET_PED_HEAD_BLEND_NUM_HEADS(type)
+end
+
+-- List of component/props ID
+function module.get_prop_index(ped: int, component_id: int, p2: any): int
+    return PED.GET_PED_PROP_INDEX(ped, component_id, p2)
+end
+
+-- List of component/props ID
+function module.get_prop_texture_index(ped: int, component_id: int): int
+    return PED.GET_PED_PROP_TEXTURE_INDEX(ped, component_id)
+end
+
+function module.get_decorations_state(ped: int): int
+    return PED.GET_PED_DECORATIONS_STATE(ped)
+end
+
+-- Returns the zoneID for the overlay if it is a member of collection
+function module.get_decoration_zone_from_hashes(collection: int, overlay: int): int
+    return PED.GET_PED_DECORATION_ZONE_FROM_HASHES(collection, overlay)
+end
+
+function module.get_helmet_stored_hat_prop_index(ped: int): int
+    return PED.GET_PED_HELMET_STORED_HAT_PROP_INDEX(ped)
+end
+
+function module.get_helmet_stored_hat_tex_index(ped: int): int
+    return PED.GET_PED_HELMET_STORED_HAT_TEX_INDEX(ped)
+end
+
+-- Set
+
+function module.set_component_variation(
+    ped: int, component_id: int, drawable_id: int, texture_id: int, palette_id: int
+): void
+    -- body function:
+    PED.SET_PED_COMPONENT_VARIATION(ped, component_id, drawable_id, texture_id, palette_id)
+end
+
+function module.set_random_component_variation(ped: int, p1: int): void
+    PED.SET_PED_RANDOM_COMPONENT_VARIATION(ped, p1)
+end
+
+-- List of component/props ID
+function module.set_random_props(ped: int): void
+    PED.SET_PED_RANDOM_PROPS(ped)
+end
+
+-- Sets Ped Default Clothes
+function module.set_default_component_variation(ped: int): void
+    PED.SET_PED_DEFAULT_COMPONENT_VARIATION(ped)
+end
+
+function module.set_head_blend_data(
+    ped: int, shape_first_id: int, shape_second_id: int, shape_third_id: int, skin_first_id: int,
+    skin_second_id: int, skin_third_id: int, shape_mix: float, skin_mix: float, third_mix: float,
+    is_parent: bool
+): void
+    -- body function:
+    PED.SET_PED_HEAD_BLEND_DATA(ped, shape_first_id, shape_second_id, shape_third_id, skin_first_id, skin_second_id, skin_third_id, shape_mix, skin_mix, third_mix, is_parent)
+end
+
+-- Used for freemode (online) characters
+function module.set_head_blend_eye_color(ped: int, index: int): void
+    PED.SET_HEAD_BLEND_EYE_COLOR(ped, index)
+end
+
+-- OverlayID ranges from 0 to 12, index from 0 to _GET_NUM_OVERLAY_VALUES(overlayID)-1, and opacity from 0.0 to 1.0
+function module.set_head_overlay(ped: int, overlay_id: int, index: int, opacity: float): void
+    PED.SET_PED_HEAD_OVERLAY(ped, overlay_id, index, opacity)
+end
+
+function module.set_head_overlay_tint(
+    ped: int, overlay_id: int, color_type: int, color_id: int, second_color_id: int
+): void
+    -- body function:
+    PED.SET_PED_HEAD_OVERLAY_TINT(ped, overlay_id, color_type, color_id, second_color_id)
+end
+
+function module.set_hair_tint(ped: int, color_id: int, highlight_color_id: int): void
+    PED.SET_PED_HAIR_TINT(ped, color_id, highlight_color_id)
+end
+
+-- Sets the various freemode face features, e.g. nose length, chin shape. Scale ranges from -1.0 to 1.0
+function module.set_micro_morph(ped: int, index: int, scale: float): void
+    PED.SET_PED_MICRO_MORPH(ped, index, scale)
+end
+
+function module.set_head_blend_palette_color(ped: int, r: int, g: int, b: int, id: int): void
+    PED.SET_HEAD_BLEND_PALETTE_COLOR(ped, r, g, b, id)
+end
+
+function module.set_preload_variation_data(ped: int, slot: int, drawable_id: int, texture_id: int): int
+    return PED.SET_PED_PRELOAD_VARIATION_DATA(ped, slot, drawable_id, texture_id)
+end
+
+-- List of component/props ID
+function module.set_preload_prop_data(ped: int, component_id: int, drawable_id: int, texture_id: int): int
+    return PED.SET_PED_PRELOAD_PROP_DATA(ped, component_id, drawable_id, texture_id)
+end
+
+-- ComponentId can be set to various things based on what category you're wanting to set
+function module.set_prop_index(
+    ped: int, component_id: int, drawable_id: int, texture_id: int, attach: bool, p5: any
+): void
+    -- body function:
+    PED.SET_PED_PROP_INDEX(ped, component_id, drawable_id, texture_id, attach, p5)
+end
+
+function module.set_scuba_gear_variation(ped: int): void
+    PED.SET_PED_SCUBA_GEAR_VARIATION(ped)
+end
+
+function module.set_helmet(ped: int, can_wear_helmet: bool): void
+    PED.SET_PED_HELMET(ped, can_wear_helmet)
+end
+
+function module.set_helmet_flag(ped: int, helmet_flag: int): void
+    PED.SET_PED_HELMET_FLAG(ped, helmet_flag)
+end
+
+-- List of component/props ID
+function module.set_helmet_prop_index(ped: int, prop_index: int, p2: bool): void
+    PED.SET_PED_HELMET_PROP_INDEX(ped, prop_index, p2)
+end
+
+function module.set_helmet_visor_prop_indices(ped: int, p1: bool, p2: int, p3: int): void
+    PED.SET_PED_HELMET_VISOR_PROP_INDICES(ped, p1, p2, p3)
+end
+
+function module.set_helmet_texture_index(ped: int, texture_index: int): void
+    PED.SET_PED_HELMET_TEXTURE_INDEX(ped, texture_index)
+end
+
+function module.set_can_lose_props_on_damage(ped: int, toggle: bool, p2: int): void
+    PED.SET_PED_CAN_LOSE_PROPS_ON_DAMAGE(ped, toggle, p2)
+end
+
+function module.set_phone_palette_idx(p0: any, p1: any): void
+    PED.SET_PED_PHONE_PALETTE_IDX(p0, p1)
+end
+
+-- Actions
+
+function module.update_head_blend_data(ped: int, shape_mix: float, skin_mix: float, third_mix: float): void
+    PED.UPDATE_PED_HEAD_BLEND_DATA(ped, shape_mix, skin_mix, third_mix)
+end
+
+function module.finalize_head_blend(ped: int): void
+    PED.FINALIZE_HEAD_BLEND(ped)
+end
+
+function module.disable_head_blend_palette_color(ped: int): void
+    PED.DISABLE_HEAD_BLEND_PALETTE_COLOR(ped)
+end
+
+function module.release_preload_variation_data(ped: int): void
+    PED.RELEASE_PED_PRELOAD_VARIATION_DATA(ped)
+end
+
+function module.release_preload_prop_data(ped: int): void
+    PED.RELEASE_PED_PRELOAD_PROP_DATA(ped)
+end
+
+-- List of component/props ID
+function module.knock_off_prop(ped: int, p1: bool, p2: bool, p3: bool, p4: bool): void
+    PED.KNOCK_OFF_PED_PROP(ped, p1, p2, p3, p4)
+end
+
+-- List of component/props ID
+function module.clear_prop(ped: int, prop_id: int, p2: any): void
+    PED.CLEAR_PED_PROP(ped, prop_id, p2)
+end
+
+-- List of component/props ID
+function module.clear_all_props(ped: int, p1: any): void
+    PED.CLEAR_ALL_PED_PROPS(ped, p1)
+end
+
+function module.drop_ambient_prop(ped: int): void
+    PED.DROP_AMBIENT_PROP(ped)
+end
+
+function module.clear_scuba_gear_variation(ped: int): void
+    PED.CLEAR_PED_SCUBA_GEAR_VARIATION(ped)
+end
+
+function module.mark_decorations_as_cloned_from_local_player(ped: int, p1: bool): void
+    PED.MARK_PED_DECORATIONS_AS_CLONED_FROM_LOCAL_PLAYER(ped, p1)
+end
+
+-- Applies an Item from a PedDecorationCollection to a ped. These include tattoos and shirt decals
+function module.add_decoration_from_hashes(ped: int, collection: int, overlay: int): void
+    PED.ADD_PED_DECORATION_FROM_HASHES(ped, collection, overlay)
+end
+
+function module.add_decoration_from_hashes_in_corona(ped: int, collection: int, overlay: int): void
+    PED.ADD_PED_DECORATION_FROM_HASHES_IN_CORONA(ped, collection, overlay)
+end
+
+function module.clear_decorations(ped: int): void
+    PED.CLEAR_PED_DECORATIONS(ped)
+end
+
+function module.clear_decorations_leave_scars(ped: int): void
+    PED.CLEAR_PED_DECORATIONS_LEAVE_SCARS(ped)
+end
+
+function module.give_helmet(ped: int, cannot_remove: bool, helmet_flag: int, texture_index: int): void
+    PED.GIVE_PED_HELMET(ped, cannot_remove, helmet_flag, texture_index)
+end
+
+function module.remove_helmet(ped: int, instantly: bool): void
+    PED.REMOVE_PED_HELMET(ped, instantly)
+end
+
+function module.clear_stored_hat_prop(ped: int): void
+    PED.CLEAR_PED_STORED_HAT_PROP(ped)
+end
+
+return module

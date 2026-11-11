@@ -12,4 +12,511 @@ function module.unblock(rockstar_id: int): void
     return util.sc_unblock(rockstar_id)
 end
 
+-- State
+
+-- Returns whether the signed-in user has valid Rockstar Online Services (ROS) credentials
+function module.has_valid_ros_credentials(): bool
+    return NETWORK.NETWORK_HAS_VALID_ROS_CREDENTIALS()
+end
+
+function module.is_refreshing_ros_credentials(): bool
+    return NETWORK.NETWORK_IS_REFRESHING_ROS_CREDENTIALS()
+end
+
+function module.has_social_club_account(): bool
+    return NETWORK.NETWORK_HAS_SOCIAL_CLUB_ACCOUNT()
+end
+
+function module.are_social_club_policies_current(): bool
+    return NETWORK.NETWORK_ARE_SOCIAL_CLUB_POLICIES_CURRENT()
+end
+
+function module.have_online_privileges(): bool
+    return NETWORK.NETWORK_HAVE_ONLINE_PRIVILEGES()
+end
+
+function module.have_user_content_privileges(p0: int): bool
+    return NETWORK.NETWORK_HAVE_USER_CONTENT_PRIVILEGES(p0)
+end
+
+function module.have_communication_privileges(p0: int, player_id: int): bool
+    return NETWORK.NETWORK_HAVE_COMMUNICATION_PRIVILEGES(p0, player_id)
+end
+
+function module.have_platform_communication_privileges(): bool
+    return NETWORK._NETWORK_HAVE_PLATFORM_COMMUNICATION_PRIVILEGES()
+end
+
+function module.is_privilege_check_in_progress(): bool
+    return NETWORK.NETWORK_IS_PRIVILEGE_CHECK_IN_PROGRESS()
+end
+
+function module.have_ros_social_club_priv(): bool
+    return NETWORK.NETWORK_HAVE_ROS_SOCIAL_CLUB_PRIV()
+end
+
+function module.have_ros_banned_priv(): bool
+    return NETWORK.NETWORK_HAVE_ROS_BANNED_PRIV()
+end
+
+function module.have_ros_create_ticket_priv(): bool
+    return NETWORK.NETWORK_HAVE_ROS_CREATE_TICKET_PRIV()
+end
+
+function module.have_ros_multiplayer_priv(): bool
+    return NETWORK.NETWORK_HAVE_ROS_MULTIPLAYER_PRIV()
+end
+
+function module.have_ros_leaderboard_write_priv(): bool
+    return NETWORK.NETWORK_HAVE_ROS_LEADERBOARD_WRITE_PRIV()
+end
+
+function module.has_ros_privilege(index: int): bool
+    return NETWORK.NETWORK_HAS_ROS_PRIVILEGE(index)
+end
+
+-- @param ban_type Pointer: pass memory.alloc(size) and read the result back
+-- @param time_data Pointer: pass memory.alloc(size) and read the result back
+function module.has_ros_privilege_end_date(privilege: int, ban_type: int, time_data: int): bool
+    return NETWORK.NETWORK_HAS_ROS_PRIVILEGE_END_DATE(privilege, ban_type, time_data)
+end
+
+function module.has_ros_privilege_played_last_gen(): bool
+    return NETWORK.NETWORK_HAS_ROS_PRIVILEGE_PLAYED_LAST_GEN()
+end
+
+function module.has_ros_privilege_special_edition_content(): bool
+    return NETWORK.NETWORK_HAS_ROS_PRIVILEGE_SPECIAL_EDITION_CONTENT()
+end
+
+-- Checks for privilege 29
+function module.has_ros_privilege_mp_text_communication(): bool
+    return NETWORK._NETWORK_HAS_ROS_PRIVILEGE_MP_TEXT_COMMUNICATION()
+end
+
+-- Checks for privilege 31
+function module.has_ros_privilege_reporting(): bool
+    return NETWORK._NETWORK_HAS_ROS_PRIVILEGE_REPORTING()
+end
+
+function module.has_new_rockstar_msg(): bool
+    return SOCIALCLUB.SC_HAS_NEW_ROCKSTAR_MSG()
+end
+
+-- Same as HAS_ACHIEVEMENT_BEEN_PASSED
+function module.has_achievement_been_passed(achievement_id: int): bool
+    return SOCIALCLUB.SC_HAS_ACHIEVEMENT_BEEN_PASSED(achievement_id)
+end
+
+-- Get
+
+function module.get_new_rockstar_msg(): string
+    return SOCIALCLUB.SC_GET_NEW_ROCKSTAR_MSG()
+end
+
+-- Set
+
+function module.set_privilege_check_result_not_needed(): void
+    NETWORK.NETWORK_SET_PRIVILEGE_CHECK_RESULT_NOT_NEEDED()
+end
+
+-- Actions
+
+function module.check_online_privileges(p0: any, p1: bool): bool
+    return NETWORK.NETWORK_CHECK_ONLINE_PRIVILEGES(p0, p1)
+end
+
+function module.check_user_content_privileges(p0: int, p1: int, p2: bool): bool
+    return NETWORK.NETWORK_CHECK_USER_CONTENT_PRIVILEGES(p0, p1, p2)
+end
+
+function module.check_communication_privileges(p0: int, p1: int, p2: bool): bool
+    return NETWORK.NETWORK_CHECK_COMMUNICATION_PRIVILEGES(p0, p1, p2)
+end
+
+function module.check_text_communication_privileges(p0: any, p1: any, p2: any): bool
+    return NETWORK.NETWORK_CHECK_TEXT_COMMUNICATION_PRIVILEGES(p0, p1, p2)
+end
+
+function module.check_privileges(p0: any, p1: any, p2: any): bool
+    return NETWORK.NETWORK_CHECK_PRIVILEGES(p0, p1, p2)
+end
+
+function module.resolve_privilege_user_content(): bool
+    return NETWORK.NETWORK_RESOLVE_PRIVILEGE_USER_CONTENT()
+end
+
+function module.ugc_get_content_is_using_nickname(p0: any): bool
+    return NETWORK.UGC_GET_CONTENT_IS_USING_SC_NICKNAME(p0)
+end
+
+function module.check_ros_link_wentdown_not_net(): bool
+    return NETWORK.NETWORK_CHECK_ROS_LINK_WENTDOWN_NOT_NET()
+end
+
+function module.inbox_get_total_num_messages(): int
+    return SOCIALCLUB.SC_INBOX_GET_TOTAL_NUM_MESSAGES()
+end
+
+function module.inbox_get_message_type_at_index(msg_index: int): int
+    return SOCIALCLUB.SC_INBOX_GET_MESSAGE_TYPE_AT_INDEX(msg_index)
+end
+
+function module.inbox_get_message_is_read_at_index(msg_index: int): bool
+    return SOCIALCLUB.SC_INBOX_GET_MESSAGE_IS_READ_AT_INDEX(msg_index)
+end
+
+function module.inbox_set_message_as_read_at_index(msg_index: int): bool
+    return SOCIALCLUB.SC_INBOX_SET_MESSAGE_AS_READ_AT_INDEX(msg_index)
+end
+
+-- @param out Pointer: pass memory.alloc(size) and read the result back
+function module.inbox_message_get_data_int(p0: int, context: string, out: int): bool
+    return SOCIALCLUB.SC_INBOX_MESSAGE_GET_DATA_INT(p0, context, out)
+end
+
+function module.inbox_message_get_data_bool(p0: int, p1: string): bool
+    return SOCIALCLUB.SC_INBOX_MESSAGE_GET_DATA_BOOL(p0, p1)
+end
+
+-- @param out Pointer: pass memory.alloc(size) and read the result back
+function module.inbox_message_get_data_string(p0: int, context: string, out: int): bool
+    return SOCIALCLUB.SC_INBOX_MESSAGE_GET_DATA_STRING(p0, context, out)
+end
+
+function module.inbox_message_do_apply(p0: int): bool
+    return SOCIALCLUB.SC_INBOX_MESSAGE_DO_APPLY(p0)
+end
+
+function module.inbox_message_get_raw_type_at_index(p0: int): string
+    return SOCIALCLUB.SC_INBOX_MESSAGE_GET_RAW_TYPE_AT_INDEX(p0)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.inbox_message_push_gamer_t0_recip_list(gamer_handle: int): void
+    SOCIALCLUB.SC_INBOX_MESSAGE_PUSH_GAMER_T0_RECIP_LIST(gamer_handle)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.inbox_send_ugcstatupdate_to_recip_list(data: int): void
+    SOCIALCLUB.SC_INBOX_SEND_UGCSTATUPDATE_TO_RECIP_LIST(data)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.inbox_message_get_ugcdata(p0: int, p1: int): bool
+    return SOCIALCLUB.SC_INBOX_MESSAGE_GET_UGCDATA(p0, p1)
+end
+
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.inbox_get_bounty_data_at_index(index: int, out_data: int): bool
+    return SOCIALCLUB.SC_INBOX_GET_BOUNTY_DATA_AT_INDEX(index, out_data)
+end
+
+function module.email_retrieve_emails(offset: int, limit: int): void
+    SOCIALCLUB.SC_EMAIL_RETRIEVE_EMAILS(offset, limit)
+end
+
+function module.email_get_retrieval_status(): int
+    return SOCIALCLUB.SC_EMAIL_GET_RETRIEVAL_STATUS()
+end
+
+function module.email_get_num_retrieved_emails(): int
+    return SOCIALCLUB.SC_EMAIL_GET_NUM_RETRIEVED_EMAILS()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.email_get_email_at_index(p0: int, p1: int): bool
+    return SOCIALCLUB.SC_EMAIL_GET_EMAIL_AT_INDEX(p0, p1)
+end
+
+function module.email_marketing_email_opened(index: int, type: int): void
+    SOCIALCLUB._SC_EMAIL_MARKETING_EMAIL_OPENED(index, type)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.email_delete_emails(p0: int, p1: any): void
+    SOCIALCLUB.SC_EMAIL_DELETE_EMAILS(p0, p1)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.email_message_push_gamer_to_recip_list(gamer_handle: int): void
+    SOCIALCLUB.SC_EMAIL_MESSAGE_PUSH_GAMER_TO_RECIP_LIST(gamer_handle)
+end
+
+function module.email_message_clear_recip_list(): void
+    SOCIALCLUB.SC_EMAIL_MESSAGE_CLEAR_RECIP_LIST()
+end
+
+function module.email_send_email(p0: string): void
+    SOCIALCLUB.SC_EMAIL_SEND_EMAIL(p0)
+end
+
+function module.email_set_current_email_tag(p0: any): bool
+    return SOCIALCLUB.SC_EMAIL_SET_CURRENT_EMAIL_TAG(p0)
+end
+
+function module.cache_new_rockstar_msgs(toggle: bool): void
+    SOCIALCLUB.SC_CACHE_NEW_ROCKSTAR_MSGS(toggle)
+end
+
+function module.presence_attr_set_int(attr_hash: int, value: int): bool
+    return SOCIALCLUB.SC_PRESENCE_ATTR_SET_INT(attr_hash, value)
+end
+
+function module.presence_attr_set_float(attr_hash: int, value: float): bool
+    return SOCIALCLUB.SC_PRESENCE_ATTR_SET_FLOAT(attr_hash, value)
+end
+
+function module.presence_attr_set_string(attr_hash: int, value: string): bool
+    return SOCIALCLUB.SC_PRESENCE_ATTR_SET_STRING(attr_hash, value)
+end
+
+function module.presence_set_activity_rating(p0: any, p1: float): bool
+    return SOCIALCLUB.SC_PRESENCE_SET_ACTIVITY_RATING(p0, p1)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.gamerdata_get_int(name: string, value: int): bool
+    return SOCIALCLUB.SC_GAMERDATA_GET_INT(name, value)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.gamerdata_get_float(name: string, value: int): bool
+    return SOCIALCLUB.SC_GAMERDATA_GET_FLOAT(name, value)
+end
+
+function module.gamerdata_get_bool(name: string): bool
+    return SOCIALCLUB.SC_GAMERDATA_GET_BOOL(name)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.gamerdata_get_string(name: string, value: int): bool
+    return SOCIALCLUB.SC_GAMERDATA_GET_STRING(name, value)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.gamerdata_get_active_xp_bonus(value: int): bool
+    return SOCIALCLUB.SC_GAMERDATA_GET_ACTIVE_XP_BONUS(value)
+end
+
+-- Starts a task to check an entered string for profanity on the ROS/Social Club services
+-- @param token Pointer: pass memory.alloc(size) and read the result back
+function module.profanity_check_string(string: string, token: int): bool
+    return SOCIALCLUB.SC_PROFANITY_CHECK_STRING(string, token)
+end
+
+-- @param token Pointer: pass memory.alloc(size) and read the result back
+function module.profanity_check_string_ugc(string: string, token: int): bool
+    return SOCIALCLUB.SC_PROFANITY_CHECK_STRING_UGC(string, token)
+end
+
+function module.profanity_get_check_is_valid(token: int): bool
+    return SOCIALCLUB.SC_PROFANITY_GET_CHECK_IS_VALID(token)
+end
+
+function module.profanity_get_check_is_pending(token: int): bool
+    return SOCIALCLUB.SC_PROFANITY_GET_CHECK_IS_PENDING(token)
+end
+
+function module.profanity_get_string_passed(token: int): bool
+    return SOCIALCLUB.SC_PROFANITY_GET_STRING_PASSED(token)
+end
+
+function module.profanity_get_string_status(token: int): int
+    return SOCIALCLUB.SC_PROFANITY_GET_STRING_STATUS(token)
+end
+
+-- Retrieves the profane part of the string with max size of 128
+-- @param out_profane_word Pointer: pass memory.alloc(size) and read the result back
+function module.profanity_get_profane_word(token: int, out_profane_word: int): bool
+    return SOCIALCLUB.SC_PROFANITY_GET_PROFANE_WORD(token, out_profane_word)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.licenseplate_check_string(p0: string, p1: int): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_CHECK_STRING(p0, p1)
+end
+
+function module.licenseplate_get_check_is_valid(p0: any): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_CHECK_IS_VALID(p0)
+end
+
+function module.licenseplate_get_check_is_pending(p0: any): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_CHECK_IS_PENDING(p0)
+end
+
+function module.licenseplate_get_count(token: int): int
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_COUNT(token)
+end
+
+function module.licenseplate_get_plate(token: int, plate_index: int): string
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_PLATE(token, plate_index)
+end
+
+function module.licenseplate_get_plate_data(token: int, plate_index: int): string
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_PLATE_DATA(token, plate_index)
+end
+
+-- @param plate_data Pointer: pass memory.alloc(size) and read the result back
+function module.licenseplate_set_plate_data(
+    old_plate_text: string, new_plate_text: string, plate_data: int
+): bool
+    -- body function:
+    return SOCIALCLUB.SC_LICENSEPLATE_SET_PLATE_DATA(old_plate_text, new_plate_text, plate_data)
+end
+
+-- @param plate_data Pointer: pass memory.alloc(size) and read the result back
+-- @param token Pointer: pass memory.alloc(size) and read the result back
+function module.licenseplate_add(plate_text: string, plate_data: int, token: int): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_ADD(plate_text, plate_data, token)
+end
+
+function module.licenseplate_get_add_is_pending(token: int): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_ADD_IS_PENDING(token)
+end
+
+function module.licenseplate_get_add_status(token: int): int
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_ADD_STATUS(token)
+end
+
+-- @param token Pointer: pass memory.alloc(size) and read the result back
+function module.licenseplate_isvalid(plate_text: string, token: int): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_ISVALID(plate_text, token)
+end
+
+function module.licenseplate_get_isvalid_is_pending(token: int): bool
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_ISVALID_IS_PENDING(token)
+end
+
+function module.licenseplate_get_isvalid_status(token: int): int
+    return SOCIALCLUB.SC_LICENSEPLATE_GET_ISVALID_STATUS(token)
+end
+
+function module.community_event_is_active(): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_IS_ACTIVE()
+end
+
+function module.community_event_get_event_id(): int
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EVENT_ID()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_int(p0: string, p1: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_INT(p0, p1)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_float(p0: string, p1: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_FLOAT(p0, p1)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_string(p0: string, p1: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_STRING(p0, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_display_name(p0: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_DISPLAY_NAME(p0)
+end
+
+function module.community_event_is_active_for_type(p0: string): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_IS_ACTIVE_FOR_TYPE(p0)
+end
+
+function module.community_event_get_event_id_for_type(p0: string): int
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EVENT_ID_FOR_TYPE(p0)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_int_for_type(p0: string, p1: int, p2: string): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_INT_FOR_TYPE(p0, p1, p2)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_float_for_type(p0: string, p1: int, p2: string): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_FLOAT_FOR_TYPE(p0, p1, p2)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_string_for_type(p0: string, p1: int, p2: string): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_STRING_FOR_TYPE(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_display_name_for_type(p0: int, p1: string): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_DISPLAY_NAME_FOR_TYPE(p0, p1)
+end
+
+function module.community_event_is_active_by_id(p0: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_IS_ACTIVE_BY_ID(p0)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_int_by_id(p0: int, p1: string, p2: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_INT_BY_ID(p0, p1, p2)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_float_by_id(p0: int, p1: string, p2: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_FLOAT_BY_ID(p0, p1, p2)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_extra_data_string_by_id(p0: int, p1: string, p2: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_EXTRA_DATA_STRING_BY_ID(p0, p1, p2)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.community_event_get_display_name_by_id(p0: int, p1: int): bool
+    return SOCIALCLUB.SC_COMMUNITY_EVENT_GET_DISPLAY_NAME_BY_ID(p0, p1)
+end
+
+function module.transition_news_show(p0: any): bool
+    return SOCIALCLUB.SC_TRANSITION_NEWS_SHOW(p0)
+end
+
+function module.transition_news_show_timed(p0: any, p1: any): bool
+    return SOCIALCLUB.SC_TRANSITION_NEWS_SHOW_TIMED(p0, p1)
+end
+
+function module.transition_news_show_next_item(): bool
+    return SOCIALCLUB.SC_TRANSITION_NEWS_SHOW_NEXT_ITEM()
+end
+
+function module.transition_news_has_extra_data_tu(): bool
+    return SOCIALCLUB.SC_TRANSITION_NEWS_HAS_EXTRA_DATA_TU()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.transition_news_get_extra_data_int_tu(p0: string, p1: int): bool
+    return SOCIALCLUB.SC_TRANSITION_NEWS_GET_EXTRA_DATA_INT_TU(p0, p1)
+end
+
+function module.transition_news_end(): void
+    SOCIALCLUB.SC_TRANSITION_NEWS_END()
+end
+
+function module.pause_news_init_starter_pack(p0: any): bool
+    return SOCIALCLUB.SC_PAUSE_NEWS_INIT_STARTER_PACK(p0)
+end
+
+function module.pause_news_get_pending_story(p0: any): bool
+    return SOCIALCLUB.SC_PAUSE_NEWS_GET_PENDING_STORY(p0)
+end
+
+function module.pause_news_shutdown(): void
+    SOCIALCLUB.SC_PAUSE_NEWS_SHUTDOWN()
+end
+
+-- Returns the nickname of the logged-in Rockstar Social Club account
+function module.account_info_get_nickname(): string
+    return SOCIALCLUB.SC_ACCOUNT_INFO_GET_NICKNAME()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.achievement_info_status(p0: int): bool
+    return SOCIALCLUB.SC_ACHIEVEMENT_INFO_STATUS(p0)
+end
+
 return module

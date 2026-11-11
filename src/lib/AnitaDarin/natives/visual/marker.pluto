@@ -1,0 +1,36 @@
+-- 3D markers drawn in the world
+
+local module = {}
+
+-- Actions
+
+function module.draw(
+    type: int, pos_x: float, pos_y: float, pos_z: float, dir_x: float, dir_y: float, dir_z: float,
+    rot_x: float, rot_y: float, rot_z: float, scale_x: float, scale_y: float, scale_z: float,
+    red: int, green: int, blue: int, alpha: int, bob_up_and_down: bool, face_camera: bool, p19: int,
+    rotate: bool, texture_dict: string, texture_name: string, draw_on_ents: bool
+): void
+    -- body function:
+    GRAPHICS.DRAW_MARKER(type, pos_x, pos_y, pos_z, dir_x, dir_y, dir_z, rot_x, rot_y, rot_z, scale_x, scale_y, scale_z, red, green, blue, alpha, bob_up_and_down, face_camera, p19, rotate, texture_dict, texture_name, draw_on_ents)
+end
+
+function module.draw_ex(
+    type: int, pos_x: float, pos_y: float, pos_z: float, dir_x: float, dir_y: float, dir_z: float,
+    rot_x: float, rot_y: float, rot_z: float, scale_x: float, scale_y: float, scale_z: float,
+    red: int, green: int, blue: int, alpha: int, bob_up_and_down: bool, face_camera: bool, p19: any,
+    rotate: bool, texture_dict: string, texture_name: string, draw_on_ents: bool, p24: bool,
+    p25: bool
+): void
+    -- body function:
+    GRAPHICS.DRAW_MARKER_EX(type, pos_x, pos_y, pos_z, dir_x, dir_y, dir_z, rot_x, rot_y, rot_z, scale_x, scale_y, scale_z, red, green, blue, alpha, bob_up_and_down, face_camera, p19, rotate, texture_dict, texture_name, draw_on_ents, p24, p25)
+end
+
+-- Draws a 3D sphere, typically seen in the GTA:O freemode event "Penned In"
+function module.draw_sphere(
+    x: float, y: float, z: float, radius: float, red: int, green: int, blue: int, alpha: float
+): void
+    -- body function:
+    GRAPHICS.DRAW_MARKER_SPHERE(x, y, z, radius, red, green, blue, alpha)
+end
+
+return module

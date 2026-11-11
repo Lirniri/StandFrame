@@ -19,6 +19,7 @@
 -- right away, while the script is still starting, so what needs the natives loaded waits a frame
 
 local class_utils = Atdar.globals.pluto.class
+
 -- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake
 -- (a missing `local`) doesn't break reading functions here
 local debug = debug
@@ -47,8 +48,10 @@ local HOOKS = { on_start = true, on_stop = true, on_tick = true }
 
 -- The debug option's parts and what each must be
 local DEBUG_PARTS = { functions = "table", groups = "table", hide = "table", categories = "table" }
+
 -- What one function's entry in debug.functions may hold
 local FUNCTION_PARTS = { "help", "params", "args", "live" }
+
 -- The options a Module takes besides its hooks
 local OPTIONS = { name = true, deps = true, debug = true, skip_first_tick = true }
 for hook in pairs(HOOKS) do
@@ -63,17 +66,20 @@ local function validate_debug(v: table, debug_opts): void
         v.known("debug", key, DEBUG_PARTS)
         v.kind($"debug.{key}", value, DEBUG_PARTS[key])
     end
+
     for name, fn_opts in pairs(debug_opts.functions or {}) do
         v.kind($"debug.functions.{tostring(name)}", fn_opts, "table")
         for key in pairs(fn_opts) do
             v.known($"debug.functions.{name}", key, FUNCTION_PARTS)
         end
     end
+
     for i, category in ipairs(debug_opts.categories or {}) do
         if type(category) ~= "table" or type(category.key) ~= "string" or type(category.words) ~= "table" then
             v.fail("debug.categories[" .. i .. "] must be { key = \"...\", words = { ... }, name = ... }")
         end
     end
+
     for i, group in ipairs(debug_opts.groups or {}) do
         if type(group) ~= "table" or group.name == nil or type(group.functions) ~= "table" then
             v.fail("debug.groups[" .. i .. "] must be { name = ..., functions = { ... } }")
@@ -83,7 +89,9 @@ end
 
 -- The errors point at the new Module({ ... }) or parent:__construct({ ... }) that wrote the options
 local function validate_opts(opts: table): void
+
     check.validator("[Module]").non_empty("name", opts.name)
+
     local v = check.validator($"[Module '{opts.name}']")
 
     for key, value in pairs(opts) do
@@ -117,19 +125,24 @@ Module = class
         validate_opts(opts)
 
         self.name = opts.name
+
         -- Own copy: a table shared between instances would change for all of them
         self.deps = {}
         for _, dep in ipairs(opts.deps or {}) do
             table.insert(self.deps, dep)
         end
+
         -- registered -> running -> stopped, or failed (with the reason in self.error)
         self.status = "registered"
         self.error = nil
         self.log = new Logger(opts.name)
+
         -- How it shows in the debug menu (see the top of this file)
         self.debug = opts.debug or {}
+
         -- Whether the first tick after a start is skipped (see the top of this file)
         self.skip_first_tick = opts.skip_first_tick == true
+
         -- Set at every start: the first tick still to skip
         self._skip_tick = false
 
@@ -162,16 +175,21 @@ Module = class
         if self.status == "running" then
             return true
         end
+
         if self.status == "failed" then
             return false
         end
+
         self.error = nil
         self._skip_tick = self.skip_first_tick
+
         if not self:call_hook("on_start") then
             return false
         end
+
         self.status = "running"
         self.log:debug("started")
+
         return true
     end
 
@@ -179,6 +197,7 @@ Module = class
         if self.status ~= "running" then
             return
         end
+
         -- Status first: a failing on_stop marks the module failed, which must stay
         self.status = "stopped"
         self:call_hook("on_stop")
@@ -189,10 +208,12 @@ Module = class
         if self.status ~= "running" then
             return
         end
+
         if self._skip_tick then
             self._skip_tick = false
             return
         end
+
         if not self:call_hook("on_tick") then
             -- Cleanup, so a module that broke mid-tick doesn't leave its effects behind
             pcall(self.on_stop, self)
@@ -201,6 +222,7 @@ Module = class
 
     -- Marks the module failed; it isn't started or ticked again
     function fail(reason: string): void
+
         -- Lua cuts a long file's path in its errors ("...ata\Roaming\Stand\Lua Scripts\lib\x.lua:1: ..."):
         -- shown from Stand's folder on
         reason = reason:gsub("%.%.%.[^\n:]-(Stand[/\\]Lua Scripts[/\\])", "%1")
@@ -228,14 +250,18 @@ Module = class
     -- first time a text is asked for. Its keys are its own: they never mix with the script's or another module's
     function _language_prefix(): string
         if self._language_loaded ~= true then
+
             self._language_loaded = true
             local i18n = Atdar.loader.load("core/i18n")
             local old = language_sources[self.name]
+
             if old ~= nil then
                 i18n.remove_source(old)
                 language_sources[self.name] = nil
             end
+
             local dir = self:folder()
+
             if dir ~= nil then
                 language_sources[self.name] = i18n.add_source($"{dir}language\\", false, $"module.{self.name}")
             end
@@ -314,6 +340,7 @@ end
 -- The list is read once per class and kind (debug.getinfo/getlocal are slow); a reloaded module is a new
 -- class, so it's read again. Don't change the returned list
 function Module.functions_of(instance: table, kind: string = "public"): table
+
     local found = {}
     local list = {}
     local cls = getmetatable(instance)
@@ -341,12 +368,14 @@ function Module.functions_of(instance: table, kind: string = "public"): table
         end
         cls = rawget(cls, "__parent")
     end
+    
     table.sort(list, |a, b| -> a.name < b.name)
 
     if type(first) == "table" then
         functions_cache[first] = functions_cache[first] or {}
         functions_cache[first][kind] = list
     end
+
     return list
 end
 

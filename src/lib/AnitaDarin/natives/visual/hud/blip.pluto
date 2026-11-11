@@ -65,4 +65,418 @@ function module.waypoint.get_sprite(): int
     return HUD.GET_WAYPOINT_BLIP_ENUM_ID()
 end
 
+-- State
+
+function module.is_short_range(blip: int): bool
+    return HUD.IS_BLIP_SHORT_RANGE(blip)
+end
+
+function module.is_on_minimap(blip: int): bool
+    return HUD.IS_BLIP_ON_MINIMAP(blip)
+end
+
+function module.does_have_gps_route(blip: int): bool
+    return HUD.DOES_BLIP_HAVE_GPS_ROUTE(blip)
+end
+
+function module.is_mission_creator(blip: int): bool
+    return HUD.IS_MISSION_CREATOR_BLIP(blip)
+end
+
+function module.is_hovering_over_mission_creator(): bool
+    return HUD.IS_HOVERING_OVER_MISSION_CREATOR_BLIP()
+end
+
+function module.is_flashing(blip: int): bool
+    return HUD.IS_BLIP_FLASHING(blip)
+end
+
+function module.does_ped_have_ai(ped: int): bool
+    return HUD.DOES_PED_HAVE_AI_BLIP(ped)
+end
+
+-- Get
+
+function module.get_standard_enum_id(): int
+    return HUD.GET_STANDARD_BLIP_ENUM_ID()
+end
+
+function module.get_number_of_active_blips(): int
+    return HUD.GET_NUMBER_OF_ACTIVE_BLIPS()
+end
+
+function module.get_closest_info_id(blip_sprite: int): int
+    return HUD.GET_CLOSEST_BLIP_INFO_ID(blip_sprite)
+end
+
+function module.get_info_id_display(blip: int): int
+    return HUD.GET_BLIP_INFO_ID_DISPLAY(blip)
+end
+
+function module.get_info_id_entity_index(blip: int): int
+    return HUD.GET_BLIP_INFO_ID_ENTITY_INDEX(blip)
+end
+
+function module.get_info_id_pickup_index(blip: int): int
+    return HUD.GET_BLIP_INFO_ID_PICKUP_INDEX(blip)
+end
+
+function module.get_blip_coords(blip: int): vector3
+    return HUD.GET_BLIP_COORDS(blip)
+end
+
+-- Returns -1, 0, +1, depending on if the blip is fading out, doing nothing, or fading in respectively
+function module.get_fade_direction(blip: int): int
+    return HUD.GET_BLIP_FADE_DIRECTION(blip)
+end
+
+function module.get_new_selected_mission_creator(): int
+    return HUD.GET_NEW_SELECTED_MISSION_CREATOR_BLIP()
+end
+
+function module.get_main_player_id(): int
+    return HUD.GET_MAIN_PLAYER_BLIP_ID()
+end
+
+function module.get_ai_ped_ped_index(ped: int): int
+    return HUD.GET_AI_PED_PED_BLIP_INDEX(ped)
+end
+
+-- Returns the current AI BLIP for the specified ped
+function module.get_ai_ped_vehicle_index(ped: int): int
+    return HUD.GET_AI_PED_VEHICLE_BLIP_INDEX(ped)
+end
+
+-- Set
+
+-- Enable / disable showing route for the Blip-object
+function module.set_route(blip: int, enabled: bool): void
+    HUD.SET_BLIP_ROUTE(blip, enabled)
+end
+
+function module.set_route_colour(blip: int, colour: int): void
+    HUD.SET_BLIP_ROUTE_COLOUR(blip, colour)
+end
+
+function module.set_radar_zoom(blip: int, zoom: float): void
+    HUD.SET_RADAR_ZOOM_TO_BLIP(blip, zoom)
+end
+
+function module.set_coords(blip: int, pos_x: float, pos_y: float, pos_z: float): void
+    HUD.SET_BLIP_COORDS(blip, pos_x, pos_y, pos_z)
+end
+
+-- Sets the displayed sprite for a specific blip
+function module.set_sprite(blip: int, sprite_id: int): void
+    HUD.SET_BLIP_SPRITE(blip, sprite_id)
+end
+
+function module.set_cop_sprite(p0: int, p1: float): void
+    HUD.SET_COP_BLIP_SPRITE(p0, p1)
+end
+
+function module.set_cop_sprite_as_standard(): void
+    HUD.SET_COP_BLIP_SPRITE_AS_STANDARD()
+end
+
+function module.set_name_from_text_file(blip: int, gxt_entry: string): void
+    HUD.SET_BLIP_NAME_FROM_TEXT_FILE(blip, gxt_entry)
+end
+
+function module.set_name_to_player_name(blip: int, player_id: int): void
+    HUD.SET_BLIP_NAME_TO_PLAYER_NAME(blip, player_id)
+end
+
+-- Sets alpha-channel for blip color
+function module.set_alpha(blip: int, alpha: int): void
+    HUD.SET_BLIP_ALPHA(blip, alpha)
+end
+
+function module.set_fade(blip: int, opacity: int, duration: int): void
+    HUD.SET_BLIP_FADE(blip, opacity, duration)
+end
+
+-- After some testing, looks like you need to use CEIL() on the rotation (vehicle/ped heading) before using it there
+function module.set_rotation(blip: int, rotation: int): void
+    HUD.SET_BLIP_ROTATION(blip, rotation)
+end
+
+-- Does not require whole number/integer rotations
+function module.set_rotation_with_float(blip: int, heading: float): void
+    HUD.SET_BLIP_ROTATION_WITH_FLOAT(blip, heading)
+end
+
+-- Adds up after viewing multiple R* scripts. I believe that the duration is in miliseconds
+function module.set_flash_timer(blip: int, duration: int): void
+    HUD.SET_BLIP_FLASH_TIMER(blip, duration)
+end
+
+function module.set_flash_interval(blip: int, p1: any): void
+    HUD.SET_BLIP_FLASH_INTERVAL(blip, p1)
+end
+
+function module.set_colour(blip: int, color: int): void
+    HUD.SET_BLIP_COLOUR(blip, color)
+end
+
+-- Can be used to give blips any RGB colour with SET_BLIP_COLOUR(blip, 84)
+function module.set_secondary_colour(blip: int, r: int, g: int, b: int): void
+    HUD.SET_BLIP_SECONDARY_COLOUR(blip, r, g, b)
+end
+
+function module.set_hidden_on_legend(blip: int, toggle: bool): void
+    HUD.SET_BLIP_HIDDEN_ON_LEGEND(blip, toggle)
+end
+
+function module.set_high_detail(blip: int, toggle: bool): void
+    HUD.SET_BLIP_HIGH_DETAIL(blip, toggle)
+end
+
+function module.set_as_mission_creator(blip: int, toggle: bool): void
+    HUD.SET_BLIP_AS_MISSION_CREATOR_BLIP(blip, toggle)
+end
+
+function module.set_marker_long_distance(p0: any, p1: any): void
+    HUD.SET_BLIP_MARKER_LONG_DISTANCE(p0, p1)
+end
+
+function module.set_flashes(blip: int, toggle: bool): void
+    HUD.SET_BLIP_FLASHES(blip, toggle)
+end
+
+function module.set_flashes_alternate(blip: int, toggle: bool): void
+    HUD.SET_BLIP_FLASHES_ALTERNATE(blip, toggle)
+end
+
+-- Sets whether or not the specified blip should only be displayed when nearby, or on the minimap
+function module.set_as_short_range(blip: int, toggle: bool): void
+    HUD.SET_BLIP_AS_SHORT_RANGE(blip, toggle)
+end
+
+function module.set_scale(blip: int, scale: float): void
+    HUD.SET_BLIP_SCALE(blip, scale)
+end
+
+function module.set_scale_2d(blip: int, x_scale: float, y_scale: float): void
+    HUD.SET_BLIP_SCALE_2D(blip, x_scale, y_scale)
+end
+
+function module.set_priority(blip: int, priority: int): void
+    HUD.SET_BLIP_PRIORITY(blip, priority)
+end
+
+function module.set_display(blip: int, display_id: int): void
+    HUD.SET_BLIP_DISPLAY(blip, display_id)
+end
+
+function module.set_category(blip: int, index: int): void
+    HUD.SET_BLIP_CATEGORY(blip, index)
+end
+
+function module.set_as_friendly(blip: int, toggle: bool): void
+    HUD.SET_BLIP_AS_FRIENDLY(blip, toggle)
+end
+
+-- Must be toggled before being queued for animation
+function module.set_extended_height_threshold(blip: int, toggle: bool): void
+    HUD.SET_BLIP_EXTENDED_HEIGHT_THRESHOLD(blip, toggle)
+end
+
+function module.set_short_height_threshold(p0: any, p1: any): void
+    HUD.SET_BLIP_SHORT_HEIGHT_THRESHOLD(p0, p1)
+end
+
+function module.set_use_height_indicator_on_edge(blip: int, p1: any): void
+    HUD.SET_BLIP_USE_HEIGHT_INDICATOR_ON_EDGE(blip, p1)
+end
+
+-- Makes a blip go small when off the minimap
+function module.set_as_minimal_on_edge(blip: int, toggle: bool): void
+    HUD.SET_BLIP_AS_MINIMAL_ON_EDGE(blip, toggle)
+end
+
+function module.set_radius_edge(blip: int, toggle: bool): void
+    HUD.SET_RADIUS_BLIP_EDGE(blip, toggle)
+end
+
+function module.set_bright(blip: int, toggle: bool): void
+    HUD.SET_BLIP_BRIGHT(blip, toggle)
+end
+
+function module.set_show_cone(blip: int, toggle: bool, hud_color_index: int): void
+    HUD.SET_BLIP_SHOW_CONE(blip, toggle, hud_color_index)
+end
+
+-- Applies to new eBlipParams _BLIP_CHANGE_46* and _BLIP_CHANGE_47*
+function module.set_gps_route_display_distance(
+    blip: int, blip_change_param46: int, blip_change_param47: bool
+): void
+    -- body function:
+    HUD._SET_BLIP_GPS_ROUTE_DISPLAY_DISTANCE(blip, blip_change_param46, blip_change_param47)
+end
+
+function module.set_ped_has_ai(ped: int, has_cone: bool): void
+    HUD.SET_PED_HAS_AI_BLIP(ped, has_cone)
+end
+
+function module.set_ped_has_ai_with_colour(ped: int, has_cone: bool, color: int): void
+    HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(ped, has_cone, color)
+end
+
+function module.set_ped_ai_gang_id(ped: int, gang_id: int): void
+    HUD.SET_PED_AI_BLIP_GANG_ID(ped, gang_id)
+end
+
+function module.set_ped_ai_has_cone(ped: int, toggle: bool): void
+    HUD.SET_PED_AI_BLIP_HAS_CONE(ped, toggle)
+end
+
+function module.set_ped_ai_forced_on(ped: int, toggle: bool): void
+    HUD.SET_PED_AI_BLIP_FORCED_ON(ped, toggle)
+end
+
+function module.set_ped_ai_notice_range(ped: int, range: float): void
+    HUD.SET_PED_AI_BLIP_NOTICE_RANGE(ped, range)
+end
+
+function module.set_ped_ai_sprite(ped: int, sprite_id: int): void
+    HUD.SET_PED_AI_BLIP_SPRITE(ped, sprite_id)
+end
+
+-- Actions
+
+-- Starts a text command to change the name of a blip displayed in the pause menu
+function module.begin_text_command_set_name(text_label: string): void
+    HUD.BEGIN_TEXT_COMMAND_SET_BLIP_NAME(text_label)
+end
+
+-- Finalizes a text command started with BEGIN_TEXT_COMMAND_SET_BLIP_NAME, setting the name of the specified blip
+function module.end_text_command_set_name(blip: int): void
+    HUD.END_TEXT_COMMAND_SET_BLIP_NAME(blip)
+end
+
+function module.add_text_component_substring_name(blip: int): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_BLIP_NAME(blip)
+end
+
+function module.clear_all_routes(): void
+    HUD.CLEAR_ALL_BLIP_ROUTES()
+end
+
+function module.update_radar_zoom(): void
+    HUD.UPDATE_RADAR_ZOOM_TO_BLIP()
+end
+
+function module.add_for_radius(pos_x: float, pos_y: float, pos_z: float, radius: float): int
+    return HUD.ADD_BLIP_FOR_RADIUS(pos_x, pos_y, pos_z, radius)
+end
+
+-- Adds a rectangular blip for the specified coordinates/area
+function module.add_for_area(x: float, y: float, z: float, width: float, height: float): int
+    return HUD.ADD_BLIP_FOR_AREA(x, y, z, width, height)
+end
+
+-- Returns red ( default ) blip attached to entity
+function module.add_for_entity(entity: int): int
+    return HUD.ADD_BLIP_FOR_ENTITY(entity)
+end
+
+function module.add_for_pickup(pickup: int): int
+    return HUD.ADD_BLIP_FOR_PICKUP(pickup)
+end
+
+-- Creates an orange ( default ) Blip-object. Returns a Blip-object which can then be modified
+function module.add_for_coord(x: float, y: float, z: float): int
+    return HUD.ADD_BLIP_FOR_COORD(x, y, z)
+end
+
+function module.trigger_sonar(pos_x: float, pos_y: float, pos_z: float, radius: float, p4: int): void
+    HUD.TRIGGER_SONAR_BLIP(pos_x, pos_y, pos_z, radius, p4)
+end
+
+function module.allow_sonar_blips(toggle: bool): void
+    HUD.ALLOW_SONAR_BLIPS(toggle)
+end
+
+-- In the C++ SDK, this seems not to work-- the blip isn't removed immediately. I use it for saving cars
+-- @param blip Pointer: pass memory.alloc(size) and read the result back
+function module.remove(blip: int): void
+    HUD.REMOVE_BLIP(blip)
+end
+
+function module.pulse(blip: int): void
+    HUD.PULSE_BLIP(blip)
+end
+
+function module.show_number_on(blip: int, number: int): void
+    HUD.SHOW_NUMBER_ON_BLIP(blip, number)
+end
+
+function module.hide_number_on(blip: int): void
+    HUD.HIDE_NUMBER_ON_BLIP(blip)
+end
+
+function module.show_height_on(blip: int, toggle: bool): void
+    HUD.SHOW_HEIGHT_ON_BLIP(blip, toggle)
+end
+
+-- Adds a green checkmark on top of a blip
+function module.show_tick_on(blip: int, toggle: bool): void
+    HUD.SHOW_TICK_ON_BLIP(blip, toggle)
+end
+
+function module.show_gold_tick_on(blip: int, toggle: bool): void
+    HUD.SHOW_GOLD_TICK_ON_BLIP(blip, toggle)
+end
+
+function module.show_for_sale_icon_on(blip: int, toggle: bool): void
+    HUD.SHOW_FOR_SALE_ICON_ON_BLIP(blip, toggle)
+end
+
+-- Adds the GTA: Online player heading indicator to a blip
+function module.show_heading_indicator_on(blip: int, toggle: bool): void
+    HUD.SHOW_HEADING_INDICATOR_ON_BLIP(blip, toggle)
+end
+
+-- Highlights a blip by a cyan color circle
+function module.show_outline_indicator_on(blip: int, toggle: bool): void
+    HUD.SHOW_OUTLINE_INDICATOR_ON_BLIP(blip, toggle)
+end
+
+function module.show_friend_indicator_on(blip: int, toggle: bool): void
+    HUD.SHOW_FRIEND_INDICATOR_ON_BLIP(blip, toggle)
+end
+
+function module.show_crew_indicator_on(blip: int, toggle: bool): void
+    HUD.SHOW_CREW_INDICATOR_ON_BLIP(blip, toggle)
+end
+
+-- Interesting fact: A hash collision for this is RESET_JETPACK_MODEL_SETTINGS
+function module.remove_cop_from_ped(ped: int): void
+    HUD.REMOVE_COP_BLIP_FROM_PED(ped)
+end
+
+function module.custom_minimap_set_object(sprite_id: int): void
+    HUD.CUSTOM_MINIMAP_SET_BLIP_OBJECT(sprite_id)
+end
+
+-- Add a BLIP_GALLERY at the specific coordinate. Used in fm_maintain_transition_players to display race track points
+function module.custom_minimap_create(x: float, y: float, z: float): int
+    return HUD.CUSTOM_MINIMAP_CREATE_BLIP(x, y, z)
+end
+
+function module.custom_minimap_clear_blips(): void
+    HUD.CUSTOM_MINIMAP_CLEAR_BLIPS()
+end
+
+-- Doesn't actually return anything
+function module.force_sonar_blips_this_frame(): bool
+    return HUD.FORCE_SONAR_BLIPS_THIS_FRAME()
+end
+
+-- Toggles whether or not name labels are shown on the expanded minimap next to player blips, like in GTA:O
+function module.display_player_name_tags_on_blips(toggle: bool): void
+    HUD.DISPLAY_PLAYER_NAME_TAGS_ON_BLIPS(toggle)
+end
+
 return module

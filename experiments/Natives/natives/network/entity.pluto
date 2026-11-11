@@ -1,0 +1,101 @@
+-- Network ids of entities (net id <-> handle)
+
+local module = {}
+
+-- State
+
+function module.does_entity_exist_with_id(net_id: int): bool
+    return NETWORK.NETWORK_DOES_ENTITY_EXIST_WITH_NETWORK_ID(net_id)
+end
+
+function module.is_id_remotely_controlled(net_id: int): bool
+    return NETWORK.NETWORK_IS_NETWORK_ID_REMOTELY_CONTROLLED(net_id)
+end
+
+function module.is_id_owned_by_participant(net_id: int): bool
+    return NETWORK.IS_NETWORK_ID_OWNED_BY_PARTICIPANT(net_id)
+end
+
+function module.is_damage_tracker_active_on_id(net_id: int): bool
+    return NETWORK.IS_DAMAGE_TRACKER_ACTIVE_ON_NETWORK_ID(net_id)
+end
+
+-- Get
+
+-- @param weapon_hash Pointer: pass memory.alloc(size) and read the result back
+function module.get_destroyer_id(net_id: int, weapon_hash: int): int
+    return NETWORK.NETWORK_GET_DESTROYER_OF_NETWORK_ID(net_id, weapon_hash)
+end
+
+-- @param weapon_hash Pointer: pass memory.alloc(size) and read the result back
+function module.get_entity_killer_of_player(player_id: int, weapon_hash: int): int
+    return NETWORK.NETWORK_GET_ENTITY_KILLER_OF_PLAYER(player_id, weapon_hash)
+end
+
+function module.get_entity_from_id(net_id: int): int
+    return NETWORK.NETWORK_GET_ENTITY_FROM_NETWORK_ID(net_id)
+end
+
+function module.get_entity_is_networked(entity: int): bool
+    return NETWORK.NETWORK_GET_ENTITY_IS_NETWORKED(entity)
+end
+
+function module.get_entity_is_local(entity: int): bool
+    return NETWORK.NETWORK_GET_ENTITY_IS_LOCAL(entity)
+end
+
+-- I've had this return the player's ped handle sometimes, but also other random entities
+function module.get_entity_from_object_id(p0: any): int
+    return NETWORK.NETWORK_GET_ENTITY_FROM_OBJECT_ID(p0)
+end
+
+function module.get_local_scene_from_id(net_id: int): int
+    return NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(net_id)
+end
+
+-- Set
+
+-- Whether or not another player is allowed to take control of the entity
+function module.set_id_can_migrate(net_id: int, toggle: bool): void
+    NETWORK.SET_NETWORK_ID_CAN_MIGRATE(net_id, toggle)
+end
+
+function module.set_id_exists_on_all_machines(net_id: int, toggle: bool): void
+    NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(net_id, toggle)
+end
+
+function module.set_id_always_exists_for_player(net_id: int, player_id: int, toggle: bool): void
+    NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(net_id, player_id, toggle)
+end
+
+function module.set_id_can_be_reassigned(net_id: int, toggle: bool): void
+    NETWORK.SET_NETWORK_ID_CAN_BE_REASSIGNED(net_id, toggle)
+end
+
+function module.set_id_visible_in_cutscene(net_id: int, p1: bool, p2: bool): void
+    NETWORK.SET_NETWORK_ID_VISIBLE_IN_CUTSCENE(net_id, p1, p2)
+end
+
+function module.set_id_visible_in_cutscene_hack(net_id: int, p1: bool, p2: bool): void
+    NETWORK.SET_NETWORK_ID_VISIBLE_IN_CUTSCENE_HACK(net_id, p1, p2)
+end
+
+function module.set_id_visible_in_cutscene_remain_hack(p0: any, p1: any, p2: any): void
+    NETWORK.SET_NETWORK_ID_VISIBLE_IN_CUTSCENE_REMAIN_HACK(p0, p1, p2)
+end
+
+function module.set_id_pass_control_in_tutorial(net_id: int, state: bool): void
+    NETWORK.SET_NETWORK_ID_PASS_CONTROL_IN_TUTORIAL(net_id, state)
+end
+
+-- Actions
+
+function module.register_entity_as_networked(entity: int): void
+    NETWORK.NETWORK_REGISTER_ENTITY_AS_NETWORKED(entity)
+end
+
+function module.activate_damage_tracker_on_id(net_id: int, toggle: bool): void
+    NETWORK.ACTIVATE_DAMAGE_TRACKER_ON_NETWORK_ID(net_id, toggle)
+end
+
+return module

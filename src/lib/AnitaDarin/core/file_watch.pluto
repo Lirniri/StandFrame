@@ -169,6 +169,7 @@ function module.check(): bool
     end
 
     stop_for(pending)
+
     return true
 end
 

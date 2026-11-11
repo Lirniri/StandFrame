@@ -13,17 +13,29 @@ local log = new Logger("Modules")
 local module = {}
 
 local by_name = {}
+
 -- Registration order: modules without deps between them start in this order
 local order = {}
+
 -- Start order; stop() goes through it backwards, so a module stops before the modules it needs
 local started = {}
 local tick_handler_created = false
+
 -- Module name -> the file that registered it, so reload_module() can run it again
 local files = {}
+
 -- The file run_file() is running right now; add() records it for the modules the file registers
 local loading_file = nil
+
 -- Module file -> its text as it was when the code running now was read from it (file_changed)
 local loaded_text = {}
+
+-- Module file -> its text when it was run last, even if it failed (load_new doesn't run a broken file again
+-- until it changes)
+local attempted = {}
+
+-- The folders load_dir read, for load_new to look at again
+local dirs = {}
 
 -- The file's whole text, nil if it can't be read
 local read_text = Atdar.loader.load("core/filesystem/file").read
@@ -107,16 +119,22 @@ local function start_one(mod: table, chain: table): bool
     if mod.status == "running" then
         return true
     end
+
     if mod.status == "failed" then
         return false
     end
+
     for i, name in ipairs(chain) do
         if name == mod.name then
+
             local cycle = {}
+
             for j = i, #chain do
                 table.insert(cycle, chain[j])
             end
+
             table.insert(cycle, mod.name)
+
             log:error($"dependency cycle: {table.concat(cycle, ' -> ')}")
             return false
         end
@@ -124,12 +142,15 @@ local function start_one(mod: table, chain: table): bool
 
     table.insert(chain, mod.name)
     for _, dep in ipairs(mod.deps) do
+
         local dep_mod = by_name[dep]
+
         if not dep_mod then
             mod:fail($"needs module '{dep}', which isn't registered")
         elseif not start_one(dep_mod, chain) then
             mod:fail($"needs module '{dep}', which didn't start")
         end
+
         if mod.status == "failed" then
             table.remove(chain)
             return false
@@ -149,7 +170,9 @@ local function create_tick_handler(): void
     if tick_handler_created then
         return
     end
+
     tick_handler_created = true
+
     util.create_tick_handler(function()
         for _, mod in ipairs(started) do
             if mod:is_running() and mod:has_tick() then
@@ -170,11 +193,13 @@ function module.start(): int
     create_tick_handler()
 
     local running = 0
+
     for _, mod in ipairs(order) do
         if mod:is_running() then
             running += 1
         end
     end
+
     log:debug($"{running} of {#order} module(s) running")
     return running
 end
@@ -198,6 +223,7 @@ end
 
 -- @return Set of modules that need `name`, directly or through other modules: { [name] = true }
 local function dependents_of(name: string): table
+
     local found = {}
     local queue = { name }
 
@@ -219,13 +245,16 @@ end
 -- Starts one module and its deps. A failed module gets another try
 -- @return Whether it's running afterwards
 function module.start_module(name: string): bool
+
     local mod = module.get(name)
+
     if mod.status == "failed" then
         -- A module that failed in its tick is still in the start order
         forget(mod)
         mod.status = "registered"
         mod.error = nil
     end
+
     local ok = start_one(mod, {})
     create_tick_handler()
     return ok
@@ -233,8 +262,10 @@ end
 
 -- Stops one module; the modules that need it stop first, so none keeps running without its dep
 function module.stop_module(name: string): void
+
     local to_stop = dependents_of(name)
     to_stop[module.get(name).name] = true
+
     -- Backwards: a module started after its deps, so it stops before them
     for i = #started, 1, -1 do
         local mod = started[i]
@@ -258,22 +289,28 @@ end
 -- Runs one module file; the modules it registers remember it for reload_module()
 -- @return Whether it ran without errors
 local function run_file(path: string): bool
+
     local text = read_text(path)
+    attempted[path] = text
+
     -- Timed (loader.report): compiling and running the file, with the lib files it loads
     local ok, err = Atdar.loader.measure(path, function()
         local chunk, load_err = loadfile(path)
         if not chunk then
             return false, load_err
         end
+
         loading_file = path
         local run_ok, run_err = pcall(chunk)
         loading_file = nil
         return run_ok, run_err
     end)
+
     if not ok then
         log:error($"module file failed: {path}\n{err}")
         return false
     end
+
     -- Only code that ran: after a failed reload the old code runs, and the file still differs from it
     loaded_text[path] = text
     return true
@@ -296,6 +333,17 @@ function module.load_dir(dir: string): int
     if not filesystem.is_dir(dir) then
         return 0
     end
+
+    local known = false
+    for _, other in ipairs(dirs) do
+        if other == dir then
+            known = true
+        end
+    end
+
+    if not known then
+        table.insert(dirs, dir)
+    end
     local paths = {}
     collect_pluto_files(dir, paths)
     table.sort(paths)
@@ -306,7 +354,42 @@ function module.load_dir(dir: string): int
             loaded += 1
         end
     end
+
     return loaded
+end
+
+-- Runs the files that came into the folders load_dir read since (a new module file, or one that failed
+-- before and was changed), then starts the modules they registered
+-- @return How many modules the new files registered
+function module.load_new(): int
+
+    local before = #order
+
+    for _, dir in ipairs(dirs) do
+
+        local paths = {}
+        collect_pluto_files(dir, paths)
+        table.sort(paths)
+
+        for _, path in ipairs(paths) do
+
+            local seen = attempted[path]
+
+            -- Never run, or failed before and edited since
+            if seen == nil or (loaded_text[path] == nil and read_text(path) ~= seen) then
+                run_file(path)
+            end
+        end
+    end
+
+    local added = #order - before
+
+    -- Only the new ones: start() would also bring back the modules stopped by hand (Stop All)
+    for i = before + 1, #order do
+        module.start_module(order[i].name)
+    end
+
+    return added
 end
 
 -- Puts a module back into by_name/order/files, at its old place in the order
@@ -340,8 +423,10 @@ end
 -- Only the module's own file is re-read: lib files it loads stay as they are (require caches them)
 -- @return Whether the reloaded module is running
 function module.reload_module(name: string): bool
+
     local old = module.get(name)
     local path = files[name]
+
     if not path then
         log:warn($"'{name}' wasn't loaded from a file, can't reload it")
         return false
@@ -354,6 +439,7 @@ function module.reload_module(name: string): bool
             table.insert(restart, dep_name)
         end
     end
+
     module.stop_module(name)
     local index = unregister(old)
 
@@ -376,9 +462,11 @@ function module.reload_module(name: string): bool
     end
 
     local running = module.start_module(name)
+
     for _, dep_name in ipairs(restart) do
         module.start_module(dep_name)
     end
+    
     return reloaded and running
 end
 

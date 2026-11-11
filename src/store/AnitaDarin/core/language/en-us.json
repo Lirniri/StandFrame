@@ -22,6 +22,16 @@
             "done": "Menu unloaded",
             "notice": "Built-in menu not loaded"
         },
+        "auto_copy": {
+            "name": "Copy Menu To Core",
+            "name_off": "Copy Menu To Core: Off",
+            "help": "At every start this menu from store is copied into lib %s and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
+            "off": "Off",
+            "missing": "%s (not in store)",
+            "later": "'%s' will be copied to core at the next start",
+            "disabled": "Copying to core is off; the copy in core stays",
+            "not_in_store": "Menu '%s' to copy to core isn't in store"
+        },
         "menus": {
             "divider": "Menus"
         },
@@ -32,6 +42,7 @@
             "copied": {
                 "help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded."
             },
+            "auto_copy_again": "Copying to core is on: the menu comes back at the next start",
             "removed": "Removed from core: %d file(s)"
         },
         "pack": {
@@ -123,7 +134,7 @@
             "name": "Short Name",
             "help": "Short name, e.g. for log and notification lines"
         },
-        "command_box_prefix": {
+        "command_box_base_prefix": {
             "name": "Base Commands Prefix",
             "help": "Prefix of the script's own commands (Base Commands); empty for none. Commands are renamed right away"
         },
@@ -259,6 +270,18 @@
                 "purple": "Purple",
                 "pink": "Pink"
             },
+            "subject_color_day": {
+                "name": "Day Subject Color: %s",
+                "help": "The color of the notification type (Information, Warning, Error) on message cards during the day. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
+            },
+            "subject_color_night": {
+                "name": "Night Subject Color: %s",
+                "help": "The color of the notification type (Information, Warning, Error) on message cards at night. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
+            },
+            "general": {
+                "name": "General",
+                "help": "General notification settings in the game feed"
+            },
             "day_start": {
                 "name": "Day Starts At",
                 "help": "The hour by the game's clock from which the day colors are used"
@@ -267,29 +290,30 @@
                 "name": "Night Starts At",
                 "help": "The hour by the game's clock from which the night colors are used, until the day starts"
             },
+            "background_color": {
+                "divider": "Цвет фона"
+            },
             "background_day": {
                 "name": "Day Background Color",
                 "help": "The background of the script's notifications in the game's feed during the day"
-            },
-            "flash_color_day": {
-                "name": "Day Flash Color",
-                "help": "The color notifications flash in during the day when Flash Notifications is on"
-            },
-            "subject_color_day": {
-                "name": "Day Subject Color: %s",
-                "help": "The color of the notification type (Information, Warning, Error) on message cards during the day. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
             },
             "background_night": {
                 "name": "Night Background Color",
                 "help": "The background of the script's notifications in the game's feed at night"
             },
+            "flash_color": {
+                "divider": "Цвет мигания"
+            },
+            "flash_color_day": {
+                "name": "Day Flash Color",
+                "help": "The color notifications flash in during the day when Flash Notifications is on"
+            },
             "flash_color_night": {
                 "name": "Night Flash Color",
                 "help": "The color notifications flash in at night when Flash Notifications is on"
             },
-            "subject_color_night": {
-                "name": "Night Subject Color: %s",
-                "help": "The color of the notification type (Information, Warning, Error) on message cards at night. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
+            "message": {
+                "divider": "Message Options"
             }
         },
         "debug": {
@@ -424,7 +448,11 @@
             "name": "Success",
             "help": "The emoticon of a success (copied, saved...); empty - none"
         },
-        "no_profiles": "No profiles: Create Main Profile or Save brings one back"
+        "no_profiles": "No profiles: Create Main Profile or Save brings one back",
+        "prefix_at_end": {
+            "name": "Prefix At The End",
+            "help": "The prefix goes after the command's name: godmode.atdar instead of atdar.godmode. Commands are renamed right away"
+        }
     },
     "modules": {
         "debug": {
@@ -438,7 +466,7 @@
         },
         "refresh": {
             "name": "Refresh",
-            "help": "Updates every module's status"
+            "help": "Updates every module's status and adds the modules of new files in the modules folder"
         },
         "stop_all": {
             "name": "Stop All",
@@ -461,6 +489,7 @@
             "divider": "Modules"
         },
         "empty": "No modules registered",
+        "new_files": "Modules from new files: %d",
         "start": "Start",
         "stop": "Stop",
         "restart": "Restart",
@@ -524,7 +553,7 @@
         },
         "call": {
             "button": {
-                "help": "Calls the function once; what it gives shows in a notification and on the Variable line"
+                "help": "Calls the function once; what it gives shows in a notification and on the Variable line. With a number of milliseconds picked (Left / Right) it is called after that long"
             },
             "done": "%s: done",
             "result": "%s -> %s",
@@ -537,6 +566,7 @@
         "loop": {
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
             "args": "Arguments",
+            "args_help": "The arguments the function is called with",
             "settings": "Call Settings",
             "call_on_enter": {
                 "name": "Call After Typing",
@@ -544,8 +574,7 @@
             },
             "call": "Call",
             "call_after": {
-                "name": "Call After",
-                "help": "Calls the function once after so many milliseconds"
+                "name": "Call After"
             },
             "call_scheduled": "%s: called in %d ms",
             "call_on_open": {
@@ -555,6 +584,14 @@
             "call_on_focus": {
                 "name": "Call When Hovered",
                 "help": "Calls the function every time the cursor comes onto its list"
+            },
+            "show_time": {
+                "name": "Show Call Time",
+                "help": "While its loop runs, shows how long each call of this function takes, as Stand's debug text on the screen. Off for every function: Debug > Call Function > Settings"
+            },
+            "show_result": {
+                "name": "Show Result On Screen",
+                "help": "While its loop runs, shows what this function gave, as Stand's debug text on the screen. Off for every function: Debug > Call Function > Settings"
             },
             "loop": {
                 "name": "Loop",
@@ -681,12 +718,17 @@
             "integer": "%s: a whole number is needed",
             "number": "%s: a number is needed",
             "boolean": "%s: true or false is needed"
+        },
+        "call": {
+            "expression": "Expression",
+            "expression_help": "The whole call as text. The fields below are its arguments: typing in one writes it again"
         }
     },
     "script_menu": {
         "stub": "Not made yet",
-        "options_from_other_menu": {
-            "divider": "Options from other menus"
+        "options_from_menu": {
+            "name": "Options From Menu",
+            "help": "Settings of the script that the loaded menu needs, like Languages"
         },
         "command_box": {
             "name": "Command Box",
@@ -839,7 +881,7 @@
             },
             "function": {
                 "name": "Function Name",
-                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get"
+                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame"
             },
             "args": {
                 "name": "Argument",
@@ -907,7 +949,25 @@
                     "nil": "nil takes an entry away: use Remove to delete one",
                     "no_entry": "There's no entry '%s'",
                     "protected": "This file can't be deleted",
-                    "missing": "The file is already gone"
+                    "missing": "The file is already gone",
+                    "key": "This key doesn't belong here. It can be: %s",
+                    "tables_only": "Only tables go here: a value alone has no place",
+                    "name": "Type a name first",
+                    "param": "A parameter starts with its name: handle, handle: int, speed: float = 1.5"
+                },
+                "add_function": {
+                    "name": "Add Function",
+                    "help": "Type a name: a ready-made entry of a function is added under it"
+                },
+                "add_param": {
+                    "name": "Add Parameter",
+                    "help": "Type it as in code: handle, handle: int, speed: float = 1.5"
+                },
+                "entries": {
+                    "divider": "Entries"
+                },
+                "params": {
+                    "divider": "Parameters"
                 }
             },
             "settings": {
@@ -922,12 +982,12 @@
                 "bad_param": "%s (short_name.json): parameter %d has no \"name\", so the registry's parameters for it are left out"
             },
             "show_time": {
-                "name": "Show Call Time",
-                "help": "While a loop runs, shows how long each call takes, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"
+                "name": "Disable Call Time For All",
+                "help": "On: no loop shows how long its calls take, whatever the Show Call Time of each function says. Off: each function's own Show Call Time decides. In the loops of Call Function and of a module's functions"
             },
             "show_result": {
-                "name": "Show Result On Screen",
-                "help": "While a loop runs, shows what the function gave, as Stand's debug text on the screen (Stand lets you move it). In the loops of Call Function and of a module's functions"
+                "name": "Disable Result On Screen For All",
+                "help": "On: no loop draws what its function gave, whatever the Show Result On Screen of each function says. Off: each function's own Show Result On Screen decides. In the loops of Call Function and of a module's functions"
             },
             "result_length": {
                 "name": "Result Length On Screen",
@@ -970,7 +1030,7 @@
             "call": {
                 "divider": "Call",
                 "name": "Call",
-                "help": "Calls a function once, reads a table or a variable; the result is in the notice, in the Variable line and, for a table, in the Value list"
+                "help": "Calls a function once, reads a table or a variable; the result is in the notice, in the Variable line and, for a table, in the Value list. With a number of milliseconds picked (Left / Right) it is called after that long, not at once"
             },
             "table": {
                 "divider": "Tables"

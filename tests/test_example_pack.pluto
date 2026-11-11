@@ -11,10 +11,11 @@ Atdar.parsers = Atdar.loader.auto({}, "parsers")
 Atdar.features = Atdar.loader.load("features/registry")
 
 local builder = Atdar.loader.load("ui/stand/core/menu_builder")
+local packs = Atdar.loader.load("ui/logic/stand/menu_packs")
 local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
 
 local info = nil
-for _, pack in ipairs(builder.find_loadable_packs($"{stand.SRC}store/AnitaDarin/menu\\")) do
+for _, pack in ipairs(packs.find_loadable_packs($"{stand.SRC}store/AnitaDarin/menu\\")) do
     if pack.folder == "Example" then
         info = pack
     end
@@ -26,22 +27,22 @@ stand.equal(#info.feature_files, 2, "with its two features")
 local scripts = stand.tmpdir("example_pack")
 local lib = $"{scripts}lib\\AnitaDarin\\"
 local store = $"{scripts}store\\AnitaDarin\\"
-local ok, copied = builder.copy_pack_to_core(info, lib, store)
+local ok, copied = packs.copy_pack_to_core(info, lib, store)
 stand.check(ok, $"copies to core ({tostring(copied)})")
 stand.equal(copied, 4, "two features and two menu files")
-stand.check(builder.core_copy_is_current(info, lib, store), "the copy is the pack")
+stand.check(packs.core_copy_is_current(info, lib, store), "the copy is the pack")
 
 -- The copy is what runs: features first, then the menu
 -- Like root.pluto's find_builtin_features: only the category folders of features/ count, top-level files there are the core
 local builtin = {}
 for _, path in ipairs(filesystem.list_files($"{lib}features\\")) do
     if filesystem.is_dir(path) then
-        for _, file in ipairs(builder.find_feature_files($"{path}\\")) do
+        for _, file in ipairs(packs.find_feature_files($"{path}\\")) do
             table.insert(builtin, file)
         end
     end
 end
-stand.equal(builder.load_feature_files(builtin), 2, "the copied features are in a category folder and load")
+stand.equal(packs.load_feature_files(builtin), 2, "the copied features are in a category folder and load")
 local root = new MenuNode(stand.root):list("Menu")
 stand.check(builder.build_menu(root, $"{lib}ui\\stand\\menu_from_store\\"), "the copied menu builds")
 local list = stand.child(root.handle, "Example")
@@ -54,7 +55,7 @@ stand.click(stand.find_item(list, "Example Toggle"))
 stand.check(stand.find_log("Example toggle is on"), "the toggle notifies when on")
 
 -- Removing it takes out exactly what was copied
-stand.check(builder.remove_copied_core(lib, store), "the copy is removed")
+stand.check(packs.remove_copied_core(lib, store), "the copy is removed")
 stand.check(not io.exists($"{lib}features\\example\\hello.pluto"), "its files are gone")
 
 stand.finish()

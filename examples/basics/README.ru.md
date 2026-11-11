@@ -14,6 +14,7 @@
 | `06_check.pluto` | `core/check`: `expecter` для аргументов функций, `validator` для опций |
 | `07_parsers_and_colors.pluto` | `Atdar.parsers`: аргументы, имена, команды Stand, JSON; `Atdar.color`: hex, Stand, игра |
 | `08_natives_more.pluto` | Указатели и ручки, игроки, сессия, контроль над сущностью, метки на карте |
+| `09_natives_all.pluto` | Где лежит обёртка натива (`CAM.GET_GAMEPLAY_CAM_FOV` -> `camera.gameplay.get_fov`), поиск по короткому имени, параметры-указатели |
 
 Файлы показывают вызовы, а не отдельную работающую фичу: вставляйте нужные строки в свой модуль,
 фичу или файл меню.

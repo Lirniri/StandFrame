@@ -1,0 +1,135 @@
+-- lib/AnitaDarin/ui/logic/stand/script/updater_view.pluto
+-- What the Update list shows and does besides starting the manager: the texts of its info lines, the branch
+-- picked, the switches kept in the profile, the file with what the available version changes.
+-- The items are in ui/stand/script/updater; the checking and installing is core/update_manager.
+-- Strings: core/language "updater_menu"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local manager = Atdar.loader.load("core/update_manager")
+local file = Atdar.loader.load("core/filesystem/file")
+local paths = Atdar.loader.load("core/filesystem/paths")
+
+local log = new Logger("Updater")
+local text = select(2, i18n.scope("updater_menu"))
+
+local module = {}
+
+-- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried
+module.BRANCHES = { "main", "experiment" }
+
+-- Info lines
+
+function module.installed_text(): string
+    return manager.installed_version() or text("info.unknown")
+end
+
+-- The version found by the last check, "not checked" before one, marked when it's the one installed
+function module.available_text(): string
+
+    local version = manager.available_version()
+
+    if version == nil then
+        return text("info.not_checked")
+    end
+
+    if manager.is_up_to_date() then
+        return text("info.up_to_date"):format(version)
+    end
+
+    return version
+end
+
+-- "never" when no check ran, else the time of the last one
+function module.last_check_text(): string
+
+    local time = Atdar.profile.get("update_last_check") or 0
+
+    if time == 0 then
+        return text("info.never")
+    end
+
+    return os.date("%Y-%m-%d %H:%M", time)
+end
+
+-- Branch
+
+-- "Update Branch: main"
+function module.branch_caption(): string
+    return text("branch.name"):format(Atdar.profile.get("update_branch") or "main")
+end
+
+function module.branch_options(): table
+
+    local options = {}
+
+    for _, branch in ipairs(module.BRANCHES) do
+        table.insert(options, text($"branch.{branch}"))
+    end
+
+    return options
+end
+
+-- Picks the branch updates come from, by its place in BRANCHES
+function module.set_branch(index: int): void
+
+    local branch = module.BRANCHES[index]
+
+    Atdar.profile.set("update_branch", branch)
+    log:notify(text("branch.set"):format(branch))
+end
+
+-- Switches and days
+
+-- A switch kept in the profile. Stand also calls it at every start, restoring the state it keeps: only a
+-- real change is saved
+function module.set_flag(key: string, on: bool): void
+    if Atdar.profile.get(key) == on then
+        return
+    end
+
+    Atdar.profile.set(key, on)
+end
+
+-- How often the automatic check runs, in days; 0 - never
+function module.set_check_days(days: int): void
+
+    Atdar.profile.set("update_check_days", days)
+
+    if days == 0 then
+        log:notify(text("check_days.never"))
+        return
+    end
+
+    log:notify(text("check_days.set"):format(days))
+end
+
+-- Changes
+
+-- Saves what the available version changes to a log file in store/<script>/logs and says its name
+function module.save_changes(): void
+
+    local lines = manager.changes()
+
+    if #lines == 0 then
+        log:notify(text("changes.none"), "stand")
+        return
+    end
+
+    local date = os.date("%Y-%m-%d")
+    local filename = $"{Atdar.name}_{date}_updater.log"
+    local parts = {}
+
+    for _, line in ipairs(lines) do
+        table.insert(parts, text($"changes.{line.kind}"):format(line.path))
+    end
+
+    if not file.write($"{paths.store}logs/{filename}", table.concat(parts, "\n")) then
+        log:notify(text("changes.error"), "stand")
+        return
+    end
+
+    log:notify(text("changes.saved"):format(filename), "stand")
+end
+
+return module

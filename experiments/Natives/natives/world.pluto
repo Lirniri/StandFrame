@@ -1,0 +1,22 @@
+local module = {}
+
+-- @desc Lowers coords.z to the ground (in place) if the point is above it by no more than max_height.
+-- @param max_height Maximum height above ground to snap (false — any height)
+-- @return true if the coordinates were snapped
+function module.snap_to_ground(coords: vector3, max_height: number|bool = false): bool
+
+    local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
+    if not found or coords.z < ground_z then
+        return false
+    end
+
+    if max_height ~= false and found and (coords.z - ground_z) > max_height then
+        return false
+    end
+
+    coords.z = ground_z
+    
+    return true
+end
+
+return Atdar.loader.auto(module, "natives/world")

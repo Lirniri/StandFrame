@@ -1,51 +1,18 @@
 local load = Atdar.loader.load
 local MenuNode = load("ui/stand/core/menu_node")
-local builder = load("ui/stand/core/menu_builder")
 local settings = load("ui/stand/core/settings")
 local script_menu = load("ui/stand/script/section")
+local menu_loader = load("ui/logic/stand/menu_loader")
+local menu_picker = load("ui/stand/script/menu_picker")
 local i18n = load("core/i18n")
 local Logger = load("core/logger")
-local commands = load("ui/stand/core/commands")
-local JsonFile = load("core/filesystem/json/file")
-local features = Atdar.features
-local paths = Atdar.filesystem.paths
 
 local log = new Logger("Menu")
-
-local PACKS_DIR = $"{paths.store}menu\\"
--- Built-in menu has the same shape as a pack: main.pluto here, features in lib features/
-local BUILTIN_MENU_DIR = $"{paths.lib}ui\\stand\\menu_from_store\\"
 
 local module = {}
 
 module.root = new MenuNode(menu.my_root())
 
--- @return Built-in feature files: everything in the category folders of lib features/.
--- Top-level files there (Feature, registry) are the core, not features
-local function find_builtin_features(): table
-    local files = {}
-    local dir = $"{paths.lib}features\\"
-    if not filesystem.is_dir(dir) then
-        return files
-    end
-    for _, path in ipairs(filesystem.list_files(dir)) do
-        if filesystem.is_dir(path) then
-            for _, file in ipairs(builder.find_feature_files($"{path}\\")) do
-                table.insert(files, file)
-            end
-        end
-    end
-    table.sort(files)
-    return files
-end
-
--- Checked on demand: copying a pack to core can add a built-in menu while the script runs
-local function has_builtin(): bool
-    return filesystem.exists($"{BUILTIN_MENU_DIR}main.pluto")
-end
-
--- Everything the loaded menu added (items, features, settings), so it can be taken out again
-local current = nil
 -- Divider shown while no menu is loaded and there's no built-in one; gone once a menu loads
 local notice = nil
 
@@ -60,24 +27,18 @@ local function show_notice(key: string = "menu_loader.not_found"): void
     end
 end
 
-local function unload_current(): void
-    if not current then
-        return
+local function hide_notice(): void
+    if notice then
+        menu.delete(notice)
+        notice = nil
     end
-    -- Settings first: the menu may have hosted them in one of its own lists (settings.set_parent),
-    -- and clearing that list would leave module.settings pointing at deleted items
+end
+
+local function remove_settings(): void
     if module.settings then
         settings.remove(module.settings)
         module.settings = nil
     end
-    -- Then items: switching their toggles off disables features the normal way, through Stand
-    current.node:clear()
-    for _, id in ipairs(current.feature_ids) do
-        features.remove(id)
-    end
-    settings.restore(current.settings_mark)
-    i18n.remove_source(current.strings)
-    current = nil
 end
 
 -- Stand only appends, so anything built after settings lands below them; recreate them at the bottom
@@ -88,233 +49,32 @@ local function rebuild_settings(): void
     module.settings = settings.build(module.root)
 end
 
--- Replaces the loaded menu: adds its translations (language_dir), runs feature_files,
--- then build(node) adds the items. kind ("builtin" or "pack") tells later whether the built-in menu is loaded;
--- menu_dir: the menu's folder, where its commands folder (custom command names and words) is: the pack's in store,
--- or the built-in menu's in core; pack: the pack's folder name, so Load Menu can show which pack is loaded
-local function load_menu(kind: string, language_dir: string, feature_files: table, build: function, menu_dir: string,
-        pack: ?string): void
-    if notice then
-        menu.delete(notice)
-        notice = nil
-    end
-    unload_current()
-
-    -- Before features and items, so both can already use the menu's strings
-    local strings = i18n.add_source(language_dir)
-    local ids_before = features.ids()
-    local settings_mark = settings.mark()
-    local loaded = builder.load_feature_files(feature_files)
-    if loaded < #feature_files then
-        log:warn($"ran {loaded} of {#feature_files} feature file(s)")
-    end
-
-    -- A separate node on the root ref tracks only this menu's items; their custom names apply as they're made
-    commands.begin_menu(menu_dir)
-    local node = new MenuNode(module.root.handle)
-    local built, err = pcall(build, node)
-    commands.end_menu()
-    if not built then
-        log:error($"menu build failed: {err}")
-    end
-
-    local feature_ids = {}
-    for id in pairs(features.ids()) do
-        if not ids_before[id] then
-            table.insert(feature_ids, id)
-        end
-    end
-    current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
-    -- Stand applies the active profile only to items created during the script's main body,
-    -- so a menu loaded later by hand starts without the profile's states
-    rebuild_settings()
-end
-
-local function load_builtin(): void
-    load_menu("builtin", builder.core_language_dir(paths.store), find_builtin_features(),
-        |node| -> builder.build_menu(node, BUILTIN_MENU_DIR), BUILTIN_MENU_DIR)
-end
-
-local function load_pack(info: table): void
-    load_menu("pack", $"{info.dir}language\\", info.feature_files,
-        |node| -> builder.build_menu(node, builder.layout_dir(info.dir)), info.dir, info.folder)
-end
-
--- Load Menu > Unload: takes the loaded menu out. Like a start without a menu, the root then says so;
--- Load Menu brings one back
-local function unload_menu(): void
-    if not current then
-        log:notify(i18n.text("menu_loader.unload.nothing"))
-        return
-    end
-    unload_current()
-    show_notice(has_builtin() ? "menu_loader.unload.notice" : "menu_loader.not_found")
-    rebuild_settings()
-    -- The script's notifications in the game's feed go too; "Menu unloaded" is then the only one
-    pcall(|| -> Atdar.natives.visual.hud.thefeed.remove_all())
-    log:notify(i18n.text("menu_loader.unload.done"))
-end
-
-local function copy_pack(info: table): void
-    local ok, result = builder.copy_pack_to_core(info, paths.lib, paths.store)
-    if not ok then
-        log:warn($"'{info.name}' not copied: {result}")
-        return
-    end
-    log:notify($"'{info.name}': copied {result} file(s) to core and loaded it as the built-in menu")
-    load_builtin()
-end
-
-
--- Opens the pack's folder in Windows Explorer
-local function open_menu_folder(info: table): void
-    util.open_folder(info.dir.. "menu")
-end
-local function open_features_folder(info: table): void
-    util.open_folder(info.dir.. "features")
-end
-
-
--- Takes a copied pack back out of the script; unloads it first if it's the loaded menu
-local function remove_builtin(): void
-    if current and current.kind == "builtin" then
-        unload_current()
-    end
-    local ok, result = builder.remove_copied_core(paths.lib, paths.store)
-    if ok then
-        log:notify(i18n.text("menu_loader.builtin.removed"):format(result))
-    else
-        log:warn($"nothing removed: {result}")
-    end
-    -- No menu left: the same notice as a start without a built-in menu
-    if not current and not has_builtin() then
-        show_notice()
-    end
-    -- Refreshes Load Menu so the built-in entry disappears
-    rebuild_settings()
-end
-
--- Strings of the independent menu live in store/AnitaDarin/core/language/ under "menu_loader".
--- label(): Stand label for item names and help, shown in Stand's language;
--- text(): ready string in Stand's current language, for strings filled with format()
--- Strings under "menu_loader"
-local label, text = i18n.scope("menu_loader")
-
-local function pack_options(): table
-    return { label("options.load"), label("options.copy_to_core"), label("options.open_menu_folder"), label("options.open_features_folder") }
-end
-
-local function copied_builtin_options(): table
-    return { label("options.load"), label("options.remove_from_core") }
-end
-
--- "AnitaDarin: loaded, in core" - a menu's name with its state, or just the name
-local function with_state(name: string, loaded: bool, in_core: bool): string
-    local states = {}
-    if loaded then
-        table.insert(states, text("state.loaded"))
-    end
-    if in_core then
-        table.insert(states, text("state.in_core"))
-    end
-    if #states == 0 then
-        return name
-    end
-    return text("state.name"):format(name, table.concat(states, ", "))
-end
-
--- A pack's command: menuloader and its folder, lower case, letters and digits only
--- ("Example Pack" -> "menuloaderexamplepack")
-local function pack_command(info: table): string
-    local word = info.folder:lower():gsub("[^%w]", "")
-    return $"menuloader{word}"
-end
-
--- { ref, caption() } of the entries fill_picker made
-local picker_rows = {}
-
--- Adds an entry per available menu: the built-in one (if any) and every pack in store, with their state.
--- The section is rebuilt after every load and unload, so the states are always current
-local function fill_picker(node: table): void
-    local builtin = has_builtin()
-    local manifest = builtin and builder.read_core_manifest(paths.lib)
-    -- The entries' captions are made with text(), so they're made again when the shown language changes
-    picker_rows = {}
-    -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
-    if not manifest then
-        node:divider(label("menus.divider"))
-    end
-    if builtin then
-        local loaded_builtin = current and current.kind == "builtin"
-        local function builtin_caption(): string
-            return with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name),
-                loaded_builtin, false)
-        end
-        local name = builtin_caption()
-        if manifest then
-            local ref = node:list_action(name, copied_builtin_options(), function(index)
-                if index == 1 then
-                    load_builtin()
-                else
-                    remove_builtin()
-                end
-            end, { "menuloaderbuiltin" }, text("builtin.copied.help"):format(manifest.pack))
-            table.insert(picker_rows, { ref = ref, caption = builtin_caption,
-                help = || -> text("builtin.copied.help"):format(manifest.pack) })
-            node:divider(label("menus.divider"))
-        else
-            local ref = node:action(name, load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
-            table.insert(picker_rows, { ref = ref, caption = builtin_caption })
-        end
-    end
-    local packs = builder.find_loadable_packs(PACKS_DIR)
-    for _, info in ipairs(packs) do
-        local version = info.version or text("pack.unknown_version")
-        local author = info.author or text("pack.unknown_author")
-        local help = text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
-        local loaded = current and current.kind == "pack" and current.pack == info.folder
-        local in_core = manifest and manifest.pack == info.name
-        local ref = node:list_action(with_state(info.name, loaded, in_core), pack_options(), function(index)
-            if index == 1 then
-                load_pack(info)
-            elseif index == 2 then
-                copy_pack(info)
-            elseif index == 3 then
-                open_menu_folder(info)
-            elseif index == 4 then
-                open_features_folder(info)
-            end
-        end, { pack_command(info) }, help)
-        table.insert(picker_rows, { ref = ref, caption = || -> with_state(info.name, loaded, in_core), help = pack_help })
-    end
-    if not builtin and #packs == 0 then
-        node:divider(label("no_menus"))
-    end
-end
-
-i18n.on_change(function()
-    for _, row in ipairs(picker_rows) do
-        -- The refs may belong to a section that was already removed
-        pcall(menu.set_menu_name, row.ref, row.caption())
-        if row.help then
-            pcall(menu.set_help_text, row.ref, row.help())
-        end
-    end
-end)
+-- Loads, unloads and copies menus (ui/logic/stand/menu_loader); it calls back for the root's items
+local loader = menu_loader.new({
+    root_handle = module.root.handle,
+    show_notice = show_notice,
+    hide_notice = hide_notice,
+    remove_settings = remove_settings,
+    rebuild_settings = rebuild_settings,
+})
 
 -- The script's own section (script_menu lays it out). Added before any menu loads,
 -- so unloading a menu never drops it
 settings.add(function(node)
     script_menu.build(node, {
         refresh = rebuild_settings,
-        packs = builder.find_loadable_packs(PACKS_DIR),
-        fill_menus = fill_picker,
-        unload = unload_menu,
+        packs = menu_loader.find_packs(),
+        find_packs = menu_loader.find_packs,
+        fill_menus = |node| -> menu_picker.fill(node, loader),
+        unload = loader.unload,
     })
 end)
 
-if has_builtin() then
-    load_builtin()
+-- Built here, in the script's main body, the auto-copied menu's items get the states saved in Stand's profile
+loader.auto_copy()
+
+if menu_loader.has_builtin() then
+    loader.load_builtin()
 else
     -- The root says so itself (show_notice): in the log only, no notification on top of it
     log:info("built-in menu not found, a menu can be loaded from store")

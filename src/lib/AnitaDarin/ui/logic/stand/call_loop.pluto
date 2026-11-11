@@ -1,0 +1,87 @@
+-- lib/AnitaDarin/ui/logic/stand/call_loop.pluto
+-- The loop of a called function: one call every frame, or once every `every` ms, until it's stopped or ends
+-- by itself. The same for Call Function (ui/stand/script/call_function) and for a module's functions
+-- (ui/stand/modules/list); each says what a call is (step) and when the loop is no longer wanted (is_current).
+-- What the last call gave is drawn on the screen every frame (ui/stand/core/call_display).
+
+local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local display = Atdar.loader.load("ui/stand/core/call_display")
+
+local module = {}
+
+-- Strings under "modules" ("loop.*")
+local text = select(2, i18n.scope("modules"))
+
+-- "Loop Status: running" / "every 500 ms" / "stopped" / "failed": what a loop's status line says
+-- @param kind "running", "every" (with every, ms), "stopped" or "failed"
+function module.status_line(kind: string, every: ?int): string
+
+    local value = text($"loop.state.{kind}")
+
+    if every ~= nil then
+        value = value:format(every)
+    end
+
+    return text("loop.status_line"):format(value)
+end
+
+-- Draws what the loop's last call gave, unless the function's own Show Result On Screen is off
+local function draw_result(loop_run: table): void
+    if loop_run.shows_result == nil or loop_run.shows_result() then
+        display.draw(loop_run.result)
+    end
+end
+
+-- Starts the loop in a tick handler
+-- @param loop_run The loop's state: every (ms, nil for every frame), next (ms of the next call), result (the
+--                 text drawn between the calls, nil draws nothing), shows_result (function() -> whether
+--                 the function's Show Result On Screen is on; nil: on)
+-- @param is_current Whether this loop is still the wanted one: false once it's stopped or a newer one replaced it
+-- @param step One call; false ends the loop (it failed, or what it calls is gone)
+function module.start(loop_run: table, is_current: function, step: function): void
+    util.create_tick_handler(function()
+        if clicks.is_stopping() or not is_current() then
+            return false
+        end
+
+        -- The result is drawn every frame (debug text shows for one frame only), so it stays between
+        -- the calls of a loop with an interval too
+        if loop_run.every ~= nil then
+
+            local now = util.current_time_millis()
+
+            if now < loop_run.next then
+                draw_result(loop_run)
+                return true
+            end
+
+            loop_run.next = now + loop_run.every
+        end
+
+        if not step() then
+            return false
+        end
+
+        draw_result(loop_run)
+        return true
+    end)
+end
+
+-- Runs the call with its time shown on screen (while Show Call Time is on)
+-- @param name What the time is shown under
+-- @param call The call, returns its packed results
+-- @param shown The function's own Show Call Time
+-- @return What call returned
+function module.timed(name: string, call: function, shown: bool = true): table
+    
+    local results = nil
+
+    display.timed(name, function()
+        results = call()
+    end, shown)
+
+    return results
+end
+
+return module

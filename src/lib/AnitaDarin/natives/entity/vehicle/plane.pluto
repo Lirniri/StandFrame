@@ -1,0 +1,105 @@
+-- Planes
+
+local module = {}
+
+-- State
+
+function module.is_landing_gear_intact(plane: int): bool
+    return VEHICLE.IS_PLANE_LANDING_GEAR_INTACT(plane)
+end
+
+function module.are_propellers_intact(plane: int): bool
+    return VEHICLE.ARE_PLANE_PROPELLERS_INTACT(plane)
+end
+
+function module.are_wings_intact(plane: int): bool
+    return VEHICLE.ARE_WINGS_OF_PLANE_INTACT(plane)
+end
+
+function module.are_control_panels_intact(vehicle: int, p1: bool): bool
+    return VEHICLE.ARE_PLANE_CONTROL_PANELS_INTACT(vehicle, p1)
+end
+
+-- Get
+
+function module.get_has_landing_gear(vehicle: int): bool
+    return VEHICLE.GET_VEHICLE_HAS_LANDING_GEAR(vehicle)
+end
+
+function module.get_landing_gear_state(vehicle: int): int
+    return VEHICLE.GET_LANDING_GEAR_STATE(vehicle)
+end
+
+-- Set
+
+function module.set_ignore_planes_small_pitch_change(p0: any, p1: any): void
+    VEHICLE.SET_IGNORE_PLANES_SMALL_PITCH_CHANGE(p0, p1)
+end
+
+function module.set_avoids_others(vehicle: int, toggle: bool): void
+    VEHICLE._SET_PLANE_AVOIDS_OTHERS(vehicle, toggle)
+end
+
+-- Works just like SET_VEHICLE_ENGINE_HEALTH, but only for planes
+function module.set_engine_health(vehicle: int, health: float): void
+    VEHICLE.SET_PLANE_ENGINE_HEALTH(vehicle, health)
+end
+
+function module.set_task_goto_min_height_above_terrain(plane: int, height: int): void
+    VEHICLE.SET_TASK_VEHICLE_GOTO_PLANE_MIN_HEIGHT_ABOVE_TERRAIN(plane, height)
+end
+
+function module.set_propeller_health(plane: int, health: float): bool
+    return VEHICLE.SET_PLANE_PROPELLER_HEALTH(plane, health)
+end
+
+-- This native sets the turbulence multiplier. It only works for planes
+function module.set_turbulence_multiplier(vehicle: int, multiplier: float): void
+    VEHICLE.SET_PLANE_TURBULENCE_MULTIPLIER(vehicle, multiplier)
+end
+
+function module.set_resist_to_explosion(vehicle: int, toggle: bool): void
+    VEHICLE.SET_PLANE_RESIST_TO_EXPLOSION(vehicle, toggle)
+end
+
+function module.set_disable_explode_from_body_damage_on_collision(vehicle: int, disable: bool): void
+    VEHICLE._SET_DISABLE_EXPLODE_PLANE_FROM_BODY_DAMAGE_ON_COLLISION(vehicle, disable)
+end
+
+function module.set_section_damage_scale(vehicle: int, p1: any, p2: any): void
+    VEHICLE.SET_PLANE_SECTION_DAMAGE_SCALE(vehicle, p1, p2)
+end
+
+function module.set_control_parts_break_off_instantly(vehicle: int, toggle: bool): void
+    VEHICLE._SET_PLANE_CONTROL_PARTS_BREAK_OFF_INSTANTLY(vehicle, toggle)
+end
+
+function module.set_dip_straight_down_when_crashing(vehicle: int, toggle: bool): void
+    VEHICLE.SET_DIP_STRAIGHT_DOWN_WHEN_CRASHING_PLANE(vehicle, toggle)
+end
+
+-- Actions
+
+-- Works for vehicles with a retractable landing gear
+function module.control_landing_gear(vehicle: int, state: int): void
+    VEHICLE.CONTROL_LANDING_GEAR(vehicle, state)
+end
+
+-- Used for helis
+function module.override_damage_threhsold(vehicle: int, health: float): void
+    VEHICLE.OVERRIDE_PLANE_DAMAGE_THREHSOLD(vehicle, health)
+end
+
+function module.disable_aileron(vehicle: int, p1: bool, p2: bool): void
+    VEHICLE.DISABLE_PLANE_AILERON(vehicle, p1, p2)
+end
+
+function module.disable_individual_propeller(vehicle: int, propeller: int): void
+    VEHICLE.DISABLE_INDIVIDUAL_PLANE_PROPELLER(vehicle, propeller)
+end
+
+function module.enable_individual_propeller(vehicle: int, propeller: int): void
+    VEHICLE._ENABLE_INDIVIDUAL_PLANE_PROPELLER(vehicle, propeller)
+end
+
+return module

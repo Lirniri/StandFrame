@@ -1,0 +1,302 @@
+-- Data files and dictionaries (DATAFILE natives: UGC, cloud saves)
+
+local module = {}
+
+-- State
+
+function module.is_valid_request_id(index: int): bool
+    return DATAFILE.DATAFILE_IS_VALID_REQUEST_ID(index)
+end
+
+function module.has_loaded_file_data(request_id: int): bool
+    return DATAFILE.DATAFILE_HAS_LOADED_FILE_DATA(request_id)
+end
+
+function module.has_valid_file_data(request_id: int): bool
+    return DATAFILE.DATAFILE_HAS_VALID_FILE_DATA(request_id)
+end
+
+function module.is_save_pending(): bool
+    return DATAFILE.DATAFILE_IS_SAVE_PENDING()
+end
+
+-- Get
+
+-- @return A pointer, read it with memory.read_*
+function module.get_file_dict(p0: int): int
+    return DATAFILE.DATAFILE_GET_FILE_DICT(p0)
+end
+
+-- @return A pointer, read it with memory.read_*
+function module.get_file_dict_for_additional_data_file(p0: any): int
+    return DATAFILE.DATAFILE_GET_FILE_DICT_FOR_ADDITIONAL_DATA_FILE(p0)
+end
+
+-- Actions
+
+-- Adds the given requestID to the watch list
+function module.watch_request_id(request_id: int): void
+    DATAFILE.DATAFILE_WATCH_REQUEST_ID(request_id)
+end
+
+function module.clear_watch_list(): void
+    DATAFILE.DATAFILE_CLEAR_WATCH_LIST()
+end
+
+function module.select_active_file(request_id: int, p1: any): bool
+    return DATAFILE.DATAFILE_SELECT_ACTIVE_FILE(request_id, p1)
+end
+
+function module.delete_requested_file(request_id: int): bool
+    return DATAFILE.DATAFILE_DELETE_REQUESTED_FILE(request_id)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_create_content(
+    data: int, data_count: int, content_name: string, description: string, tags_csv: string,
+    content_type_name: string, publish: bool, p7: any
+): bool
+    -- body function:
+    return DATAFILE.UGC_CREATE_CONTENT(data, data_count, content_name, description, tags_csv, content_type_name, publish, p7)
+end
+
+function module.ugc_create_mission(
+    content_name: string, description: string, tags_csv: string, content_type_name: string,
+    publish: bool, p5: any
+): bool
+    -- body function:
+    return DATAFILE.UGC_CREATE_MISSION(content_name, description, tags_csv, content_type_name, publish, p5)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_update_content(
+    content_id: string, data: int, data_count: int, content_name: string, description: string,
+    tags_csv: string, content_type_name: string, p7: any
+): bool
+    -- body function:
+    return DATAFILE.UGC_UPDATE_CONTENT(content_id, data, data_count, content_name, description, tags_csv, content_type_name, p7)
+end
+
+function module.ugc_update_mission(
+    content_id: string, content_name: string, description: string, tags_csv: string,
+    content_type_name: string, p5: any
+): bool
+    -- body function:
+    return DATAFILE.UGC_UPDATE_MISSION(content_id, content_name, description, tags_csv, content_type_name, p5)
+end
+
+function module.ugc_set_player_data(
+    content_id: string, rating: float, content_type_name: string, p3: any
+): bool
+    -- body function:
+    return DATAFILE.UGC_SET_PLAYER_DATA(content_id, rating, content_type_name, p3)
+end
+
+function module.select_ugc_data(p0: int, p1: any): bool
+    return DATAFILE.DATAFILE_SELECT_UGC_DATA(p0, p1)
+end
+
+function module.select_ugc_stats(p0: int, p1: bool, p2: any): bool
+    return DATAFILE.DATAFILE_SELECT_UGC_STATS(p0, p1, p2)
+end
+
+function module.select_ugc_player_data(p0: int, p1: any): bool
+    return DATAFILE.DATAFILE_SELECT_UGC_PLAYER_DATA(p0, p1)
+end
+
+function module.select_creator_stats(p0: int, p1: any): bool
+    return DATAFILE.DATAFILE_SELECT_CREATOR_STATS(p0, p1)
+end
+
+function module.load_offline_ugc(filename: string, p1: any): bool
+    return DATAFILE.DATAFILE_LOAD_OFFLINE_UGC(filename, p1)
+end
+
+function module.create(p0: int): void
+    DATAFILE.DATAFILE_CREATE(p0)
+end
+
+function module.delete(p0: int): void
+    DATAFILE.DATAFILE_DELETE(p0)
+end
+
+function module.store_mission_header(p0: int): void
+    DATAFILE.DATAFILE_STORE_MISSION_HEADER(p0)
+end
+
+function module.flush_mission_header(): void
+    DATAFILE.DATAFILE_FLUSH_MISSION_HEADER()
+end
+
+function module.start_save_to_cloud(filename: string, p1: any): bool
+    return DATAFILE.DATAFILE_START_SAVE_TO_CLOUD(filename, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.update_save_to_cloud(p0: int): bool
+    return DATAFILE.DATAFILE_UPDATE_SAVE_TO_CLOUD(p0)
+end
+
+function module.load_offline_ugc_for_additional_data_file(p0: any, p1: any): bool
+    return DATAFILE.DATAFILE_LOAD_OFFLINE_UGC_FOR_ADDITIONAL_DATA_FILE(p0, p1)
+end
+
+function module.delete_for_additional_data_file(p0: any): void
+    DATAFILE.DATAFILE_DELETE_FOR_ADDITIONAL_DATA_FILE(p0)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_set_bool(object_data: int, key: string, value: bool): void
+    DATAFILE.DATADICT_SET_BOOL(object_data, key, value)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_set_int(object_data: int, key: string, value: int): void
+    DATAFILE.DATADICT_SET_INT(object_data, key, value)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_set_float(object_data: int, key: string, value: float): void
+    DATAFILE.DATADICT_SET_FLOAT(object_data, key, value)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_set_string(object_data: int, key: string, value: string): void
+    DATAFILE.DATADICT_SET_STRING(object_data, key, value)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_set_vector(
+    object_data: int, key: string, value_x: float, value_y: float, value_z: float
+): void
+    -- body function:
+    DATAFILE.DATADICT_SET_VECTOR(object_data, key, value_x, value_y, value_z)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+-- @return A pointer, read it with memory.read_*
+function module.datadict_create_dict(object_data: int, key: string): int
+    return DATAFILE.DATADICT_CREATE_DICT(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+-- @return A pointer, read it with memory.read_*
+function module.datadict_create_array(object_data: int, key: string): int
+    return DATAFILE.DATADICT_CREATE_ARRAY(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_get_bool(object_data: int, key: string): bool
+    return DATAFILE.DATADICT_GET_BOOL(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_get_int(object_data: int, key: string): int
+    return DATAFILE.DATADICT_GET_INT(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_get_float(object_data: int, key: string): float
+    return DATAFILE.DATADICT_GET_FLOAT(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_get_string(object_data: int, key: string): string
+    return DATAFILE.DATADICT_GET_STRING(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_get_vector(object_data: int, key: string): vector3
+    return DATAFILE.DATADICT_GET_VECTOR(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+-- @return A pointer, read it with memory.read_*
+function module.datadict_get_dict(object_data: int, key: string): int
+    return DATAFILE.DATADICT_GET_DICT(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+-- @return A pointer, read it with memory.read_*
+function module.datadict_get_array(object_data: int, key: string): int
+    return DATAFILE.DATADICT_GET_ARRAY(object_data, key)
+end
+
+-- @param object_data Pointer: pass memory.alloc(size) and read the result back
+function module.datadict_get_type(object_data: int, key: string): int
+    return DATAFILE.DATADICT_GET_TYPE(object_data, key)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_add_bool(array_data: int, value: bool): void
+    DATAFILE.DATAARRAY_ADD_BOOL(array_data, value)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_add_int(array_data: int, value: int): void
+    DATAFILE.DATAARRAY_ADD_INT(array_data, value)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_add_float(array_data: int, value: float): void
+    DATAFILE.DATAARRAY_ADD_FLOAT(array_data, value)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_add_string(array_data: int, value: string): void
+    DATAFILE.DATAARRAY_ADD_STRING(array_data, value)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_add_vector(array_data: int, value_x: float, value_y: float, value_z: float): void
+    DATAFILE.DATAARRAY_ADD_VECTOR(array_data, value_x, value_y, value_z)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+-- @return A pointer, read it with memory.read_*
+function module.dataarray_add_dict(array_data: int): int
+    return DATAFILE.DATAARRAY_ADD_DICT(array_data)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_bool(array_data: int, array_index: int): bool
+    return DATAFILE.DATAARRAY_GET_BOOL(array_data, array_index)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_int(array_data: int, array_index: int): int
+    return DATAFILE.DATAARRAY_GET_INT(array_data, array_index)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_float(array_data: int, array_index: int): float
+    return DATAFILE.DATAARRAY_GET_FLOAT(array_data, array_index)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_string(array_data: int, array_index: int): string
+    return DATAFILE.DATAARRAY_GET_STRING(array_data, array_index)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_vector(array_data: int, array_index: int): vector3
+    return DATAFILE.DATAARRAY_GET_VECTOR(array_data, array_index)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+-- @return A pointer, read it with memory.read_*
+function module.dataarray_get_dict(array_data: int, array_index: int): int
+    return DATAFILE.DATAARRAY_GET_DICT(array_data, array_index)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_count(array_data: int): int
+    return DATAFILE.DATAARRAY_GET_COUNT(array_data)
+end
+
+-- @param array_data Pointer: pass memory.alloc(size) and read the result back
+function module.dataarray_get_type(array_data: int, array_index: int): int
+    return DATAFILE.DATAARRAY_GET_TYPE(array_data, array_index)
+end
+
+return module

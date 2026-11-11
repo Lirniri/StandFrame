@@ -1,0 +1,203 @@
+local module = {}
+
+function module.is_in_any(ped: int, include_entering: bool = false): bool
+    return PED.IS_PED_IN_ANY_VEHICLE(ped, include_entering)
+end
+
+function module.is_in_this(ped: int, vehicle: int, include_entering: bool = false): bool
+    return PED.IS_PED_IN_VEHICLE(ped, vehicle, include_entering)
+end
+
+function module.get(ped: int, include_entering: bool = false): int
+    return PED.GET_VEHICLE_PED_IS_IN(ped, include_entering)
+end
+
+-- State
+
+-- Gets a value indicating whether the specified ped is on top of any vehicle
+function module.is_on(ped: int): bool
+    return PED.IS_PED_ON_VEHICLE(ped)
+end
+
+function module.is_on_specific(ped: int, vehicle: int): bool
+    return PED.IS_PED_ON_SPECIFIC_VEHICLE(ped, vehicle)
+end
+
+-- Detect if ped is sitting in the specified vehicle
+function module.is_sitting_in(ped: int, vehicle: int): bool
+    return PED.IS_PED_SITTING_IN_VEHICLE(ped, vehicle)
+end
+
+-- Detect if ped is in any vehicle
+function module.is_sitting_in_any(ped: int): bool
+    return PED.IS_PED_SITTING_IN_ANY_VEHICLE(ped)
+end
+
+function module.is_in_flying(ped: int): bool
+    return PED.IS_PED_IN_FLYING_VEHICLE(ped)
+end
+
+function module.is_in_any_police(ped: int): bool
+    return PED.IS_PED_IN_ANY_POLICE_VEHICLE(ped)
+end
+
+function module.is_jumping_out(ped: int): bool
+    return PED.IS_PED_JUMPING_OUT_OF_VEHICLE(ped)
+end
+
+function module.is_hanging_on(ped: int): bool
+    return PED.IS_PED_HANGING_ON_TO_VEHICLE(ped)
+end
+
+function module.can_knock_off(ped: int): bool
+    return PED.CAN_KNOCK_PED_OFF_VEHICLE(ped)
+end
+
+function module.is_getting_into(ped: int): bool
+    return PED.IS_PED_GETTING_INTO_A_VEHICLE(ped)
+end
+
+function module.is_trying_to_enter_a_locked(ped: int): bool
+    return PED.IS_PED_TRYING_TO_ENTER_A_LOCKED_VEHICLE(ped)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.can_shuffle_to_or_from_turret_seat(ped: int, p1: int): bool
+    return PED.CAN_PED_SHUFFLE_TO_OR_FROM_TURRET_SEAT(ped, p1)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.can_shuffle_to_or_from_extra_seat(ped: int, p1: int): bool
+    return PED.CAN_PED_SHUFFLE_TO_OR_FROM_EXTRA_SEAT(ped, p1)
+end
+
+-- Get
+
+function module.get_seat_is_trying_to_enter(ped: int): int
+    return PED.GET_SEAT_PED_IS_TRYING_TO_ENTER(ped)
+end
+
+function module.get_is_trying_to_enter(ped: int): int
+    return PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(ped)
+end
+
+function module.get_is_using(ped: int): int
+    return PED.GET_VEHICLE_PED_IS_USING(ped)
+end
+
+function module.get_is_entering(ped: int): int
+    return PED.GET_VEHICLE_PED_IS_ENTERING(ped)
+end
+
+-- Returns size of array, passed into the second variable
+-- @param size_and_vehs Pointer: pass memory.alloc(size) and read the result back
+function module.get_nearby_vehicles(ped: int, size_and_vehs: int): int
+    return PED.GET_PED_NEARBY_VEHICLES(ped, size_and_vehs)
+end
+
+-- Set
+
+function module.set_into(ped: int, vehicle: int, seat_index: int): void
+    PED.SET_PED_INTO_VEHICLE(ped, vehicle, seat_index)
+end
+
+function module.set_allow_vehicles_override(ped: int, toggle: bool): void
+    PED.SET_PED_ALLOW_VEHICLES_OVERRIDE(ped, toggle)
+end
+
+function module.set_dies_in_sinking(ped: int, toggle: bool): void
+    PED.SET_PED_DIES_IN_SINKING_VEHICLE(ped, toggle)
+end
+
+function module.set_stay_in_when_jacked(ped: int, toggle: bool): void
+    PED.SET_PED_STAY_IN_VEHICLE_WHEN_JACKED(ped, toggle)
+end
+
+function module.set_can_be_shot_in(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_SHOT_IN_VEHICLE(ped, toggle)
+end
+
+function module.set_forced_seat_usage(ped: int, vehicle: int, seat_index: int, flags: int, p4: any): void
+    PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(ped, vehicle, seat_index, flags, p4)
+end
+
+function module.set_can_be_knocked_off(ped: int, state: int): void
+    PED.SET_PED_CAN_BE_KNOCKED_OFF_VEHICLE(ped, state)
+end
+
+function module.set_coords_keep(ped: int, pos_x: float, pos_y: float, pos_z: float): void
+    PED.SET_PED_COORDS_KEEP_VEHICLE(ped, pos_x, pos_y, pos_z)
+end
+
+function module.set_dies_in(ped: int, toggle: bool): void
+    PED.SET_PED_DIES_IN_VEHICLE(ped, toggle)
+end
+
+function module.set_get_out_upside_down(ped: int, toggle: bool): void
+    PED.SET_PED_GET_OUT_UPSIDE_DOWN_VEHICLE(ped, toggle)
+end
+
+function module.set_in_context(ped: int, context: int): void
+    PED.SET_PED_IN_VEHICLE_CONTEXT(ped, context)
+end
+
+function module.set_defensive_sphere_attached(
+    ped: int, target: int, x_offset: float, y_offset: float, z_offset: float, radius: float,
+    p6: bool
+): void
+    -- body function:
+    PED.SET_PED_DEFENSIVE_SPHERE_ATTACHED_TO_VEHICLE(ped, target, x_offset, y_offset, z_offset, radius, p6)
+end
+
+function module.set_can_torso_ik(ped: int, p1: bool): void
+    PED.SET_PED_CAN_TORSO_VEHICLE_IK(ped, p1)
+end
+
+function module.set_plays_head_on_horn_anim_when_dies_in(ped: int, toggle: bool): void
+    PED.SET_PED_PLAYS_HEAD_ON_HORN_ANIM_WHEN_DIES_IN_VEHICLE(ped, toggle)
+end
+
+function module.set_scripted_anim_seat_offset(ped: int, p1: float): void
+    PED.SET_SCRIPTED_ANIM_SEAT_OFFSET(ped, p1)
+end
+
+function module.set_steers_around_vehicles(ped: int, toggle: bool): void
+    PED.SET_PED_STEERS_AROUND_VEHICLES(ped, toggle)
+end
+
+-- Actions
+
+function module.create_inside(
+    vehicle: int, ped_type: int, model_hash: int, seat: int, is_network: bool,
+    b_script_host_ped: bool
+): int
+    -- body function:
+    return PED.CREATE_PED_INSIDE_VEHICLE(vehicle, ped_type, model_hash, seat, is_network, b_script_host_ped)
+end
+
+-- Resets the value for the last vehicle driven by the Ped
+function module.reset_last(ped: int): void
+    PED.RESET_PED_LAST_VEHICLE(ped)
+end
+
+function module.clear_all_forced_seat_usage(ped: int): void
+    PED.CLEAR_ALL_PED_VEHICLE_FORCED_SEAT_USAGE(ped)
+end
+
+function module.knock_off(ped: int): void
+    PED.KNOCK_PED_OFF_VEHICLE(ped)
+end
+
+function module.reset_in_context(ped: int): void
+    PED.RESET_PED_IN_VEHICLE_CONTEXT(ped)
+end
+
+function module.request_visibility_tracking(ped: int, p1: bool): void
+    PED.REQUEST_PED_VEHICLE_VISIBILITY_TRACKING(ped, p1)
+end
+
+function module.request_restricted_visibility_tracking(ped: int, p1: bool): void
+    PED.REQUEST_PED_RESTRICTED_VEHICLE_VISIBILITY_TRACKING(ped, p1)
+end
+
+return module

@@ -17,4 +17,8 @@ function module.request(name: string, timeout: int = 2000): bool
     return Atdar.natives.streaming.wait_loaded($"action mode asset '{name}'", || -> module.is_loaded(name), timeout)
 end
 
+function module.remove(asset: string): void
+    PED.REMOVE_ACTION_MODE_ASSET(asset)
+end
+
 return module

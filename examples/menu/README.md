@@ -55,7 +55,24 @@ return {
 | Spoiler | `Atdar.menu.spoiler(node.handle, name, value, hidden_text, help)` | A value hidden until clicked |
 | Submenu from a table | `builder.build_items(node, items, where)` | The same items, written as data. A mistake in the table is a warning in the log, and that item is skipped |
 
-`confirm` is `ui/stand/core/confirm` and `builder` is `ui/stand/core/menu_builder`; get both through `Atdar.loader.load`.
+`confirm` is `Atdar.menu.confirm` and `builder` is `Atdar.menu.builder`.
+
+## `Atdar.menu`: everything for a menu in one place
+
+A pack needn't know where each part of the script's menu lives in `lib`: they come from `Atdar.menu` and load
+the first time they're asked for.
+
+| What | What for |
+|---|---|
+| `Atdar.menu.Node` | `MenuNode`: `new Atdar.menu.Node(ref)` wraps a Stand ref |
+| `Atdar.menu.builder` | `builder.build_items(node, items)` - a submenu from a table |
+| `Atdar.menu.confirm` | `confirm.action(...)` - a button with confirmation |
+| `Atdar.menu.settings` | The script's settings section: `set_parent`, `set_divider`, `set_name`, `add` |
+| `Atdar.menu.commands` | Command names with the profile's prefix: `names`, `track` |
+| `Atdar.menu.arguments` | Fields for a function's arguments, by their types |
+| `Atdar.menu.modules` | `list_in(node)`, `module_in(node, name)` - the Modules list in your own menu |
+| `Atdar.menu.clicks` | `is_user_action(click_type)` - whether the user clicked or Stand called the handler itself |
+| `Atdar.menu.spoiler`, `Atdar.menu.color` | Items Stand doesn't have ready-made |
 
 **Commands.** `commands` are base command names without the prefix: `{ "heal" }` becomes `atdarheal`. The user can
 rename them in Settings > Command Box.

@@ -1,0 +1,188 @@
+-- lib/AnitaDarin/ui/logic/stand/script/translation.pluto
+-- What the Language list does: which language is picked and how it's named, making a translation's files,
+-- how far each translation has come, reading the files again. The items are in ui/stand/script/language.
+-- Strings: core/language "profile.language" and "profile.translation"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Language")
+local label, text = i18n.scope("profile")
+
+local module = {}
+
+local function trim(value: string): string
+    return value:match("^%s*(.-)%s*$")
+end
+
+-- The language picked
+
+-- "Language: Auto (Stand)", "Language: Русский", or the chosen language marked unavailable
+-- while Stand can't show it (Stand in English)
+function module.caption(): string
+
+    local code = Atdar.profile.get("language")
+
+    for _, language in ipairs(i18n.languages()) do
+        if language.code == code then
+            local name = language.name
+            if i18n.get_language() ~= code then
+                name = text("language.unavailable_mark"):format(name)
+            end
+            return text("language.name"):format(name)
+        end
+    end
+
+    return text("language.name"):format(text("language.auto.name"))
+end
+
+-- The languages to pick: Auto, then each language by its file's language_name
+-- @return The names, and the code of each ("auto" for the first)
+function module.options()
+
+    local names, codes = { label("language.auto.name") }, { "auto" }
+
+    for _, language in ipairs(i18n.languages()) do
+        table.insert(names, language.name)
+        table.insert(codes, language.code)
+    end
+
+    return names, codes
+end
+
+-- Shows the script in the language ("auto": Stand's) and keeps it in the profile.
+-- Also when the profile already had it: picking again tries again (e.g. after Stand's language changed)
+function module.pick(code: string): void
+    Atdar.profile.set("language", code)
+    i18n.set_language(code)
+end
+
+-- Create Translation
+
+-- What a new translation's code starts as: Stand's language when the script has no file for it ("de" -> "de-de")
+function module.suggested_code(): string
+
+    local current = lang.get_current()
+
+    if type(current) ~= "string" or not current:match("^%l%l$") or current == "en" then
+        return ""
+    end
+
+    local code = $"{current}-{current}"
+
+    if i18n.has_language(code) then
+        return ""
+    end
+
+    return code
+end
+
+-- What Create Translation is filled with before Create: the code, the name, the language to start from
+function module.new_draft(): table
+    return { code = module.suggested_code(), name = "", from = "en-us" }
+end
+
+function module.set_code(draft: table, value: string): void
+    draft.code = trim(value:lower())
+end
+
+function module.set_name(draft: table, value: string): void
+    draft.name = trim(value)
+end
+
+-- The languages a translation can start from
+-- @return The names, and the code of each
+function module.from_options()
+
+    local names, codes = {}, {}
+
+    for _, language in ipairs(i18n.languages()) do
+        table.insert(names, language.name)
+        table.insert(codes, language.code)
+    end
+
+    return names, codes
+end
+
+-- "Translate From: English"
+function module.from_caption(code: string): string
+
+    for _, language in ipairs(i18n.languages()) do
+        if language.code == code then
+            return text("translation.from.name"):format(language.name)
+        end
+    end
+
+    return text("translation.from.name"):format(code)
+end
+
+-- Makes a file to translate in every folder of strings (i18n.create_language)
+-- @param draft { code, name, from }: the new language's code and name, and the language to start from
+-- @param after What the menu does once it's made (the picker lists the languages there are now)
+function module.create(draft: table, after: function): void
+
+    local count, err = i18n.create_language(draft.code, draft.name, draft.from)
+
+    if count == nil then
+        if err == "exists" then
+            log:warn(text("translation.exists"):format(draft.code))
+            return
+        end
+
+        log:warn(text("translation.bad_code"):format(draft.code))
+        return
+    end
+
+    after()
+    log:success(text("translation.created"):format(draft.code, count))
+end
+
+-- The translations
+
+-- How far each translation has come, as a notice; what's left of each in Stand's log, key by key
+function module.report_progress(): void
+
+    local lines = {}
+
+    for _, language in ipairs(i18n.languages()) do
+        if language.code ~= "en-us" then
+
+            local progress = i18n.progress(language.code)
+            local percent = progress.total > 0 and math.floor(progress.translated * 100 / progress.total) or 100
+
+            table.insert(lines, text("translation.progress.line"):format(language.name, percent,
+                progress.translated, progress.total))
+
+            for _, key in ipairs(progress.missing) do
+                log:info($"{language.code}: {key}")
+            end
+        end
+    end
+
+    if #lines == 0 then
+        log:notify(text("translation.progress.none"))
+        return
+    end
+
+    log:notify(table.concat(lines, "\n"))
+end
+
+-- Reads the language files again
+-- @param after What the menu does then (the picker lists the languages there are now)
+function module.reload(after: function): void
+    i18n.reload()
+    after()
+    log:success(text("translation.reloaded"))
+end
+
+-- Opens the folder of the script's own strings
+function module.open_folder(): void
+
+    local dir = i18n.base_dir()
+
+    if dir ~= nil then
+        util.open_folder(dir)
+    end
+end
+
+return module

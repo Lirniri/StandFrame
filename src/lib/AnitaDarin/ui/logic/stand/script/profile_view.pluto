@@ -1,0 +1,414 @@
+-- lib/AnitaDarin/ui/logic/stand/script/profile_view.pluto
+-- What keeps the profile's items in step with the profile: an item made here writes its value into the
+-- active profile when the user changes it, and takes the profile's value back when another profile is
+-- loaded or reset. The layout (which item goes where) is in ui/stand/script/profile.
+--
+--     view.begin(packs)                                             -- a new build of the section
+--     view.input(node, "display_name")                              -- a text field for a profile key
+--     view.toggle(node, "debug", "debug", { "debug" })              -- a switch
+--     view.slider(node, "log_keep_days", "log_keep_days", 0, 365, { "logkeepdays" })
+--     view.color(node, "notify_background_day", "feed.background_day", { "notifyfeedbgday" })
+--     view.choice(node, "log_name", { strings = "log_name", values = { "short", "display" } })
+--     view.update()                                                 -- captions and fields to the profile's values
+--
+-- Changes apply right away but reach the profile file only on Save, like Stand's own profiles, unless the
+-- profile saves automatically.
+-- Items are updated in place (captions, field values) rather than by rebuilding the section: rebuilding
+-- deletes the list the user is in, which Stand doesn't do cleanly.
+-- Strings: core/language "profile"; an item's are "<strings>.name" and "<strings>.help"
+
+local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local Logger = Atdar.loader.load("core/logger")
+local color = Atdar.loader.load("utils/color")
+
+local log = new Logger("Profile")
+
+local module = {}
+
+-- Strings under "profile"
+local label, text = i18n.scope("profile")
+
+-- What a colour item shows while its profile value is "" (the game's own colour)
+local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
+
+-- Items of the latest build, by what updates them:
+--   values   { ref, key, read }: items holding a profile value, set to read() when another profile loads
+--   captions { ref, caption }: items whose name is a text made again on every change
+--   helps    { ref, help }: the same for help texts
+--   shown    { ref, when }: items shown only while when() is true
+--   packs    the menu packs in store, offered by Copy Menu To Core
+local view = { values = {}, captions = {}, helps = {}, shown = {}, packs = {} }
+
+-- Set while values are written from code, so their on_change doesn't count as an edit
+local updating = false
+
+-- Starts a new build of the section; items made before it are forgotten
+-- @param packs Menu packs in store (menu_packs.find_loadable_packs), offered for copying to core
+function module.begin(packs: table = {}): void
+    view = { values = {}, captions = {}, helps = {}, shown = {}, packs = packs }
+end
+
+-- Values
+
+-- A profile colour kept as hex -> the Stand colour a colour item shows
+local function profile_color(key: string): table
+    return color.from_hex(Atdar.profile.get(key) or "") or DEFAULT_COLOR
+end
+
+-- Stand resets an item to the default it was made with when it loads a Stand profile without that item
+-- (click type 4). So sliders and colours are made with the real default, not the profile's value at that
+-- moment, and then set to the profile's value, with updating set so it isn't saved as a change
+local function show_profile_value(ref, key: string, value): void
+    if Atdar.profile.get(key) == Atdar.profile.default(key) then
+        return
+    end
+
+    updating = true
+    pcall(menu.set_value, ref, value)
+    updating = false
+end
+
+-- Remembers an item holding a profile value. read(): the value the item shows for the profile's
+local function hold(ref, key: string, read: function)
+    table.insert(view.values, { ref = ref, key = key, read = read })
+    return ref
+end
+
+-- A text field for a profile value. Its strings are the key's own: "<key>.name", "<key>.help"
+-- @param allow_empty Whether "" is a value (a prefix may be none; a name may not)
+-- @param command Its command name; none given - the key without "_"
+function module.input(node: table, key: string, allow_empty: bool = false, command: ?string)
+
+    command = command or key:gsub("_", "")
+
+    return hold(node:text_input(label($"{key}.name"), { command }, function(value)
+        if updating or (value == "" and not allow_empty) then
+            return
+        end
+
+        Atdar.profile.set(key, value)
+    end, label($"{key}.help"), Atdar.profile.get(key)), key, || -> Atdar.profile.get(key))
+end
+
+-- A switch for a profile value
+-- @param after after(on): what else a switch by the user does (a notice, applying it at once). Not called
+-- when Stand puts the saved state back at start: the value is the same then
+function module.toggle(node: table, key: string, strings: string, commands: table = {}, after: ?function)
+    return hold(node:toggle(label($"{strings}.name"), function(on)
+        if updating or Atdar.profile.get(key) == on then
+            return
+        end
+
+        Atdar.profile.set(key, on)
+
+        if after ~= nil then
+            after(on)
+        end
+    end, commands, label($"{strings}.help"), Atdar.profile.get(key) == true), key, || -> Atdar.profile.get(key) == true)
+end
+
+-- A number picker for a profile value
+-- @param after after(value): what else a change does
+function module.slider(node: table, key: string, strings: string, min: int, max: int, commands: table = {}, after: ?function)
+
+    local ref = node:slider(label($"{strings}.name"), min, max, Atdar.profile.default(key), 1, function(value)
+        if updating then
+            return
+        end
+
+        Atdar.profile.set(key, value)
+
+        if after ~= nil then
+            after(value)
+        end
+    end, commands, label($"{strings}.help"))
+
+    show_profile_value(ref, key, Atdar.profile.get(key))
+
+    return hold(ref, key, || -> Atdar.profile.get(key))
+end
+
+-- A colour picker with opacity for a profile value kept as hex RRGGBBAA ("" - the game's own colour)
+function module.color(node: table, key: string, strings: string, commands: table = {})
+
+    local default = color.from_hex(Atdar.profile.default(key) or "") or DEFAULT_COLOR
+    local ref = node:color(label($"{strings}.name"), default, function(colour, click_type)
+
+        local hex = color.to_hex(colour, true)
+
+        -- Who changes the colour and when: the user or Stand by itself (debug mode)
+        log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)}, updating {tostring(updating)})")
+
+        -- Stand also calls this when the script stops, with the colour the item shows: for "" (the game's
+        -- own) that's black, which would then be saved as picked. Only a different colour is a pick
+        if updating or clicks.is_stopping() or hex == color.to_hex(profile_color(key), true) then
+            return
+        end
+
+        Atdar.profile.set(key, hex)
+    end, commands, label($"{strings}.help"), true)
+
+    show_profile_value(ref, key, profile_color(key))
+
+    return hold(ref, key, || -> profile_color(key))
+end
+
+-- Captions
+
+-- An item whose name is a text built from the profile's values: caption() is asked again on every change
+-- of the profile and of the language
+-- @param id For an item made again while the section stays (a profile's entry): the new one takes the old one's place
+function module.caption(ref, caption: function, id: ?string)
+
+    if id == nil then
+        table.insert(view.captions, { ref = ref, caption = caption })
+        return ref
+    end
+
+    for _, item in ipairs(view.captions) do
+        if item.id == id then
+            item.ref = ref
+            item.caption = caption
+            return ref
+        end
+    end
+
+    table.insert(view.captions, { ref = ref, caption = caption, id = id })
+
+    return ref
+end
+
+-- The same for a help text
+function module.help(ref, help: function)
+    table.insert(view.helps, { ref = ref, help = help })
+    return ref
+end
+
+-- An item shown only while when() is true (asked again on every change)
+function module.shown_when(ref, when: function)
+    table.insert(view.shown, { ref = ref, when = when })
+    pcall(menu.set_visible, ref, when())
+    return ref
+end
+
+-- A pick of one of a few values, named "<what>: <the value picked>".
+-- spec.strings:     "<strings>.name" is the caption ("%s" for the value), "<strings>.help" the help
+-- spec.values:      the values, in the menu's order
+-- spec.option:      function(value) -> the string key of a value's word; default "<strings>.<value>"
+-- spec.title:       function(value) -> a value's word as text, for words that aren't strings (a picture's title)
+-- spec.fallback:    the value shown for one that's none of the values (an old profile)
+-- spec.commands, spec.after(value)
+function module.choice(node: table, key: string, spec: table)
+
+    local strings = spec.strings
+    local option = spec.option or |value| -> $"{strings}.{value}"
+
+    local function word(value): string
+        if spec.title ~= nil then
+            return spec.title(value or "")
+        end
+        return text(option(value))
+    end
+
+    local function caption(): string
+
+        local current = Atdar.profile.get(key)
+        local known = false
+
+        for _, value in ipairs(spec.values) do
+            if value == current then
+                known = true
+            end
+        end
+
+        -- A value with a title of its own is shown as it is, also one that isn't offered
+        if not known and spec.title == nil then
+            current = spec.fallback or spec.values[1]
+        end
+
+        return text($"{strings}.name"):format(word(current))
+    end
+
+    local options = {}
+
+    for _, value in ipairs(spec.values) do
+        if spec.title ~= nil then
+            table.insert(options, spec.title(value))
+        else
+            table.insert(options, label(option(value)))
+        end
+    end
+
+    local ref = node:list_action(caption(), options, function(index)
+        Atdar.profile.set(key, spec.values[index])
+        if spec.after ~= nil then
+            spec.after(spec.values[index])
+        end
+    end, spec.commands or {}, label($"{strings}.help"))
+
+    return module.caption(ref, caption)
+end
+
+-- Updating
+
+-- The refs may belong to a section that was already removed, so a failed update is just skipped
+local function update_captions(): void
+
+    for _, item in ipairs(view.captions) do
+        pcall(menu.set_menu_name, item.ref, item.caption())
+    end
+
+    for _, item in ipairs(view.helps) do
+        pcall(menu.set_help_text, item.ref, item.help())
+    end
+
+    for _, item in ipairs(view.shown) do
+        pcall(menu.set_visible, item.ref, item.when())
+    end
+end
+
+-- After another profile is loaded its values go into the items
+-- @return Whether every item took its value; if not, the caller rebuilds the section instead
+local function update_values(): bool
+
+    local ok = true
+
+    updating = true
+
+    for _, item in ipairs(view.values) do
+        if not pcall(menu.set_value, item.ref, item.read()) then
+            ok = false
+        end
+    end
+
+    updating = false
+
+    return ok
+end
+
+-- Captions and values to what the profile holds now: after a profile is loaded, reset, made or deleted
+-- @return Whether every item took its value (update_values)
+function module.update(): bool
+    update_captions()
+    return update_values()
+end
+
+-- Only the captions: after a save or a change of Automatically Save (the unsaved mark)
+function module.update_captions(): void
+    update_captions()
+end
+
+-- Profile entries
+
+-- "main", "main (active)" or "main (active)*" with unsaved changes
+function module.entry_caption(name: string): string
+
+    local profile = Atdar.profile
+
+    if name ~= profile.active_name() then
+        return name
+    end
+
+    local mark = profile.is_dirty() and "*" or ""
+
+    return text("entry.active"):format(name) .. mark
+end
+
+-- "Profile: main", the divider on top of the section
+function module.settings_caption(): string
+    return text("settings.of"):format(Atdar.profile.active_name())
+end
+
+-- Copy Menu To Core
+
+-- @return The pack the profile copies to core at start: its info from store; { folder, name, missing = true }
+-- with only the folder's name when there's no such pack in store now (it was taken out, or the profile is
+-- another one's); nil when it's off
+function module.auto_copy_pack(): ?table
+
+    local id = Atdar.profile.get("auto_copy_menu")
+
+    if type(id) ~= "string" or id == "" then
+        return nil
+    end
+
+    for _, pack in ipairs(view.packs) do
+        if pack.folder == id then
+            return pack
+        end
+    end
+
+    return { folder = id, name = id, missing = true }
+end
+
+-- The pack's line under Copy Menu To Core: its name, or the name and that the pack isn't in store
+function module.auto_copy_line(pack: table): string
+    if pack.missing then
+        return i18n.text("menu_loader.auto_copy.missing"):format(pack.name)
+    end
+
+    return pack.name
+end
+
+-- Off, then every pack in store: the options of Copy Menu To Core
+function module.auto_copy_options(): table
+
+    local options = { i18n.label("menu_loader.auto_copy.off") }
+
+    for _, pack in ipairs(view.packs) do
+        table.insert(options, pack.name)
+    end
+
+    return options
+end
+
+-- "Copy Menu To Core: Off" while it's off; with a pack picked only the name (the pack is on the line under it)
+function module.auto_copy_caption(): int
+    if module.auto_copy_pack() == nil then
+        return i18n.label("menu_loader.auto_copy.name_off")
+    end
+
+    return i18n.label("menu_loader.auto_copy.name")
+end
+
+-- Its help has the script's name in it, so it's a text made again with the language
+function module.auto_copy_help(): string
+    return i18n.text("menu_loader.auto_copy.help"):format(Atdar.name)
+end
+
+-- Picks the pack copied to core at start (index 1: off); takes effect at the next start
+function module.set_auto_copy(index: int): void
+
+    local pack = view.packs[index - 1]
+
+    if pack == nil then
+        Atdar.profile.set("auto_copy_menu", "")
+        log:notify(i18n.text("menu_loader.auto_copy.disabled"))
+        return
+    end
+
+    Atdar.profile.set("auto_copy_menu", pack.folder)
+    log:notify(i18n.text("menu_loader.auto_copy.later"):format(pack.name))
+end
+
+-- The packs in store were read again (Load Menu was opened)
+function module.set_packs(packs: table): void
+    view.packs = packs
+end
+
+-- The profile's language applies to the whole script, also after loading another profile.
+-- Registered before the captions update below, so captions come out in the new language
+i18n.set_language(Atdar.profile.get("language"))
+Atdar.profile.on_change(function(key: string, value)
+    if key == "language" then
+        i18n.set_language(value)
+    end
+end)
+
+-- Any change (an edit, a load, a save) can change the captions, e.g. the unsaved mark
+Atdar.profile.on_change(|| -> update_captions())
+-- Captions are texts in the shown language, so they're made again when it changes (also Stand's own)
+i18n.on_change(|| -> update_captions())
+
+return module

@@ -1,0 +1,647 @@
+-- The game's cameras (CAM natives). Not entities: a camera has a handle of its own that ENTITY
+-- natives don't take. Where other players look is natives.player.camera (Stand's players API)
+
+local module = {}
+
+-- Names of scripted camera kinds, for CAM.CREATE_CAM / CREATE_CAM_WITH_PARAMS
+module.types = {
+    scripted = "DEFAULT_SCRIPTED_CAMERA",
+    scripted_fly = "DEFAULT_SCRIPTED_FLY_CAMERA",
+    animated = "DEFAULT_ANIMATED_CAMERA",
+    spline = "DEFAULT_SPLINE_CAMERA",
+    timed_spline = "TIMED_SPLINE_CAMERA",
+}
+
+-- State
+
+-- Returns whether or not the passed camera handle exists
+function module.does_exist(cam: int): bool
+    return CAM.DOES_CAM_EXIST(cam)
+end
+
+-- Returns whether or not the passed camera handle is active
+function module.is_active(cam: int): bool
+    return CAM.IS_CAM_ACTIVE(cam)
+end
+
+function module.is_rendering(cam: int): bool
+    return CAM.IS_CAM_RENDERING(cam)
+end
+
+function module.is_spline_paused(cam: int): bool
+    return CAM.IS_CAM_SPLINE_PAUSED(cam)
+end
+
+function module.is_interpolating(cam: int): bool
+    return CAM.IS_CAM_INTERPOLATING(cam)
+end
+
+function module.is_shaking(cam: int): bool
+    return CAM.IS_CAM_SHAKING(cam)
+end
+
+-- In drunk_controller.c4, sub_309
+function module.is_script_global_shaking(): bool
+    return CAM.IS_SCRIPT_GLOBAL_SHAKING()
+end
+
+function module.is_playing_anim(cam: int, anim_name: string, anim_dictionary: string): bool
+    return CAM.IS_CAM_PLAYING_ANIM(cam, anim_name, anim_dictionary)
+end
+
+function module.was_fly_constrained_on_previous_udpate(cam: int): bool
+    return CAM.WAS_FLY_CAM_CONSTRAINED_ON_PREVIOUS_UDPATE(cam)
+end
+
+function module.is_interpolating_from_script_cams(): bool
+    return CAM.IS_INTERPOLATING_FROM_SCRIPT_CAMS()
+end
+
+function module.is_interpolating_to_script_cams(): bool
+    return CAM.IS_INTERPOLATING_TO_SCRIPT_CAMS()
+end
+
+function module.is_sphere_visible(x: float, y: float, z: float, radius: float): bool
+    return CAM.IS_SPHERE_VISIBLE(x, y, z, radius)
+end
+
+function module.is_in_vehicle_mobile_phone_rendering(): bool
+    return CAM.IS_IN_VEHICLE_MOBILE_PHONE_CAMERA_RENDERING()
+end
+
+function module.is_allowed_independent_modes(): bool
+    return CAM.IS_ALLOWED_INDEPENDENT_CAMERA_MODES()
+end
+
+-- Get
+
+-- @return The context the view mode is chosen for now (on foot, in a vehicle, ...)
+function module.get_active_view_mode_context(): int
+    return CAM.GET_CAM_ACTIVE_VIEW_MODE_CONTEXT()
+end
+
+-- @return The view mode (first person, third person near / mid / far, ...) set for a context
+function module.get_view_mode_for_context(context: int): int
+    return CAM.GET_CAM_VIEW_MODE_FOR_CONTEXT(context)
+end
+
+-- @param rotation_order The order the axes are turned in, 0 - 5; 2 is what scripts mostly use
+-- @return Where the camera that's drawn now looks
+function module.get_final_rotation(rotation_order: int = 2): vector3
+    return CAM.GET_FINAL_RENDERED_CAM_ROT(rotation_order)
+end
+
+function module.get_rendering(): int
+    return CAM.GET_RENDERING_CAM()
+end
+
+function module.get_coord(cam: int): vector3
+    return CAM.GET_CAM_COORD(cam)
+end
+
+-- The last parameter, as in other "ROT" methods, is usually 2
+function module.get_rot(cam: int, rotation_order: int): vector3
+    return CAM.GET_CAM_ROT(cam, rotation_order)
+end
+
+function module.get_fov(cam: int): float
+    return CAM.GET_CAM_FOV(cam)
+end
+
+function module.get_near_clip(cam: int): float
+    return CAM.GET_CAM_NEAR_CLIP(cam)
+end
+
+function module.get_far_clip(cam: int): float
+    return CAM.GET_CAM_FAR_CLIP(cam)
+end
+
+function module.get_near_dof(cam: int): float
+    return CAM.GET_CAM_NEAR_DOF(cam)
+end
+
+function module.get_far_dof(cam: int): float
+    return CAM.GET_CAM_FAR_DOF(cam)
+end
+
+function module.get_dof_strength(cam: int): float
+    return CAM.GET_CAM_DOF_STRENGTH(cam)
+end
+
+function module.get_debug(): int
+    return CAM.GET_DEBUG_CAM()
+end
+
+function module.get_spline_phase(cam: int): float
+    return CAM.GET_CAM_SPLINE_PHASE(cam)
+end
+
+-- I'm pretty sure the parameter is the camera as usual, but I am not certain so I'm going to leave it as is
+function module.get_spline_node_phase(cam: int): float
+    return CAM.GET_CAM_SPLINE_NODE_PHASE(cam)
+end
+
+function module.get_spline_node_index(cam: int): int
+    return CAM.GET_CAM_SPLINE_NODE_INDEX(cam)
+end
+
+function module.get_anim_current_phase(cam: int): float
+    return CAM.GET_CAM_ANIM_CURRENT_PHASE(cam)
+end
+
+function module.get_final_rendered_coord(): vector3
+    return CAM.GET_FINAL_RENDERED_CAM_COORD()
+end
+
+function module.get_final_rendered_remote_player_rot(player_id: int, rotation_order: int): vector3
+    return CAM.GET_FINAL_RENDERED_REMOTE_PLAYER_CAM_ROT(player_id, rotation_order)
+end
+
+-- Gets some camera fov
+function module.get_final_rendered_fov(): float
+    return CAM.GET_FINAL_RENDERED_CAM_FOV()
+end
+
+function module.get_final_rendered_remote_player_fov(player_id: int): float
+    return CAM.GET_FINAL_RENDERED_REMOTE_PLAYER_CAM_FOV(player_id)
+end
+
+function module.get_final_rendered_near_clip(): float
+    return CAM.GET_FINAL_RENDERED_CAM_NEAR_CLIP()
+end
+
+function module.get_final_rendered_far_clip(): float
+    return CAM.GET_FINAL_RENDERED_CAM_FAR_CLIP()
+end
+
+function module.get_final_rendered_near_dof(): float
+    return CAM.GET_FINAL_RENDERED_CAM_NEAR_DOF()
+end
+
+function module.get_final_rendered_far_dof(): float
+    return CAM.GET_FINAL_RENDERED_CAM_FAR_DOF()
+end
+
+function module.get_final_rendered_motion_blur_strength(): float
+    return CAM.GET_FINAL_RENDERED_CAM_MOTION_BLUR_STRENGTH()
+end
+
+function module.get_focus_ped_on_screen(
+    p0: float, p1: int, p2: float, p3: float, p4: float, p5: float, p6: float, p7: int, p8: int
+): int
+    -- body function:
+    return CAM.GET_FOCUS_PED_ON_SCREEN(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+end
+
+-- Set
+
+-- Set camera as active/inactive
+function module.set_active(cam: int, active: bool): void
+    CAM.SET_CAM_ACTIVE(cam, active)
+end
+
+function module.set_params(
+    cam: int, pos_x: float, pos_y: float, pos_z: float, rot_x: float, rot_y: float, rot_z: float,
+    field_of_view: float, p8: any, p9: int, p10: int, p11: int
+): void
+    -- body function:
+    CAM.SET_CAM_PARAMS(cam, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, field_of_view, p8, p9, p10, p11)
+end
+
+-- Sets the position of the cam
+function module.set_coord(cam: int, pos_x: float, pos_y: float, pos_z: float): void
+    CAM.SET_CAM_COORD(cam, pos_x, pos_y, pos_z)
+end
+
+-- Sets the rotation of the cam
+function module.set_rot(cam: int, rot_x: float, rot_y: float, rot_z: float, rotation_order: int): void
+    CAM.SET_CAM_ROT(cam, rot_x, rot_y, rot_z, rotation_order)
+end
+
+-- Sets the field of view of the cam
+function module.set_fov(cam: int, field_of_view: float): void
+    CAM.SET_CAM_FOV(cam, field_of_view)
+end
+
+function module.set_near_clip(cam: int, near_clip: float): void
+    CAM.SET_CAM_NEAR_CLIP(cam, near_clip)
+end
+
+function module.set_far_clip(cam: int, far_clip: float): void
+    CAM.SET_CAM_FAR_CLIP(cam, far_clip)
+end
+
+function module.set_motion_blur_strength(cam: int, strength: float): void
+    CAM.SET_CAM_MOTION_BLUR_STRENGTH(cam, strength)
+end
+
+function module.set_near_dof(cam: int, near_dof: float): void
+    CAM.SET_CAM_NEAR_DOF(cam, near_dof)
+end
+
+function module.set_far_dof(cam: int, far_dof: float): void
+    CAM.SET_CAM_FAR_DOF(cam, far_dof)
+end
+
+function module.set_dof_strength(cam: int, dof_strength: float): void
+    CAM.SET_CAM_DOF_STRENGTH(cam, dof_strength)
+end
+
+function module.set_dof_planes(cam: int, p1: float, p2: float, p3: float, p4: float): void
+    CAM.SET_CAM_DOF_PLANES(cam, p1, p2, p3, p4)
+end
+
+function module.set_use_shallow_dof_mode(cam: int, toggle: bool): void
+    CAM.SET_CAM_USE_SHALLOW_DOF_MODE(cam, toggle)
+end
+
+function module.set_use_hi_dof(): void
+    CAM.SET_USE_HI_DOF()
+end
+
+-- Only used in R* Script fm_mission_controller_2020
+function module.set_use_hi_dof_on_synced_scene_this_update(): void
+    CAM.SET_USE_HI_DOF_ON_SYNCED_SCENE_THIS_UPDATE()
+end
+
+function module.set_dof_overridden_focus_distance(camera: int, p1: float): void
+    CAM.SET_CAM_DOF_OVERRIDDEN_FOCUS_DISTANCE(camera, p1)
+end
+
+function module.set_dof_overridden_focus_distance_blend_level(p0: any, p1: float): void
+    CAM.SET_CAM_DOF_OVERRIDDEN_FOCUS_DISTANCE_BLEND_LEVEL(p0, p1)
+end
+
+-- This native has its name defined inside its codE
+function module.set_dof_fnumber_of_lens(camera: int, p1: float): void
+    CAM.SET_CAM_DOF_FNUMBER_OF_LENS(camera, p1)
+end
+
+-- Native name labeled within its code
+function module.set_dof_focal_length_multiplier(camera: int, multiplier: float): void
+    CAM.SET_CAM_DOF_FOCAL_LENGTH_MULTIPLIER(camera, multiplier)
+end
+
+-- This native has a name defined inside its code
+function module.set_dof_focus_distance_bias(camera: int, p1: float): void
+    CAM.SET_CAM_DOF_FOCUS_DISTANCE_BIAS(camera, p1)
+end
+
+-- This native has a name defined inside its code
+function module.set_dof_max_near_in_focus_distance(camera: int, p1: float): void
+    CAM.SET_CAM_DOF_MAX_NEAR_IN_FOCUS_DISTANCE(camera, p1)
+end
+
+-- This native has a name defined inside its code
+function module.set_dof_max_near_in_focus_distance_blend_level(camera: int, p1: float): void
+    CAM.SET_CAM_DOF_MAX_NEAR_IN_FOCUS_DISTANCE_BLEND_LEVEL(camera, p1)
+end
+
+-- This native has a name defined inside its code
+function module.set_dof_should_keep_look_at_target_in_focus(camera: int, state: bool): void
+    CAM.SET_CAM_DOF_SHOULD_KEEP_LOOK_AT_TARGET_IN_FOCUS(camera, state)
+end
+
+-- The native seems to only be called once
+function module.set_inherit_roll_vehicle(cam: int, p1: bool): void
+    CAM.SET_CAM_INHERIT_ROLL_VEHICLE(cam, p1)
+end
+
+-- Allows you to aim and shoot at the direction the camera is facing
+function module.set_affects_aiming(cam: int, toggle: bool): void
+    CAM.SET_CAM_AFFECTS_AIMING(cam, toggle)
+end
+
+-- Rotates the radar to match the camera's Z rotation
+function module.set_controls_mini_map_heading(cam: int, toggle: bool): void
+    CAM.SET_CAM_CONTROLS_MINI_MAP_HEADING(cam, toggle)
+end
+
+-- When set to true shadows appear more smooth but less detailed
+function module.set_is_inside_vehicle(cam: int, toggle: bool): void
+    CAM.SET_CAM_IS_INSIDE_VEHICLE(cam, toggle)
+end
+
+function module.set_debug_name(camera: int, name: string): void
+    CAM.SET_CAM_DEBUG_NAME(camera, name)
+end
+
+function module.set_spline_phase(cam: int, p1: float): void
+    CAM.SET_CAM_SPLINE_PHASE(cam, p1)
+end
+
+function module.set_spline_duration(cam: int, time_duration: int): void
+    CAM.SET_CAM_SPLINE_DURATION(cam, time_duration)
+end
+
+function module.set_spline_smoothing_style(cam: int, smoothing_style: int): void
+    CAM.SET_CAM_SPLINE_SMOOTHING_STYLE(cam, smoothing_style)
+end
+
+function module.set_spline_node_ease(cam: int, easing_function: int, p2: int, p3: float): void
+    CAM.SET_CAM_SPLINE_NODE_EASE(cam, easing_function, p2, p3)
+end
+
+function module.set_spline_node_velocity_scale(cam: int, p1: int, scale: float): void
+    CAM.SET_CAM_SPLINE_NODE_VELOCITY_SCALE(cam, p1, scale)
+end
+
+function module.set_spline_node_extra_flags(cam: int, p1: int, flags: int): void
+    CAM.SET_CAM_SPLINE_NODE_EXTRA_FLAGS(cam, p1, flags)
+end
+
+function module.set_active_with_interp(
+    cam_to: int, cam_from: int, duration: int, ease_location: int, ease_rotation: int
+): void
+    -- body function:
+    CAM.SET_CAM_ACTIVE_WITH_INTERP(cam_to, cam_from, duration, ease_location, ease_rotation)
+end
+
+function module.set_shake_amplitude(cam: int, amplitude: float): void
+    CAM.SET_CAM_SHAKE_AMPLITUDE(cam, amplitude)
+end
+
+function module.set_anim_current_phase(cam: int, phase: float): void
+    CAM.SET_CAM_ANIM_CURRENT_PHASE(cam, phase)
+end
+
+function module.set_fly_horizontal_response(cam: int, p1: float, p2: float, p3: float): void
+    CAM.SET_FLY_CAM_HORIZONTAL_RESPONSE(cam, p1, p2, p3)
+end
+
+function module.set_fly_vertical_response(cam: int, p1: float, p2: float, p3: float): void
+    CAM.SET_FLY_CAM_VERTICAL_RESPONSE(cam, p1, p2, p3)
+end
+
+function module.set_fly_max_height(cam: int, height: float): void
+    CAM.SET_FLY_CAM_MAX_HEIGHT(cam, height)
+end
+
+function module.set_fly_coord_and_constrain(cam: int, x: float, y: float, z: float): void
+    CAM.SET_FLY_CAM_COORD_AND_CONSTRAIN(cam, x, y, z)
+end
+
+function module.set_fly_vertical_controls_this_update(cam: int): void
+    CAM.SET_FLY_CAM_VERTICAL_CONTROLS_THIS_UPDATE(cam)
+end
+
+function module.set_view_mode_for_context(context: int, view_mode: int): void
+    CAM.SET_CAM_VIEW_MODE_FOR_CONTEXT(context, view_mode)
+end
+
+function module.set_allow_custom_vehicle_drive_by_update(p0: bool): void
+    CAM.SET_ALLOW_CUSTOM_VEHICLE_DRIVE_BY_CAM_THIS_UPDATE(p0)
+end
+
+function module.set_cutscene_far_clip_this_update(p0: float): void
+    CAM.SET_CUTSCENE_CAM_FAR_CLIP_THIS_UPDATE(p0)
+end
+
+function module.set_death_fail_effect_state(p0: int): void
+    CAM.SET_CAM_DEATH_FAIL_EFFECT_STATE(p0)
+end
+
+-- Actions
+
+function module.render_script_cams(
+    render: bool, ease: bool, ease_time: int, p3: bool, p4: bool, p5: any
+): void
+    -- body function:
+    CAM.RENDER_SCRIPT_CAMS(render, ease, ease_time, p3, p4, p5)
+end
+
+-- This native makes the gameplay camera zoom into first person/third person with a special effect
+function module.stop_rendering_script_cams_using_catch_up(render: bool, p1: float, p2: int, p3: any): void
+    CAM.STOP_RENDERING_SCRIPT_CAMS_USING_CATCH_UP(render, p1, p2, p3)
+end
+
+function module.create(cam_name: string, p1: bool): int
+    return CAM.CREATE_CAM(cam_name, p1)
+end
+
+function module.create_with_params(
+    cam_name: string, pos_x: float, pos_y: float, pos_z: float, rot_x: float, rot_y: float,
+    rot_z: float, fov: float, p8: bool, p9: int
+): int
+    -- body function:
+    return CAM.CREATE_CAM_WITH_PARAMS(cam_name, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, fov, p8, p9)
+end
+
+function module.create_camera(cam_hash: int, p1: bool): int
+    return CAM.CREATE_CAMERA(cam_hash, p1)
+end
+
+function module.create_camera_with_params(
+    cam_hash: int, pos_x: float, pos_y: float, pos_z: float, rot_x: float, rot_y: float,
+    rot_z: float, fov: float, p8: bool, p9: any
+): int
+    -- body function:
+    return CAM.CREATE_CAMERA_WITH_PARAMS(cam_hash, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, fov, p8, p9)
+end
+
+function module.destroy(cam: int, b_script_host_cam: bool): void
+    CAM.DESTROY_CAM(cam, b_script_host_cam)
+end
+
+function module.destroy_all_cams(b_script_host_cam: bool): void
+    CAM.DESTROY_ALL_CAMS(b_script_host_cam)
+end
+
+function module.force_far_clip(cam: int, p1: float): void
+    CAM.FORCE_CAM_FAR_CLIP(cam, p1)
+end
+
+-- Last param determines if its relative to the Entity
+function module.attach_to_entity(
+    cam: int, entity: int, x_offset: float, y_offset: float, z_offset: float, is_relative: bool
+): void
+    -- body function:
+    CAM.ATTACH_CAM_TO_ENTITY(cam, entity, x_offset, y_offset, z_offset, is_relative)
+end
+
+function module.attach_to_ped_bone(
+    cam: int, ped: int, bone_index: int, x: float, y: float, z: float, heading: bool
+): void
+    -- body function:
+    CAM.ATTACH_CAM_TO_PED_BONE(cam, ped, bone_index, x, y, z, heading)
+end
+
+function module.hard_attach_to_ped_bone(
+    cam: int, ped: int, bone_index: int, p3: float, p4: float, p5: float, p6: float, p7: float,
+    p8: float, p9: bool
+): void
+    -- body function:
+    CAM.HARD_ATTACH_CAM_TO_PED_BONE(cam, ped, bone_index, p3, p4, p5, p6, p7, p8, p9)
+end
+
+function module.hard_attach_to_entity(
+    cam: int, entity: int, x_rot: float, y_rot: float, z_rot: float, x_offset: float,
+    y_offset: float, z_offset: float, is_relative: bool
+): void
+    -- body function:
+    CAM.HARD_ATTACH_CAM_TO_ENTITY(cam, entity, x_rot, y_rot, z_rot, x_offset, y_offset, z_offset, is_relative)
+end
+
+-- This native works with vehicles only. Bone indexes are usually given by this native GET_ENTITY_BONE_INDEX_BY_NAME
+function module.attach_to_vehicle_bone(
+    cam: int, vehicle: int, bone_index: int, relative_rotation: bool, rot_x: float, rot_y: float,
+    rot_z: float, offset_x: float, offset_y: float, offset_z: float, fixed_direction: bool
+): void
+    -- body function:
+    CAM.ATTACH_CAM_TO_VEHICLE_BONE(cam, vehicle, bone_index, relative_rotation, rot_x, rot_y, rot_z, offset_x, offset_y, offset_z, fixed_direction)
+end
+
+function module.detach(cam: int): void
+    CAM.DETACH_CAM(cam)
+end
+
+function module.point_at_coord(cam: int, x: float, y: float, z: float): void
+    CAM.POINT_CAM_AT_COORD(cam, x, y, z)
+end
+
+function module.point_at_entity(cam: int, entity: int, p2: float, p3: float, p4: float, p5: bool): void
+    CAM.POINT_CAM_AT_ENTITY(cam, entity, p2, p3, p4, p5)
+end
+
+function module.point_at_ped_bone(
+    cam: int, ped: int, bone_index: int, x: float, y: float, z: float, p6: bool
+): void
+    -- body function:
+    CAM.POINT_CAM_AT_PED_BONE(cam, ped, bone_index, x, y, z, p6)
+end
+
+function module.stop_pointing(cam: int): void
+    CAM.STOP_CAM_POINTING(cam)
+end
+
+function module.allow_motion_blur_decay(p0: any, p1: bool): void
+    CAM.ALLOW_MOTION_BLUR_DECAY(p0, p1)
+end
+
+function module.add_spline_node(
+    camera: int, x: float, y: float, z: float, x_rot: float, y_rot: float, z_rot: float,
+    length: int, smoothing_style: int, rotation_order: int
+): void
+    -- body function:
+    CAM.ADD_CAM_SPLINE_NODE(camera, x, y, z, x_rot, y_rot, z_rot, length, smoothing_style, rotation_order)
+end
+
+function module.add_spline_node_using_frame(cam: int, cam2: int, length: int, p3: int): void
+    CAM.ADD_CAM_SPLINE_NODE_USING_CAMERA_FRAME(cam, cam2, length, p3)
+end
+
+function module.add_spline_node_using(cam: int, cam2: int, length: int, p3: int): void
+    CAM.ADD_CAM_SPLINE_NODE_USING_CAMERA(cam, cam2, length, p3)
+end
+
+function module.add_spline_node_using_gameplay_frame(cam: int, length: int, p2: int): void
+    CAM.ADD_CAM_SPLINE_NODE_USING_GAMEPLAY_FRAME(cam, length, p2)
+end
+
+function module.override_spline_velocity(cam: int, p1: int, p2: float, p3: float): void
+    CAM.OVERRIDE_CAM_SPLINE_VELOCITY(cam, p1, p2, p3)
+end
+
+function module.override_spline_motion_blur(cam: int, p1: int, p2: float, p3: float): void
+    CAM.OVERRIDE_CAM_SPLINE_MOTION_BLUR(cam, p1, p2, p3)
+end
+
+function module.interpolate_with_params(
+    camera: int, cam_pos_x: float, cam_pos_y: float, cam_pos_z: float, cam_rot_x: float,
+    cam_rot_y: float, cam_rot_z: float, fov: float, duration: int, pos_curve_type: int,
+    rot_curve_type: int, rot_order: int, fov_curve_type: int
+): void
+    -- body function:
+    CAM._INTERPOLATE_CAM_WITH_PARAMS(camera, cam_pos_x, cam_pos_y, cam_pos_z, cam_rot_x, cam_rot_y, cam_rot_z, fov, duration, pos_curve_type, rot_curve_type, rot_order, fov_curve_type)
+end
+
+function module.activate_with_interp_and_fov_curve(
+    cam_to: int, cam_from: int, duration: int, ease_location: int, ease_rotation: int, ease_fov: int
+): void
+    -- body function:
+    CAM._ACTIVATE_CAM_WITH_INTERP_AND_FOV_CURVE(cam_to, cam_from, duration, ease_location, ease_rotation, ease_fov)
+end
+
+function module.shake(cam: int, type: string, amplitude: float): void
+    CAM.SHAKE_CAM(cam, type, amplitude)
+end
+
+function module.animated_shake(cam: int, p1: string, p2: string, p3: string, amplitude: float): void
+    CAM.ANIMATED_SHAKE_CAM(cam, p1, p2, p3, amplitude)
+end
+
+function module.stop_shaking(cam: int, p1: bool): void
+    CAM.STOP_CAM_SHAKING(cam, p1)
+end
+
+function module.shake_script_global(p0: string, p1: float): void
+    CAM.SHAKE_SCRIPT_GLOBAL(p0, p1)
+end
+
+function module.animated_shake_script_global(p0: string, p1: string, p2: string, p3: float): void
+    CAM.ANIMATED_SHAKE_SCRIPT_GLOBAL(p0, p1, p2, p3)
+end
+
+-- In drunk_controller.c4, sub_309
+function module.stop_script_global_shaking(p0: bool): void
+    CAM.STOP_SCRIPT_GLOBAL_SHAKING(p0)
+end
+
+function module.trigger_vehicle_part_broken_shake(vehicle: int, p1: int, p2: float): void
+    CAM.TRIGGER_VEHICLE_PART_BROKEN_CAMERA_SHAKE(vehicle, p1, p2)
+end
+
+-- Atleast one time in a script for the zRot Rockstar uses GET_ENTITY_HEADING to help fill the parameter
+function module.play_anim(
+    cam: int, anim_name: string, anim_dictionary: string, x: float, y: float, z: float,
+    x_rot: float, y_rot: float, z_rot: float, p9: bool, p10: int
+): bool
+    -- body function:
+    return CAM.PLAY_CAM_ANIM(cam, anim_name, anim_dictionary, x, y, z, x_rot, y_rot, z_rot, p9, p10)
+end
+
+function module.play_synchronized_anim(p0: any, p1: any, anim_name: string, anim_dictionary: string): bool
+    return CAM.PLAY_SYNCHRONIZED_CAM_ANIM(p0, p1, anim_name, anim_dictionary)
+end
+
+function module.force_relative_heading_and_pitch(roll: float, pitch: float, yaw: float): void
+    CAM.FORCE_CAMERA_RELATIVE_HEADING_AND_PITCH(roll, pitch, yaw)
+end
+
+function module.disable_collision_for_object(entity: int): void
+    CAM.DISABLE_CAM_COLLISION_FOR_OBJECT(entity)
+end
+
+function module.bypass_collision_buoyancy_test_this_update(): void
+    CAM.BYPASS_CAMERA_COLLISION_BUOYANCY_TEST_THIS_UPDATE()
+end
+
+function module.use_script_for_ambient_population_origin_this_frame(p0: bool, p1: bool): void
+    CAM.USE_SCRIPT_CAM_FOR_AMBIENT_POPULATION_ORIGIN_THIS_FRAME(p0, p1)
+end
+
+function module.force_tightspace_custom_framing_this_update(): void
+    CAM.FORCE_TIGHTSPACE_CUSTOM_FRAMING_THIS_UPDATE()
+end
+
+function module.bypass_cutscene_rendering_this_update(): void
+    CAM.BYPASS_CUTSCENE_CAM_RENDERING_THIS_UPDATE()
+end
+
+function module.stop_cutscene_shaking(p0: any): void
+    CAM.STOP_CUTSCENE_CAM_SHAKING(p0)
+end
+
+function module.disable_near_clip_scan_this_update(): void
+    CAM.DISABLE_NEAR_CLIP_SCAN_THIS_UPDATE()
+end
+
+function module.prevent_collision_settings_for_triplehead_in_interiors_this_update(): void
+    CAM.CAMERA_PREVENT_COLLISION_SETTINGS_FOR_TRIPLEHEAD_IN_INTERIORS_THIS_UPDATE()
+end
+
+function module.replay_get_max_distance_allowed_from_player(): float
+    return CAM.REPLAY_GET_MAX_DISTANCE_ALLOWED_FROM_PLAYER()
+end
+
+return Atdar.loader.auto(module, "natives/camera")

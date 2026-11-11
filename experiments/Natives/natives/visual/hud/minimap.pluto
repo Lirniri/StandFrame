@@ -1,0 +1,181 @@
+local module = {}
+
+function module.is_rendering(): bool
+    return HUD.IS_MINIMAP_RENDERING()
+end
+
+function module.is_hidden(): bool
+    return HUD.IS_RADAR_HIDDEN()
+end
+
+-- flash
+function module.flash(hud_color_index: ?int): void
+    if hud_color_index ~= nil then
+        HUD.FLASH_MINIMAP_DISPLAY_WITH_COLOR(hud_color_index)
+    else
+        HUD.FLASH_MINIMAP_DISPLAY()
+    end
+end
+
+function module.flash_ability_bar(millisecondsToFlash: int): void
+    HUD.FLASH_ABILITY_BAR(millisecondsToFlash)
+end
+
+-- State
+
+function module.is_preference_switched_on(): bool
+    return HUD.IS_RADAR_PREFERENCE_SWITCHED_ON()
+end
+
+-- Get
+
+function module.get_fow_discovery_ratio(): float
+    return HUD.GET_MINIMAP_FOW_DISCOVERY_RATIO()
+end
+
+function module.get_fow_coordinate_is_revealed(x: float, y: float, z: float): bool
+    return HUD.GET_MINIMAP_FOW_COORDINATE_IS_REVEALED(x, y, z)
+end
+
+-- Set
+
+function module.set_zoom_precise(zoom: float): void
+    HUD.SET_RADAR_ZOOM_PRECISE(zoom)
+end
+
+function module.set_zoom(zoom_level: int): void
+    HUD.SET_RADAR_ZOOM(zoom_level)
+end
+
+function module.set_zoom_to_distance(zoom: float): void
+    HUD.SET_RADAR_ZOOM_TO_DISTANCE(zoom)
+end
+
+-- This native is used to colorize certain map components like the army base at the top of the map
+function module.set_component(component_id: int, toggle: bool, override_color: int): bool
+    return HUD.SET_MINIMAP_COMPONENT(component_id, toggle, override_color)
+end
+
+function module.set_sonar_sweep(toggle: bool): void
+    HUD.SET_MINIMAP_SONAR_SWEEP(toggle)
+end
+
+function module.set_as_interior_this_frame(interior: int, x: float, y: float, z: int, zoom: int): void
+    HUD.SET_RADAR_AS_INTERIOR_THIS_FRAME(interior, x, y, z, zoom)
+end
+
+function module.set_as_exterior_this_frame(): void
+    HUD.SET_RADAR_AS_EXTERIOR_THIS_FRAME()
+end
+
+function module.set_in_spectator_mode(toggle: bool, ped: int): void
+    HUD.SET_MINIMAP_IN_SPECTATOR_MODE(toggle, ped)
+end
+
+function module.set_block_waypoint(toggle: bool): void
+    HUD.SET_MINIMAP_BLOCK_WAYPOINT(toggle)
+end
+
+-- Toggles the North Yankton map
+function module.set_in_prologue(toggle: bool): void
+    HUD.SET_MINIMAP_IN_PROLOGUE(toggle)
+end
+
+function module.set_background_hidden(toggle: bool): void
+    HUD.SET_MINIMAP_BACKGROUND_HIDDEN(toggle)
+end
+
+-- If true, the entire map will be revealed
+function module.set_hide_fow(toggle: bool): void
+    HUD.SET_MINIMAP_HIDE_FOW(toggle)
+end
+
+function module.set_fow_do_not_update(p0: bool): void
+    HUD.SET_MINIMAP_FOW_DO_NOT_UPDATE(p0)
+end
+
+-- Up to eight coordinates may be revealed per frame
+function module.set_fow_reveal_coordinate(x: float, y: float, z: float): void
+    HUD.SET_MINIMAP_FOW_REVEAL_COORDINATE(x, y, z)
+end
+
+-- Not much is known so far on what it does _exactly_
+function module.set_golf_course(hole: int): void
+    HUD.SET_MINIMAP_GOLF_COURSE(hole)
+end
+
+function module.set_golf_course_off(): void
+    HUD.SET_MINIMAP_GOLF_COURSE_OFF()
+end
+
+-- Argument must be 0.0f or above 38.0f, or it will be ignored
+function module.set_fake_max_altimeter_height(altitude: float, p1: bool, p2: any): void
+    HUD.SET_FAKE_MINIMAP_MAX_ALTIMETER_HEIGHT(altitude, p1, p2)
+end
+
+-- Toggles the big minimap state like in GTA:Online
+function module.set_bigmap_active(toggle_big_map: bool, show_full_map: bool): void
+    HUD.SET_BIGMAP_ACTIVE(toggle_big_map, show_full_map)
+end
+
+-- Actions
+
+-- If Minimap / Radar should be displayed
+function module.display(toggle: bool): void
+    HUD.DISPLAY_RADAR(toggle)
+end
+
+function module.hide_exterior_map_this_frame(): void
+    HUD.HIDE_MINIMAP_EXTERIOR_MAP_THIS_FRAME()
+end
+
+function module.hide_interior_map_this_frame(): void
+    HUD.HIDE_MINIMAP_INTERIOR_MAP_THIS_FRAME()
+end
+
+-- When calling this, the current frame will have the players "arrow icon" be focused on the dead center of the radar
+function module.dont_tilt_frame(): void
+    HUD.DONT_TILT_MINIMAP_THIS_FRAME()
+end
+
+function module.dont_zoom_when_running_this_frame(): void
+    HUD.DONT_ZOOM_MINIMAP_WHEN_RUNNING_THIS_FRAME()
+end
+
+function module.dont_zoom_when_sniping_this_frame(): void
+    HUD.DONT_ZOOM_MINIMAP_WHEN_SNIPING_THIS_FRAME()
+end
+
+-- Hides HUD and radar this frame and prohibits switching to other weapons (or accessing the weapon wheel)
+function module.hide_hud_frame(): void
+    HUD.HIDE_HUD_AND_RADAR_THIS_FRAME()
+end
+
+function module.toggle_stealth(toggle: bool): void
+    HUD.TOGGLE_STEALTH_RADAR(toggle)
+end
+
+-- Locks the minimap to the specified angle in integer degrees
+function module.lock_angle(angle: int): void
+    HUD.LOCK_MINIMAP_ANGLE(angle)
+end
+
+function module.unlock_angle(): void
+    HUD.UNLOCK_MINIMAP_ANGLE()
+end
+
+-- Locks the minimap to the specified world position
+function module.lock_position(x: float, y: float): void
+    HUD.LOCK_MINIMAP_POSITION(x, y)
+end
+
+function module.unlock_position(): void
+    HUD.UNLOCK_MINIMAP_POSITION()
+end
+
+-- If toggle is true, the map is shown in full screen
+function module.custom_set_active(toggle: bool): void
+    HUD.CUSTOM_MINIMAP_SET_ACTIVE(toggle)
+end
+
+return module

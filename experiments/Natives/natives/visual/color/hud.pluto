@@ -1,0 +1,317 @@
+-- HUD colours: the game's colour slots (HUD_COLOUR_*), by index, with their default RGBA.
+-- Natives that take a "hudColorIndex" take these indexes: THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST,
+-- blips, text. Scripts can replace a slot's colour (REPLACE_HUD_COLOUR_WITH_RGBA), so the default here
+-- isn't always what the game shows now: get() asks the game.
+-- Source: https://docs.fivem.net/docs/game-references/hud-colors/ (common:/data/ui/hudcolor.dat)
+--
+--     local hud_color = Atdar.natives.visual.color.hud
+--     hud_color.RED                    -- 6, the index for natives
+--     hud_color.default(hud_color.RED) -- { r = 224, g = 50, b = 50, a = 255 }
+--     hud_color.get(hud_color.RED)     -- the colour the game uses now
+--     hud_color.name_of(6)             -- "RED"
+
+local module = {}
+
+-- { index, name without HUD_COLOUR_, r, g, b, a }, a - 255 opaque
+local COLORS = {
+    {   0, "PURE_WHITE",                   255, 255, 255, 255 },
+    {   1, "WHITE",                        240, 240, 240, 255 },
+    {   2, "BLACK",                          0,   0,   0, 255 },
+    {   3, "GREY",                         155, 155, 155, 255 },
+    {   4, "GREYLIGHT",                    205, 205, 205, 255 },
+    {   5, "GREYDARK",                      77,  77,  77, 255 },
+    {   6, "RED",                          224,  50,  50, 255 },
+    {   7, "REDLIGHT",                     240, 153, 153, 255 },
+    {   8, "REDDARK",                      112,  25,  25, 255 },
+    {   9, "BLUE",                          93, 182, 229, 255 },
+    {  10, "BLUELIGHT",                    174, 219, 242, 255 },
+    {  11, "BLUEDARK",                      47,  92, 115, 255 },
+    {  12, "YELLOW",                       240, 200,  80, 255 },
+    {  13, "YELLOWLIGHT",                  254, 235, 169, 255 },
+    {  14, "YELLOWDARK",                   126, 107,  41, 255 },
+    {  15, "ORANGE",                       255, 133,  85, 255 },
+    {  16, "ORANGELIGHT",                  255, 194, 170, 255 },
+    {  17, "ORANGEDARK",                   127,  66,  42, 255 },
+    {  18, "GREEN",                        114, 204, 114, 255 },
+    {  19, "GREENLIGHT",                   185, 230, 185, 255 },
+    {  20, "GREENDARK",                     57, 102,  57, 255 },
+    {  21, "PURPLE",                       132, 102, 226, 255 },
+    {  22, "PURPLELIGHT",                  192, 179, 239, 255 },
+    {  23, "PURPLEDARK",                    67,  57, 111, 255 },
+    {  24, "PINK",                         203,  54, 148, 255 },
+    {  25, "RADAR_HEALTH",                  53, 154,  71, 255 },
+    {  26, "RADAR_ARMOUR",                  93, 182, 229, 255 },
+    {  27, "RADAR_DAMAGE",                 235,  36,  39, 255 },
+    {  28, "NET_PLAYER1",                  194,  80,  80, 255 },
+    {  29, "NET_PLAYER2",                  156, 110, 175, 255 },
+    {  30, "NET_PLAYER3",                  255, 123, 196, 255 },
+    {  31, "NET_PLAYER4",                  247, 159, 123, 255 },
+    {  32, "NET_PLAYER5",                  178, 144, 132, 255 },
+    {  33, "NET_PLAYER6",                  141, 206, 167, 255 },
+    {  34, "NET_PLAYER7",                  113, 169, 175, 255 },
+    {  35, "NET_PLAYER8",                  211, 209, 231, 255 },
+    {  36, "NET_PLAYER9",                  144, 127, 153, 255 },
+    {  37, "NET_PLAYER10",                 106, 196, 191, 255 },
+    {  38, "NET_PLAYER11",                 214, 196, 153, 255 },
+    {  39, "NET_PLAYER12",                 234, 142,  80, 255 },
+    {  40, "NET_PLAYER13",                 152, 203, 234, 255 },
+    {  41, "NET_PLAYER14",                 178,  98, 135, 255 },
+    {  42, "NET_PLAYER15",                 144, 142, 122, 255 },
+    {  43, "NET_PLAYER16",                 166, 117,  94, 255 },
+    {  44, "NET_PLAYER17",                 175, 168, 168, 255 },
+    {  45, "NET_PLAYER18",                 232, 142, 155, 255 },
+    {  46, "NET_PLAYER19",                 187, 214,  91, 255 },
+    {  47, "NET_PLAYER20",                  12, 123,  86, 255 },
+    {  48, "NET_PLAYER21",                 123, 196, 255, 255 },
+    {  49, "NET_PLAYER22",                 171,  60, 230, 255 },
+    {  50, "NET_PLAYER23",                 206, 169,  13, 255 },
+    {  51, "NET_PLAYER24",                  71,  99, 173, 255 },
+    {  52, "NET_PLAYER25",                  42, 166, 185, 255 },
+    {  53, "NET_PLAYER26",                 186, 157, 125, 255 },
+    {  54, "NET_PLAYER27",                 201, 225, 255, 255 },
+    {  55, "NET_PLAYER28",                 240, 240, 150, 255 },
+    {  56, "NET_PLAYER29",                 237, 140, 161, 255 },
+    {  57, "NET_PLAYER30",                 249, 138, 138, 255 },
+    {  58, "NET_PLAYER31",                 252, 239, 166, 255 },
+    {  59, "NET_PLAYER32",                 240, 240, 240, 255 },
+    {  60, "SIMPLEBLIP_DEFAULT",           159, 201, 166, 255 },
+    {  61, "MENU_BLUE",                    140, 140, 140, 255 },
+    {  62, "MENU_GREY_LIGHT",              140, 140, 140, 255 },
+    {  63, "MENU_BLUE_EXTRA_DARK",          40,  40,  40, 255 },
+    {  64, "MENU_YELLOW",                  240, 160,   0, 255 },
+    {  65, "MENU_YELLOW_DARK",             240, 160,   0, 255 },
+    {  66, "MENU_GREEN",                   240, 160,   0, 255 },
+    {  67, "MENU_GREY",                    140, 140, 140, 255 },
+    {  68, "MENU_GREY_DARK",                60,  60,  60, 255 },
+    {  69, "MENU_HIGHLIGHT",                30,  30,  30, 255 },
+    {  70, "MENU_STANDARD",                140, 140, 140, 255 },
+    {  71, "MENU_DIMMED",                   75,  75,  75, 255 },
+    {  72, "MENU_EXTRA_DIMMED",             50,  50,  50, 255 },
+    {  73, "BRIEF_TITLE",                   95,  95,  95, 255 },
+    {  74, "MID_GREY_MP",                  100, 100, 100, 255 },
+    {  75, "NET_PLAYER1_DARK",              93,  39,  39, 255 },
+    {  76, "NET_PLAYER2_DARK",              77,  55,  89, 255 },
+    {  77, "NET_PLAYER3_DARK",             124,  62,  99, 255 },
+    {  78, "NET_PLAYER4_DARK",             120,  80,  80, 255 },
+    {  79, "NET_PLAYER5_DARK",              87,  72,  66, 255 },
+    {  80, "NET_PLAYER6_DARK",              74, 103,  83, 255 },
+    {  81, "NET_PLAYER7_DARK",              60,  85,  88, 255 },
+    {  82, "NET_PLAYER8_DARK",             105, 105,  64, 255 },
+    {  83, "NET_PLAYER9_DARK",              72,  63,  76, 255 },
+    {  84, "NET_PLAYER10_DARK",             53,  98,  95, 255 },
+    {  85, "NET_PLAYER11_DARK",            107,  98,  76, 255 },
+    {  86, "NET_PLAYER12_DARK",            117,  71,  40, 255 },
+    {  87, "NET_PLAYER13_DARK",             76, 101, 117, 255 },
+    {  88, "NET_PLAYER14_DARK",             65,  35,  47, 255 },
+    {  89, "NET_PLAYER15_DARK",             72,  71,  61, 255 },
+    {  90, "NET_PLAYER16_DARK",             85,  58,  47, 255 },
+    {  91, "NET_PLAYER17_DARK",             87,  84,  84, 255 },
+    {  92, "NET_PLAYER18_DARK",            116,  71,  77, 255 },
+    {  93, "NET_PLAYER19_DARK",             93, 107,  45, 255 },
+    {  94, "NET_PLAYER20_DARK",              6,  61,  43, 255 },
+    {  95, "NET_PLAYER21_DARK",             61,  98, 127, 255 },
+    {  96, "NET_PLAYER22_DARK",             85,  30, 115, 255 },
+    {  97, "NET_PLAYER23_DARK",            103,  84,   6, 255 },
+    {  98, "NET_PLAYER24_DARK",             35,  49,  86, 255 },
+    {  99, "NET_PLAYER25_DARK",             21,  83,  92, 255 },
+    { 100, "NET_PLAYER26_DARK",             93,  98,  62, 255 },
+    { 101, "NET_PLAYER27_DARK",            100, 112, 127, 255 },
+    { 102, "NET_PLAYER28_DARK",            120, 120,  75, 255 },
+    { 103, "NET_PLAYER29_DARK",            152,  76,  93, 255 },
+    { 104, "NET_PLAYER30_DARK",            124,  69,  69, 255 },
+    { 105, "NET_PLAYER31_DARK",             10,  43,  50, 255 },
+    { 106, "NET_PLAYER32_DARK",             95,  95,  10, 255 },
+    { 107, "BRONZE",                       180, 130,  97, 255 },
+    { 108, "SILVER",                       150, 153, 161, 255 },
+    { 109, "GOLD",                         214, 181,  99, 255 },
+    { 110, "PLATINUM",                     166, 221, 190, 255 },
+    { 111, "GANG1",                         29, 100, 153, 255 },
+    { 112, "GANG2",                        214, 116,  15, 255 },
+    { 113, "GANG3",                        135, 125, 142, 255 },
+    { 114, "GANG4",                        229, 119, 185, 255 },
+    { 115, "SAME_CREW",                    252, 239, 166, 255 },
+    { 116, "FREEMODE",                      45, 110, 185, 255 },
+    { 117, "PAUSE_BG",                       0,   0,   0, 186 },
+    { 118, "FRIENDLY",                      93, 182, 229, 255 },
+    { 119, "ENEMY",                        194,  80,  80, 255 },
+    { 120, "LOCATION",                     240, 200,  80, 255 },
+    { 121, "PICKUP",                       114, 204, 114, 255 },
+    { 122, "PAUSE_SINGLEPLAYER",           114, 204, 114, 255 },
+    { 123, "FREEMODE_DARK",                 22,  55,  92, 255 },
+    { 124, "INACTIVE_MISSION",             154, 154, 154, 255 },
+    { 125, "DAMAGE",                       194,  80,  80, 255 },
+    { 126, "PINKLIGHT",                    252, 115, 201, 255 },
+    { 127, "PM_MITEM_HIGHLIGHT",           252, 177,  49, 255 },
+    { 128, "SCRIPT_VARIABLE",                0,   0,   0, 255 },
+    { 129, "YOGA",                         109, 247, 204, 255 },
+    { 130, "TENNIS",                       241, 101,  34, 255 },
+    { 131, "GOLF",                         214, 189,  97, 255 },
+    { 132, "SHOOTING_RANGE",               112,  25,  25, 255 },
+    { 133, "FLIGHT_SCHOOL",                 47,  92, 115, 255 },
+    { 134, "NORTH_BLUE",                    93, 182, 229, 255 },
+    { 135, "SOCIAL_CLUB",                  234, 153,  28, 255 },
+    { 136, "PLATFORM_BLUE",                 11,  55, 123, 255 },
+    { 137, "PLATFORM_GREEN",               146, 200,  62, 255 },
+    { 138, "PLATFORM_GREY",                234, 153,  28, 255 },
+    { 139, "FACEBOOK_BLUE",                 66,  89, 148, 255 },
+    { 140, "INGAME_BG",                      0,   0,   0, 186 },
+    { 141, "DARTS",                        114, 204, 114, 255 },
+    { 142, "WAYPOINT",                     164,  76, 242, 255 },
+    { 143, "MICHAEL",                      101, 180, 212, 255 },
+    { 144, "FRANKLIN",                     171, 237, 171, 255 },
+    { 145, "TREVOR",                       255, 163,  87, 255 },
+    { 146, "GOLF_P1",                      240, 240, 240, 255 },
+    { 147, "GOLF_P2",                      235, 239,  30, 255 },
+    { 148, "GOLF_P3",                      255, 149,  14, 255 },
+    { 149, "GOLF_P4",                      246,  60, 161, 255 },
+    { 150, "WAYPOINTLIGHT",                210, 166, 249, 255 },
+    { 151, "WAYPOINTDARK",                  82,  38, 121, 255 },
+    { 152, "PANEL_LIGHT",                    0,   0,   0,  77 },
+    { 153, "MICHAEL_DARK",                  72, 103, 116, 255 },
+    { 154, "FRANKLIN_DARK",                 85, 118,  85, 255 },
+    { 155, "TREVOR_DARK",                  127,  81,  43, 255 },
+    { 156, "OBJECTIVE_ROUTE",              240, 200,  80, 255 },
+    { 157, "PAUSEMAP_TINT",                  0,   0,   0, 215 },
+    { 158, "PAUSE_DESELECT",               100, 100, 100, 127 },
+    { 159, "PM_WEAPONS_PURCHASABLE",        45, 110, 185, 255 },
+    { 160, "PM_WEAPONS_LOCKED",            240, 240, 240, 191 },
+    { 161, "END_SCREEN_BG",                  0,   0,   0, 186 },
+    { 162, "CHOP",                         224,  50,  50, 255 },
+    { 163, "PAUSEMAP_TINT_HALF",             0,   0,   0, 215 },
+    { 164, "NORTH_BLUE_OFFICIAL",            0,  71, 133, 255 },
+    { 165, "SCRIPT_VARIABLE_2",              0,   0,   0, 255 },
+    { 166, "H",                             33, 118,  37, 255 },
+    { 167, "HDARK",                         37, 102,  40, 255 },
+    { 168, "T",                            234, 153,  28, 255 },
+    { 169, "TDARK",                        225, 140,   8, 255 },
+    { 170, "HSHARD",                        20,  40,   0, 255 },
+    { 171, "CONTROLLER_MICHAEL",            48, 255, 255, 255 },
+    { 172, "CONTROLLER_FRANKLIN",           48, 255,   0, 255 },
+    { 173, "CONTROLLER_TREVOR",            176,  80,   0, 255 },
+    { 174, "CONTROLLER_CHOP",              127,   0,   0, 255 },
+    { 175, "VIDEO_EDITOR_VIDEO",            53, 166, 224, 255 },
+    { 176, "VIDEO_EDITOR_AUDIO",           162,  79, 157, 255 },
+    { 177, "VIDEO_EDITOR_TEXT",            104, 192, 141, 255 },
+    { 178, "HB_BLUE",                       29, 100, 153, 255 },
+    { 179, "HB_YELLOW",                    234, 153,  28, 255 },
+    { 180, "VIDEO_EDITOR_SCORE",           240, 160,   1, 255 },
+    { 181, "VIDEO_EDITOR_AUDIO_FADEOUT",    59,  34,  57, 255 },
+    { 182, "VIDEO_EDITOR_TEXT_FADEOUT",     41,  68,  53, 255 },
+    { 183, "VIDEO_EDITOR_SCORE_FADEOUT",    82,  58,  10, 255 },
+    { 184, "HEIST_BACKGROUND",              37, 102,  40, 186 },
+    { 185, "VIDEO_EDITOR_AMBIENT",         240, 200,  80, 255 },
+    { 186, "VIDEO_EDITOR_AMBIENT_FADEOUT",  80,  70,  34, 255 },
+    { 187, "VIDEO_EDITOR_AMBIENT_DARK",    255, 133,  85, 255 },
+    { 188, "VIDEO_EDITOR_AMBIENT_LIGHT",   255, 194, 170, 255 },
+    { 189, "VIDEO_EDITOR_AMBIENT_MID",     255, 133,  85, 255 },
+    { 190, "LOW_FLOW",                     240, 200,  80, 255 },
+    { 191, "LOW_FLOW_DARK",                126, 107,  41, 255 },
+    { 192, "G1",                           247, 159, 123, 255 },
+    { 193, "G2",                           226, 134, 187, 255 },
+    { 194, "G3",                           239, 238, 151, 255 },
+    { 195, "G4",                           113, 169, 175, 255 },
+    { 196, "G5",                           160, 140, 193, 255 },
+    { 197, "G6",                           141, 206, 167, 255 },
+    { 198, "G7",                           181, 214, 234, 255 },
+    { 199, "G8",                           178, 144, 132, 255 },
+    { 200, "G9",                             0, 132, 114, 255 },
+    { 201, "G10",                          216,  85, 117, 255 },
+    { 202, "G11",                           30, 100, 152, 255 },
+    { 203, "G12",                           43, 181, 117, 255 },
+    { 204, "G13",                          233, 141,  79, 255 },
+    { 205, "G14",                          137, 210, 215, 255 },
+    { 206, "G15",                          134, 125, 141, 255 },
+    { 207, "ADVERSARY",                    109,  34,  33, 255 },
+    { 208, "DEGEN_RED",                    255,   0,   0, 255 },
+    { 209, "DEGEN_YELLOW",                 255, 255,   0, 255 },
+    { 210, "DEGEN_GREEN",                    0, 255,   0, 255 },
+    { 211, "DEGEN_CYAN",                     0, 255, 255, 255 },
+    { 212, "DEGEN_BLUE",                     0,   0, 255, 255 },
+    { 213, "DEGEN_MAGENTA",                255,   0, 255, 255 },
+    { 214, "STUNT_1",                       38, 136, 234, 255 },
+    { 215, "STUNT_2",                      224,  50,  50, 255 },
+    { 216, "SPECIAL_RACE_SERIES",          154, 178,  54, 255 },
+    { 217, "SPECIAL_RACE_SERIES_DARK",      93, 107,  45, 255 },
+    { 218, "CS",                           206, 169,  13, 255 },
+    { 219, "CS_DARK",                      103,  84,   6, 255 },
+    { 220, "TECH_GREEN",                     0, 151, 151, 255 },
+    { 221, "TECH_GREEN_DARK",                5, 119, 113, 255 },
+    { 222, "TECH_RED",                     151,   0,   0, 255 },
+    { 223, "TECH_GREEN_VERY_DARK",           0,  40,  40, 255 },
+    { 224, "PLACEHOLDER_01",               255, 255, 255, 255 },
+    { 225, "PLACEHOLDER_02",               255, 255, 255, 255 },
+    { 226, "PLACEHOLDER_03",               255, 255, 255, 255 },
+    { 227, "PLACEHOLDER_04",               255, 255, 255, 255 },
+    { 228, "PLACEHOLDER_05",               255, 255, 255, 255 },
+    { 229, "PLACEHOLDER_06",               255, 255, 255, 255 },
+    { 230, "PLACEHOLDER_07",               255, 255, 255, 255 },
+    { 231, "PLACEHOLDER_08",               255, 255, 255, 255 },
+    { 232, "PLACEHOLDER_09",               255, 255, 255, 255 },
+    { 233, "PLACEHOLDER_10",               255, 255, 255, 255 },
+    { 234, "JUNK_ENERGY",                   29, 237, 195, 255 },
+}
+
+-- Index and name of each colour: module.RED == 6; NAMES[6] == "RED"
+local NAMES = {}
+local DEFAULTS = {}
+for _, entry in ipairs(COLORS) do
+    local index, name = entry[1], entry[2]
+    module[name] = index
+    NAMES[index] = name
+    DEFAULTS[index] = { r = entry[3], g = entry[4], b = entry[5], a = entry[6] }
+end
+
+-- Get
+
+-- @return The colour's name without HUD_COLOUR_ ("RED"), or nil for an unknown index
+function module.name_of(index: int): ?string
+    return NAMES[index]
+end
+
+-- @return The default colour of the slot, 0 - 255 (a copy), or nil for an unknown index
+function module.default(index: int): ?table
+    local colour = DEFAULTS[index]
+    if colour == nil then
+        return nil
+    end
+    return { r = colour.r, g = colour.g, b = colour.b, a = colour.a }
+end
+
+-- @return The colour the game uses for the slot now, 0 - 255
+function module.get(index: int): table
+    local r, g, b, a = memory.alloc_int(), memory.alloc_int(), memory.alloc_int(), memory.alloc_int()
+    HUD.GET_HUD_COLOUR(index, r, g, b, a)
+    return { r = memory.read_int(r), g = memory.read_int(g), b = memory.read_int(b), a = memory.read_int(a) }
+end
+
+-- @return Every colour in index order: { index, name, r, g, b, a } (copies), e.g. for a menu list
+function module.list(): table
+    local list = {}
+    for _, entry in ipairs(COLORS) do
+        table.insert(list, { index = entry[1], name = entry[2], r = entry[3], g = entry[4], b = entry[5], a = entry[6] })
+    end
+    return list
+end
+
+-- Set
+
+-- Sets the color of HUD_COLOUR_SCRIPT_VARIABLE_2
+function module.set_second_script_variable_colour(r: int, g: int, b: int, a: int): void
+    HUD.SET_SECOND_SCRIPT_VARIABLE_HUD_COLOUR(r, g, b, a)
+end
+
+function module.set_custom_mp_color(hud_color_id: int): void
+    HUD.SET_CUSTOM_MP_HUD_COLOR(hud_color_id)
+end
+
+-- Actions
+
+function module.replace_colour(hud_color_index: int, hud_color_index2: int): void
+    HUD.REPLACE_HUD_COLOUR(hud_color_index, hud_color_index2)
+end
+
+function module.replace_colour_with_rgba(hud_color_index: int, r: int, g: int, b: int, a: int): void
+    HUD.REPLACE_HUD_COLOUR_WITH_RGBA(hud_color_index, r, g, b, a)
+end
+
+return module

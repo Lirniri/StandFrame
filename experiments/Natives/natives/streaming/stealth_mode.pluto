@@ -1,0 +1,3 @@
+local module = {}
+
+return Atdar.loader.auto(module, "natives/streaming/stealth_mode")

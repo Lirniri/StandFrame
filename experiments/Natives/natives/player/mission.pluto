@@ -1,0 +1,15 @@
+local module = {}
+
+-- State
+
+function module.can_start(player_id: int): bool
+    return PLAYER.CAN_PLAYER_START_MISSION(player_id)
+end
+
+-- Get
+
+-- Set
+
+-- Actions
+
+return module

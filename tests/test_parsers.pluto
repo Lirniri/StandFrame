@@ -29,6 +29,41 @@ stand.check(err ~= nil, "args.parse: a call to something unknown gives an error"
 stand.equal(table.concat(pluto.args.split('f(1, 2), "a, b", {3, 4}'), " | "), 'f(1, 2) | "a, b" | {3, 4}',
     "args.split: commas inside brackets and quotes don't split, nothing worked out")
 stand.equal(#pluto.args.split("  "), 0, "args.split: nothing typed - nothing")
+-- A name no global has is something of the script (natives.entity... is Atdar.natives.entity...)
+Atdar.test_args_tbl = { twice = function(n) return n * 2 end, inner = { value = 7 } }
+args, count = pluto.args.parse("test_args_tbl.twice(4), test_args_tbl.inner.value")
+stand.check(count == 2 and args[1] == 8 and args[2] == 7, "args.parse: a name of the script's, without Atdar in front")
+args, count = pluto.args.parse("test_args_tbl")
+stand.check(count == 1 and args[1] == "test_args_tbl", "args.parse: a bare word is its own text, also one the script has")
+Atdar.test_args_tbl = nil
+-- resolve: the names nothing else has (short names)
+local function short_names(name: string)
+    if name == "short_one" then
+        return function(n) return (n or 0) + 41 end
+    end
+    return nil
+end
+args, count = pluto.args.parse("short_one(), short_one(1)", short_names)
+stand.check(count == 2 and args[1] == 41 and args[2] == 42, "args.parse: resolve gives the names nothing else has")
+local _, _, unknown_err = pluto.args.parse("short_two()", short_names)
+stand.equal(unknown_err, "'short_two' isn't known", "args.parse: a name resolve doesn't know either is told")
+-- A mistyped name is told by the name, not by Lua's "attempt to call a nil value"
+local _, _, typo_err = pluto.args.parse("FAKE.addd(1, 2)")
+stand.equal(typo_err, "'FAKE.addd' isn't a function", "args.parse: a call of what isn't a function")
+local _, _, deep_err = pluto.args.parse("FAKE.nothing.deeper")
+stand.equal(deep_err, "'FAKE.nothing' is nil, it has no 'deeper'", "args.parse: a field of nil")
+local _, _, method_err = pluto.args.parse("FAKE:nothing()")
+stand.equal(method_err, "'FAKE:nothing' isn't a function", "args.parse: a method that isn't there")
+-- call_of: one call of a path, cut into the path and its arguments' texts
+local called, pieces = pluto.args.call_of('game.set(5, f(1), "a, b")')
+stand.check(called == "game.set" and table.concat(pieces, " | ") == '5 | f(1) | "a, b"', "args.call_of: the path and the arguments as typed")
+called, pieces = pluto.args.call_of(" f() ")
+stand.check(called == "f" and #pieces == 0, "args.call_of: a call without arguments")
+stand.equal(pluto.args.call_of("5"), nil, "args.call_of: a value isn't a call")
+stand.equal(pluto.args.call_of("f(1), g(2)"), nil, "args.call_of: two calls aren't one")
+stand.equal(pluto.args.call_of("f(1)(2)"), nil, "args.call_of: a call of a call isn't a call of a path")
+stand.equal(pluto.args.call_of("a:b(1)"), nil, "args.call_of: a method isn't a call of a path")
+stand.equal(pluto.args.call_of("f(1"), nil, "args.call_of: an unclosed bracket")
 
 -- ─── color ───────────────────────────────────────────────────────────────────
 
@@ -138,6 +173,12 @@ stand.equal(pluto.path.find("other_fn")[1], "TEST_FIND.other_fn", "path.find: a 
 stand.equal(pluto.path.find("table_not_fn")[1], nil, "path.find: a table isn't a function")
 stand.equal(#pluto.path.find("no_such_fn"), 0, "path.find: none - empty")
 stand.equal(#pluto.path.find("test_path.found_fn"), 0, "path.find: a name with a dot isn't a short name")
+-- the script's natives are looked into by their files, loaded or not
+Atdar.natives = Atdar.natives or Atdar.loader.auto({}, "natives")
+local native_path = pluto.path.find("get_forward_z")[1]
+stand.equal(native_path, "Atdar.natives.entity.get_forward_z", "path.find: a native of the script by its short name")
+stand.equal(pluto.path.resolve(native_path), true, "path.find: and the path it gives resolves")
+stand.equal(pluto.path.find("get_rpm")[1], "Atdar.natives.entity.vehicle.engine.get_rpm", "path.find: a function in a table of a natives module")
 Atdar.test_path = nil
 TEST_FIND = nil
 

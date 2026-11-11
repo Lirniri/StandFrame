@@ -1,0 +1,86 @@
+-- lib/AnitaDarin/ui/stand/script/menu_picker.pluto
+-- The entries of Load Menu: the built-in menu (if any) and every pack in store, with their state.
+-- What they say and do is in ui/logic/stand/menu_entries; loading and copying in ui/logic/stand/menu_loader.
+-- Strings: core/language "menu_loader"
+
+local i18n = Atdar.loader.load("core/i18n")
+local menu_loader = Atdar.loader.load("ui/logic/stand/menu_loader")
+local entries = Atdar.loader.load("ui/logic/stand/menu_entries")
+
+local module = {}
+
+-- Strings under "menu_loader"
+local label = i18n.scope("menu_loader")
+
+-- { ref, caption(), help() } of the entries fill made: their texts are made again when the shown language changes
+local picker_rows = {}
+
+-- Adds an entry per available menu to the node. The section is rebuilt after every load and unload,
+-- so the states are always current
+-- @param loader The menu_loader controller the entries act through
+function module.fill(node: table, loader: table): void
+
+    local builtin = menu_loader.has_builtin()
+    local manifest = builtin and menu_loader.core_manifest()
+    local packs = menu_loader.find_packs()
+
+    -- With no menu at all, the divider itself says so
+    local divider_key = "menus.divider"
+    if not builtin and #packs == 0 then
+        divider_key = "no_menus"
+    end
+
+    picker_rows = {}
+
+    -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
+    if not manifest then
+        node:divider(label(divider_key))
+    end
+
+    if builtin then
+
+        local loaded = loader.is_loaded("builtin")
+        local caption = || -> entries.builtin_caption(loaded)
+
+        if manifest then
+            local help = || -> entries.copied_help(manifest)
+            local ref = node:list_action(caption(), { label("options.load"), label("options.remove_from_core") },
+                |index| -> entries.copied_option(loader, index), { "menuloaderbuiltin" }, help())
+
+            table.insert(picker_rows, { ref = ref, caption = caption, help = help })
+            node:divider(label(divider_key))
+        else
+            local ref = node:action(caption(), loader.load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
+
+            table.insert(picker_rows, { ref = ref, caption = caption })
+        end
+    end
+
+    for _, info in ipairs(packs) do
+
+        local loaded = loader.is_loaded("pack", info.folder)
+        local in_core = manifest and manifest.pack == info.name
+        local caption = || -> entries.with_state(info.name, loaded, in_core)
+        local help = || -> entries.pack_help(info)
+
+        local ref = node:list_action(caption(),
+            { label("options.load"), label("options.copy_to_core"), label("options.open_menu_folder"),
+                label("options.open_features_folder") },
+            |index| -> entries.pack_option(loader, info, index), { entries.pack_command(info) }, help())
+
+        table.insert(picker_rows, { ref = ref, caption = caption, help = help })
+    end
+end
+
+i18n.on_change(function()
+    for _, row in ipairs(picker_rows) do
+
+        -- The refs may belong to a section that was already removed
+        pcall(menu.set_menu_name, row.ref, row.caption())
+        if row.help then
+            pcall(menu.set_help_text, row.ref, row.help())
+        end
+    end
+end)
+
+return module

@@ -1,0 +1,1467 @@
+-- Everything the game puts under MISC: flags, time scale, stack sizes, activity feed, ...
+
+local module = {}
+
+-- State
+
+function module.has_resumed_from_suspend(): bool
+    return MISC.HAS_RESUMED_FROM_SUSPEND()
+end
+
+function module.is_area_occupied(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: bool, p7: bool, p8: bool,
+    p9: bool, p10: bool, p11: any, p12: bool
+): bool
+    -- body function:
+    return MISC.IS_AREA_OCCUPIED(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12)
+end
+
+function module.is_area_occupied_slow(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any, p8: any, p9: any,
+    p10: any, p11: any, p12: any
+): bool
+    -- body function:
+    return MISC.IS_AREA_OCCUPIED_SLOW(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12)
+end
+
+function module.is_position_occupied(
+    x: float, y: float, z: float, range: float, p4: bool, check_vehicles: bool, check_peds: bool,
+    p7: bool, p8: bool, ignore_entity: int, p10: bool
+): bool
+    -- body function:
+    return MISC.IS_POSITION_OCCUPIED(x, y, z, range, p4, check_vehicles, check_peds, p7, p8, ignore_entity, p10)
+end
+
+function module.is_point_obscured_a_mission_entity(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: any
+): bool
+    -- body function:
+    return MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY(p0, p1, p2, p3, p4, p5, p6)
+end
+
+function module.have_credits_reached_end(): bool
+    return MISC.HAVE_CREDITS_REACHED_END()
+end
+
+function module.are_credits_running(): bool
+    return MISC.ARE_CREDITS_RUNNING()
+end
+
+function module.is_auto_save_in_progress(): bool
+    return MISC.IS_AUTO_SAVE_IN_PROGRESS()
+end
+
+function module.has_code_requested_autosave(): bool
+    return MISC.HAS_CODE_REQUESTED_AUTOSAVE()
+end
+
+function module.have_replay_stats_been_stored(): bool
+    return MISC.HAVE_REPLAY_STATS_BEEN_STORED()
+end
+
+function module.is_memory_card_in_use(): bool
+    return MISC.IS_MEMORY_CARD_IN_USE()
+end
+
+function module.is_minigame_in_progress(): bool
+    return MISC.IS_MINIGAME_IN_PROGRESS()
+end
+
+function module.is_a_minigame_script(): bool
+    return MISC.IS_THIS_A_MINIGAME_SCRIPT()
+end
+
+function module.is_sniper_inverted(): bool
+    return MISC.IS_SNIPER_INVERTED()
+end
+
+function module.are_strings_equal(string1: string, string2: string): bool
+    return MISC.ARE_STRINGS_EQUAL(string1, string2)
+end
+
+function module.is_sniper_bullet_in_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float
+): bool
+    -- body function:
+    return MISC.IS_SNIPER_BULLET_IN_AREA(x1, y1, z1, x2, y2, z2)
+end
+
+-- Determines whether there is a projectile within the specified coordinates. The coordinates form a rectangle
+function module.is_projectile_in_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.IS_PROJECTILE_IN_AREA(x1, y1, z1, x2, y2, z2, owned_by_player)
+end
+
+function module.is_projectile_type_in_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, type: int,
+    owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.IS_PROJECTILE_TYPE_IN_AREA(x1, y1, z1, x2, y2, z2, type, owned_by_player)
+end
+
+function module.is_projectile_type_in_angled_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float, p7: any,
+    owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.IS_PROJECTILE_TYPE_IN_ANGLED_AREA(x1, y1, z1, x2, y2, z2, width, p7, owned_by_player)
+end
+
+function module.is_projectile_type_within_distance(
+    x: float, y: float, z: float, projectile_hash: int, radius: float, owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.IS_PROJECTILE_TYPE_WITHIN_DISTANCE(x, y, z, projectile_hash, radius, owned_by_player)
+end
+
+-- For projectiles, see: IS_PROJECTILE_TYPE_IN_ANGLED_AREA
+function module.is_bullet_in_angled_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float,
+    owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.IS_BULLET_IN_ANGLED_AREA(x1, y1, z1, x2, y2, z2, width, owned_by_player)
+end
+
+function module.is_bullet_in_area(x: float, y: float, z: float, radius: float, owned_by_player: bool): bool
+    return MISC.IS_BULLET_IN_AREA(x, y, z, radius, owned_by_player)
+end
+
+function module.is_bullet_in_box(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.IS_BULLET_IN_BOX(x1, y1, z1, x2, y2, z2, owned_by_player)
+end
+
+function module.has_bullet_impacted_in_area(x: float, y: float, z: float, p3: float, p4: bool, p5: bool): bool
+    return MISC.HAS_BULLET_IMPACTED_IN_AREA(x, y, z, p3, p4, p5)
+end
+
+function module.has_bullet_impacted_in_box(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: bool, p7: bool
+): bool
+    -- body function:
+    return MISC.HAS_BULLET_IMPACTED_IN_BOX(p0, p1, p2, p3, p4, p5, p6, p7)
+end
+
+function module.is_orbis_version(): bool
+    return MISC.IS_ORBIS_VERSION()
+end
+
+function module.is_durango_version(): bool
+    return MISC.IS_DURANGO_VERSION()
+end
+
+function module.is_xbox360_version(): bool
+    return MISC.IS_XBOX360_VERSION()
+end
+
+function module.is_ps3_version(): bool
+    return MISC.IS_PS3_VERSION()
+end
+
+function module.is_pc_version(): bool
+    return MISC.IS_PC_VERSION()
+end
+
+function module.is_steam_version(): bool
+    return MISC.IS_STEAM_VERSION()
+end
+
+-- Used to block some of the prostitute stuff due to laws in Australia
+function module.is_aussie_version(): bool
+    return MISC.IS_AUSSIE_VERSION()
+end
+
+function module.is_japanese_version(): bool
+    return MISC.IS_JAPANESE_VERSION()
+end
+
+function module.is_xbox_platform(): bool
+    return MISC.IS_XBOX_PLATFORM()
+end
+
+-- Xbox Series (Scarlett) version
+function module.is_scarlett_version(): bool
+    return MISC.IS_SCARLETT_VERSION()
+end
+
+function module.is_sce_platform(): bool
+    return MISC.IS_SCE_PLATFORM()
+end
+
+-- PS5 (Prospero) version
+function module.is_prospero_version(): bool
+    return MISC.IS_PROSPERO_VERSION()
+end
+
+function module.is_string_null(string: string): bool
+    return MISC.IS_STRING_NULL(string)
+end
+
+function module.is_string_null_or_empty(string: string): bool
+    return MISC.IS_STRING_NULL_OR_EMPTY(string)
+end
+
+function module.is_stunt_jump_in_progress(): bool
+    return MISC.IS_STUNT_JUMP_IN_PROGRESS()
+end
+
+function module.is_stunt_jump_message_showing(): bool
+    return MISC.IS_STUNT_JUMP_MESSAGE_SHOWING()
+end
+
+function module.has_cheat_with_hash_been_activated(hash: int, amount: int): bool
+    return MISC.HAS_CHEAT_WITH_HASH_BEEN_ACTIVATED(hash, amount)
+end
+
+function module.has_pc_cheat_with_hash_been_activated(hash: int): bool
+    return MISC.HAS_PC_CHEAT_WITH_HASH_BEEN_ACTIVATED(hash)
+end
+
+function module.is_frontend_fading(): bool
+    return MISC.IS_FRONTEND_FADING()
+end
+
+function module.is_incident_valid(incident_id: int): bool
+    return MISC.IS_INCIDENT_VALID(incident_id)
+end
+
+function module.does_pop_multiplier_area_exist(id: int): bool
+    return MISC.DOES_POP_MULTIPLIER_AREA_EXIST(id)
+end
+
+function module.is_pop_multiplier_area_networked(id: int): bool
+    return MISC.IS_POP_MULTIPLIER_AREA_NETWORKED(id)
+end
+
+function module.does_pop_multiplier_sphere_exist(id: int): bool
+    return MISC.DOES_POP_MULTIPLIER_SPHERE_EXIST(id)
+end
+
+function module.is_tennis_mode(ped: int): bool
+    return MISC.IS_TENNIS_MODE(ped)
+end
+
+function module.has_game_installed_this_session(): bool
+    return MISC.HAS_GAME_INSTALLED_THIS_SESSION()
+end
+
+function module.are_profile_settings_valid(): bool
+    return MISC.ARE_PROFILE_SETTINGS_VALID()
+end
+
+function module.is_commandline_end_user_benchmark(): bool
+    return MISC.IS_COMMANDLINE_END_USER_BENCHMARK()
+end
+
+function module.has_async_install_finished(): bool
+    return MISC.HAS_ASYNC_INSTALL_FINISHED()
+end
+
+-- Get
+
+function module.get_allocated_stack_size(): int
+    return MISC.GET_ALLOCATED_STACK_SIZE()
+end
+
+function module.get_number_of_free_stacks_this_size(stack_size: int): int
+    return MISC.GET_NUMBER_OF_FREE_STACKS_OF_THIS_SIZE(stack_size)
+end
+
+function module.get_mission_flag(): bool
+    return MISC.GET_MISSION_FLAG()
+end
+
+function module.get_random_event_flag(): bool
+    return MISC.GET_RANDOM_EVENT_FLAG()
+end
+
+-- Returns pointer to an empty string
+function module.get_content_to_load(): string
+    return MISC.GET_CONTENT_TO_LOAD()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_base_element_location_from_metadata_block(p0: int, p1: int, p2: any, p3: bool): bool
+    return MISC.GET_BASE_ELEMENT_LOCATION_FROM_METADATA_BLOCK(p0, p1, p2, p3)
+end
+
+function module.get_game_timer(): int
+    return MISC.GET_GAME_TIMER()
+end
+
+function module.get_frame_time(): float
+    return MISC.GET_FRAME_TIME()
+end
+
+function module.get_system_time_step(): float
+    return MISC.GET_SYSTEM_TIME_STEP()
+end
+
+function module.get_frame_count(): int
+    return MISC.GET_FRAME_COUNT()
+end
+
+function module.get_random_float_in_range(start_range: float, end_range: float): float
+    return MISC.GET_RANDOM_FLOAT_IN_RANGE(start_range, end_range)
+end
+
+function module.get_random_int_in_range(start_range: int, end_range: int): int
+    return MISC.GET_RANDOM_INT_IN_RANGE(start_range, end_range)
+end
+
+function module.get_random_mwc_int_in_range(start_range: int, end_range: int): int
+    return MISC.GET_RANDOM_MWC_INT_IN_RANGE(start_range, end_range)
+end
+
+-- @param ground_z Pointer: pass memory.alloc(size) and read the result back
+function module.get_ground_z_for_3d_coord(
+    x: float, y: float, z: float, ground_z: int, ignore_water: bool, p5: bool
+): bool
+    -- body function:
+    return MISC.GET_GROUND_Z_FOR_3D_COORD(x, y, z, ground_z, ignore_water, p5)
+end
+
+-- @param ground_z Pointer: pass memory.alloc(size) and read the result back
+-- @param normal Pointer: pass memory.alloc(size) and read the result back
+function module.get_ground_z_and_normal_for_3d_coord(
+    x: float, y: float, z: float, ground_z: int, normal: int
+): bool
+    -- body function:
+    return MISC.GET_GROUND_Z_AND_NORMAL_FOR_3D_COORD(x, y, z, ground_z, normal)
+end
+
+-- @param ground_z Pointer: pass memory.alloc(size) and read the result back
+function module.get_ground_z_excluding_objects_for_3d_coord(
+    x: float, y: float, z: float, ground_z: int, p4: bool, p5: bool
+): bool
+    -- body function:
+    return MISC.GET_GROUND_Z_EXCLUDING_OBJECTS_FOR_3D_COORD(x, y, z, ground_z, p4, p5)
+end
+
+-- Returns the distance between two three-dimensional points, optionally ignoring the Z values
+function module.get_distance_between_coords(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, use_z: bool
+): float
+    -- body function:
+    return MISC.GET_DISTANCE_BETWEEN_COORDS(x1, y1, z1, x2, y2, z2, use_z)
+end
+
+function module.get_angle_between_2d_vectors(x1: float, y1: float, x2: float, y2: float): float
+    return MISC.GET_ANGLE_BETWEEN_2D_VECTORS(x1, y1, x2, y2)
+end
+
+function module.get_heading_from_vector_2d(dx: float, dy: float): float
+    return MISC.GET_HEADING_FROM_VECTOR_2D(dx, dy)
+end
+
+function module.get_ratio_of_closest_point_on_line(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, x3: float, y3: float,
+    z3: float, clamp: bool
+): float
+    -- body function:
+    return MISC.GET_RATIO_OF_CLOSEST_POINT_ON_LINE(x1, y1, z1, x2, y2, z2, x3, y3, z3, clamp)
+end
+
+function module.get_closest_point_on_line(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, x3: float, y3: float,
+    z3: float, clamp: bool
+): vector3
+    -- body function:
+    return MISC.GET_CLOSEST_POINT_ON_LINE(x1, y1, z1, x2, y2, z2, x3, y3, z3, clamp)
+end
+
+-- @param p12 Pointer: pass memory.alloc(size) and read the result back
+function module.get_line_plane_intersection(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: float, p7: float,
+    p8: float, p9: float, p10: float, p11: float, p12: int
+): bool
+    -- body function:
+    return MISC.GET_LINE_PLANE_INTERSECTION(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12)
+end
+
+function module.get_point_area_overlap(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any, p8: any, p9: any,
+    p10: any, p11: any, p12: any, p13: any
+): bool
+    -- body function:
+    return MISC.GET_POINT_AREA_OVERLAP(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13)
+end
+
+-- This native converts its past string to hash. It is hashed using jenkins one at a time method
+function module.get_hash_key(string: string): int
+    return MISC.GET_HASH_KEY(string)
+end
+
+function module.get_status_of_manual_save(): int
+    return MISC.GET_STATUS_OF_MANUAL_SAVE()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param fade_in_after_load Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.get_save_house_details_after_successful_load(
+    p0: int, p1: int, fade_in_after_load: int, p3: int
+): bool
+    -- body function:
+    return MISC.GET_SAVE_HOUSE_DETAILS_AFTER_SUCCESSFUL_LOAD(p0, p1, fade_in_after_load, p3)
+end
+
+function module.get_is_auto_save_off(): bool
+    return MISC.GET_IS_AUTO_SAVE_OFF()
+end
+
+function module.get_replay_stat_mission_id(): int
+    return MISC.GET_REPLAY_STAT_MISSION_ID()
+end
+
+function module.get_replay_stat_mission_type(): int
+    return MISC.GET_REPLAY_STAT_MISSION_TYPE()
+end
+
+function module.get_replay_stat_count(): int
+    return MISC.GET_REPLAY_STAT_COUNT()
+end
+
+function module.get_replay_stat_at_index(index: int): int
+    return MISC.GET_REPLAY_STAT_AT_INDEX(index)
+end
+
+function module.get_status_of_mission_repeat_save(): int
+    return MISC.GET_STATUS_OF_MISSION_REPEAT_SAVE()
+end
+
+-- Gets the dimensions of a model
+-- @param minimum Pointer: pass memory.alloc(size) and read the result back
+-- @param maximum Pointer: pass memory.alloc(size) and read the result back
+function module.get_model_dimensions(model_hash: int, minimum: int, maximum: int): void
+    MISC.GET_MODEL_DIMENSIONS(model_hash, minimum, maximum)
+end
+
+function module.get_fake_wanted_level(): int
+    return MISC.GET_FAKE_WANTED_LEVEL()
+end
+
+function module.get_profile_setting(profile_setting: int): int
+    return MISC.GET_PROFILE_SETTING(profile_setting)
+end
+
+-- @param projectile_pos Pointer: pass memory.alloc(size) and read the result back
+function module.get_coords_of_projectile_type_in_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, projectile_hash: int,
+    projectile_pos: int, owned_by_player: bool
+): bool
+    -- body function:
+    return MISC.GET_COORDS_OF_PROJECTILE_TYPE_IN_AREA(x1, y1, z1, x2, y2, z2, projectile_hash, projectile_pos, owned_by_player)
+end
+
+-- @param position_out Pointer: pass memory.alloc(size) and read the result back
+function module.get_coords_of_projectile_type_in_angled_area(
+    vec_angled_area_point1_x: float, vec_angled_area_point1_y: float,
+    vec_angled_area_point1_z: float, vec_angled_area_point2_x: float,
+    vec_angled_area_point2_y: float, vec_angled_area_point2_z: float,
+    distance_of_opposite_face: float, weapon_type: int, position_out: int, b_is_player: bool
+): bool
+    -- body function:
+    return MISC.GET_COORDS_OF_PROJECTILE_TYPE_IN_ANGLED_AREA(vec_angled_area_point1_x, vec_angled_area_point1_y, vec_angled_area_point1_z, vec_angled_area_point2_x, vec_angled_area_point2_y, vec_angled_area_point2_z, distance_of_opposite_face, weapon_type, position_out, b_is_player)
+end
+
+-- @param out_coords Pointer: pass memory.alloc(size) and read the result back
+function module.get_coords_of_projectile_type_within_distance(
+    ped: int, weapon_hash: int, distance: float, out_coords: int, p4: bool
+): bool
+    -- body function:
+    return MISC.GET_COORDS_OF_PROJECTILE_TYPE_WITHIN_DISTANCE(ped, weapon_hash, distance, out_coords, p4)
+end
+
+-- @param out_coords Pointer: pass memory.alloc(size) and read the result back
+-- @param out_projectile Pointer: pass memory.alloc(size) and read the result back
+function module.get_projectile_of_projectile_type_within_distance(
+    ped: int, weapon_hash: int, distance: float, out_coords: int, out_projectile: int, p5: bool
+): bool
+    -- body function:
+    return MISC.GET_PROJECTILE_OF_PROJECTILE_TYPE_WITHIN_DISTANCE(ped, weapon_hash, distance, out_coords, out_projectile, p5)
+end
+
+function module.get_bits_in_range(var: int, range_start: int, range_end: int): int
+    return MISC.GET_BITS_IN_RANGE(var, range_start, range_end)
+end
+
+function module.get_num_successful_stunt_jumps(): int
+    return MISC.GET_NUM_SUCCESSFUL_STUNT_JUMPS()
+end
+
+function module.get_total_successful_stunt_jumps(): int
+    return MISC.GET_TOTAL_SUCCESSFUL_STUNT_JUMPS()
+end
+
+function module.get_index_of_current_level(): int
+    return MISC.GET_INDEX_OF_CURRENT_LEVEL()
+end
+
+function module.get_size_of_save_data(p0: bool): int
+    return MISC.GET_SIZE_OF_SAVE_DATA(p0)
+end
+
+function module.get_number_resources_allocated_to_wanted_level(dispatch_service: int): int
+    return MISC.GET_NUMBER_RESOURCES_ALLOCATED_TO_WANTED_LEVEL(dispatch_service)
+end
+
+function module.get_tennis_swing_anim_complete(ped: int): bool
+    return MISC.GET_TENNIS_SWING_ANIM_COMPLETE(ped)
+end
+
+function module.get_tennis_swing_anim_can_be_interrupted(ped: int): bool
+    return MISC.GET_TENNIS_SWING_ANIM_CAN_BE_INTERRUPTED(ped)
+end
+
+function module.get_tennis_swing_anim_swung(ped: int): bool
+    return MISC.GET_TENNIS_SWING_ANIM_SWUNG(ped)
+end
+
+function module.get_onscreen_keyboard_result(): string
+    return MISC.GET_ONSCREEN_KEYBOARD_RESULT()
+end
+
+-- GET_GAME_TIMER() / 1000
+function module.get_real_world_time(): int
+    return MISC.GET_REAL_WORLD_TIME()
+end
+
+-- Returns value of the '-benchmarkIterations' command line option
+function module.get_benchmark_iterations(): int
+    return MISC.GET_BENCHMARK_ITERATIONS()
+end
+
+-- Returns value of the '-benchmarkPass' command line option
+function module.get_benchmark_pass(): int
+    return MISC.GET_BENCHMARK_PASS()
+end
+
+-- Although we don't have a jenkins hash for this one, the name is 100% confirmed
+function module.get_is_player_in_animal_form(): bool
+    return MISC.GET_IS_PLAYER_IN_ANIMAL_FORM()
+end
+
+function module.get_city_density(): float
+    return MISC.GET_CITY_DENSITY()
+end
+
+function module.get_content_id_index(content_id: int): int
+    return MISC.GET_CONTENT_ID_INDEX(content_id)
+end
+
+-- Returns prop type for given model hash
+function module.get_content_prop_type(model: int): int
+    return MISC._GET_CONTENT_PROP_TYPE(model)
+end
+
+-- Set
+
+function module.set_random_seed(seed: int): void
+    MISC.SET_RANDOM_SEED(seed)
+end
+
+-- Maximum value is 1
+function module.set_time_scale(time_scale: float): void
+    MISC.SET_TIME_SCALE(time_scale)
+end
+
+-- If true, the player can't save the game
+function module.set_mission_flag(toggle: bool): void
+    MISC.SET_MISSION_FLAG(toggle)
+end
+
+function module.set_random_event_flag(toggle: bool): void
+    MISC.SET_RANDOM_EVENT_FLAG(toggle)
+end
+
+function module.set_script_high_prio(toggle: bool): void
+    MISC.SET_SCRIPT_HIGH_PRIO(toggle)
+end
+
+function module.set_this_is_a_trigger_script(toggle: bool): void
+    MISC.SET_THIS_IS_A_TRIGGER_SCRIPT(toggle)
+end
+
+-- This sets bit [offset] of [address] to on
+-- @param address Pointer: pass memory.alloc(size) and read the result back
+function module.set_bit(address: int, offset: int): void
+    MISC.SET_BIT(address, offset)
+end
+
+function module.set_save_menu_active(ignore_vehicle: bool): void
+    MISC.SET_SAVE_MENU_ACTIVE(ignore_vehicle)
+end
+
+function module.set_credits_active(toggle: bool): void
+    MISC.SET_CREDITS_ACTIVE(toggle)
+end
+
+function module.set_credits_fade_out_with_screen(toggle: bool): void
+    MISC.SET_CREDITS_FADE_OUT_WITH_SCREEN(toggle)
+end
+
+function module.set_restart_coord_override(x: float, y: float, z: float, heading: float): void
+    MISC.SET_RESTART_COORD_OVERRIDE(x, y, z, heading)
+end
+
+-- Sets whether the game should fade out after the player dies
+function module.set_fade_out_after_death(toggle: bool): void
+    MISC.SET_FADE_OUT_AFTER_DEATH(toggle)
+end
+
+-- Sets whether the game should fade out after the player is arrested
+function module.set_fade_out_after_arrest(toggle: bool): void
+    MISC.SET_FADE_OUT_AFTER_ARREST(toggle)
+end
+
+-- Sets whether the game should fade in after the player dies or is arrested
+function module.set_fade_in_after_death_arrest(toggle: bool): void
+    MISC.SET_FADE_IN_AFTER_DEATH_ARREST(toggle)
+end
+
+function module.set_fade_in_after_load(toggle: bool): void
+    MISC.SET_FADE_IN_AFTER_LOAD(toggle)
+end
+
+function module.set_save_house(savehouse_handle: int, p1: bool, p2: bool): void
+    MISC.SET_SAVE_HOUSE(savehouse_handle, p1, p2)
+end
+
+function module.set_fake_wanted_level(fake_wanted_level: int): void
+    MISC.SET_FAKE_WANTED_LEVEL(fake_wanted_level)
+end
+
+function module.set_minigame_in_progress(toggle: bool): void
+    MISC.SET_MINIGAME_IN_PROGRESS(toggle)
+end
+
+-- @param var Pointer: pass memory.alloc(size) and read the result back
+function module.set_bits_in_range(var: int, range_start: int, range_end: int, p3: int): void
+    MISC.SET_BITS_IN_RANGE(var, range_start, range_end, p3)
+end
+
+function module.set_stunt_jumps_can_trigger(toggle: bool): void
+    MISC.SET_STUNT_JUMPS_CAN_TRIGGER(toggle)
+end
+
+function module.set_game_paused(toggle: bool): void
+    MISC.SET_GAME_PAUSED(toggle)
+end
+
+function module.set_this_script_can_be_paused(toggle: bool): void
+    MISC.SET_THIS_SCRIPT_CAN_BE_PAUSED(toggle)
+end
+
+function module.set_this_script_can_remove_blips_created_by_any_script(toggle: bool): void
+    MISC.SET_THIS_SCRIPT_CAN_REMOVE_BLIPS_CREATED_BY_ANY_SCRIPT(toggle)
+end
+
+-- Formerly known as _LOWER_MAP_PROP_DENSITY and wrongly due to idiots as _ENABLE_MP_DLC_MAPS
+function module.set_instance_priority_mode(p0: int): void
+    MISC.SET_INSTANCE_PRIORITY_MODE(p0)
+end
+
+function module.set_instance_priority_hint(flag: int): void
+    MISC.SET_INSTANCE_PRIORITY_HINT(flag)
+end
+
+function module.set_gravity_level(level: int): void
+    MISC.SET_GRAVITY_LEVEL(level)
+end
+
+function module.set_incident_requested_units(incident_id: int, dispatch_service: int, num_units: int): void
+    MISC.SET_INCIDENT_REQUESTED_UNITS(incident_id, dispatch_service, num_units)
+end
+
+function module.set_ideal_spawn_distance_for_incident(incident_id: int, p1: float): void
+    MISC.SET_IDEAL_SPAWN_DISTANCE_FOR_INCIDENT(incident_id, p1)
+end
+
+function module.set_tennis_move_network_signal_float(ped: int, p1: string, p2: float): void
+    MISC.SET_TENNIS_MOVE_NETWORK_SIGNAL_FLOAT(ped, p1, p2)
+end
+
+function module.set_dispatch_spawn_location(x: float, y: float, z: float): void
+    MISC.SET_DISPATCH_SPAWN_LOCATION(x, y, z)
+end
+
+function module.set_dispatch_ideal_spawn_distance(distance: float): void
+    MISC.SET_DISPATCH_IDEAL_SPAWN_DISTANCE(distance)
+end
+
+function module.set_dispatch_time_between_spawn_attempts(p0: any, p1: float): void
+    MISC.SET_DISPATCH_TIME_BETWEEN_SPAWN_ATTEMPTS(p0, p1)
+end
+
+function module.set_dispatch_time_between_spawn_attempts_multiplier(p0: any, p1: float): void
+    MISC.SET_DISPATCH_TIME_BETWEEN_SPAWN_ATTEMPTS_MULTIPLIER(p0, p1)
+end
+
+function module.set_wanted_response_num_peds_to_spawn(p0: int, p1: int): void
+    MISC.SET_WANTED_RESPONSE_NUM_PEDS_TO_SPAWN(p0, p1)
+end
+
+function module.set_riot_mode_enabled(toggle: bool): void
+    MISC.SET_RIOT_MODE_ENABLED(toggle)
+end
+
+function module.set_explosive_ammo_this_frame(player_id: int): void
+    MISC.SET_EXPLOSIVE_AMMO_THIS_FRAME(player_id)
+end
+
+function module.set_fire_ammo_this_frame(player_id: int): void
+    MISC.SET_FIRE_AMMO_THIS_FRAME(player_id)
+end
+
+function module.set_explosive_melee_this_frame(player_id: int): void
+    MISC.SET_EXPLOSIVE_MELEE_THIS_FRAME(player_id)
+end
+
+function module.set_super_jump_this_frame(player_id: int): void
+    MISC.SET_SUPER_JUMP_THIS_FRAME(player_id)
+end
+
+function module.set_beast_jump_this_frame(player_id: int): void
+    MISC.SET_BEAST_JUMP_THIS_FRAME(player_id)
+end
+
+function module.set_forced_jump_this_frame(player_id: int): void
+    MISC.SET_FORCED_JUMP_THIS_FRAME(player_id)
+end
+
+function module.set_ticker_johnmarston_is_done(): void
+    MISC.SET_TICKER_JOHNMARSTON_IS_DONE()
+end
+
+-- If toggle is true, the ped's head is shown in the pause menu
+function module.set_player_is_in_animal_form(toggle: bool): void
+    MISC.SET_PLAYER_IS_IN_ANIMAL_FORM(toggle)
+end
+
+function module.set_player_is_repeating_a_mission(toggle: bool): void
+    MISC.SET_PLAYER_IS_REPEATING_A_MISSION(toggle)
+end
+
+function module.set_content_id_index(content_id: int, index: int): void
+    MISC.SET_CONTENT_ID_INDEX(content_id, index)
+end
+
+function module.set_content_prop_type(model: int, type: int): void
+    MISC._SET_CONTENT_PROP_TYPE(model, type)
+end
+
+-- Actions
+
+function module.activity_feed_create(p0: string, p1: string): void
+    MISC.ACTIVITY_FEED_CREATE(p0, p1)
+end
+
+function module.activity_feed_add_substring_to_caption(p0: string): void
+    MISC.ACTIVITY_FEED_ADD_SUBSTRING_TO_CAPTION(p0)
+end
+
+function module.activity_feed_add_literal_substring_to_caption(p0: string): void
+    MISC.ACTIVITY_FEED_ADD_LITERAL_SUBSTRING_TO_CAPTION(p0)
+end
+
+function module.activity_feed_add_int_to_caption(p0: any): void
+    MISC.ACTIVITY_FEED_ADD_INT_TO_CAPTION(p0)
+end
+
+function module.activity_feed_large_image_url(p0: string): void
+    MISC.ACTIVITY_FEED_LARGE_IMAGE_URL(p0)
+end
+
+function module.activity_feed_action_start_with_command_line(p0: string, p1: string): void
+    MISC.ACTIVITY_FEED_ACTION_START_WITH_COMMAND_LINE(p0, p1)
+end
+
+function module.activity_feed_action_start_with_command_line_add(p0: string): void
+    MISC.ACTIVITY_FEED_ACTION_START_WITH_COMMAND_LINE_ADD(p0)
+end
+
+function module.activity_feed_post(): void
+    MISC.ACTIVITY_FEED_POST()
+end
+
+function module.activity_feed_online_played_with_post(p0: string): void
+    MISC.ACTIVITY_FEED_ONLINE_PLAYED_WITH_POST(p0)
+end
+
+function module.inform_code_of_content_id_of_current_ugc_mission(p0: string): void
+    MISC.INFORM_CODE_OF_CONTENT_ID_OF_CURRENT_UGC_MISSION(p0)
+end
+
+function module.water_override_set_shorewaveamplitude(amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_SHOREWAVEAMPLITUDE(amplitude)
+end
+
+function module.water_override_set_shorewaveminamplitude(min_amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_SHOREWAVEMINAMPLITUDE(min_amplitude)
+end
+
+function module.water_override_set_shorewavemaxamplitude(max_amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_SHOREWAVEMAXAMPLITUDE(max_amplitude)
+end
+
+function module.water_override_set_oceannoiseminamplitude(min_amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_OCEANNOISEMINAMPLITUDE(min_amplitude)
+end
+
+function module.water_override_set_oceanwaveamplitude(amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_OCEANWAVEAMPLITUDE(amplitude)
+end
+
+function module.water_override_set_oceanwaveminamplitude(min_amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_OCEANWAVEMINAMPLITUDE(min_amplitude)
+end
+
+function module.water_override_set_oceanwavemaxamplitude(max_amplitude: float): void
+    MISC.WATER_OVERRIDE_SET_OCEANWAVEMAXAMPLITUDE(max_amplitude)
+end
+
+function module.water_override_set_ripplebumpiness(bumpiness: float): void
+    MISC.WATER_OVERRIDE_SET_RIPPLEBUMPINESS(bumpiness)
+end
+
+function module.water_override_set_rippleminbumpiness(min_bumpiness: float): void
+    MISC.WATER_OVERRIDE_SET_RIPPLEMINBUMPINESS(min_bumpiness)
+end
+
+function module.water_override_set_ripplemaxbumpiness(max_bumpiness: float): void
+    MISC.WATER_OVERRIDE_SET_RIPPLEMAXBUMPINESS(max_bumpiness)
+end
+
+function module.water_override_set_rippledisturb(disturb: float): void
+    MISC.WATER_OVERRIDE_SET_RIPPLEDISTURB(disturb)
+end
+
+-- This seems to edit the water wave, intensity around your current location
+function module.water_override_set_strength(strength: float): void
+    MISC.WATER_OVERRIDE_SET_STRENGTH(strength)
+end
+
+function module.water_override_fade_in(p0: float): void
+    MISC.WATER_OVERRIDE_FADE_IN(p0)
+end
+
+function module.water_override_fade_out(p0: float): void
+    MISC.WATER_OVERRIDE_FADE_OUT(p0)
+end
+
+function module.asin(p0: float): float
+    return MISC.ASIN(p0)
+end
+
+function module.acos(p0: float): float
+    return MISC.ACOS(p0)
+end
+
+function module.tan(p0: float): float
+    return MISC.TAN(p0)
+end
+
+function module.atan(p0: float): float
+    return MISC.ATAN(p0)
+end
+
+function module.atan2(p0: float, p1: float): float
+    return MISC.ATAN2(p0, p1)
+end
+
+-- This sets bit [offset] of [address] to off
+-- @param address Pointer: pass memory.alloc(size) and read the result back
+function module.clear_bit(address: int, offset: int): void
+    MISC.CLEAR_BIT(address, offset)
+end
+
+-- @param out_x Pointer: pass memory.alloc(size) and read the result back
+-- @param out_y Pointer: pass memory.alloc(size) and read the result back
+-- @param out_z Pointer: pass memory.alloc(size) and read the result back
+-- @param out_w Pointer: pass memory.alloc(size) and read the result back
+function module.slerp_near_quaternion(
+    t: float, x: float, y: float, z: float, w: float, x1: float, y1: float, z1: float, w1: float,
+    out_x: int, out_y: int, out_z: int, out_w: int
+): void
+    -- body function:
+    MISC.SLERP_NEAR_QUATERNION(t, x, y, z, w, x1, y1, z1, w1, out_x, out_y, out_z, out_w)
+end
+
+function module.clear_area(
+    x: float, y: float, z: float, radius: float, p4: bool, ignore_cop_cars: bool,
+    ignore_objects: bool, p7: bool
+): void
+    -- body function:
+    MISC.CLEAR_AREA(x, y, z, radius, p4, ignore_cop_cars, ignore_objects, p7)
+end
+
+function module.clear_area_leave_vehicle_health(
+    x: float, y: float, z: float, radius: float, p4: bool, p5: bool, p6: bool, p7: bool
+): void
+    -- body function:
+    MISC.CLEAR_AREA_LEAVE_VEHICLE_HEALTH(x, y, z, radius, p4, p5, p6, p7)
+end
+
+function module.clear_area_of_vehicles(
+    x: float, y: float, z: float, radius: float, p4: bool, p5: bool, p6: bool, p7: bool, p8: bool,
+    p9: bool, p10: any
+): void
+    -- body function:
+    MISC.CLEAR_AREA_OF_VEHICLES(x, y, z, radius, p4, p5, p6, p7, p8, p9, p10)
+end
+
+function module.clear_angled_area_of_vehicles(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float, p7: bool,
+    p8: bool, p9: bool, p10: bool, p11: bool, p12: any, p13: any
+): void
+    -- body function:
+    MISC.CLEAR_ANGLED_AREA_OF_VEHICLES(x1, y1, z1, x2, y2, z2, width, p7, p8, p9, p10, p11, p12, p13)
+end
+
+function module.clear_area_of_objects(x: float, y: float, z: float, radius: float, flags: int): void
+    MISC.CLEAR_AREA_OF_OBJECTS(x, y, z, radius, flags)
+end
+
+function module.clear_area_of_peds(x: float, y: float, z: float, radius: float, flags: int): void
+    MISC.CLEAR_AREA_OF_PEDS(x, y, z, radius, flags)
+end
+
+function module.clear_area_of_cops(x: float, y: float, z: float, radius: float, flags: int): void
+    MISC.CLEAR_AREA_OF_COPS(x, y, z, radius, flags)
+end
+
+function module.clear_area_of_projectiles(x: float, y: float, z: float, radius: float, flags: int): void
+    MISC.CLEAR_AREA_OF_PROJECTILES(x, y, z, radius, flags)
+end
+
+-- Possibly used to clear scenario points
+function module.clear_scenario_spawn_history(): void
+    MISC.CLEAR_SCENARIO_SPAWN_HISTORY()
+end
+
+function module.terminate_all_scripts_this_name(script_name: string): void
+    MISC.TERMINATE_ALL_SCRIPTS_WITH_THIS_NAME(script_name)
+end
+
+function module.network_set_script_is_safe_for_network_game(): void
+    MISC.NETWORK_SET_SCRIPT_IS_SAFE_FOR_NETWORK_GAME()
+end
+
+-- Returns the index of the newly created hospital spawn point
+function module.add_hospital_restart(x: float, y: float, z: float, p3: float, p4: any): int
+    return MISC.ADD_HOSPITAL_RESTART(x, y, z, p3, p4)
+end
+
+function module.disable_hospital_restart(hospital_index: int, toggle: bool): void
+    MISC.DISABLE_HOSPITAL_RESTART(hospital_index, toggle)
+end
+
+function module.add_police_restart(p0: float, p1: float, p2: float, p3: float, p4: any): int
+    return MISC.ADD_POLICE_RESTART(p0, p1, p2, p3, p4)
+end
+
+-- Disables the spawn point at the police house on the specified index
+function module.disable_police_restart(police_index: int, toggle: bool): void
+    MISC.DISABLE_POLICE_RESTART(police_index, toggle)
+end
+
+function module.clear_restart_coord_override(): void
+    MISC.CLEAR_RESTART_COORD_OVERRIDE()
+end
+
+function module.pause_death_arrest_restart(toggle: bool): void
+    MISC.PAUSE_DEATH_ARREST_RESTART(toggle)
+end
+
+function module.ignore_next_restart(toggle: bool): void
+    MISC.IGNORE_NEXT_RESTART(toggle)
+end
+
+function module.register_save_house(
+    x: float, y: float, z: float, p3: float, p4: string, p5: any, p6: any
+): int
+    -- body function:
+    return MISC.REGISTER_SAVE_HOUSE(x, y, z, p3, p4, p5, p6)
+end
+
+function module.override_save_house(
+    p0: bool, p1: float, p2: float, p3: float, p4: float, p5: bool, p6: float, p7: float
+): bool
+    -- body function:
+    return MISC.OVERRIDE_SAVE_HOUSE(p0, p1, p2, p3, p4, p5, p6, p7)
+end
+
+function module.do_auto_save(): void
+    MISC.DO_AUTO_SAVE()
+end
+
+function module.clear_code_requested_autosave(): void
+    MISC.CLEAR_CODE_REQUESTED_AUTOSAVE()
+end
+
+function module.begin_replay_stats(p0: any, p1: any): void
+    MISC.BEGIN_REPLAY_STATS(p0, p1)
+end
+
+function module.add_replay_stat_value(value: any): void
+    MISC.ADD_REPLAY_STAT_VALUE(value)
+end
+
+function module.end_replay_stats(): void
+    MISC.END_REPLAY_STATS()
+end
+
+function module.clear_replay_stats(): void
+    MISC.CLEAR_REPLAY_STATS()
+end
+
+function module.queue_mission_repeat_load(): bool
+    return MISC.QUEUE_MISSION_REPEAT_LOAD()
+end
+
+function module.queue_mission_repeat_save(): bool
+    return MISC.QUEUE_MISSION_REPEAT_SAVE()
+end
+
+function module.queue_mission_repeat_save_for_benchmark_test(): bool
+    return MISC.QUEUE_MISSION_REPEAT_SAVE_FOR_BENCHMARK_TEST()
+end
+
+function module.shoot_single_bullet_between_coords(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, damage: int, p7: bool,
+    weapon_hash: int, owner_ped: int, is_audible: bool, is_invisible: bool, speed: float
+): void
+    -- body function:
+    MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(x1, y1, z1, x2, y2, z2, damage, p7, weapon_hash, owner_ped, is_audible, is_invisible, speed)
+end
+
+function module.shoot_single_bullet_between_coords_ignore_entity(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, damage: int, p7: bool,
+    weapon_hash: int, owner_ped: int, is_audible: bool, is_invisible: bool, speed: float,
+    entity: int, p14: any
+): void
+    -- body function:
+    MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(x1, y1, z1, x2, y2, z2, damage, p7, weapon_hash, owner_ped, is_audible, is_invisible, speed, entity, p14)
+end
+
+function module.shoot_single_bullet_between_coords_ignore_entity_new(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, damage: int, p7: bool,
+    weapon_hash: int, owner_ped: int, is_audible: bool, is_invisible: bool, speed: float,
+    entity: int, p14: bool, p15: bool, target_entity: int, p17: bool, p18: any, p19: any, p20: any
+): void
+    -- body function:
+    MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY_NEW(x1, y1, z1, x2, y2, z2, damage, p7, weapon_hash, owner_ped, is_audible, is_invisible, speed, entity, p14, p15, target_entity, p17, p18, p19, p20)
+end
+
+function module.using_mission_creator(toggle: bool): void
+    MISC.USING_MISSION_CREATOR(toggle)
+end
+
+function module.allow_mission_creator_warp(toggle: bool): void
+    MISC.ALLOW_MISSION_CREATOR_WARP(toggle)
+end
+
+function module.should_use_metric_measurements(): bool
+    return MISC.SHOULD_USE_METRIC_MEASUREMENTS()
+end
+
+-- Compares two strings up to a specified number of characters
+function module.compare_strings(str1: string, str2: string, match_case: bool, max_length: int): int
+    return MISC.COMPARE_STRINGS(str1, str2, match_case, max_length)
+end
+
+function module.absi(value: int): int
+    return MISC.ABSI(value)
+end
+
+function module.absf(value: float): float
+    return MISC.ABSF(value)
+end
+
+-- @param out_integer Pointer: pass memory.alloc(size) and read the result back
+function module.string_to_int(string: string, out_integer: int): bool
+    return MISC.STRING_TO_INT(string, out_integer)
+end
+
+function module.add_stunt_jump(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, x3: float, y3: float,
+    z3: float, x4: float, y4: float, z4: float, cam_x: float, cam_y: float, cam_z: float, p15: int,
+    p16: int, p17: int
+): int
+    -- body function:
+    return MISC.ADD_STUNT_JUMP(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, cam_x, cam_y, cam_z, p15, p16, p17)
+end
+
+-- Creates a new stunt jump
+function module.add_stunt_jump_angled(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, radius1: float, x3: float,
+    y3: float, z3: float, x4: float, y4: float, z4: float, radius2: float, cam_x: float,
+    cam_y: float, cam_z: float, p17: int, p18: int, p19: int
+): int
+    -- body function:
+    return MISC.ADD_STUNT_JUMP_ANGLED(x1, y1, z1, x2, y2, z2, radius1, x3, y3, z3, x4, y4, z4, radius2, cam_x, cam_y, cam_z, p17, p18, p19)
+end
+
+-- Toggles some stunt jump stuff
+function module.toggle_show_optional_stunt_jump_camera(toggle: bool): void
+    MISC.TOGGLE_SHOW_OPTIONAL_STUNT_JUMP_CAMERA(toggle)
+end
+
+function module.delete_stunt_jump(p0: int): void
+    MISC.DELETE_STUNT_JUMP(p0)
+end
+
+function module.enable_stunt_jump_set(p0: int): void
+    MISC.ENABLE_STUNT_JUMP_SET(p0)
+end
+
+function module.disable_stunt_jump_set(p0: int): void
+    MISC.DISABLE_STUNT_JUMP_SET(p0)
+end
+
+function module.cancel_stunt_jump(): void
+    MISC.CANCEL_STUNT_JUMP()
+end
+
+function module.override_freeze_flags(p0: bool): void
+    MISC.OVERRIDE_FREEZE_FLAGS(p0)
+end
+
+function module.populate_now(): void
+    MISC.POPULATE_NOW()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.start_save_data(p0: int, p1: any, p2: bool): void
+    MISC.START_SAVE_DATA(p0, p1, p2)
+end
+
+function module.stop_save_data(): void
+    MISC.STOP_SAVE_DATA()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_int_to_save(p0: int, name: string): void
+    MISC.REGISTER_INT_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_int64_to_save(p0: int, name: string): void
+    MISC.REGISTER_INT64_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_enum_to_save(p0: int, name: string): void
+    MISC.REGISTER_ENUM_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_float_to_save(p0: int, name: string): void
+    MISC.REGISTER_FLOAT_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_bool_to_save(p0: int, name: string): void
+    MISC.REGISTER_BOOL_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_text_label_to_save(p0: int, name: string): void
+    MISC.REGISTER_TEXT_LABEL_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_text_label_15_to_save(p0: int, name: string): void
+    MISC.REGISTER_TEXT_LABEL_15_TO_SAVE(p0, name)
+end
+
+-- Only found 3 times in decompiled scripts
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_text_label_23_to_save(p0: int, name: string): void
+    MISC.REGISTER_TEXT_LABEL_23_TO_SAVE(p0, name)
+end
+
+-- Only found 2 times in decompiled scripts
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_text_label_31_to_save(p0: int, name: string): void
+    MISC.REGISTER_TEXT_LABEL_31_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.register_text_label_63_to_save(p0: int, name: string): void
+    MISC.REGISTER_TEXT_LABEL_63_TO_SAVE(p0, name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.start_save_struct_with_size(p0: int, size: int, struct_name: string): void
+    MISC.START_SAVE_STRUCT_WITH_SIZE(p0, size, struct_name)
+end
+
+function module.stop_save_struct(): void
+    MISC.STOP_SAVE_STRUCT()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.start_save_array_with_size(p0: int, size: int, array_name: string): void
+    MISC.START_SAVE_ARRAY_WITH_SIZE(p0, size, array_name)
+end
+
+function module.stop_save_array(): void
+    MISC.STOP_SAVE_ARRAY()
+end
+
+-- @param dst Pointer: pass memory.alloc(size) and read the result back
+-- @param src Pointer: pass memory.alloc(size) and read the result back
+function module.copy_script_struct(dst: int, src: int, size: int): void
+    MISC.COPY_SCRIPT_STRUCT(dst, src, size)
+end
+
+function module.enable_dispatch_service(dispatch_service: int, toggle: bool): void
+    MISC.ENABLE_DISPATCH_SERVICE(dispatch_service, toggle)
+end
+
+function module.block_dispatch_service_resource_creation(dispatch_service: int, toggle: bool): void
+    MISC.BLOCK_DISPATCH_SERVICE_RESOURCE_CREATION(dispatch_service, toggle)
+end
+
+-- @param out_incident_id Pointer: pass memory.alloc(size) and read the result back
+function module.create_incident(
+    dispatch_service: int, x: float, y: float, z: float, num_units: int, radius: float,
+    out_incident_id: int, p7: any, p8: any
+): bool
+    -- body function:
+    return MISC.CREATE_INCIDENT(dispatch_service, x, y, z, num_units, radius, out_incident_id, p7, p8)
+end
+
+-- @param out_incident_id Pointer: pass memory.alloc(size) and read the result back
+function module.create_incident_with_entity(
+    dispatch_service: int, ped: int, num_units: int, radius: float, out_incident_id: int, p5: any,
+    p6: any
+): bool
+    -- body function:
+    return MISC.CREATE_INCIDENT_WITH_ENTITY(dispatch_service, ped, num_units, radius, out_incident_id, p5, p6)
+end
+
+-- Delete an incident with a given id
+function module.delete_incident(incident_id: int): void
+    MISC.DELETE_INCIDENT(incident_id)
+end
+
+-- Finds a position ahead of the player by predicting the players next actions
+-- @param spawn_point Pointer: pass memory.alloc(size) and read the result back
+function module.find_spawn_point_in_direction(
+    pos_x: float, pos_y: float, pos_z: float, fwd_vec_x: float, fwd_vec_y: float, fwd_vec_z: float,
+    distance: float, spawn_point: int
+): bool
+    -- body function:
+    return MISC.FIND_SPAWN_POINT_IN_DIRECTION(pos_x, pos_y, pos_z, fwd_vec_x, fwd_vec_y, fwd_vec_z, distance, spawn_point)
+end
+
+function module.add_pop_multiplier_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, p6: float, p7: float,
+    p8: bool, p9: bool
+): int
+    -- body function:
+    return MISC.ADD_POP_MULTIPLIER_AREA(x1, y1, z1, x2, y2, z2, p6, p7, p8, p9)
+end
+
+function module.remove_pop_multiplier_area(id: int, p1: bool): void
+    MISC.REMOVE_POP_MULTIPLIER_AREA(id, p1)
+end
+
+function module.add_pop_multiplier_sphere(
+    x: float, y: float, z: float, radius: float, ped_multiplier: float, vehicle_multiplier: float,
+    p6: bool, p7: bool
+): int
+    -- body function:
+    return MISC.ADD_POP_MULTIPLIER_SPHERE(x, y, z, radius, ped_multiplier, vehicle_multiplier, p6, p7)
+end
+
+-- Removes population multiplier sphere
+function module.remove_pop_multiplier_sphere(id: int, p1: bool): void
+    MISC.REMOVE_POP_MULTIPLIER_SPHERE(id, p1)
+end
+
+-- Makes the ped jump around like they're in a tennis match
+function module.enable_tennis_mode(ped: int, toggle: bool, p2: bool): void
+    MISC.ENABLE_TENNIS_MODE(ped, toggle, p2)
+end
+
+function module.play_tennis_swing_anim(
+    ped: int, anim_dict: string, anim_name: string, p3: float, p4: float, p5: bool
+): void
+    -- body function:
+    MISC.PLAY_TENNIS_SWING_ANIM(ped, anim_dict, anim_name, p3, p4, p5)
+end
+
+function module.play_tennis_dive_anim(ped: int, p1: int, p2: float, p3: float, p4: float, p5: bool): void
+    MISC.PLAY_TENNIS_DIVE_ANIM(ped, p1, p2, p3, p4, p5)
+end
+
+function module.reset_dispatch_spawn_location(): void
+    MISC.RESET_DISPATCH_SPAWN_LOCATION()
+end
+
+function module.reset_dispatch_ideal_spawn_distance(): void
+    MISC.RESET_DISPATCH_IDEAL_SPAWN_DISTANCE()
+end
+
+function module.reset_dispatch_time_between_spawn_attempts(p0: any): void
+    MISC.RESET_DISPATCH_TIME_BETWEEN_SPAWN_ATTEMPTS(p0)
+end
+
+-- To remove, see: REMOVE_DISPATCH_SPAWN_BLOCKING_AREA
+function module.add_dispatch_spawn_angled_blocking_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float
+): int
+    -- body function:
+    return MISC.ADD_DISPATCH_SPAWN_ANGLED_BLOCKING_AREA(x1, y1, z1, x2, y2, z2, width)
+end
+
+function module.add_dispatch_spawn_sphere_blocking_area(x1: float, y1: float, x2: float, y2: float): int
+    return MISC.ADD_DISPATCH_SPAWN_SPHERE_BLOCKING_AREA(x1, y1, x2, y2)
+end
+
+function module.remove_dispatch_spawn_blocking_area(p0: int): void
+    MISC.REMOVE_DISPATCH_SPAWN_BLOCKING_AREA(p0)
+end
+
+function module.reset_dispatch_spawn_blocking_areas(): void
+    MISC.RESET_DISPATCH_SPAWN_BLOCKING_AREAS()
+end
+
+function module.reset_wanted_response_num_peds_to_spawn(): void
+    MISC.RESET_WANTED_RESPONSE_NUM_PEDS_TO_SPAWN()
+end
+
+function module.add_tactical_nav_mesh_point(x: float, y: float, z: float): void
+    MISC.ADD_TACTICAL_NAV_MESH_POINT(x, y, z)
+end
+
+function module.clear_tactical_nav_mesh_points(): void
+    MISC.CLEAR_TACTICAL_NAV_MESH_POINTS()
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.display_onscreen_keyboard_with_longer_initial_string(
+    p0: int, window_title: string, p2: int, default_text: string, default_concat1: string,
+    default_concat2: string, default_concat3: string, default_concat4: string,
+    default_concat5: string, default_concat6: string, default_concat7: string, max_input_length: int
+): void
+    -- body function:
+    MISC.DISPLAY_ONSCREEN_KEYBOARD_WITH_LONGER_INITIAL_STRING(p0, window_title, p2, default_text, default_concat1, default_concat2, default_concat3, default_concat4, default_concat5, default_concat6, default_concat7, max_input_length)
+end
+
+function module.display_onscreen_keyboard(
+    p0: int, window_title: string, p2: string, default_text: string, default_concat1: string,
+    default_concat2: string, default_concat3: string, max_input_length: int
+): void
+    -- body function:
+    MISC.DISPLAY_ONSCREEN_KEYBOARD(p0, window_title, p2, default_text, default_concat1, default_concat2, default_concat3, max_input_length)
+end
+
+-- Returns the current status of the onscreen keyboard, and updates the output
+function module.update_onscreen_keyboard(): int
+    return MISC.UPDATE_ONSCREEN_KEYBOARD()
+end
+
+function module.cancel_onscreen_keyboard(): void
+    MISC.CANCEL_ONSCREEN_KEYBOARD()
+end
+
+function module.next_onscreen_keyboard_result_will_display_using_these_fonts(p0: int): void
+    MISC.NEXT_ONSCREEN_KEYBOARD_RESULT_WILL_DISPLAY_USING_THESE_FONTS(p0)
+end
+
+-- Appears to remove stealth kill action from memory
+function module.action_manager_enable_action(hash: int, enable: bool): void
+    MISC.ACTION_MANAGER_ENABLE_ACTION(hash, enable)
+end
+
+function module.supress_random_event_this_frame(event_type: int, suppress: bool): void
+    MISC.SUPRESS_RANDOM_EVENT_THIS_FRAME(event_type, suppress)
+end
+
+function module.prevent_arrest_state_this_frame(): void
+    MISC.PREVENT_ARREST_STATE_THIS_FRAME()
+end
+
+-- Sets the localplayer playerinfo state back to playing (State 0)
+function module.force_game_state_playing(): void
+    MISC.FORCE_GAME_STATE_PLAYING()
+end
+
+function module.script_race_init(p0: int, p1: int, p2: any, p3: any): void
+    MISC.SCRIPT_RACE_INIT(p0, p1, p2, p3)
+end
+
+function module.script_race_shutdown(): void
+    MISC.SCRIPT_RACE_SHUTDOWN()
+end
+
+function module.script_race_player_hit_checkpoint(player_id: int, p1: any, p2: any, p3: any): void
+    MISC.SCRIPT_RACE_PLAYER_HIT_CHECKPOINT(player_id, p1, p2, p3)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.script_race_get_player_split_time(player_id: int, p1: int, p2: int): bool
+    return MISC.SCRIPT_RACE_GET_PLAYER_SPLIT_TIME(player_id, p1, p2)
+end
+
+function module.start_end_user_benchmark(): void
+    MISC.START_END_USER_BENCHMARK()
+end
+
+function module.stop_end_user_benchmark(): void
+    MISC.STOP_END_USER_BENCHMARK()
+end
+
+function module.reset_end_user_benchmark(): void
+    MISC.RESET_END_USER_BENCHMARK()
+end
+
+-- Saves the benchmark recording to %USERPROFILE%\Documents\Rockstar Games\GTA V\Benchmarks and submits some metrics
+function module.save_end_user_benchmark(): void
+    MISC.SAVE_END_USER_BENCHMARK()
+end
+
+function module.ui_started_end_user_benchmark(): bool
+    return MISC.UI_STARTED_END_USER_BENCHMARK()
+end
+
+function module.landing_screen_started_end_user_benchmark(): bool
+    return MISC.LANDING_SCREEN_STARTED_END_USER_BENCHMARK()
+end
+
+function module.restart_game(): void
+    MISC.RESTART_GAME()
+end
+
+-- Exits the game and downloads a fresh social club update on next restart
+function module.quit_game(): void
+    MISC.QUIT_GAME()
+end
+
+function module.cleanup_async_install(): void
+    MISC.CLEANUP_ASYNC_INSTALL()
+end
+
+function module.disable_screen_dimming_this_frame(): void
+    MISC.DISABLE_SCREEN_DIMMING_THIS_FRAME()
+end
+
+function module.use_active_camera_for_timeslicing_centre(): void
+    MISC.USE_ACTIVE_CAMERA_FOR_TIMESLICING_CENTRE()
+end
+
+return module

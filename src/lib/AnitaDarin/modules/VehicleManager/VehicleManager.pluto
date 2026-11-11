@@ -4,13 +4,25 @@ local Module = Atdar.loader.load("core/module")
 local SAVE_FOLDER = "vehicles"
 
 -- What's saved of a vehicle: { handle, model, name (when Stand knows it), x, y, z, heading }.
--- The handle is the one the game gave it this session: the game gives a new one when it's spawned again
-local function vehicle_data(handle: int): table
+-- The handle is the one the game gave it this session: the game gives a new one when it's spawned again.
+-- nil when its position can't be read
+local function vehicle_data(handle: int): ?table
 
     local n_entity = Atdar.natives.entity
     local model = n_entity.get_model(handle)
-    local coords = ENTITY.GET_ENTITY_COORDS(handle, true)
-    local data = { handle = handle, model = model, x = coords.x, y = coords.y, z = coords.z, heading = n_entity.get_heading(handle) }
+    local coords = n_entity.get_coords(handle, true, 1.3)
+
+    if coords == nil then
+        return nil
+    end
+
+    local data = {
+        handle = handle,
+        model = model,
+        x = coords.x, y = coords.y, z = coords.z,
+        heading = n_entity.get_heading(handle)
+    }
+    
     local name = util.reverse_joaat(model)
 
     if name ~= nil and name ~= "" then
@@ -18,7 +30,7 @@ local function vehicle_data(handle: int): table
     end
 
     return data
-    -- @return table
+    -- @return ?table
 end
 
 local class VehicleManager extends Module
@@ -353,6 +365,7 @@ local class VehicleManager extends Module
     -- @return Whether it was exploded (one already gone or already dead is left alone)
     function explode(handle: ?int): bool
 
+        local n_ped_vehicle = Atdar.natives.entity.ped.vehicle
         local n_vehicle = Atdar.natives.entity.vehicle
 
         if math.type(handle) ~= "integer" then
@@ -364,6 +377,10 @@ local class VehicleManager extends Module
         end
 
         if n_vehicle.is_destroyed(handle) then
+            return false
+        end
+
+        if n_ped_vehicle.is_in_this(self:get_ped_id(), handle, true) then
             return false
         end
 
@@ -450,9 +467,14 @@ local class VehicleManager extends Module
     -- @return Whether it was deleted (one already gone is only forgotten)
     function delete(handle: ?int): bool
 
+        local n_ped_vehicle = Atdar.natives.entity.ped.vehicle
         local n_vehicle = Atdar.natives.entity.vehicle
 
         if math.type(handle) ~= "integer" then
+            return false
+        end
+
+        if n_ped_vehicle.is_in_this(self:get_ped_id(), handle, true) then
             return false
         end
 
@@ -496,7 +518,7 @@ local class VehicleManager extends Module
     -- Saves one vehicle to its own file in the module's vehicles folder (modules/VehicleManager/vehicles/):
     -- the model, where it stands and which way it faces, enough to spawn it again with create().
     -- @param name The file's name; nil - the model's name, with _2, _3... when that one is taken
-    -- @return The file's name (without .json), nil if the vehicle doesn't exist or the file couldn't be written
+    -- @return The file's name (without .json), nil if the vehicle doesn't exist, its position can't be read or the file couldn't be written
     function save_vehicle(handle: int, name: ?string): ?string
         if math.type(handle) ~= "integer" or not Atdar.natives.entity.does_exist(handle) then
             self.log:warn(self:text("not_in_game", "%s isn't a vehicle in the game"):format(tostring(handle)))
@@ -504,6 +526,12 @@ local class VehicleManager extends Module
         end
 
         local data = vehicle_data(handle)
+
+        if data == nil then
+            self.log:warn(self:text("no_position", "Couldn't read the position of %s, not saved"):format(tostring(handle)))
+            return nil
+        end
+
         local file_name = name
 
         if file_name == nil or file_name == "" then

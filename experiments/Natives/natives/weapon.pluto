@@ -1,0 +1,278 @@
+local module = {}
+-- body
+
+-- State
+
+function module.is_valid(weapon_hash: int): bool
+    return WEAPON.IS_WEAPON_VALID(weapon_hash)
+end
+
+function module.has_entity_been_damaged(entity: int, weapon_hash: int, weapon_type: int): bool
+    return WEAPON.HAS_ENTITY_BEEN_DAMAGED_BY_WEAPON(entity, weapon_hash, weapon_type)
+end
+
+function module.has_reloading_in_vehicle(vehicle: int, seat: int): bool
+    return WEAPON._HAS_WEAPON_RELOADING_IN_VEHICLE(vehicle, seat)
+end
+
+function module.has_vehicle_got_projectile_attached(
+    driver: int, vehicle: int, weapon_hash: int, p3: any
+): bool
+    -- body function:
+    return WEAPON.HAS_VEHICLE_GOT_PROJECTILE_ATTACHED(driver, vehicle, weapon_hash, p3)
+end
+
+function module.has_asset_loaded(weapon_hash: int): bool
+    return WEAPON.HAS_WEAPON_ASSET_LOADED(weapon_hash)
+end
+
+function module.has_got_component(weapon: int, component_hash: int): bool
+    return WEAPON.HAS_WEAPON_GOT_WEAPON_COMPONENT(weapon, component_hash)
+end
+
+function module.does_take_component(weapon_hash: int, component_hash: int): bool
+    return WEAPON.DOES_WEAPON_TAKE_WEAPON_COMPONENT(weapon_hash, component_hash)
+end
+
+function module.is_flash_light_on(ped: int): bool
+    return WEAPON.IS_FLASH_LIGHT_ON(ped)
+end
+
+function module.can_use_on_parachute(weapon_hash: int): bool
+    return WEAPON.CAN_USE_WEAPON_ON_PARACHUTE(weapon_hash)
+end
+
+-- @param out_zone_id Pointer: pass memory.alloc(size) and read the result back
+function module.is_air_defence_sphere_in_area(
+    x: float, y: float, z: float, radius: float, out_zone_id: int
+): bool
+    -- body function:
+    return WEAPON.IS_AIR_DEFENCE_SPHERE_IN_AREA(x, y, z, radius, out_zone_id)
+end
+
+function module.does_air_defence_sphere_exist(zone_id: int): bool
+    return WEAPON.DOES_AIR_DEFENCE_SPHERE_EXIST(zone_id)
+end
+
+-- Get
+
+function module.get_component_type_model(component_hash: int): int
+    return WEAPON.GET_WEAPON_COMPONENT_TYPE_MODEL(component_hash)
+end
+
+-- Returns the model of any weapon
+function module.get_weapontype_model(weapon_hash: int): int
+    return WEAPON.GET_WEAPONTYPE_MODEL(weapon_hash)
+end
+
+function module.get_weapontype_slot(weapon_hash: int): int
+    return WEAPON.GET_WEAPONTYPE_SLOT(weapon_hash)
+end
+
+function module.get_weapontype_group(weapon_hash: int): int
+    return WEAPON.GET_WEAPONTYPE_GROUP(weapon_hash)
+end
+
+-- Returns the amount of extra components the specified component has
+function module.get_component_variant_extra_count(component_hash: int): int
+    return WEAPON.GET_WEAPON_COMPONENT_VARIANT_EXTRA_COUNT(component_hash)
+end
+
+-- Returns the model hash of the extra component at specified index
+function module.get_component_variant_extra_model(component_hash: int, extra_component_index: int): int
+    return WEAPON.GET_WEAPON_COMPONENT_VARIANT_EXTRA_MODEL(component_hash, extra_component_index)
+end
+
+function module.get_time_before_vehicle_reload_finishes(vehicle: int, seat: int): int
+    return WEAPON._GET_TIME_BEFORE_VEHICLE_WEAPON_RELOAD_FINISHES(vehicle, seat)
+end
+
+function module.get_vehicle_reload_time(vehicle: int, seat: int): float
+    return WEAPON._GET_VEHICLE_WEAPON_RELOAD_TIME(vehicle, seat)
+end
+
+-- @param ammo Pointer: pass memory.alloc(size) and read the result back
+function module.get_max_ammo(ped: int, weapon_hash: int, ammo: int): bool
+    return WEAPON.GET_MAX_AMMO(ped, weapon_hash, ammo)
+end
+
+-- @param ammo Pointer: pass memory.alloc(size) and read the result back
+function module.get_max_ammo_by_type(ped: int, ammo_type_hash: int, ammo: int): bool
+    return WEAPON.GET_MAX_AMMO_BY_TYPE(ped, ammo_type_hash, ammo)
+end
+
+function module.get_object_tint_index(weapon: int): int
+    return WEAPON.GET_WEAPON_OBJECT_TINT_INDEX(weapon)
+end
+
+function module.get_tint_count(weapon_hash: int): int
+    return WEAPON.GET_WEAPON_TINT_COUNT(weapon_hash)
+end
+
+-- Returns -1 if camoComponentHash is invalid/not attached to the weapon object
+function module.get_object_component_tint_index(weapon_object: int, camo_component_hash: int): int
+    return WEAPON.GET_WEAPON_OBJECT_COMPONENT_TINT_INDEX(weapon_object, camo_component_hash)
+end
+
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_hud_stats(weapon_hash: int, out_data: int): bool
+    return WEAPON.GET_WEAPON_HUD_STATS(weapon_hash, out_data)
+end
+
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_component_hud_stats(component_hash: int, out_data: int): bool
+    return WEAPON.GET_WEAPON_COMPONENT_HUD_STATS(component_hash, out_data)
+end
+
+-- This native does not return damages of weapons from the melee and explosive group
+function module.get_damage(weapon_hash: int, component_hash: int): float
+    return WEAPON.GET_WEAPON_DAMAGE(weapon_hash, component_hash)
+end
+
+function module.get_time_between_shots(weapon_hash: int): float
+    return WEAPON.GET_WEAPON_TIME_BETWEEN_SHOTS(weapon_hash)
+end
+
+function module.get_damage_type(weapon_hash: int): int
+    return WEAPON.GET_WEAPON_DAMAGE_TYPE(weapon_hash)
+end
+
+-- Set
+
+function module.set_pickup_ammo_amount_scaler(p0: float): void
+    WEAPON.SET_PICKUP_AMMO_AMOUNT_SCALER(p0)
+end
+
+function module.set_object_tint_index(weapon: int, tint_index: int): void
+    WEAPON.SET_WEAPON_OBJECT_TINT_INDEX(weapon, tint_index)
+end
+
+function module.set_object_component_tint_index(
+    weapon_object: int, camo_component_hash: int, color_index: int
+): void
+    -- body function:
+    WEAPON.SET_WEAPON_OBJECT_COMPONENT_TINT_INDEX(weapon_object, camo_component_hash, color_index)
+end
+
+function module.set_object_camo_index(weapon_object: int, p1: int): void
+    WEAPON.SET_WEAPON_OBJECT_CAMO_INDEX(weapon_object, p1)
+end
+
+-- Changes the weapon damage output by the given multiplier value. Must be run every frame
+function module.set_damage_modifier(weapon_hash: int, damage_multiplier: float): void
+    WEAPON.SET_WEAPON_DAMAGE_MODIFIER(weapon_hash, damage_multiplier)
+end
+
+function module.set_aoe_modifier(weapon_hash: int, multiplier: float): void
+    WEAPON.SET_WEAPON_AOE_MODIFIER(weapon_hash, multiplier)
+end
+
+function module.set_effect_duration_modifier(p0: int, p1: float): void
+    WEAPON.SET_WEAPON_EFFECT_DURATION_MODIFIER(p0, p1)
+end
+
+function module.set_flash_light_fade_distance(distance: float): bool
+    return WEAPON.SET_FLASH_LIGHT_FADE_DISTANCE(distance)
+end
+
+-- Enables/disables flashlight on ped's weapon
+function module.set_flash_light_active_history(ped: int, toggle: bool): void
+    WEAPON.SET_FLASH_LIGHT_ACTIVE_HISTORY(ped, toggle)
+end
+
+-- Changes the selected ped aiming animation style
+function module.set_animation_override(ped: int, anim_style: int): void
+    WEAPON.SET_WEAPON_ANIMATION_OVERRIDE(ped, anim_style)
+end
+
+function module.set_player_targettable_for_air_defence_sphere(
+    player_id: int, zone_id: int, enable: bool
+): void
+    -- body function:
+    WEAPON.SET_PLAYER_TARGETTABLE_FOR_AIR_DEFENCE_SPHERE(player_id, zone_id, enable)
+end
+
+-- Actions
+
+-- Enables laser sight on any weapon
+function module.enable_laser_sight_rendering(toggle: bool): void
+    WEAPON.ENABLE_LASER_SIGHT_RENDERING(toggle)
+end
+
+function module.clear_entity_last_damage(entity: int): void
+    WEAPON.CLEAR_ENTITY_LAST_WEAPON_DAMAGE(entity)
+end
+
+function module.explode_projectiles(ped: int, weapon_hash: int, p2: bool): void
+    WEAPON.EXPLODE_PROJECTILES(ped, weapon_hash, p2)
+end
+
+function module.remove_all_projectiles_of_type(weapon_hash: int, explode: bool): void
+    WEAPON.REMOVE_ALL_PROJECTILES_OF_TYPE(weapon_hash, explode)
+end
+
+function module.refill_ammo_instantly(ped: int): bool
+    return WEAPON.REFILL_AMMO_INSTANTLY(ped)
+end
+
+function module.trigger_vehicle_reload(vehicle: int, seat: int, ped: int): bool
+    return WEAPON._TRIGGER_VEHICLE_WEAPON_RELOAD(vehicle, seat, ped)
+end
+
+function module.request_asset(weapon_hash: int, p1: int, p2: int): void
+    WEAPON.REQUEST_WEAPON_ASSET(weapon_hash, p1, p2)
+end
+
+function module.remove_asset(weapon_hash: int): void
+    WEAPON.REMOVE_WEAPON_ASSET(weapon_hash)
+end
+
+-- Now has 8 params
+function module.create_object(
+    weapon_hash: int, ammo_count: int, x: float, y: float, z: float, show_world_model: bool,
+    scale: float, p7: any, p8: any, p9: any
+): int
+    -- body function:
+    return WEAPON.CREATE_WEAPON_OBJECT(weapon_hash, ammo_count, x, y, z, show_world_model, scale, p7, p8, p9)
+end
+
+function module.give_component_to_object(weapon_object: int, component_hash: int): void
+    WEAPON.GIVE_WEAPON_COMPONENT_TO_WEAPON_OBJECT(weapon_object, component_hash)
+end
+
+function module.remove_component_from_object(object: int, component_hash: int): void
+    WEAPON.REMOVE_WEAPON_COMPONENT_FROM_WEAPON_OBJECT(object, component_hash)
+end
+
+function module.request_high_detail_model(weapon_object: int): void
+    WEAPON.REQUEST_WEAPON_HIGH_DETAIL_MODEL(weapon_object)
+end
+
+function module.create_air_defence_sphere(
+    x: float, y: float, z: float, radius: float, p4: float, p5: float, p6: float, weapon_hash: int
+): int
+    -- body function:
+    return WEAPON.CREATE_AIR_DEFENCE_SPHERE(x, y, z, radius, p4, p5, p6, weapon_hash)
+end
+
+function module.create_air_defence_angled_area(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: float, p7: float,
+    p8: float, radius: float, weapon_hash: int
+): int
+    -- body function:
+    return WEAPON.CREATE_AIR_DEFENCE_ANGLED_AREA(p0, p1, p2, p3, p4, p5, p6, p7, p8, radius, weapon_hash)
+end
+
+function module.remove_air_defence_sphere(zone_id: int): bool
+    return WEAPON.REMOVE_AIR_DEFENCE_SPHERE(zone_id)
+end
+
+function module.remove_all_air_defence_spheres(): void
+    WEAPON.REMOVE_ALL_AIR_DEFENCE_SPHERES()
+end
+
+function module.fire_air_defence_sphere_at_position(zone_id: int, x: float, y: float, z: float): void
+    WEAPON.FIRE_AIR_DEFENCE_SPHERE_WEAPON_AT_POSITION(zone_id, x, y, z)
+end
+
+return Atdar.loader.auto(module, "natives/weapon")

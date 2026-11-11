@@ -1,0 +1,75 @@
+-- lib/AnitaDarin/ui/stand/core/call_slider.pluto
+--
+-- Call and Call After as one item of a function's panel: a number picker with a click. At 0 it is named
+-- "Call" and a click calls the function now; with a number of milliseconds picked it is named "Call After"
+-- and a click calls the function after that long. Used by Call Function and by the Modules list.
+--
+--     call_slider.build(node, {
+--         name_now = label("loop.call"), name_after = label("loop.call_after.name"), help = label("call.help"),
+--         call = function() ... end, call_after = function(ms) ... end,
+--     })
+
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+
+local module = {}
+
+-- The least and the most ms; the number picked moves by STEP
+local MAX_MS = 60000
+local STEP = 100
+
+-- Makes the item in node
+-- @param opts name_now / name_after (Stand labels), help, call(), call_after(ms)
+-- @return The item
+function module.build(node: table, opts: table)
+
+    local ref = nil
+    local after = false
+
+    -- The name follows the number: Stand tells a click, not the arrows moving the number, so the name is
+    -- looked at again while the item is on screen
+    local function sync(): void
+
+        if ref == nil then
+            return
+        end
+
+        local picked = menu.get_value(ref) ~= 0
+
+        if picked == after then
+            return
+        end
+
+        after = picked
+
+        if picked then
+            pcall(menu.set_menu_name, ref, opts.name_after)
+        else
+            pcall(menu.set_menu_name, ref, opts.name_now)
+        end
+    end
+
+    ref = node:click_slider(opts.name_now, 0, MAX_MS, 0, STEP, function(ms, click_type)
+
+        sync()
+
+        if not clicks.is_user_action(click_type) then
+            return
+        end
+
+        if ms == 0 then
+            opts.call()
+            return
+        end
+
+        opts.call_after(ms)
+    end, {}, opts.help)
+
+    -- Not in every Stand: without it the name changes on the next click
+    if menu.on_tick_in_viewport ~= nil then
+        menu.on_tick_in_viewport(ref, sync)
+    end
+
+    return ref
+end
+
+return module

@@ -1,7 +1,7 @@
--- ui/stand/core/commands: command names with the profile's prefix, renamed in place when it changes
+-- ui/logic/stand/commands: command names with the profile's prefix, renamed in place when it changes
 local stand = require("stand")
 stand.boot()
-local values = { command_box_prefix = "atdar", command_box_separator = "", command_box_found_prefix = "atdar", command_box_found_separator = "" }
+local values = { command_box_base_prefix = "atdar", command_box_base_separator = "", command_box_found_prefix = "atdar", command_box_found_separator = "" }
 local listeners = {}
 Atdar.profile = {
     get = |key| -> values[key],
@@ -11,7 +11,7 @@ local function profile_set(key, value)
     values[key] = value
     for _, fn in listeners do fn(key, value) end
 end
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 
 stand.equal(table.concat(commands.names({ "godmode", "God Mode!", "godmode" }), ","), "atdargodmode",
     "names are cleaned, prefixed and deduplicated")
@@ -25,11 +25,11 @@ stand.equal(stand.find_log("has no allowed characters"), nil, "and isn't warned 
 -- Items are renamed in place when the profile's prefix or separator changes
 local item = menu.action(stand.root, "God", commands.names({ "godmode" }), "", || -> nil)
 commands.track(item, { "godmode" })
-profile_set("command_box_separator", "_")
+profile_set("command_box_base_separator", "_")
 stand.equal(table.concat(item.commands, ","), "atdar_godmode", "the separator applies to tracked items")
-profile_set("command_box_prefix", "Ani Dar")
+profile_set("command_box_base_prefix", "Ani Dar")
 stand.equal(table.concat(item.commands, ","), "anidar_godmode", "a new prefix is cleaned and applied")
-profile_set("command_box_prefix", "")
+profile_set("command_box_base_prefix", "")
 stand.equal(table.concat(item.commands, ","), "godmode", "an empty prefix means none")
 
 -- An item deleted without untrack: renaming the rest doesn't fail on it, and it's forgotten
@@ -45,7 +45,7 @@ menu.set_command_names = function(it, names)
     end
     real_set_names(it, names)
 end
-local renamed_ok = pcall(profile_set, "command_box_prefix", "zz")
+local renamed_ok = pcall(profile_set, "command_box_base_prefix", "zz")
 menu.set_command_names = real_set_names
 stand.check(renamed_ok, "a new prefix doesn't fail on an item deleted without untrack")
 stand.equal(kept.commands[1], "zz_kept", "the other items are renamed")
@@ -56,16 +56,16 @@ for _, item in ipairs(commands.list()) do
 end
 stand.check(not listed, "nor listed in Found Commands")
 commands.untrack(kept)
-profile_set("command_box_prefix", "")
+profile_set("command_box_base_prefix", "")
 
 -- Untracked (deleted) items aren't touched any more
 commands.untrack(item)
-profile_set("command_box_prefix", "x")
+profile_set("command_box_base_prefix", "x")
 stand.equal(table.concat(item.commands, ","), "godmode", "untracked items keep their names")
 
 -- The loaded menu's commands have a prefix and separator of their own: the same base name can't clash
-profile_set("command_box_prefix", "atdar")
-profile_set("command_box_separator", "")
+profile_set("command_box_base_prefix", "atdar")
+profile_set("command_box_base_separator", "")
 local script_item = menu.action(stand.root, "Settings", commands.names({ "settings" }), "", || -> nil)
 commands.track(script_item, { "settings" })
 commands.begin_menu(stand.tmpdir("commands_menu_none"))

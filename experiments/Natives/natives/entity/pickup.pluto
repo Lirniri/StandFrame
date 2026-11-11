@@ -1,0 +1,308 @@
+local module = {}
+
+function module.get_all(as_pointers: bool = false)
+    if as_pointers then
+        return entities.get_all_pickups_as_pointers()
+    end
+    return entities.get_all_pickups_as_handles()
+end
+
+-- State
+
+function module.has_been_collected(pickup: int): bool
+    return OBJECT.HAS_PICKUP_BEEN_COLLECTED(pickup)
+end
+
+function module.does_exist(pickup: int): bool
+    return OBJECT.DOES_PICKUP_EXIST(pickup)
+end
+
+function module.does_object_exist(pickup_object: int): bool
+    return OBJECT.DOES_PICKUP_OBJECT_EXIST(pickup_object)
+end
+
+function module.is_object(object: int): bool
+    return OBJECT.IS_OBJECT_A_PICKUP(object)
+end
+
+function module.is_object_a_portable(object: int): bool
+    return OBJECT.IS_OBJECT_A_PORTABLE_PICKUP(object)
+end
+
+function module.does_type_exist_in_area(pickup_hash: int, x: float, y: float, z: float, radius: float): bool
+    return OBJECT.DOES_PICKUP_OF_TYPE_EXIST_IN_AREA(pickup_hash, x, y, z, radius)
+end
+
+function module.is_weapon_object_valid(object: int): bool
+    return OBJECT.IS_PICKUP_WEAPON_OBJECT_VALID(object)
+end
+
+-- Get
+
+function module.get_safe_coords(x: float, y: float, z: float, p3: float, p4: float): vector3
+    return OBJECT.GET_SAFE_PICKUP_COORDS(x, y, z, p3, p4)
+end
+
+function module.get_coords(pickup: int): vector3
+    return OBJECT.GET_PICKUP_COORDS(pickup)
+end
+
+function module.get_object(pickup: int): int
+    return OBJECT.GET_PICKUP_OBJECT(pickup)
+end
+
+function module.get_default_ammo_for_weapon(pickup_hash: int): int
+    return OBJECT.GET_DEFAULT_AMMO_FOR_WEAPON_PICKUP(pickup_hash)
+end
+
+function module.get_generation_range_multiplier(): float
+    return OBJECT.GET_PICKUP_GENERATION_RANGE_MULTIPLIER()
+end
+
+function module.get_weapon_type_from_type(pickup_hash: int): int
+    return OBJECT.GET_WEAPON_TYPE_FROM_PICKUP_TYPE(pickup_hash)
+end
+
+-- Returns the pickup hash for the given weapon hash
+function module.get_type_from_weapon_hash(weapon_hash: int): int
+    return OBJECT.GET_PICKUP_TYPE_FROM_WEAPON_HASH(weapon_hash)
+end
+
+-- Set
+
+function module.set_custom_weapon_hash(pickup_hash: int, pickup: int): void
+    OBJECT.SET_CUSTOM_PICKUP_WEAPON_HASH(pickup_hash, pickup)
+end
+
+function module.set_max_num_portable_pickups_carried_by_player(model_hash: int, number: int): void
+    OBJECT.SET_MAX_NUM_PORTABLE_PICKUPS_CARRIED_BY_PLAYER(model_hash, number)
+end
+
+function module.set_local_player_can_collect_portable_pickups(toggle: bool): void
+    OBJECT.SET_LOCAL_PLAYER_CAN_COLLECT_PORTABLE_PICKUPS(toggle)
+end
+
+function module.set_regeneration_time(pickup: int, duration: int): void
+    OBJECT.SET_PICKUP_REGENERATION_TIME(pickup, duration)
+end
+
+function module.set_player_permitted_to_collect_pickups_of_type(
+    player_id: int, pickup_hash: int, toggle: bool
+): void
+    -- body function:
+    OBJECT.SET_PLAYER_PERMITTED_TO_COLLECT_PICKUPS_OF_TYPE(player_id, pickup_hash, toggle)
+end
+
+-- Maximum amount of pickup models that can be disallowed is 30
+function module.set_local_player_permitted_to_collect_pickups_with_model(model_hash: int, toggle: bool): void
+    OBJECT.SET_LOCAL_PLAYER_PERMITTED_TO_COLLECT_PICKUPS_WITH_MODEL(model_hash, toggle)
+end
+
+function module.set_team_object(object: int, p1: any, p2: bool): void
+    OBJECT.SET_TEAM_PICKUP_OBJECT(object, p1, p2)
+end
+
+function module.set_object_glow_when_uncollectable(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_OBJECT_GLOW_WHEN_UNCOLLECTABLE(pickup, toggle)
+end
+
+function module.set_glow_disabled(pickup: int, toggle: bool): void
+    OBJECT._SET_PICKUP_GLOW_DISABLED(pickup, toggle)
+end
+
+function module.set_glow_offset(pickup: int, p1: float): void
+    OBJECT.SET_PICKUP_GLOW_OFFSET(pickup, p1)
+end
+
+function module.set_object_glow_offset(pickup: int, p1: float, p2: bool): void
+    OBJECT.SET_PICKUP_OBJECT_GLOW_OFFSET(pickup, p1, p2)
+end
+
+function module.set_object_arrow_marker(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_OBJECT_ARROW_MARKER(pickup, toggle)
+end
+
+function module.set_generation_range_multiplier(multiplier: float): void
+    OBJECT.SET_PICKUP_GENERATION_RANGE_MULTIPLIER(multiplier)
+end
+
+function module.set_uncollectable(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_UNCOLLECTABLE(pickup, toggle)
+end
+
+function module.set_transparent_when_uncollectable(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_TRANSPARENT_WHEN_UNCOLLECTABLE(pickup, toggle)
+end
+
+function module.set_hidden_when_uncollectable(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_HIDDEN_WHEN_UNCOLLECTABLE(pickup, toggle)
+end
+
+function module.set_object_transparent_when_uncollectable(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_OBJECT_TRANSPARENT_WHEN_UNCOLLECTABLE(pickup, toggle)
+end
+
+function module.set_object_alpha_when_transparent(p0: int): void
+    OBJECT.SET_PICKUP_OBJECT_ALPHA_WHEN_TRANSPARENT(p0)
+end
+
+function module.set_portable_persist(pickup: int, toggle: bool): void
+    OBJECT.SET_PORTABLE_PICKUP_PERSIST(pickup, toggle)
+end
+
+function module.set_object_collectable_in_vehicle(pickup: int): void
+    OBJECT.SET_PICKUP_OBJECT_COLLECTABLE_IN_VEHICLE(pickup)
+end
+
+function module.set_track_damage_events(pickup: int, toggle: bool): void
+    OBJECT.SET_PICKUP_TRACK_DAMAGE_EVENTS(pickup, toggle)
+end
+
+-- Actions
+
+function module.create(
+    pickup_hash: int, pos_x: float, pos_y: float, pos_z: float, p4: int, value: int, p6: bool,
+    model_hash: int
+): int
+    -- body function:
+    return OBJECT.CREATE_PICKUP(pickup_hash, pos_x, pos_y, pos_z, p4, value, p6, model_hash)
+end
+
+function module.create_rotate(
+    pickup_hash: int, pos_x: float, pos_y: float, pos_z: float, rot_x: float, rot_y: float,
+    rot_z: float, flag: int, amount: int, p9: any, p10: bool, model_hash: int
+): int
+    -- body function:
+    return OBJECT.CREATE_PICKUP_ROTATE(pickup_hash, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, flag, amount, p9, p10, model_hash)
+end
+
+function module.force_rotate_face_up(): void
+    OBJECT.FORCE_PICKUP_ROTATE_FACE_UP()
+end
+
+function module.create_ambient(
+    pickup_hash: int, pos_x: float, pos_y: float, pos_z: float, flags: int, value: int,
+    model_hash: int, p7: bool, p8: bool
+): int
+    -- body function:
+    return OBJECT.CREATE_AMBIENT_PICKUP(pickup_hash, pos_x, pos_y, pos_z, flags, value, model_hash, p7, p8)
+end
+
+function module.create_non_networked_ambient(
+    pickup_hash: int, pos_x: float, pos_y: float, pos_z: float, flags: int, value: int,
+    model_hash: int, p7: bool, p8: bool
+): int
+    -- body function:
+    return OBJECT.CREATE_NON_NETWORKED_AMBIENT_PICKUP(pickup_hash, pos_x, pos_y, pos_z, flags, value, model_hash, p7, p8)
+end
+
+function module.block_players_for_ambient(p0: any, p1: any): void
+    OBJECT.BLOCK_PLAYERS_FOR_AMBIENT_PICKUP(p0, p1)
+end
+
+function module.create_portable(
+    pickup_hash: int, x: float, y: float, z: float, place_on_ground: bool, model_hash: int
+): int
+    -- body function:
+    return OBJECT.CREATE_PORTABLE_PICKUP(pickup_hash, x, y, z, place_on_ground, model_hash)
+end
+
+function module.create_non_networked_portable(
+    pickup_hash: int, x: float, y: float, z: float, place_on_ground: bool, model_hash: int
+): int
+    -- body function:
+    return OBJECT.CREATE_NON_NETWORKED_PORTABLE_PICKUP(pickup_hash, x, y, z, place_on_ground, model_hash)
+end
+
+function module.attach_portable_to_ped(pickup_object: int, ped: int): void
+    OBJECT.ATTACH_PORTABLE_PICKUP_TO_PED(pickup_object, ped)
+end
+
+function module.detach_portable_from_ped(pickup_object: int): void
+    OBJECT.DETACH_PORTABLE_PICKUP_FROM_PED(pickup_object)
+end
+
+function module.force_portable_last_accessible_position_setting(object: int): void
+    OBJECT.FORCE_PORTABLE_PICKUP_LAST_ACCESSIBLE_POSITION_SETTING(object)
+end
+
+function module.hide_portable_when_detached(pickup_object: int, toggle: bool): void
+    OBJECT.HIDE_PORTABLE_PICKUP_WHEN_DETACHED(pickup_object, toggle)
+end
+
+-- Adds an area that seems to be related to pickup physics behavior
+function module.add_extended_probe_area(x: float, y: float, z: float, radius: float): void
+    OBJECT.ADD_EXTENDED_PICKUP_PROBE_AREA(x, y, z, radius)
+end
+
+-- Clears all areas created by ADD_EXTENDED_PICKUP_PROBE_AREA
+function module.clear_extended_probe_areas(): void
+    OBJECT.CLEAR_EXTENDED_PICKUP_PROBE_AREAS()
+end
+
+function module.suppress_sound(p0: any, p1: any): void
+    OBJECT.SUPPRESS_PICKUP_SOUND_FOR_PICKUP(p0, p1)
+end
+
+function module.remove_all_pickups_of_type(pickup_hash: int): void
+    OBJECT.REMOVE_ALL_PICKUPS_OF_TYPE(pickup_hash)
+end
+
+function module.remove(pickup: int): void
+    OBJECT.REMOVE_PICKUP(pickup)
+end
+
+-- Spawns one or more money pickups
+function module.create_money_pickups(x: float, y: float, z: float, value: int, amount: int, model: int): void
+    OBJECT.CREATE_MONEY_PICKUPS(x, y, z, value, amount, model)
+end
+
+function module.force_regenerate(p0: any): void
+    OBJECT.FORCE_PICKUP_REGENERATE(p0)
+end
+
+function module.allow_all_players_to_collect_pickups_of_type(pickup_hash: int): void
+    OBJECT.ALLOW_ALL_PLAYERS_TO_COLLECT_PICKUPS_OF_TYPE(pickup_hash)
+end
+
+function module.prevent_collection_of_portable(object: int, p1: bool, p2: bool): void
+    OBJECT.PREVENT_COLLECTION_OF_PORTABLE_PICKUP(object, p1, p2)
+end
+
+function module.allow_arrow_marker_when_uncollectable(pickup: int, toggle: bool): void
+    OBJECT.ALLOW_PICKUP_ARROW_MARKER_WHEN_UNCOLLECTABLE(pickup, toggle)
+end
+
+function module.allow_portable_to_migrate_to_non_participants(pickup: int, toggle: bool): void
+    OBJECT.ALLOW_PORTABLE_PICKUP_TO_MIGRATE_TO_NON_PARTICIPANTS(pickup, toggle)
+end
+
+function module.force_activate_physics_on_unfixed(pickup: int, toggle: bool): void
+    OBJECT.FORCE_ACTIVATE_PHYSICS_ON_UNFIXED_PICKUP(pickup, toggle)
+end
+
+function module.allow_by_none_participant(pickup: int, toggle: bool): void
+    OBJECT.ALLOW_PICKUP_BY_NONE_PARTICIPANT(pickup, toggle)
+end
+
+function module.suppress_reward_type(reward_type: int, suppress: bool): void
+    OBJECT.SUPPRESS_PICKUP_REWARD_TYPE(reward_type, suppress)
+end
+
+function module.clear_all_reward_type_suppression(): void
+    OBJECT.CLEAR_ALL_PICKUP_REWARD_TYPE_SUPPRESSION()
+end
+
+function module.clear_reward_type_suppression(reward_type: int): void
+    OBJECT.CLEAR_PICKUP_REWARD_TYPE_SUPPRESSION(reward_type)
+end
+
+function module.render_fake_glow(x: float, y: float, z: float, color_index: int): void
+    OBJECT.RENDER_FAKE_PICKUP_GLOW(x, y, z, color_index)
+end
+
+function module.convert_old_type_to_new(pickup_hash: int): int
+    return OBJECT.CONVERT_OLD_PICKUP_TYPE_TO_NEW(pickup_hash)
+end
+
+return module

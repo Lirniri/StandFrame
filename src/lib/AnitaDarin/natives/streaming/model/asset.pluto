@@ -28,4 +28,8 @@ function module.remove(model: int|string): void
     STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Atdar.util.hash(model))
 end
 
+function module.request_menu_ped(model: int): void
+    STREAMING.REQUEST_MENU_PED_MODEL(model)
+end
+
 return module

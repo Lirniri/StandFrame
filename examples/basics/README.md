@@ -14,6 +14,7 @@ What any file of the script needs: a module, a feature or a menu.
 | `06_check.pluto` | `core/check`: `expecter` for function arguments, `validator` for options |
 | `07_parsers_and_colors.pluto` | `Atdar.parsers`: arguments, names, Stand commands, JSON; `Atdar.color`: hex, Stand, game |
 | `08_natives_more.pluto` | Pointers and handles, players, the session, control over an entity, map blips |
+| `09_natives_all.pluto` | Where a native's wrapper is (`CAM.GET_GAMEPLAY_CAM_FOV` -> `camera.gameplay.get_fov`), finding it by its short name, pointer parameters |
 
 These files show the calls rather than a working feature of their own: paste the lines you need into your module,
 feature or menu file.

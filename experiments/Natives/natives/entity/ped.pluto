@@ -1,0 +1,1809 @@
+local module = {}
+
+-- State
+
+-- Whether it's in the game and a ped
+function module.does_exist(ped: int): bool
+    local is_entity = Atdar.natives.entity.does_exist(ped)
+    local is_ped = module.is_ped(ped)
+    return is_entity and is_ped
+end
+
+function module.is_ped(ped: int): bool
+    return ENTITY.IS_ENTITY_A_PED(ped)
+end
+
+function module.is_player(ped: int): bool
+    return PED.IS_PED_A_PLAYER(ped)
+end
+
+function module.is_human(ped: int): bool
+    return PED.IS_PED_HUMAN(ped)
+end
+
+function module.is_male(ped: int): bool
+    return PED.IS_PED_MALE(ped)
+end
+
+function module.is_dead(ped: int): bool
+    local entity = Atdar.natives.entity
+    if module.is_ped(ped) then
+        return entity.is_dead(ped)
+    else
+        return nil
+    end
+end
+
+function module.is_in_model(ped: int, model_hash: int): bool
+    return PED.IS_PED_IN_MODEL(ped, model_hash)
+end
+
+function module.is_cop_in_area_3d(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float): bool
+    return PED.IS_COP_PED_IN_AREA_3D(x1, y1, z1, x2, y2, z2)
+end
+
+-- Gets a value indicating whether this ped's health is below its injured threshold
+function module.is_injured(ped: int): bool
+    return PED.IS_PED_INJURED(ped)
+end
+
+-- Returns whether the specified ped is hurt
+function module.is_hurt(ped: int): bool
+    return PED.IS_PED_HURT(ped)
+end
+
+-- Gets a value indicating whether this ped's health is below its fatally injured threshold. The default threshold is 100
+function module.is_fatally_injured(ped: int): bool
+    return PED.IS_PED_FATALLY_INJURED(ped)
+end
+
+function module.is_dead_or_dying(ped: int, p1: bool): bool
+    return PED.IS_PED_DEAD_OR_DYING(ped, p1)
+end
+
+function module.is_conversation_dead(ped: int): bool
+    return PED.IS_CONVERSATION_PED_DEAD(ped)
+end
+
+function module.is_aiming_from_cover(ped: int): bool
+    return PED.IS_PED_AIMING_FROM_COVER(ped)
+end
+
+function module.is_facing(ped: int, other_ped: int, angle: float): bool
+    return PED.IS_PED_FACING_PED(ped, other_ped, angle)
+end
+
+function module.is_model(ped: int, model_hash: int): bool
+    return PED.IS_PED_MODEL(ped, model_hash)
+end
+
+function module.can_create_random(p0: bool): bool
+    return PED.CAN_CREATE_RANDOM_PED(p0)
+end
+
+function module.can_create_random_driver(): bool
+    return PED.CAN_CREATE_RANDOM_DRIVER()
+end
+
+function module.can_create_random_bike_rider(): bool
+    return PED.CAN_CREATE_RANDOM_BIKE_RIDER()
+end
+
+function module.is_on_mount(ped: int): bool
+    return PED.IS_PED_ON_MOUNT(ped)
+end
+
+function module.is_on_foot(ped: int): bool
+    return PED.IS_PED_ON_FOOT(ped)
+end
+
+function module.is_on_any_bike(ped: int): bool
+    return PED.IS_PED_ON_ANY_BIKE(ped)
+end
+
+function module.is_planting_bomb(ped: int): bool
+    return PED.IS_PED_PLANTING_BOMB(ped)
+end
+
+function module.is_in_any_boat(ped: int): bool
+    return PED.IS_PED_IN_ANY_BOAT(ped)
+end
+
+function module.is_in_any_sub(ped: int): bool
+    return PED.IS_PED_IN_ANY_SUB(ped)
+end
+
+function module.is_in_any_heli(ped: int): bool
+    return PED.IS_PED_IN_ANY_HELI(ped)
+end
+
+function module.is_in_any_plane(ped: int): bool
+    return PED.IS_PED_IN_ANY_PLANE(ped)
+end
+
+function module.is_falling(ped: int): bool
+    return PED.IS_PED_FALLING(ped)
+end
+
+function module.is_landing(p0: any): bool
+    return PED.IS_PED_LANDING(p0)
+end
+
+function module.is_climbing(ped: int): bool
+    return PED.IS_PED_CLIMBING(ped)
+end
+
+function module.is_vaulting(ped: int): bool
+    return PED.IS_PED_VAULTING(ped)
+end
+
+function module.is_diving(ped: int): bool
+    return PED.IS_PED_DIVING(ped)
+end
+
+function module.is_opening_door(ped: int): bool
+    return PED.IS_PED_OPENING_DOOR(ped)
+end
+
+function module.is_ducking(ped: int): bool
+    return PED.IS_PED_DUCKING(ped)
+end
+
+function module.is_in_any_taxi(ped: int): bool
+    return PED.IS_PED_IN_ANY_TAXI(ped)
+end
+
+function module.is_prone(ped: int): bool
+    return PED.IS_PED_PRONE(ped)
+end
+
+function module.is_doing_driveby(ped: int): bool
+    return PED.IS_PED_DOING_DRIVEBY(ped)
+end
+
+function module.is_jacking(ped: int): bool
+    return PED.IS_PED_JACKING(ped)
+end
+
+function module.is_being_jacked(ped: int): bool
+    return PED.IS_PED_BEING_JACKED(ped)
+end
+
+function module.is_being_stunned(ped: int, p1: int): bool
+    return PED.IS_PED_BEING_STUNNED(ped, p1)
+end
+
+function module.is_fleeing(ped: int): bool
+    return PED.IS_PED_FLEEING(ped)
+end
+
+function module.is_in_cover_facing_left(ped: int): bool
+    return PED.IS_PED_IN_COVER_FACING_LEFT(ped)
+end
+
+function module.has_clear_los_to_entity(
+    ped: int, entity: int, x: float, y: float, z: float, p5: int, p6: bool, p7: bool
+): bool
+    -- body function:
+    return PED._HAS_PED_CLEAR_LOS_TO_ENTITY(ped, entity, x, y, z, p5, p6, p7)
+end
+
+function module.is_responding_to_event(ped: int, event: any): bool
+    return PED.IS_PED_RESPONDING_TO_EVENT(ped, event)
+end
+
+function module.can_create_random_cops(): bool
+    return PED.CAN_CREATE_RANDOM_COPS()
+end
+
+function module.is_in_any_train(ped: int): bool
+    return PED.IS_PED_IN_ANY_TRAIN(ped)
+end
+
+function module.is_scripted_scenario_using_conditional_anim(ped: int, anim_dict: string, anim: string): bool
+    return PED.IS_SCRIPTED_SCENARIO_PED_USING_CONDITIONAL_ANIM(ped, anim_dict, anim)
+end
+
+function module.is_lipstick_tint_for_creator(color_id: int): bool
+    return PED.IS_PED_LIPSTICK_TINT_FOR_CREATOR(color_id)
+end
+
+function module.is_blush_tint_for_creator(color_id: int): bool
+    return PED.IS_PED_BLUSH_TINT_FOR_CREATOR(color_id)
+end
+
+function module.is_lipstick_tint_for_barber(color_id: int): bool
+    return PED.IS_PED_LIPSTICK_TINT_FOR_BARBER(color_id)
+end
+
+function module.is_blush_tint_for_barber(color_id: int): bool
+    return PED.IS_PED_BLUSH_TINT_FOR_BARBER(color_id)
+end
+
+function module.is_running_melee_task(ped: int): bool
+    return PED.IS_PED_RUNNING_MELEE_TASK(ped)
+end
+
+function module.is_running_mobile_phone_task(ped: int): bool
+    return PED.IS_PED_RUNNING_MOBILE_PHONE_TASK(ped)
+end
+
+function module.is_mobile_phone_to_ear(ped: int): bool
+    return PED.IS_MOBILE_PHONE_TO_PED_EAR(ped)
+end
+
+function module.is_defensive_area_active(ped: int, p1: bool): bool
+    return PED.IS_PED_DEFENSIVE_AREA_ACTIVE(ped, p1)
+end
+
+-- Despite this function's name, it simply returns whether the specified handle is a Ped
+function module.was_skeleton_updated(ped: int): bool
+    return PED.WAS_PED_SKELETON_UPDATED(ped)
+end
+
+function module.does_scenario_blocking_area_exists(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float
+): bool
+    -- body function:
+    return PED.DOES_SCENARIO_BLOCKING_AREA_EXISTS(x1, y1, z1, x2, y2, z2)
+end
+
+function module.is_using_scenario(ped: int, scenario: string): bool
+    return PED.IS_PED_USING_SCENARIO(ped, scenario)
+end
+
+function module.is_using_any_scenario(ped: int): bool
+    return PED.IS_PED_USING_ANY_SCENARIO(ped)
+end
+
+function module.is_gesturing(p0: any): bool
+    return PED.IS_PED_GESTURING(p0)
+end
+
+function module.is_headtracking(ped1: int, ped2: int): bool
+    return PED.IS_PED_HEADTRACKING_PED(ped1, ped2)
+end
+
+function module.is_headtracking_entity(ped: int, entity: int): bool
+    return PED.IS_PED_HEADTRACKING_ENTITY(ped, entity)
+end
+
+-- Presumably returns the Entity that the Ped is currently diving out of the way of
+-- @param evading_entity Pointer: pass memory.alloc(size) and read the result back
+function module.is_evasive_diving(ped: int, evading_entity: int): bool
+    return PED.IS_PED_EVASIVE_DIVING(ped, evading_entity)
+end
+
+function module.is_in_sphere_area_of_any_enemy_peds(
+    ped: int, x: float, y: float, z: float, range: float
+): bool
+    -- body function:
+    return PED.IS_PED_IN_SPHERE_AREA_OF_ANY_ENEMY_PEDS(ped, x, y, z, range)
+end
+
+function module.is_performing_melee_action(ped: int): bool
+    return PED.IS_PED_PERFORMING_MELEE_ACTION(ped)
+end
+
+function module.is_performing_stealth_kill(ped: int): bool
+    return PED.IS_PED_PERFORMING_STEALTH_KILL(ped)
+end
+
+function module.is_performing_a_counter_attack(ped: int): bool
+    return PED.IS_PED_PERFORMING_A_COUNTER_ATTACK(ped)
+end
+
+function module.is_being_stealth_killed(ped: int): bool
+    return PED.IS_PED_BEING_STEALTH_KILLED(ped)
+end
+
+function module.was_killed_by_stealth(ped: int): bool
+    return PED.WAS_PED_KILLED_BY_STEALTH(ped)
+end
+
+function module.was_killed_by_takedown(ped: int): bool
+    return PED.WAS_PED_KILLED_BY_TAKEDOWN(ped)
+end
+
+function module.was_knocked_out(ped: int): bool
+    return PED.WAS_PED_KNOCKED_OUT(ped)
+end
+
+function module.is_any_near_point(x: float, y: float, z: float, radius: float): bool
+    return PED.IS_ANY_PED_NEAR_POINT(x, y, z, radius)
+end
+
+function module.is_heading_towards_position(ped: int, x: float, y: float, z: float, p4: float): bool
+    return PED.IS_PED_HEADING_TOWARDS_POSITION(ped, x, y, z, p4)
+end
+
+function module.is_tracked_visible(ped: int): bool
+    return PED.IS_TRACKED_PED_VISIBLE(ped)
+end
+
+function module.is_tracked(ped: int): bool
+    return PED.IS_PED_TRACKED(ped)
+end
+
+function module.has_received_event(ped: int, event_id: int): bool
+    return PED.HAS_PED_RECEIVED_EVENT(ped, event_id)
+end
+
+function module.can_see_hated(ped1: int, ped2: int): bool
+    return PED.CAN_PED_SEE_HATED_PED(ped1, ped2)
+end
+
+function module.is_shader_ready(ped: int): bool
+    return PED.IS_PED_SHADER_READY(ped)
+end
+
+function module.is_sheltered(ped: int): bool
+    return PED.IS_PED_SHELTERED(ped)
+end
+
+function module.is_synchronized_scene_running(scene_id: int): bool
+    return PED.IS_SYNCHRONIZED_SCENE_RUNNING(scene_id)
+end
+
+function module.is_synchronized_scene_looped(scene_id: int): bool
+    return PED.IS_SYNCHRONIZED_SCENE_LOOPED(scene_id)
+end
+
+function module.is_synchronized_scene_hold_last_frame(scene_id: int): bool
+    return PED.IS_SYNCHRONIZED_SCENE_HOLD_LAST_FRAME(scene_id)
+end
+
+-- Checks if the specified sexiness flag is set
+function module.has_sexiness_flag_set(ped: int, sexiness_flag: int): bool
+    return PED.PED_HAS_SEXINESS_FLAG_SET(ped, sexiness_flag)
+end
+
+function module.have_all_streaming_requests_completed(ped: int): bool
+    return PED.HAVE_ALL_STREAMING_REQUESTS_COMPLETED(ped)
+end
+
+function module.is_using_action_mode(ped: int): bool
+    return PED.IS_PED_USING_ACTION_MODE(ped)
+end
+
+function module.is_pedheadshot_valid(id: int): bool
+    return PED.IS_PEDHEADSHOT_VALID(id)
+end
+
+function module.is_pedheadshot_ready(id: int): bool
+    return PED.IS_PEDHEADSHOT_READY(id)
+end
+
+function module.is_pedheadshot_img_upload_available(): bool
+    return PED.IS_PEDHEADSHOT_IMG_UPLOAD_AVAILABLE()
+end
+
+function module.has_pedheadshot_img_upload_failed(): bool
+    return PED.HAS_PEDHEADSHOT_IMG_UPLOAD_FAILED()
+end
+
+function module.has_pedheadshot_img_upload_succeeded(): bool
+    return PED.HAS_PEDHEADSHOT_IMG_UPLOAD_SUCCEEDED()
+end
+
+function module.is_any_hostile_near_point(ped: int, x: float, y: float, z: float, radius: float): bool
+    return PED.IS_ANY_HOSTILE_PED_NEAR_POINT(ped, x, y, z, radius)
+end
+
+-- State > Movement
+function module.is_stopped(ped: int): bool
+    return PED.IS_PED_STOPPED(ped)
+end
+
+function module.is_walking(ped: int): bool
+    return TASK.IS_PED_WALKING(ped)
+end
+
+function module.is_running(ped: int): bool
+    return TASK.IS_PED_RUNNING(ped)
+end
+
+function module.is_sprinting(ped: int): bool
+    return TASK.IS_PED_SPRINTING(ped)
+end
+
+function module.is_strafing(ped: int): bool
+    return TASK.IS_PED_STRAFING(ped)
+end
+
+function module.is_still(ped: int): bool
+    return TASK.IS_PED_STILL(ped)
+end
+
+function module.is_getting_up(ped: int): bool
+    return TASK.IS_PED_GETTING_UP(ped)
+end
+
+function module.is_jumping(ped: int, doing_beast_jump: bool = false): bool
+    if doing_beast_jump then
+        return PED.IS_PED_DOING_A_BEAST_JUMP(ped)
+    end
+    return PED.IS_PED_JUMPING(ped)
+end
+
+function module.is_going_into_cover(ped: int): bool
+    return PED.IS_PED_GOING_INTO_COVER(ped)
+end
+
+function module.is_in_high_cover(ped: int): bool
+    return PED.IS_PED_IN_HIGH_COVER(ped)
+end
+
+function module.is_in_cover(ped: int, except_use_weapon: bool = false): bool
+    return PED.IS_PED_IN_COVER(ped, except_use_weapon)
+end
+
+function module.is_swimming(ped: int, under_water: bool = false): bool
+    if under_water then
+        return PED.IS_PED_SWIMMING_UNDER_WATER(ped)
+    end
+    return PED.IS_PED_SWIMMING(ped)
+end
+
+function module.is_scuba(ped: int): bool
+    local flag = module.flags.CONFIG.IS_SCUBA
+    return module.flags.get_config(ped, flag)
+end
+
+function module.is_max_health(ped: int): bool
+    local health = module.get_health(ped)
+    local max_health = module.get_max_health(ped)
+    return health ~= nil and health >= max_health
+end
+
+-- Get
+
+function module.get_all(as_pointers: bool = false)
+    if as_pointers then
+        return entities.get_all_peds_as_pointers()
+    end
+    return entities.get_all_peds_as_handles()
+end
+
+function module.get_health(ped): int
+    local entity = Atdar.natives.entity
+    local is_ped = module.is_ped(ped)
+    if is_ped then
+        return entity.get_health(ped)
+    else
+        return nil
+    end
+end
+
+function module.get_max_health(ped): int
+    local entity = Atdar.natives.entity
+    local is_ped = module.is_ped(ped)
+    if is_ped then
+        return entity.get_max_health(ped)
+    else
+        return nil
+    end
+end
+
+function module.get_armor(ped: int): int
+    return PED.GET_PED_ARMOUR(ped)
+end
+
+function module.get_net_id(ped): int
+    return NETWORK.PED_TO_NET(ped)
+end
+
+function module.from_net_id(net_id): ?int
+    local is_net_id_exist = NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+    if not is_net_id_exist then
+        return nil
+    end
+    return NETWORK.NET_TO_PED(net_id)
+end
+
+function module.get_accuracy(ped: int): int
+    return PED.GET_PED_ACCURACY(ped)
+end
+
+function module.get_mount(ped: int): int
+    return PED.GET_MOUNT(ped)
+end
+
+function module.get_money(ped: int): int
+    return PED.GET_PED_MONEY(ped)
+end
+
+function module.get_dead_pickup_coords(ped: int, p1: float, p2: float): vector3
+    return PED.GET_DEAD_PED_PICKUP_COORDS(ped, p1, p2)
+end
+
+function module.get_dies_in_water(ped: int): bool
+    return PED.GET_PED_DIES_IN_WATER(ped)
+end
+
+-- @param out_bone Pointer: pass memory.alloc(size) and read the result back
+function module.get_last_damage_bone(ped: int, out_bone: int): bool
+    return PED.GET_PED_LAST_DAMAGE_BONE(ped, out_bone)
+end
+
+function module.get_visual_field_center_angle(ped: int): float
+    return PED.GET_PED_VISUAL_FIELD_CENTER_ANGLE(ped)
+end
+
+-- Returns whether the entity is in stealth mode
+function module.get_stealth_movement(ped: int): bool
+    return PED.GET_PED_STEALTH_MOVEMENT(ped)
+end
+
+function module.get_peds_jacker(ped: int): int
+    return PED.GET_PEDS_JACKER(ped)
+end
+
+-- Returns the Entity (Ped, Vehicle, or ?Object?) that killed the 'ped'
+function module.get_source_of_death(ped: int): int
+    return PED.GET_PED_SOURCE_OF_DEATH(ped)
+end
+
+-- Returns the hash of the weapon/model/object that killed the ped
+function module.get_cause_of_death(ped: int): int
+    return PED.GET_PED_CAUSE_OF_DEATH(ped)
+end
+
+function module.get_time_of_death(ped: int): int
+    return PED.GET_PED_TIME_OF_DEATH(ped)
+end
+
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_pos_from_fired_event(ped: int, event_type: int, out_data: int): bool
+    return PED.GET_POS_FROM_FIRED_EVENT(ped, event_type, out_data)
+end
+
+function module.get_player_is_following(ped: int): int
+    return PED.GET_PLAYER_PED_IS_FOLLOWING(ped)
+end
+
+function module.get_type(ped: int): int
+    return PED.GET_PED_TYPE(ped)
+end
+
+function module.get_ped_max_health(ped: int): int
+    return PED.GET_PED_MAX_HEALTH(ped)
+end
+
+-- Returns the ped's alertness (0-3)
+function module.get_alertness(ped: int): int
+    return PED.GET_PED_ALERTNESS(ped)
+end
+
+function module.get_anim_initial_offset_position(
+    anim_dict: string, anim_name: string, x: float, y: float, z: float, x_rot: float, y_rot: float,
+    z_rot: float, p8: float, p9: int
+): vector3
+    -- body function:
+    return PED.GET_ANIM_INITIAL_OFFSET_POSITION(anim_dict, anim_name, x, y, z, x_rot, y_rot, z_rot, p8, p9)
+end
+
+function module.get_anim_initial_offset_rotation(
+    anim_dict: string, anim_name: string, x: float, y: float, z: float, x_rot: float, y_rot: float,
+    z_rot: float, p8: float, p9: int
+): vector3
+    -- body function:
+    return PED.GET_ANIM_INITIAL_OFFSET_ROTATION(anim_dict, anim_name, x, y, z, x_rot, y_rot, z_rot, p8, p9)
+end
+
+function module.get_fm_male_shop_apparel_item_index(p0: int): int
+    return PED.GET_FM_MALE_SHOP_PED_APPAREL_ITEM_INDEX(p0)
+end
+
+function module.get_fm_female_shop_apparel_item_index(p0: int): int
+    return PED.GET_FM_FEMALE_SHOP_PED_APPAREL_ITEM_INDEX(p0)
+end
+
+function module.get_num_makeup_tints(): int
+    return PED.GET_NUM_PED_MAKEUP_TINTS()
+end
+
+-- @param out_r Pointer: pass memory.alloc(size) and read the result back
+-- @param out_g Pointer: pass memory.alloc(size) and read the result back
+-- @param out_b Pointer: pass memory.alloc(size) and read the result back
+function module.get_makeup_tint_color(makeup_color_index: int, out_r: int, out_g: int, out_b: int): void
+    PED.GET_PED_MAKEUP_TINT_COLOR(makeup_color_index, out_r, out_g, out_b)
+end
+
+function module.get_default_secondary_tint_for_creator(color_id: int): int
+    return PED.GET_DEFAULT_SECONDARY_TINT_FOR_CREATOR(color_id)
+end
+
+function module.get_default_secondary_tint_for_barber(color_id: int): int
+    return PED.GET_DEFAULT_SECONDARY_TINT_FOR_BARBER(color_id)
+end
+
+-- Gets a random ped in the x/y/zRadius near the x/y/z coordinates passed
+function module.get_random_at_coord(
+    x: float, y: float, z: float, x_radius: float, y_radius: float, z_radius: float, ped_type: int
+): int
+    -- body function:
+    return PED.GET_RANDOM_PED_AT_COORD(x, y, z, x_radius, y_radius, z_radius, ped_type)
+end
+
+-- Gets the closest ped in a radius
+-- @param out_ped Pointer: pass memory.alloc(size) and read the result back
+function module.get_closest(
+    x: float, y: float, z: float, radius: float, p4: bool, p5: bool, out_ped: int, p7: bool,
+    p8: bool, ped_type: int
+): bool
+    -- body function:
+    return PED.GET_CLOSEST_PED(x, y, z, radius, p4, p5, out_ped, p7, p8, ped_type)
+end
+
+function module.get_can_be_grabbed_by_script(
+    ped: int, p1: bool, p2: bool, p3: bool, p4: bool, p5: bool, p6: bool, p7: bool, p8: any
+): bool
+    -- body function:
+    return PED.GET_CAN_PED_BE_GRABBED_BY_SCRIPT(ped, p1, p2, p3, p4, p5, p6, p7, p8)
+end
+
+function module.get_defensive_area_position(ped: int, p1: bool): vector3
+    return PED.GET_PED_DEFENSIVE_AREA_POSITION(ped, p1)
+end
+
+-- Gets the offset the specified ped has moved since the previous tick
+function module.get_extracted_displacement(ped: int, world_space: bool): vector3
+    return PED.GET_PED_EXTRACTED_DISPLACEMENT(ped, world_space)
+end
+
+-- Gets the position of the specified bone of the specified ped
+function module.get_bone_coords(
+    ped: int, bone_id: int, offset_x: float, offset_y: float, offset_z: float
+): vector3
+    -- body function:
+    return PED.GET_PED_BONE_COORDS(ped, bone_id, offset_x, offset_y, offset_z)
+end
+
+function module.get_tracked_pixelcount(ped: int): int
+    return PED.GET_TRACKED_PED_PIXELCOUNT(ped)
+end
+
+function module.get_bone_index(ped: int, bone_id: int): int
+    return PED.GET_PED_BONE_INDEX(ped, bone_id)
+end
+
+function module.get_enveff_scale(ped: int): float
+    return PED.GET_PED_ENVEFF_SCALE(ped)
+end
+
+function module.get_emissive_scale(ped: int): float
+    return PED.GET_PED_EMISSIVE_SCALE(ped)
+end
+
+function module.get_synchronized_scene_phase(scene_id: int): float
+    return PED.GET_SYNCHRONIZED_SCENE_PHASE(scene_id)
+end
+
+function module.get_synchronized_scene_rate(scene_id: int): float
+    return PED.GET_SYNCHRONIZED_SCENE_RATE(scene_id)
+end
+
+-- @param speed_x Pointer: pass memory.alloc(size) and read the result back
+-- @param speed_y Pointer: pass memory.alloc(size) and read the result back
+function module.get_current_move_blend_ratio(ped: int, speed_x: int, speed_y: int): bool
+    return PED.GET_PED_CURRENT_MOVE_BLEND_RATIO(ped, speed_x, speed_y)
+end
+
+-- @param size_and_peds Pointer: pass memory.alloc(size) and read the result back
+function module.get_nearby_peds(ped: int, size_and_peds: int, ignore: int): int
+    return PED.GET_PED_NEARBY_PEDS(ped, size_and_peds, ignore)
+end
+
+function module.get_pedheadshot_txd_string(id: int): string
+    return PED.GET_PEDHEADSHOT_TXD_STRING(id)
+end
+
+function module.get_mp_light_enabled(ped: int): bool
+    return PED.GET_MP_LIGHT_ENABLED(ped)
+end
+
+-- Set
+
+function module.set_scuba(ped: int, toggle: bool): void
+    module.flags.set_config(ped, module.flags.CONFIG.IS_SCUBA, toggle)
+end
+
+-- @return Whether it was a ped (nothing is set otherwise)
+function module.set_health(ped: int, value: ?int, instigator: int = 0, weapon_type: int = 0): bool
+    if not module.is_ped(ped) then
+        return false
+    end
+    Atdar.natives.entity.set_health(ped, value, instigator, weapon_type)
+    return true
+end
+
+-- @return Whether it was a ped (nothing is set otherwise)
+function module.set_max_health(ped: int, value: ?int, instigator: int = 0, weapon_type: int = 0): bool
+    if not module.is_ped(ped) then
+        return false
+    end
+    Atdar.natives.entity.set_max_health(ped, value, instigator, weapon_type)
+    return true
+end
+
+function module.set_armor(ped: int, value: int): void
+    PED.SET_PED_ARMOUR(ped, value)
+end
+
+function module.add_armor(ped: int, value: int): void
+    PED.ADD_ARMOUR_TO_PED(ped, value)
+end
+
+-- This is an alias of SET_ENTITY_AS_NO_LONGER_NEEDED
+-- @param ped Pointer: pass memory.alloc(size) and read the result back
+function module.set_as_no_longer_needed(ped: int): void
+    ENTITY.SET_PED_AS_NO_LONGER_NEEDED(ped)
+end
+
+function module.set_desired_heading(ped: int, heading: float): void
+    PED.SET_PED_DESIRED_HEADING(ped, heading)
+end
+
+function module.set_accuracy(ped: int, accuracy: int): void
+    PED.SET_PED_ACCURACY(ped, accuracy)
+end
+
+function module.set_ambient_law_accuracy_modifier(multiplier: float): void
+    PED.SET_AMBIENT_LAW_PED_ACCURACY_MODIFIER(multiplier)
+end
+
+function module.set_move_anims_blend_out(ped: int): void
+    PED.SET_PED_MOVE_ANIMS_BLEND_OUT(ped)
+end
+
+function module.set_can_be_dragged_out(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_DRAGGED_OUT(ped, toggle)
+end
+
+function module.set_density_multiplier_this_frame(multiplier: float): void
+    PED.SET_PED_DENSITY_MULTIPLIER_THIS_FRAME(multiplier)
+end
+
+function module.set_scenario_density_multiplier_this_frame(p0: float, p1: float): void
+    PED.SET_SCENARIO_PED_DENSITY_MULTIPLIER_THIS_FRAME(p0, p1)
+end
+
+function module.set_scripted_conversion_coord_this_frame(x: float, y: float, z: float): void
+    PED.SET_SCRIPTED_CONVERSION_COORD_THIS_FRAME(x, y, z)
+end
+
+-- The distance between these points, is the diagonal of a box (remember it's 3D)
+function module.set_non_creation_area(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float): void
+    PED.SET_PED_NON_CREATION_AREA(x1, y1, z1, x2, y2, z2)
+end
+
+-- Maximum possible amount of money on MP is 2000. ~JX
+function module.set_money(ped: int, amount: int): void
+    PED.SET_PED_MONEY(ped, amount)
+end
+
+function module.set_health_snacks_carried_by_all_new_peds(p0: float, p1: any): void
+    PED.SET_HEALTH_SNACKS_CARRIED_BY_ALL_NEW_PEDS(p0, p1)
+end
+
+function module.set_ambient_peds_drop_money(p0: bool): void
+    PED.SET_AMBIENT_PEDS_DROP_MONEY(p0)
+end
+
+function module.set_blocking_of_non_temporary_events_for_ambient_peds_this_frame(p0: bool): void
+    PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS_FOR_AMBIENT_PEDS_THIS_FRAME(p0)
+end
+
+-- Ped no longer takes critical damage modifiers if set to FALSE
+function module.set_suffers_critical_hits(ped: int, toggle: bool): void
+    PED.SET_PED_SUFFERS_CRITICAL_HITS(ped, toggle)
+end
+
+function module.set_upper_body_damage_only(ped: int, toggle: bool): void
+    PED.SET_PED_UPPER_BODY_DAMAGE_ONLY(ped, toggle)
+end
+
+function module.set_dies_in_water(ped: int, toggle: bool): void
+    PED.SET_PED_DIES_IN_WATER(ped, toggle)
+end
+
+function module.set_treat_as_ambient_for_driver_lockon(ped: int, p1: bool): void
+    PED.SET_TREAT_AS_AMBIENT_PED_FOR_DRIVER_LOCKON(ped, p1)
+end
+
+function module.set_allow_lockon_to_if_friendly(ped: int, toggle: bool): void
+    PED.SET_ALLOW_LOCKON_TO_PED_IF_FRIENDLY(ped, toggle)
+end
+
+function module.set_use_camera_heading_for_desired_direction_lock_on_test(ped: int, toggle: bool): void
+    PED.SET_USE_CAMERA_HEADING_FOR_DESIRED_DIRECTION_LOCK_ON_TEST(ped, toggle)
+end
+
+function module.set_ducking(ped: int, toggle: bool): void
+    PED.SET_PED_DUCKING(ped, toggle)
+end
+
+function module.set_id_range(ped: int, value: float): void
+    PED.SET_PED_ID_RANGE(ped, value)
+end
+
+function module.set_highly_perceptive(ped: int, toggle: bool): void
+    PED.SET_PED_HIGHLY_PERCEPTIVE(ped, toggle)
+end
+
+function module.set_cop_perception_overrides(
+    seeing_range: float, seeing_range_peripheral: float, hearing_range: float,
+    visual_field_min_azimuth_angle: float, visual_field_max_azimuth_angle: float,
+    field_of_gaze_max_angle: float, p6: float
+): void
+    -- body function:
+    PED.SET_COP_PERCEPTION_OVERRIDES(seeing_range, seeing_range_peripheral, hearing_range, visual_field_min_azimuth_angle, visual_field_max_azimuth_angle, field_of_gaze_max_angle, p6)
+end
+
+function module.set_injured_on_ground_behaviour(ped: int, p1: float): void
+    PED.SET_PED_INJURED_ON_GROUND_BEHAVIOUR(ped, p1)
+end
+
+function module.set_seeing_range(ped: int, value: float): void
+    PED.SET_PED_SEEING_RANGE(ped, value)
+end
+
+function module.set_hearing_range(ped: int, value: float): void
+    PED.SET_PED_HEARING_RANGE(ped, value)
+end
+
+function module.set_visual_field_min_angle(ped: int, value: float): void
+    PED.SET_PED_VISUAL_FIELD_MIN_ANGLE(ped, value)
+end
+
+function module.set_visual_field_max_angle(ped: int, value: float): void
+    PED.SET_PED_VISUAL_FIELD_MAX_ANGLE(ped, value)
+end
+
+function module.set_visual_field_min_elevation_angle(ped: int, angle: float): void
+    PED.SET_PED_VISUAL_FIELD_MIN_ELEVATION_ANGLE(ped, angle)
+end
+
+function module.set_visual_field_max_elevation_angle(ped: int, angle: float): void
+    PED.SET_PED_VISUAL_FIELD_MAX_ELEVATION_ANGLE(ped, angle)
+end
+
+function module.set_visual_field_peripheral_range(ped: int, range: float): void
+    PED.SET_PED_VISUAL_FIELD_PERIPHERAL_RANGE(ped, range)
+end
+
+function module.set_visual_field_center_angle(ped: int, angle: float): void
+    PED.SET_PED_VISUAL_FIELD_CENTER_ANGLE(ped, angle)
+end
+
+function module.set_stealth_movement(ped: int, p1: bool, action: string): void
+    PED.SET_PED_STEALTH_MOVEMENT(ped, p1, action)
+end
+
+-- Ped will stay on the ground after being stunned for at lest ms time. (in milliseconds)
+function module.set_min_ground_time_for_stungun(ped: int, ms: int): void
+    PED.SET_PED_MIN_GROUND_TIME_FOR_STUNGUN(ped, ms)
+end
+
+function module.set_pinned_down(ped: int, pinned: bool, i: int): bool
+    return PED.SET_PED_PINNED_DOWN(ped, pinned, i)
+end
+
+function module.set_to_inform_respected_friends(ped: int, radius: float, max_friends: int): void
+    PED.SET_PED_TO_INFORM_RESPECTED_FRIENDS(ped, radius, max_friends)
+end
+
+function module.set_gravity(ped: int, toggle: bool): void
+    PED.SET_PED_GRAVITY(ped, toggle)
+end
+
+function module.set_survives_being_out_of_water(ped: int, toggle: bool): bool
+    return PED._SET_PED_SURVIVES_BEING_OUT_OF_WATER(ped, toggle)
+end
+
+function module.set_allowed_to_duck(ped: int, toggle: bool): void
+    PED.SET_PED_ALLOWED_TO_DUCK(ped, toggle)
+end
+
+function module.set_as_cop(ped: int, toggle: bool): void
+    PED.SET_PED_AS_COP(ped, toggle)
+end
+
+function module.set_health_pending_last_damage_event_override_flag(toggle: bool): void
+    PED.SET_PED_HEALTH_PENDING_LAST_DAMAGE_EVENT_OVERRIDE_FLAG(toggle)
+end
+
+-- Sets the maximum health of a ped
+function module.set_ped_max_health(ped: int, value: int): void
+    PED.SET_PED_MAX_HEALTH(ped, value)
+end
+
+function module.set_max_time_in_water(ped: int, value: float): void
+    PED.SET_PED_MAX_TIME_IN_WATER(ped, value)
+end
+
+function module.set_max_time_underwater(ped: int, value: float): void
+    PED.SET_PED_MAX_TIME_UNDERWATER(ped, value)
+end
+
+function module.set_can_be_knocked_off_bike(p0: any, p1: any): void
+    PED.SET_PED_CAN_BE_KNOCKED_OFF_BIKE(p0, p1)
+end
+
+function module.set_coords_no_gang(ped: int, pos_x: float, pos_y: float, pos_z: float): void
+    PED.SET_PED_COORDS_NO_GANG(ped, pos_x, pos_y, pos_z)
+end
+
+function module.set_keep_task(ped: int, toggle: bool): void
+    PED.SET_PED_KEEP_TASK(ped, toggle)
+end
+
+function module.set_allow_minor_reactions_as_mission(ped: int, toggle: bool): void
+    PED.SET_PED_ALLOW_MINOR_REACTIONS_AS_MISSION_PED(ped, toggle)
+end
+
+function module.set_create_random_cops(toggle: bool): void
+    PED.SET_CREATE_RANDOM_COPS(toggle)
+end
+
+function module.set_create_random_cops_not_on_scenarios(toggle: bool): void
+    PED.SET_CREATE_RANDOM_COPS_NOT_ON_SCENARIOS(toggle)
+end
+
+function module.set_create_random_cops_on_scenarios(toggle: bool): void
+    PED.SET_CREATE_RANDOM_COPS_ON_SCENARIOS(toggle)
+end
+
+function module.set_as_enemy(ped: int, toggle: bool): void
+    PED.SET_PED_AS_ENEMY(ped, toggle)
+end
+
+function module.set_can_smash_glass(ped: int, p1: bool, p2: bool): void
+    PED.SET_PED_CAN_SMASH_GLASS(ped, p1, p2)
+end
+
+function module.set_enable_handcuffs(ped: int, toggle: bool): void
+    PED.SET_ENABLE_HANDCUFFS(ped, toggle)
+end
+
+function module.set_enable_bound_ankles(ped: int, toggle: bool): void
+    PED.SET_ENABLE_BOUND_ANKLES(ped, toggle)
+end
+
+-- Enables diving motion when underwater
+function module.set_enable_scuba(ped: int, toggle: bool): void
+    PED.SET_ENABLE_SCUBA(ped, toggle)
+end
+
+-- Setting ped to true allows the ped to shoot "friendlies"
+function module.set_can_attack_friendly(ped: int, toggle: bool, p2: bool): void
+    PED.SET_CAN_ATTACK_FRIENDLY(ped, toggle, p2)
+end
+
+function module.set_alertness(ped: int, value: int): void
+    PED.SET_PED_ALERTNESS(ped, value)
+end
+
+function module.set_movement_clipset(ped: int, clip_set: string, transition_speed: float): void
+    PED.SET_PED_MOVEMENT_CLIPSET(ped, clip_set, transition_speed)
+end
+
+function module.set_strafe_clipset(ped: int, clip_set: string): void
+    PED.SET_PED_STRAFE_CLIPSET(ped, clip_set)
+end
+
+function module.set_drive_by_clipset_override(ped: int, clipset: string): void
+    PED.SET_PED_DRIVE_BY_CLIPSET_OVERRIDE(ped, clipset)
+end
+
+function module.set_motion_in_cover_clipset_override(ped: int, p1: string): void
+    PED.SET_PED_MOTION_IN_COVER_CLIPSET_OVERRIDE(ped, p1)
+end
+
+function module.set_alternate_walk_anim(
+    ped: int, anim_dict: string, anim_name: string, p3: float, p4: bool
+): void
+    -- body function:
+    PED.SET_PED_ALTERNATE_WALK_ANIM(ped, anim_dict, anim_name, p3, p4)
+end
+
+function module.set_alternate_movement_anim(
+    ped: int, stance: int, anim_dictionary: string, animation_name: string, p4: float, p5: bool
+): void
+    -- body function:
+    PED.SET_PED_ALTERNATE_MOVEMENT_ANIM(ped, stance, anim_dictionary, animation_name, p4, p5)
+end
+
+function module.set_blend_from_parents(ped: int, p1: any, p2: any, p3: float, p4: float): void
+    PED.SET_PED_BLEND_FROM_PARENTS(ped, p1, p2, p3, p4)
+end
+
+function module.set_blocking_of_non_temporary_events(ped: int, toggle: bool): void
+    PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(ped, toggle)
+end
+
+function module.set_bounds_orientation(ped: int, p1: float, p2: float, x: float, y: float, z: float): void
+    PED.SET_PED_BOUNDS_ORIENTATION(ped, p1, p2, x, y, z)
+end
+
+function module.set_scenario_peds_to_be_returned_by_next_command(value: bool): void
+    PED.SET_SCENARIO_PEDS_TO_BE_RETURNED_BY_NEXT_COMMAND(value)
+end
+
+function module.set_driver_racing_modifier(driver: int, modifier: float): void
+    PED.SET_DRIVER_RACING_MODIFIER(driver, modifier)
+end
+
+function module.set_driver_ability(driver: int, ability: float): void
+    PED.SET_DRIVER_ABILITY(driver, ability)
+end
+
+function module.set_driver_aggressiveness(driver: int, aggressiveness: float): void
+    PED.SET_DRIVER_AGGRESSIVENESS(driver, aggressiveness)
+end
+
+function module.set_angled_defensive_area(
+    ped: int, p1: float, p2: float, p3: float, p4: float, p5: float, p6: float, p7: float, p8: bool,
+    p9: bool
+): void
+    -- body function:
+    PED.SET_PED_ANGLED_DEFENSIVE_AREA(ped, p1, p2, p3, p4, p5, p6, p7, p8, p9)
+end
+
+function module.set_sphere_defensive_area(
+    ped: int, x: float, y: float, z: float, radius: float, p5: bool, p6: bool
+): void
+    -- body function:
+    PED.SET_PED_SPHERE_DEFENSIVE_AREA(ped, x, y, z, radius, p5, p6)
+end
+
+function module.set_defensive_sphere_attached(
+    ped: int, target: int, x_offset: float, y_offset: float, z_offset: float, radius: float,
+    p6: bool
+): void
+    -- body function:
+    PED.SET_PED_DEFENSIVE_SPHERE_ATTACHED_TO_PED(ped, target, x_offset, y_offset, z_offset, radius, p6)
+end
+
+function module.set_defensive_area_attached(
+    ped: int, attach_ped: int, p2: float, p3: float, p4: float, p5: float, p6: float, p7: float,
+    p8: float, p9: bool, p10: bool
+): void
+    -- body function:
+    PED.SET_PED_DEFENSIVE_AREA_ATTACHED_TO_PED(ped, attach_ped, p2, p3, p4, p5, p6, p7, p8, p9, p10)
+end
+
+function module.set_defensive_area_direction(ped: int, p1: float, p2: float, p3: float, p4: bool): void
+    PED.SET_PED_DEFENSIVE_AREA_DIRECTION(ped, p1, p2, p3, p4)
+end
+
+function module.set_preferred_cover_set(ped: int, item_set: any): void
+    PED.SET_PED_PREFERRED_COVER_SET(ped, item_set)
+end
+
+function module.set_name_debug(ped: int, name: string): void
+    PED.SET_PED_NAME_DEBUG(ped, name)
+end
+
+function module.set_dies_when_injured(ped: int, toggle: bool): void
+    PED.SET_PED_DIES_WHEN_INJURED(ped, toggle)
+end
+
+-- It adds the wetness level to the player clothing/outfit. As if player just got out from water surface
+function module.set_wetness_height(ped: int, height: float): void
+    PED.SET_PED_WETNESS_HEIGHT(ped, height)
+end
+
+function module.set_wetness_enabled_this_frame(ped: int): void
+    PED.SET_PED_WETNESS_ENABLED_THIS_FRAME(ped)
+end
+
+function module.set_wetness(ped: int, wet_level: float): void
+    PED.SET_PED_WETNESS(ped, wet_level)
+end
+
+-- Sweat is set to 100.0 or 0.0 in the decompiled scripts
+function module.set_sweat(ped: int, sweat: float): void
+    PED.SET_PED_SWEAT(ped, sweat)
+end
+
+function module.set_scenario_peds_spawn_in_sphere_area(
+    x: float, y: float, z: float, range: float, p4: int
+): void
+    -- body function:
+    PED.SET_SCENARIO_PEDS_SPAWN_IN_SPHERE_AREA(x, y, z, range, p4)
+end
+
+function module.set_panic_exit_scenario(p0: any, p1: any, p2: any, p3: any): bool
+    return PED.SET_PED_PANIC_EXIT_SCENARIO(p0, p1, p2, p3)
+end
+
+function module.set_should_play_directed_normal_scenario_exit(p0: any, p1: any, p2: any, p3: any): bool
+    return PED.SET_PED_SHOULD_PLAY_DIRECTED_NORMAL_SCENARIO_EXIT(p0, p1, p2, p3)
+end
+
+function module.set_should_play_normal_scenario_exit(ped: int): void
+    PED.SET_PED_SHOULD_PLAY_NORMAL_SCENARIO_EXIT(ped)
+end
+
+function module.set_should_play_immediate_scenario_exit(ped: int): void
+    PED.SET_PED_SHOULD_PLAY_IMMEDIATE_SCENARIO_EXIT(ped)
+end
+
+function module.set_should_play_flee_scenario_exit(ped: int, p1: any, p2: any, p3: any): bool
+    return PED.SET_PED_SHOULD_PLAY_FLEE_SCENARIO_EXIT(ped, p1, p2, p3)
+end
+
+function module.set_should_ignore_scenario_exit_collision_checks(ped: int, p1: bool): void
+    PED.SET_PED_SHOULD_IGNORE_SCENARIO_EXIT_COLLISION_CHECKS(ped, p1)
+end
+
+function module.set_should_ignore_scenario_nav_checks(p0: any, p1: bool): void
+    PED.SET_PED_SHOULD_IGNORE_SCENARIO_NAV_CHECKS(p0, p1)
+end
+
+function module.set_should_probe_for_scenario_exits_in_one_frame(p0: any, p1: bool): void
+    PED.SET_PED_SHOULD_PROBE_FOR_SCENARIO_EXITS_IN_ONE_FRAME(p0, p1)
+end
+
+function module.set_facial_clipset(ped: int, anim_dict: string): void
+    PED.SET_FACIAL_CLIPSET(ped, anim_dict)
+end
+
+function module.set_facial_idle_anim_override(ped: int, anim_name: string, anim_dict: string): void
+    PED.SET_FACIAL_IDLE_ANIM_OVERRIDE(ped, anim_name, anim_dict)
+end
+
+function module.set_can_play_gesture_anims(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_PLAY_GESTURE_ANIMS(ped, toggle)
+end
+
+function module.set_can_play_viseme_anims(ped: int, toggle: bool, p2: bool): void
+    PED.SET_PED_CAN_PLAY_VISEME_ANIMS(ped, toggle, p2)
+end
+
+function module.set_is_ignored_by_auto_open_doors(ped: int, p1: bool): void
+    PED.SET_PED_IS_IGNORED_BY_AUTO_OPEN_DOORS(ped, p1)
+end
+
+function module.set_can_play_ambient_anims(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_PLAY_AMBIENT_ANIMS(ped, toggle)
+end
+
+function module.set_can_play_ambient_base_anims(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_PLAY_AMBIENT_BASE_ANIMS(ped, toggle)
+end
+
+function module.set_can_arm_ik(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_ARM_IK(ped, toggle)
+end
+
+function module.set_can_head_ik(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_HEAD_IK(ped, toggle)
+end
+
+function module.set_can_leg_ik(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_LEG_IK(ped, toggle)
+end
+
+function module.set_can_torso_ik(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_TORSO_IK(ped, toggle)
+end
+
+function module.set_can_torso_react_ik(ped: int, p1: bool): void
+    PED.SET_PED_CAN_TORSO_REACT_IK(ped, p1)
+end
+
+function module.set_can_use_auto_conversation_lookat(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_USE_AUTO_CONVERSATION_LOOKAT(ped, toggle)
+end
+
+-- This is only called once in the scripts
+function module.set_primary_lookat(ped: int, look_at: int): void
+    PED.SET_PED_PRIMARY_LOOKAT(ped, look_at)
+end
+
+function module.set_cloth_pin_frames(p0: any, p1: any): void
+    PED.SET_PED_CLOTH_PIN_FRAMES(p0, p1)
+end
+
+function module.set_cloth_package_index(p0: any, p1: any): void
+    PED.SET_PED_CLOTH_PACKAGE_INDEX(p0, p1)
+end
+
+function module.set_cloth_prone(p0: any, p1: bool): void
+    PED.SET_PED_CLOTH_PRONE(p0, p1)
+end
+
+function module.set_can_evasive_dive(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_EVASIVE_DIVE(ped, toggle)
+end
+
+function module.set_model_is_suppressed(model_hash: int, toggle: bool): void
+    PED.SET_PED_MODEL_IS_SUPPRESSED(model_hash, toggle)
+end
+
+function module.set_generates_dead_body_events(ped: int, toggle: bool): void
+    PED.SET_PED_GENERATES_DEAD_BODY_EVENTS(ped, toggle)
+end
+
+function module.set_will_only_attack_wanted_player(p0: any, p1: any): void
+    PED.SET_PED_WILL_ONLY_ATTACK_WANTED_PLAYER(p0, p1)
+end
+
+function module.set_to_load_cover(ped: int, toggle: bool): void
+    PED.SET_PED_TO_LOAD_COVER(ped, toggle)
+end
+
+-- It simply makes the said ped to cower behind cover object(wall, desk, car)
+function module.set_can_cower_in_cover(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_COWER_IN_COVER(ped, toggle)
+end
+
+function module.set_can_peek_in_cover(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_PEEK_IN_COVER(ped, toggle)
+end
+
+function module.set_leg_ik_mode(ped: int, mode: int): void
+    PED.SET_PED_LEG_IK_MODE(ped, mode)
+end
+
+function module.set_motion_blur(ped: int, toggle: bool): void
+    PED.SET_PED_MOTION_BLUR(ped, toggle)
+end
+
+function module.set_dies_instantly_in_water(ped: int, toggle: bool): void
+    PED.SET_PED_DIES_INSTANTLY_IN_WATER(ped, toggle)
+end
+
+-- Only appears in lamar1 script
+function module.set_ladder_climb_input_state(ped: int, p1: int): void
+    PED.SET_LADDER_CLIMB_INPUT_STATE(ped, p1)
+end
+
+function module.set_flee_attributes(ped: int, attribute_flags: int, enable: bool): void
+    PED.SET_PED_FLEE_ATTRIBUTES(ped, attribute_flags, enable)
+end
+
+function module.set_cower_hash(ped: int, p1: string): void
+    PED.SET_PED_COWER_HASH(ped, p1)
+end
+
+function module.set_steers_around_dead_bodies(ped: int, toggle: bool): void
+    PED.SET_PED_STEERS_AROUND_DEAD_BODIES(ped, toggle)
+end
+
+function module.set_steers_around_peds(ped: int, toggle: bool): void
+    PED.SET_PED_STEERS_AROUND_PEDS(ped, toggle)
+end
+
+function module.set_steers_around_objects(ped: int, toggle: bool): void
+    PED.SET_PED_STEERS_AROUND_OBJECTS(ped, toggle)
+end
+
+function module.set_is_avoided_by_others(p0: any, p1: bool): void
+    PED.SET_PED_IS_AVOIDED_BY_OTHERS(p0, p1)
+end
+
+function module.set_increased_avoidance_radius(ped: int): void
+    PED.SET_PED_INCREASED_AVOIDANCE_RADIUS(ped)
+end
+
+function module.set_blocks_pathing_when_dead(ped: int, toggle: bool): void
+    PED.SET_PED_BLOCKS_PATHING_WHEN_DEAD(ped, toggle)
+end
+
+function module.set_no_time_delay_before_shot(p0: any): void
+    PED.SET_PED_NO_TIME_DELAY_BEFORE_SHOT(p0)
+end
+
+-- Values look to be between 0.0 and 1.0
+function module.set_enveff_scale(ped: int, value: float): void
+    PED.SET_PED_ENVEFF_SCALE(ped, value)
+end
+
+function module.set_enable_enveff_scale(ped: int, toggle: bool): void
+    PED.SET_ENABLE_PED_ENVEFF_SCALE(ped, toggle)
+end
+
+function module.set_enveff_cpv_add(ped: int, p1: float): void
+    PED.SET_PED_ENVEFF_CPV_ADD(ped, p1)
+end
+
+-- Something related to the environmental effects natives
+function module.set_enveff_color_modulator(ped: int, p1: int, p2: int, p3: int): void
+    PED.SET_PED_ENVEFF_COLOR_MODULATOR(ped, p1, p2, p3)
+end
+
+function module.set_emissive_scale(ped: int, intensity: float): void
+    PED.SET_PED_EMISSIVE_SCALE(ped, intensity)
+end
+
+function module.set_enable_crew_emblem(ped: int, toggle: bool): void
+    PED.SET_PED_ENABLE_CREW_EMBLEM(ped, toggle)
+end
+
+function module.set_ao_blob_rendering(ped: int, toggle: bool): void
+    PED.SET_PED_AO_BLOB_RENDERING(ped, toggle)
+end
+
+function module.set_synchronized_scene_origin(
+    scene_id: int, x: float, y: float, z: float, roll: float, pitch: float, yaw: float, p7: bool
+): void
+    -- body function:
+    PED.SET_SYNCHRONIZED_SCENE_ORIGIN(scene_id, x, y, z, roll, pitch, yaw, p7)
+end
+
+function module.set_synchronized_scene_phase(scene_id: int, phase: float): void
+    PED.SET_SYNCHRONIZED_SCENE_PHASE(scene_id, phase)
+end
+
+function module.set_synchronized_scene_rate(scene_id: int, rate: float): void
+    PED.SET_SYNCHRONIZED_SCENE_RATE(scene_id, rate)
+end
+
+function module.set_synchronized_scene_looped(scene_id: int, toggle: bool): void
+    PED.SET_SYNCHRONIZED_SCENE_LOOPED(scene_id, toggle)
+end
+
+function module.set_synchronized_scene_hold_last_frame(scene_id: int, toggle: bool): void
+    PED.SET_SYNCHRONIZED_SCENE_HOLD_LAST_FRAME(scene_id, toggle)
+end
+
+function module.set_max_move_blend_ratio(ped: int, value: float): void
+    PED.SET_PED_MAX_MOVE_BLEND_RATIO(ped, value)
+end
+
+function module.set_min_move_blend_ratio(ped: int, value: float): void
+    PED.SET_PED_MIN_MOVE_BLEND_RATIO(ped, value)
+end
+
+function module.set_move_rate_override(ped: int, value: float): void
+    PED.SET_PED_MOVE_RATE_OVERRIDE(ped, value)
+end
+
+function module.set_move_rate_in_water_override(ped: int, p1: float): void
+    PED.SET_PED_MOVE_RATE_IN_WATER_OVERRIDE(ped, p1)
+end
+
+function module.set_using_action_mode(ped: int, p1: bool, p2: int, action: string): void
+    PED.SET_PED_USING_ACTION_MODE(ped, p1, p2, action)
+end
+
+function module.set_movement_mode_override(ped: int, name: string): void
+    PED.SET_MOVEMENT_MODE_OVERRIDE(ped, name)
+end
+
+-- Overrides the ped's collision capsule radius for the current tick
+function module.set_capsule(ped: int, value: float): void
+    PED.SET_PED_CAPSULE(ped, value)
+end
+
+function module.set_heatscale_override(ped: int, heat_scale: float): void
+    PED.SET_PED_HEATSCALE_OVERRIDE(ped, heat_scale)
+end
+
+function module.set_lod_multiplier(ped: int, multiplier: float): void
+    PED.SET_PED_LOD_MULTIPLIER(ped, multiplier)
+end
+
+function module.set_force_footstep_update(ped: int, toggle: bool): void
+    PED.SET_FORCE_FOOTSTEP_UPDATE(ped, toggle)
+end
+
+function module.set_force_step_type(ped: int, p1: bool, type: int, p3: int): void
+    PED.SET_FORCE_STEP_TYPE(ped, p1, type, p3)
+end
+
+-- Toggles config flag CPED_CONFIG_FLAG_CanPlayInCarIdles
+function module.set_can_play_in_car_idles(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_PLAY_IN_CAR_IDLES(ped, toggle)
+end
+
+-- Min and max are usually 100.0 and 200.0
+function module.set_pop_control_sphere_this_frame(x: float, y: float, z: float, min: float, max: float): void
+    PED.SET_POP_CONTROL_SPHERE_THIS_FRAME(x, y, z, min, max)
+end
+
+function module.set_disable_high_fall_death(ped: int, toggle: bool): void
+    PED.SET_DISABLE_HIGH_FALL_DEATH(ped, toggle)
+end
+
+function module.set_steer_bias(ped: int, value: float): void
+    PED.SET_PED_STEER_BIAS(ped, value)
+end
+
+function module.set_treated_as_friendly(p0: any, p1: any, p2: any): void
+    PED.SET_PED_TREATED_AS_FRIENDLY(p0, p1, p2)
+end
+
+function module.set_disable_map_collision(ped: int): void
+    PED.SET_DISABLE_PED_MAP_COLLISION(ped)
+end
+
+function module.set_allow_stunt_jump_camera(ped: int, toggle: bool): void
+    PED.SET_ALLOW_STUNT_JUMP_CAMERA(ped, toggle)
+end
+
+-- Actions
+
+function module.create(
+    ped_type: int, model_hash: int, x: float, y: float, z: float, heading: float, is_network: bool,
+    b_script_host_ped: bool
+): int
+    -- body function:
+    return PED.CREATE_PED(ped_type, model_hash, x, y, z, heading, is_network, b_script_host_ped)
+end
+
+-- Deletes the specified ped, then sets the handle pointed to by the pointer to NULL
+-- @param ped Pointer: pass memory.alloc(size) and read the result back
+function module.delete(ped: int): void
+    PED.DELETE_PED(ped)
+end
+
+function module.clone(ped: int, is_network: bool, b_script_host_ped: bool, copy_head_blend_flag: bool): int
+    return PED.CLONE_PED(ped, is_network, b_script_host_ped, copy_head_blend_flag)
+end
+
+function module.clone_alt(
+    ped: int, is_network: bool, b_script_host_ped: bool, copy_head_blend_flag: bool, p4: bool
+): int
+    -- body function:
+    return PED.CLONE_PED_ALT(ped, is_network, b_script_host_ped, copy_head_blend_flag, p4)
+end
+
+function module.force_all_heading_values_to_align(ped: int): void
+    PED.FORCE_ALL_HEADING_VALUES_TO_ALIGN(ped)
+end
+
+-- Forces the ped to fall back and kills it
+function module.explode_head(ped: int, weapon_hash: int): void
+    PED.EXPLODE_PED_HEAD(ped, weapon_hash)
+end
+
+-- @param ped Pointer: pass memory.alloc(size) and read the result back
+function module.remove_elegantly(ped: int): void
+    PED.REMOVE_PED_ELEGANTLY(ped)
+end
+
+function module.create_random(pos_x: float, pos_y: float, pos_z: float): int
+    return PED.CREATE_RANDOM_PED(pos_x, pos_y, pos_z)
+end
+
+function module.create_random_as_driver(vehicle: int, return_handle: bool): int
+    return PED.CREATE_RANDOM_PED_AS_DRIVER(vehicle, return_handle)
+end
+
+function module.suppress_ambient_aggressive_cleanup_this_frame(): void
+    PED.SUPPRESS_AMBIENT_PED_AGGRESSIVE_CLEANUP_THIS_FRAME()
+end
+
+function module.clear_non_creation_area(): void
+    PED.CLEAR_PED_NON_CREATION_AREA()
+end
+
+function module.instantly_fill_population(): void
+    PED.INSTANTLY_FILL_PED_POPULATION()
+end
+
+function module.clear_last_damage_bone(ped: int): void
+    PED.CLEAR_PED_LAST_DAMAGE_BONE(ped)
+end
+
+function module.disable_injured_on_ground_behaviour(ped: int): void
+    PED.DISABLE_PED_INJURED_ON_GROUND_BEHAVIOUR(ped)
+end
+
+function module.apply_damage(ped: int, damage_amount: int, p2: bool, p3: any, weapon_type: int): void
+    PED.APPLY_DAMAGE_TO_PED(ped, damage_amount, p2, p3, weapon_type)
+end
+
+function module.reset_movement_clipset(ped: int, p1: float): void
+    PED.RESET_PED_MOVEMENT_CLIPSET(ped, p1)
+end
+
+function module.reset_strafe_clipset(ped: int): void
+    PED.RESET_PED_STRAFE_CLIPSET(ped)
+end
+
+function module.clear_drive_by_clipset_override(ped: int): void
+    PED.CLEAR_PED_DRIVE_BY_CLIPSET_OVERRIDE(ped)
+end
+
+function module.clear_motion_in_cover_clipset_override(ped: int): void
+    PED.CLEAR_PED_MOTION_IN_COVER_CLIPSET_OVERRIDE(ped)
+end
+
+function module.clear_fall_upper_body_clipset_override(ped: int): void
+    PED.CLEAR_PED_FALL_UPPER_BODY_CLIPSET_OVERRIDE(ped)
+end
+
+function module.clear_alternate_walk_anim(ped: int, p1: float): void
+    PED.CLEAR_PED_ALTERNATE_WALK_ANIM(ped, p1)
+end
+
+function module.clear_alternate_movement_anim(ped: int, stance: int, p2: float): void
+    PED.CLEAR_PED_ALTERNATE_MOVEMENT_ANIM(ped, stance, p2)
+end
+
+-- Ped will no longer get angry when you stay near him
+function module.remove_defensive_area(ped: int, toggle: bool): void
+    PED.REMOVE_PED_DEFENSIVE_AREA(ped, toggle)
+end
+
+function module.remove_preferred_cover_set(ped: int): void
+    PED.REMOVE_PED_PREFERRED_COVER_SET(ped)
+end
+
+-- It will revive/cure the injured ped. The condition is ped must not be dead
+function module.revive_injured(ped: int): void
+    PED.REVIVE_INJURED_PED(ped)
+end
+
+-- This function will simply bring the dead person back to life
+function module.resurrect(ped: int): void
+    PED.RESURRECT_PED(ped)
+end
+
+function module.special_function_do_not_use(ped: int, p1: bool): void
+    PED.SPECIAL_FUNCTION_DO_NOT_USE(ped, p1)
+end
+
+function module.reset_visible_damage(ped: int): void
+    PED.RESET_PED_VISIBLE_DAMAGE(ped)
+end
+
+function module.apply_blood_damage_by_zone(ped: int, p1: any, p2: float, p3: float, p4: any): void
+    PED.APPLY_PED_BLOOD_DAMAGE_BY_ZONE(ped, p1, p2, p3, p4)
+end
+
+function module.apply_blood(
+    ped: int, bone_index: int, x_rot: float, y_rot: float, z_rot: float, wound_type: string
+): void
+    -- body function:
+    PED.APPLY_PED_BLOOD(ped, bone_index, x_rot, y_rot, z_rot, wound_type)
+end
+
+function module.apply_blood_by_zone(ped: int, p1: int, p2: float, p3: float, p4: string): void
+    PED.APPLY_PED_BLOOD_BY_ZONE(ped, p1, p2, p3, p4)
+end
+
+function module.apply_blood_specific(
+    ped: int, p1: int, p2: float, p3: float, p4: float, p5: float, p6: int, p7: float, p8: string
+): void
+    -- body function:
+    PED.APPLY_PED_BLOOD_SPECIFIC(ped, p1, p2, p3, p4, p5, p6, p7, p8)
+end
+
+function module.apply_damage_decal(
+    ped: int, damage_zone: int, x_offset: float, y_offset: float, heading: float, scale: float,
+    alpha: float, variation: int, fade_in: bool, decal_name: string
+): void
+    -- body function:
+    PED.APPLY_PED_DAMAGE_DECAL(ped, damage_zone, x_offset, y_offset, heading, scale, alpha, variation, fade_in, decal_name)
+end
+
+function module.apply_damage_pack(ped: int, damage_pack: string, damage: float, mult: float): void
+    PED.APPLY_PED_DAMAGE_PACK(ped, damage_pack, damage, mult)
+end
+
+function module.clear_blood_damage(ped: int): void
+    PED.CLEAR_PED_BLOOD_DAMAGE(ped)
+end
+
+-- Somehow related to changing ped's clothes
+function module.clear_blood_damage_by_zone(ped: int, p1: int): void
+    PED.CLEAR_PED_BLOOD_DAMAGE_BY_ZONE(ped, p1)
+end
+
+function module.hide_blood_damage_by_zone(ped: int, p1: any, p2: bool): void
+    PED.HIDE_PED_BLOOD_DAMAGE_BY_ZONE(ped, p1, p2)
+end
+
+function module.clear_damage_decal_by_zone(ped: int, p1: int, p2: string): void
+    PED.CLEAR_PED_DAMAGE_DECAL_BY_ZONE(ped, p1, p2)
+end
+
+-- It clears the wetness of the selected Ped/Player. Clothes have to be wet to notice the difference
+function module.clear_wetness(ped: int): void
+    PED.CLEAR_PED_WETNESS(ped)
+end
+
+function module.clear_env_dirt(ped: int): void
+    PED.CLEAR_PED_ENV_DIRT(ped)
+end
+
+-- Creates a new NaturalMotion message
+function module.create_nm_message(start_immediately: bool, message_id: int): void
+    PED.CREATE_NM_MESSAGE(start_immediately, message_id)
+end
+
+-- Sends the message that was created by a call to CREATE_NM_MESSAGE to the specified Ped
+function module.give_nm_message(ped: int): void
+    PED.GIVE_PED_NM_MESSAGE(ped)
+end
+
+function module.add_scenario_blocking_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, p6: bool, p7: bool, p8: bool,
+    p9: bool, p10: any
+): int
+    -- body function:
+    return PED.ADD_SCENARIO_BLOCKING_AREA(x1, y1, z1, x2, y2, z2, p6, p7, p8, p9, p10)
+end
+
+function module.remove_scenario_blocking_areas(): void
+    PED.REMOVE_SCENARIO_BLOCKING_AREAS()
+end
+
+function module.remove_scenario_blocking_area(p0: any, p1: bool): void
+    PED.REMOVE_SCENARIO_BLOCKING_AREA(p0, p1)
+end
+
+function module.toggle_scenario_cower_in_place(ped: int, toggle: bool): void
+    PED.TOGGLE_SCENARIO_PED_COWER_IN_PLACE(ped, toggle)
+end
+
+function module.trigger_scenario_panicexittoflee(p0: any, p1: any, p2: any, p3: any): bool
+    return PED.TRIGGER_PED_SCENARIO_PANICEXITTOFLEE(p0, p1, p2, p3)
+end
+
+function module.reset_facial_idle_anim(ped: int): void
+    PED.RESET_FACIAL_IDLE_ANIM(ped)
+end
+
+function module.play_facial_anim(ped: int, anim_name: string, anim_dict: string): void
+    PED.PLAY_FACIAL_ANIM(ped, anim_name, anim_dict)
+end
+
+function module.clear_facial_idle_anim_override(ped: int): void
+    PED.CLEAR_FACIAL_IDLE_ANIM_OVERRIDE(ped)
+end
+
+function module.trigger_idle_animation_on(ped: int): void
+    PED.TRIGGER_IDLE_ANIMATION_ON_PED(ped)
+end
+
+function module.stop_any_model_being_suppressed(): void
+    PED.STOP_ANY_PED_MODEL_BEING_SUPPRESSED()
+end
+
+function module.block_from_generating_dead_body_events_when_dead(ped: int, toggle: bool): void
+    PED.BLOCK_PED_FROM_GENERATING_DEAD_BODY_EVENTS_WHEN_DEAD(ped, toggle)
+end
+
+function module.force_ai_and_animation_update(ped: int, p1: bool, p2: bool): void
+    PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(ped, p1, p2)
+end
+
+function module.request_visibility_tracking(ped: int): void
+    PED.REQUEST_PED_VISIBILITY_TRACKING(ped)
+end
+
+function module.request_use_small_bbox_visibility_tracking(ped: int, p1: bool): void
+    PED.REQUEST_PED_USE_SMALL_BBOX_VISIBILITY_TRACKING(ped, p1)
+end
+
+function module.create_synchronized_scene(
+    x: float, y: float, z: float, roll: float, pitch: float, yaw: float, p6: int
+): int
+    -- body function:
+    return PED.CREATE_SYNCHRONIZED_SCENE(x, y, z, roll, pitch, yaw, p6)
+end
+
+function module.create_synchronized_scene_at_map_object(
+    x: float, y: float, z: float, radius: float, object: int
+): int
+    -- body function:
+    return PED.CREATE_SYNCHRONIZED_SCENE_AT_MAP_OBJECT(x, y, z, radius, object)
+end
+
+function module.attach_synchronized_scene_to_entity(scene_id: int, entity: int, bone_index: int): void
+    PED.ATTACH_SYNCHRONIZED_SCENE_TO_ENTITY(scene_id, entity, bone_index)
+end
+
+function module.detach_synchronized_scene(scene_id: int): void
+    PED.DETACH_SYNCHRONIZED_SCENE(scene_id)
+end
+
+function module.take_ownership_of_synchronized_scene(scene: int): void
+    PED.TAKE_OWNERSHIP_OF_SYNCHRONIZED_SCENE(scene)
+end
+
+function module.force_motion_state(ped: int, motion_state_hash: int, p2: bool, p3: int, p4: bool): bool
+    return PED.FORCE_PED_MOTION_STATE(ped, motion_state_hash, p2, p3, p4)
+end
+
+function module.register_pedheadshot(ped: int): int
+    return PED.REGISTER_PEDHEADSHOT(ped)
+end
+
+function module.register_pedheadshot_hires(ped: int): int
+    return PED.REGISTER_PEDHEADSHOT_HIRES(ped)
+end
+
+function module.register_pedheadshot_transparent(ped: int): int
+    return PED.REGISTER_PEDHEADSHOT_TRANSPARENT(ped)
+end
+
+function module.unregister_pedheadshot(id: int): void
+    PED.UNREGISTER_PEDHEADSHOT(id)
+end
+
+function module.request_pedheadshot_img_upload(id: int): bool
+    return PED.REQUEST_PEDHEADSHOT_IMG_UPLOAD(id)
+end
+
+function module.release_pedheadshot_img_upload(id: int): void
+    PED.RELEASE_PEDHEADSHOT_IMG_UPLOAD(id)
+end
+
+function module.disable_heatscale_override(ped: int): void
+    PED.DISABLE_PED_HEATSCALE_OVERRIDE(ped)
+end
+
+function module.spawnpoints_start_search(
+    p0: float, p1: float, p2: float, p3: float, p4: float, interior_flags: int, scale: float,
+    duration: int
+): void
+    -- body function:
+    PED.SPAWNPOINTS_START_SEARCH(p0, p1, p2, p3, p4, interior_flags, scale, duration)
+end
+
+function module.spawnpoints_start_search_in_angled_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float,
+    interior_flags: int, scale: float, duration: int
+): void
+    -- body function:
+    PED.SPAWNPOINTS_START_SEARCH_IN_ANGLED_AREA(x1, y1, z1, x2, y2, z2, width, interior_flags, scale, duration)
+end
+
+function module.spawnpoints_cancel_search(): void
+    PED.SPAWNPOINTS_CANCEL_SEARCH()
+end
+
+function module.spawnpoints_is_search_active(): bool
+    return PED.SPAWNPOINTS_IS_SEARCH_ACTIVE()
+end
+
+function module.spawnpoints_is_search_complete(): bool
+    return PED.SPAWNPOINTS_IS_SEARCH_COMPLETE()
+end
+
+function module.spawnpoints_is_search_failed(): bool
+    return PED.SPAWNPOINTS_IS_SEARCH_FAILED()
+end
+
+function module.spawnpoints_get_num_search_results(): int
+    return PED.SPAWNPOINTS_GET_NUM_SEARCH_RESULTS()
+end
+
+-- @param x Pointer: pass memory.alloc(size) and read the result back
+-- @param y Pointer: pass memory.alloc(size) and read the result back
+-- @param z Pointer: pass memory.alloc(size) and read the result back
+function module.spawnpoints_get_search_result(random_int: int, x: int, y: int, z: int): void
+    PED.SPAWNPOINTS_GET_SEARCH_RESULT(random_int, x, y, z)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.spawnpoints_get_search_result_flags(p0: int, p1: int): void
+    PED.SPAWNPOINTS_GET_SEARCH_RESULT_FLAGS(p0, p1)
+end
+
+function module.force_instant_leg_ik_setup(ped: int): void
+    PED.FORCE_INSTANT_LEG_IK_SETUP(ped)
+end
+
+function module.force_zero_mass_in_collisions(ped: int): void
+    PED.FORCE_ZERO_MASS_IN_COLLISIONS(ped)
+end
+
+function module.enable_mp_light(ped: int, toggle: bool): void
+    PED.ENABLE_MP_LIGHT(ped, toggle)
+end
+
+function module.clear_cover_point(ped: int): void
+    PED.CLEAR_COVER_POINT_FOR_PED(ped)
+end
+
+return Atdar.loader.auto(module, "natives/entity/ped")

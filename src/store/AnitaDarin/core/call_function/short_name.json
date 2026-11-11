@@ -1,22 +1,14 @@
 {
-    "user_ped": {
-        "params": [],
-        "returns": "int"
+    "toast": {
+        "path": "util.toast"
     },
     "user": {
-        "params": [],
-        "returns": "int"
+        "path": "PLAYER.PLAYER_ID"
+    },
+    "user_ped": {
+        "path": "PLAYER.PLAYER_PED_ID"
     },
     "user_vehicle": {
-        "path": "entities.get_user_vehicle_as_handle",
-        "params": [ { "include_last_vehicle": "last_vehicle", "type": "bool" } ],
-        "returns": "int"
-    },
-    "toast": {
-        "params": [
-            { "name": "text", "type": "string" },
-            { "name": "bitflags", "type": "?int" }
-        ],
-        "returns": "void"
+        "path": "entities.get_user_vehicle_as_handle"
     }
 }

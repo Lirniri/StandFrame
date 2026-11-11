@@ -1,0 +1,186 @@
+local module = {}
+
+-- State
+
+function module.is_catalog_current(): bool
+    return NETSHOPPING.NET_GAMESERVER_IS_CATALOG_CURRENT()
+end
+
+function module.is_session_valid(char_slot: int): bool
+    return NETSHOPPING.NET_GAMESERVER_IS_SESSION_VALID(char_slot)
+end
+
+function module.is_session_refresh_pending(): bool
+    return NETSHOPPING.NET_GAMESERVER_IS_SESSION_REFRESH_PENDING()
+end
+
+-- Get
+
+function module.get_price(item_hash: int, category_hash: int, p2: bool): int
+    return NETSHOPPING.NET_GAMESERVER_GET_PRICE(item_hash, category_hash, p2)
+end
+
+function module.get_catalog_cloud_crc(): int
+    return NETSHOPPING.NET_GAMESERVER_GET_CATALOG_CLOUD_CRC()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_session_state_and_status(p0: int, p1: int): bool
+    return NETSHOPPING.NET_GAMESERVER_GET_SESSION_STATE_AND_STATUS(p0, p1)
+end
+
+-- Set
+
+function module.set_telemetry_nonce_seed(p0: int): bool
+    return NETSHOPPING.NET_GAMESERVER_SET_TELEMETRY_NONCE_SEED(p0)
+end
+
+-- Actions
+
+function module.use_server_transactions(): bool
+    return NETSHOPPING.NET_GAMESERVER_USE_SERVER_TRANSACTIONS()
+end
+
+function module.catalog_item_is_valid(name: string): bool
+    return NETSHOPPING.NET_GAMESERVER_CATALOG_ITEM_IS_VALID(name)
+end
+
+function module.catalog_item_key_is_valid(hash: int): bool
+    return NETSHOPPING.NET_GAMESERVER_CATALOG_ITEM_KEY_IS_VALID(hash)
+end
+
+function module.catalog_is_valid(): bool
+    return NETSHOPPING.NET_GAMESERVER_CATALOG_IS_VALID()
+end
+
+function module.refresh_server_catalog(): bool
+    return NETSHOPPING.NET_GAMESERVER_REFRESH_SERVER_CATALOG()
+end
+
+-- @param state Pointer: pass memory.alloc(size) and read the result back
+function module.retrieve_catalog_refresh_status(state: int): bool
+    return NETSHOPPING.NET_GAMESERVER_RETRIEVE_CATALOG_REFRESH_STATUS(state)
+end
+
+function module.init_session(): bool
+    return NETSHOPPING.NET_GAMESERVER_INIT_SESSION()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.retrieve_init_session_status(p0: int): bool
+    return NETSHOPPING.NET_GAMESERVER_RETRIEVE_INIT_SESSION_STATUS(p0)
+end
+
+function module.start_session(char_slot: int): bool
+    return NETSHOPPING.NET_GAMESERVER_START_SESSION(char_slot)
+end
+
+function module.start_session_pending(): bool
+    return NETSHOPPING.NET_GAMESERVER_START_SESSION_PENDING()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.retrieve_start_session_status(p0: int): bool
+    return NETSHOPPING.NET_GAMESERVER_RETRIEVE_START_SESSION_STATUS(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.retrieve_session_error_code(p0: int): bool
+    return NETSHOPPING.NET_GAMESERVER_RETRIEVE_SESSION_ERROR_CODE(p0)
+end
+
+function module.clear_session(p0: int): bool
+    return NETSHOPPING.NET_GAMESERVER_CLEAR_SESSION(p0)
+end
+
+function module.session_apply_received_data(char_slot: int): bool
+    return NETSHOPPING.NET_GAMESERVER_SESSION_APPLY_RECEIVED_DATA(char_slot)
+end
+
+function module.start_session_restart(inventory: bool, playerbalance: bool): bool
+    return NETSHOPPING.NET_GAMESERVER_START_SESSION_RESTART(inventory, playerbalance)
+end
+
+function module.transaction_in_progress(): bool
+    return NETSHOPPING.NET_GAMESERVER_TRANSACTION_IN_PROGRESS()
+end
+
+-- @param transaction_id Pointer: pass memory.alloc(size) and read the result back
+function module.basket_start(transaction_id: int, category_hash: int, action_hash: int, flags: int): bool
+    return NETSHOPPING.NET_GAMESERVER_BASKET_START(transaction_id, category_hash, action_hash, flags)
+end
+
+function module.basket_end(): bool
+    return NETSHOPPING.NET_GAMESERVER_BASKET_END()
+end
+
+function module.basket_is_active(): bool
+    return NETSHOPPING.NET_GAMESERVER_BASKET_IS_ACTIVE()
+end
+
+-- @param item_data Pointer: pass memory.alloc(size) and read the result back
+function module.basket_add_item(item_data: int, quantity: int): bool
+    return NETSHOPPING.NET_GAMESERVER_BASKET_ADD_ITEM(item_data, quantity)
+end
+
+function module.basket_is_full(): bool
+    return NETSHOPPING.NET_GAMESERVER_BASKET_IS_FULL()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.basket_apply_server_data(p0: any, p1: int): bool
+    return NETSHOPPING.NET_GAMESERVER_BASKET_APPLY_SERVER_DATA(p0, p1)
+end
+
+function module.checkout_start(transaction_id: int): bool
+    return NETSHOPPING.NET_GAMESERVER_CHECKOUT_START(transaction_id)
+end
+
+-- @param transaction_id Pointer: pass memory.alloc(size) and read the result back
+function module.begin_service(
+    transaction_id: int, category_hash: int, item_hash: int, action_type_hash: int, value: int,
+    flags: int
+): bool
+    -- body function:
+    return NETSHOPPING.NET_GAMESERVER_BEGIN_SERVICE(transaction_id, category_hash, item_hash, action_type_hash, value, flags)
+end
+
+function module.end_service(transaction_id: int): bool
+    return NETSHOPPING.NET_GAMESERVER_END_SERVICE(transaction_id)
+end
+
+function module.delete_character(slot: int, transfer: bool, reason: int): bool
+    return NETSHOPPING.NET_GAMESERVER_DELETE_CHARACTER(slot, transfer, reason)
+end
+
+function module.delete_character_get_status(): int
+    return NETSHOPPING.NET_GAMESERVER_DELETE_CHARACTER_GET_STATUS()
+end
+
+function module.delete_set_telemetry_nonce_seed(): bool
+    return NETSHOPPING.NET_GAMESERVER_DELETE_SET_TELEMETRY_NONCE_SEED()
+end
+
+function module.transfer_bank_to_wallet(char_slot: int, amount: int): bool
+    return NETSHOPPING.NET_GAMESERVER_TRANSFER_BANK_TO_WALLET(char_slot, amount)
+end
+
+function module.transfer_wallet_to_bank(char_slot: int, amount: int): bool
+    return NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK(char_slot, amount)
+end
+
+function module.transfer_bank_to_wallet_get_status(): int
+    return NETSHOPPING.NET_GAMESERVER_TRANSFER_BANK_TO_WALLET_GET_STATUS()
+end
+
+function module.transfer_wallet_to_bank_get_status(): int
+    return NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK_GET_STATUS()
+end
+
+-- Used to be NETWORK_SHOP_CASH_TRANSFER_SET_TELEMETRY_NONCE_SEED
+function module.transfer_cash_set_telemetry_nonce_seed(): bool
+    return NETSHOPPING.NET_GAMESERVER_TRANSFER_CASH_SET_TELEMETRY_NONCE_SEED()
+end
+
+return module

@@ -1,0 +1,372 @@
+-- lib/AnitaDarin/ui/logic/stand/arguments.pluto
+--
+-- The arguments of a function, worked out from what is typed for them: the function's signature (its
+-- parameters with the types and defaults the code says), the kind of value each parameter takes, and the
+-- values to call with. The fields the texts are typed in are in ui/stand/core/arguments.
+--
+--   sig = arguments.signature_of(fn)               -- { params = { { name, type, default } }, vararg }
+--   local args, count, err = arguments.read(sig, texts)               -- the values to call with
+--
+-- The kinds, by the type written in the code:
+--   any       no type written, or a type that is none of the below (a number or text, for example)
+--   function  a function: its path is typed, as in Function Name (game.repair_vehicle)
+--   integer   int
+--   float     float, number
+--   vector3   vector3: 1, 2, 3 or an expression that gives one (v3.new(1, 2, 3))
+--   table     table: values separated by commas, or an expression that gives one
+--   userdata  userdata: an expression (v3.new(1, 2, 3), entities.get_user_vehicle_as_handle())
+--   string    string: the text as it is, without quotes
+--   boolean   bool: true or false
+-- A text never typed is the parameter's start value: the default written for it in the code
+-- (`speed: float = 1.5`), else one by the kind - 0 for integer and float, false for boolean, 0, 0, 0 for
+-- vector3; the other kinds start empty, and so does a parameter written as ?type (it may be left out).
+-- Empty is nil: not given.
+-- The texts are kept by the caller, texts[i] for the i-th parameter and texts.rest for what a function takes
+-- past its parameters (...): several expressions separated by commas.
+--
+-- A name in an expression may be a short name of Debug > Call Function (its files): user_ped() for
+-- players.user_ped(). Where no text is taken (integer, boolean, vector3...) the brackets may be left out: user_ped.
+-- Strings: core/language "arguments"
+
+local i18n = Atdar.loader.load("core/i18n")
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
+local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
+local path_parser = Atdar.loader.load("parsers/proglang/pluto/path")
+-- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake
+-- (a missing `local`) doesn't break reading functions here
+local debug = debug
+
+local module = {}
+
+-- Strings under "arguments"
+local text = select(2, i18n.scope("arguments"))
+
+-- The files of Debug > Call Function (short names, the signatures of Stand's API); loaded at first use:
+-- it loads this file itself
+local function registry(): table
+    return Atdar.loader.load("ui/logic/stand/script/call_function_registry")
+end
+
+-- A name nothing else has, in an expression: a short name from the files
+local function resolve_name(name: string)
+    return registry().value_of(name)
+end
+
+-- Types
+
+-- The type written in the code -> the kind of its field
+local KIND_OF_TYPE = {
+    int = "integer", integer = "integer",
+    float = "float", number = "float",
+    string = "string",
+    bool = "boolean", boolean = "boolean",
+    table = "table",
+    ["function"] = "function",
+    vector3 = "vector3", v3 = "vector3",
+    userdata = "userdata",
+}
+
+-- @return The kind of a parameter's field by its type as written ("?int", "int|string", nil): integer, float,
+-- string, boolean, table, function, vector3, userdata - or "any" when none is written or it's no one kind
+function module.kind_of(type_text: ?string): string
+    if type_text == nil then
+        return "any"
+    end
+    local base = type_text:match("^%??(.*)$")
+    return KIND_OF_TYPE[base] or "any"
+end
+
+-- The names and types as the signature the fields are made from
+-- @param names The parameters' names, in order, a method's self left out
+-- @param types name -> the type written for it (source.param_types)
+-- @param defaults name -> the default written for it (source.param_defaults)
+-- @return { params = { { name, type, default } }, vararg }
+function module.signature(names: table, types: table, vararg: bool, defaults: table = {}): table
+    local params = {}
+    for _, name in ipairs(names) do
+        table.insert(params, { name = name, type = types[name], default = defaults[name] })
+    end
+    return { params = params, vararg = vararg }
+end
+
+-- What a field of the kind starts with when the code writes no default
+local KIND_DEFAULT = { integer = "0", float = "0", boolean = "false", vector3 = "0, 0, 0" }
+
+-- @return The text a parameter's field starts with: its default in the code, else one by its type; nil for none
+function module.default_of(param: table): ?string
+    if param.default ~= nil then
+        return param.default
+    end
+
+    -- ?type: may be left out
+    if param.type ~= nil and param.type:sub(1, 1) == "?" then
+        return nil
+    end
+
+    return KIND_DEFAULT[module.kind_of(param.type)]
+end
+
+-- The signature of a function as the running code and its source give it. A C function (Stand's natives) says
+-- nothing of its parameters: it takes what's given (isvararg), so its signature is only "...".
+-- skip_self: a method called with its owner: its self isn't asked for
+function module.signature_of(fn, skip_self: ?bool): table
+
+    local info = debug.getinfo(fn, "u")
+    local names = {}
+
+    for i = 1, info.nparams do
+        local name = debug.getlocal(fn, i)
+        if not (i == 1 and skip_self and name == "self") then
+            table.insert(names, name)
+        end
+    end
+
+    return module.signature(names, source_parser.param_types(fn), info.isvararg, source_parser.param_defaults(fn))
+end
+
+-- "handle, coords, ...": the parameters' names, and ... when it takes more
+function module.params_text(sig: table): string
+
+    local names = {}
+
+    for _, param in ipairs(sig.params) do
+        table.insert(names, param.name)
+    end
+
+    if sig.vararg then
+        table.insert(names, "...")
+    end
+
+    return table.concat(names, ", ")
+end
+
+-- @return Whether there is anything to type: a parameter or more arguments (...)
+function module.has_fields(sig: table): bool
+    return #sig.params > 0 or sig.vararg
+end
+
+-- Reading
+
+local function trim(value: string): string
+    return value:match("^%s*(.-)%s*$")
+end
+
+-- The kinds whose field never takes a bare word as text: there it can only be a short name
+local WORDLESS_KINDS = { integer = true, float = true, boolean = true, vector3 = true, userdata = true }
+
+-- One field's text as a value of the kind. Never typed: the field's start value (default_of). Empty: nil
+-- @return The value, or nil and what was wrong
+local function read_one(param: table, typed: ?string)
+    if typed == nil then
+        typed = module.default_of(param)
+    end
+
+    if typed == nil or trim(typed) == "" then
+        return nil
+    end
+
+    local kind = module.kind_of(param.type)
+    if kind == "string" then
+        return typed
+    end
+    if kind == "function" then
+        local path = trim(typed)
+        local found, fn = path_parser.resolve(path)
+        if not found then
+            fn = resolve_name(path)
+        end
+        if type(fn) ~= "function" then
+            return nil, text("errors.not_function"):format(param.name, path)
+        end
+        return fn
+    end
+
+    -- A bare word where no text is taken: a short name of a function, called without its brackets
+    if WORDLESS_KINDS[kind] and trim(typed):match("^[%a_][%w_]*$") then
+        local fn = resolve_name(trim(typed))
+        if type(fn) == "function" then
+            typed = $"{trim(typed)}()"
+        end
+    end
+
+    local args, count, err = args_parser.parse(typed, resolve_name)
+    if err ~= nil then
+        return nil, text("errors.bad"):format(param.name, err)
+    end
+
+    if kind == "table" then
+        if count == 1 and type(args[1]) == "table" then
+            return args[1]
+        end
+        return { table.unpack(args, 1, count) }
+    end
+
+    if kind == "vector3" and count == 3 then
+        for i = 1, 3 do
+            if type(args[i]) ~= "number" then
+                return nil, text("errors.vector"):format(param.name)
+            end
+        end
+        return v3.new(args[1], args[2], args[3])
+    end
+
+    if count ~= 1 then
+        return nil, text(kind == "vector3" and "errors.vector" or "errors.one_value"):format(param.name)
+    end
+
+    local value = args[1]
+
+    if kind == "integer" then
+        local whole = type(value) == "number" and math.tointeger(value) or nil
+        if whole == nil then
+            return nil, text("errors.integer"):format(param.name)
+        end
+        return whole
+    end
+
+    if kind == "float" and type(value) ~= "number" then
+        return nil, text("errors.number"):format(param.name)
+    end
+
+    if kind == "boolean" and type(value) ~= "boolean" then
+        return nil, text("errors.boolean"):format(param.name)
+    end
+
+    return value
+end
+
+-- The values to call a function with, from the texts typed in its fields. Fields left empty are nil, and
+-- nils at the end aren't counted (the function's own defaults apply)
+-- @return The arguments, how many there are, and what was wrong (nil if nothing)
+function module.read(sig: table, texts: table)
+
+    local args, count = {}, 0
+
+    for i, param in ipairs(sig.params) do
+        local value, err = read_one(param, texts[i])
+        if err ~= nil then
+            return {}, 0, err
+        end
+        args[i] = value
+        if value ~= nil then
+            count = i
+        end
+    end
+
+    if sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
+
+        local rest, rest_count, err = args_parser.parse(texts.rest, resolve_name)
+
+        if err ~= nil then
+            return {}, 0, text("errors.bad"):format(text("rest.name"), err)
+        end
+
+        -- After the named parameters, those left empty in between are nil
+        local first = #sig.params
+        for i = 1, rest_count do
+            args[first + i] = rest[i]
+        end
+
+        count = first + rest_count
+    end
+
+    return args, count, nil
+end
+
+-- The texts for a signature from arguments written in one line, as a module gives its defaults ("42, true"):
+-- the first ones for the parameters, what's left for Arguments
+function module.texts_from(sig: table, line: string): table
+    local texts = {}
+    local pieces = args_parser.split(line)
+    for i, piece in ipairs(pieces) do
+        if i <= #sig.params then
+            texts[i] = piece
+        else
+            texts.rest = texts.rest == nil and piece or $"{texts.rest}, {piece}"
+        end
+    end
+    return texts
+end
+
+-- A call inside an argument
+
+-- The function a field's text calls, when the text is one call of a path (parsers args.call_of) and the
+-- function's parameters are known: from its code, or from the files of Call Function for Stand's own
+-- @param typed The field's text
+-- @return { path = as typed, sig, pieces = the texts of its arguments }; nil for anything else
+function module.call_in(typed: ?string): ?table
+
+    if typed == nil then
+        return nil
+    end
+
+    local path, pieces = args_parser.call_of(typed)
+    if path == nil then
+        return nil
+    end
+
+    local full = registry().expand(path)
+    local found, fn = path_parser.resolve(full)
+
+    if not found or type(fn) ~= "function" then
+        return nil
+    end
+
+    local sig = module.signature_of(fn)
+
+    if #sig.params == 0 then
+        local registered = registry().registered_signature(full)
+        if registered ~= nil then
+            sig = registered.sig
+        end
+    end
+
+    -- Nothing to name a field by: it stays one field
+    if #sig.params == 0 then
+        return nil
+    end
+
+    return { path = path, sig = sig, pieces = pieces }
+end
+
+-- "path(a, b)" from the texts of a called function's fields: a parameter never typed is its start value, an
+-- empty one in the middle is nil, empty ones at the end are left out
+function module.compose(path: string, sig: table, texts: table): string
+
+    local pieces = {}
+    local last = 0
+
+    for i, param in ipairs(sig.params) do
+        local piece = texts[i]
+        if piece == nil then
+            piece = module.default_of(param)
+        end
+
+        piece = piece ~= nil and trim(piece) or ""
+        pieces[i] = piece
+
+        if piece ~= "" then
+            last = i
+        end
+    end
+
+    local written = {}
+
+    for i = 1, last do
+        table.insert(written, pieces[i] ~= "" and pieces[i] or "nil")
+    end
+
+    if sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
+        -- After every parameter: the ones left empty before it are nil
+        for i = last + 1, #sig.params do
+            table.insert(written, "nil")
+        end
+        table.insert(written, trim(texts.rest))
+    end
+
+    local joined = table.concat(written, ", ")
+
+    return $"{path}({joined})"
+end
+
+return module

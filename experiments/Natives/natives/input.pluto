@@ -1,0 +1,226 @@
+local module = {}
+
+-- State
+
+function module.is_enabled(control: int, action: int): bool
+    return PAD.IS_CONTROL_ENABLED(control, action)
+end
+
+-- Returns whether a control is currently pressed
+function module.is_pressed(control: int, action: int): bool
+    return PAD.IS_CONTROL_PRESSED(control, action)
+end
+
+-- Returns whether a control is currently _not_ pressed
+function module.is_released(control: int, action: int): bool
+    return PAD.IS_CONTROL_RELEASED(control, action)
+end
+
+-- Returns whether a control was newly pressed since the last check
+function module.is_just_pressed(control: int, action: int): bool
+    return PAD.IS_CONTROL_JUST_PRESSED(control, action)
+end
+
+-- Returns whether a control was newly released since the last check
+function module.is_just_released(control: int, action: int): bool
+    return PAD.IS_CONTROL_JUST_RELEASED(control, action)
+end
+
+function module.is_held_down(control: int, action: int, duration: int): bool
+    return PAD._IS_CONTROL_HELD_DOWN(control, action, duration)
+end
+
+function module.is_disabled_pressed(control: int, action: int): bool
+    return PAD.IS_DISABLED_CONTROL_PRESSED(control, action)
+end
+
+function module.is_disabled_released(control: int, action: int): bool
+    return PAD.IS_DISABLED_CONTROL_RELEASED(control, action)
+end
+
+function module.is_disabled_just_pressed(control: int, action: int): bool
+    return PAD.IS_DISABLED_CONTROL_JUST_PRESSED(control, action)
+end
+
+function module.is_disabled_just_released(control: int, action: int): bool
+    return PAD.IS_DISABLED_CONTROL_JUST_RELEASED(control, action)
+end
+
+function module.is_using_keyboard_and_mouse(control: int): bool
+    return PAD.IS_USING_KEYBOARD_AND_MOUSE(control)
+end
+
+function module.is_using_cursor(control: int): bool
+    return PAD.IS_USING_CURSOR(control)
+end
+
+function module.is_using_remote_play(control: int): bool
+    return PAD.IS_USING_REMOTE_PLAY(control)
+end
+
+function module.have_controls_changed(control: int): bool
+    return PAD.HAVE_CONTROLS_CHANGED(control)
+end
+
+function module.is_look_inverted(): bool
+    return PAD.IS_LOOK_INVERTED()
+end
+
+-- Used with IS_LOOK_INVERTED() and negates its affect
+function module.is_mouse_look_inverted(): bool
+    return PAD.IS_MOUSE_LOOK_INVERTED()
+end
+
+-- Get
+
+function module.get_value(control: int, action: int): int
+    return PAD.GET_CONTROL_VALUE(control, action)
+end
+
+-- Returns the value of GET_CONTROL_VALUE normalized (i.e. a real number value between -1 and 1)
+function module.get_normal(control: int, action: int): float
+    return PAD.GET_CONTROL_NORMAL(control, action)
+end
+
+-- Seems to return values between -1 and 1 for controls like gas and steering
+function module.get_unbound_normal(control: int, action: int): float
+    return PAD.GET_CONTROL_UNBOUND_NORMAL(control, action)
+end
+
+function module.get_disabled_normal(control: int, action: int): float
+    return PAD.GET_DISABLED_CONTROL_NORMAL(control, action)
+end
+
+-- The "disabled" variant of GET_CONTROL_UNBOUND_NORMAL
+function module.get_disabled_unbound_normal(control: int, action: int): float
+    return PAD.GET_DISABLED_CONTROL_UNBOUND_NORMAL(control, action)
+end
+
+-- Returns time in ms since last input
+function module.get_how_long_ago(control: int): int
+    return PAD.GET_CONTROL_HOW_LONG_AGO(control)
+end
+
+function module.get_instructional_buttons_string(control: int, action: int, allow_xo_swap: bool): string
+    return PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(control, action, allow_xo_swap)
+end
+
+function module.get_group_instructional_buttons_string(
+    control: int, control_group: int, allow_xo_swap: bool
+): string
+    -- body function:
+    return PAD.GET_CONTROL_GROUP_INSTRUCTIONAL_BUTTONS_STRING(control, control_group, allow_xo_swap)
+end
+
+function module.get_local_player_aim_state(): int
+    return PAD.GET_LOCAL_PLAYER_AIM_STATE()
+end
+
+function module.get_local_player_gamepad_aim_state(): int
+    return PAD.GET_LOCAL_PLAYER_GAMEPAD_AIM_STATE()
+end
+
+function module.get_is_using_alternate_handbrake(): bool
+    return PAD.GET_IS_USING_ALTERNATE_HANDBRAKE()
+end
+
+-- Returns profile setting 225
+function module.get_is_using_alternate_driveby(): bool
+    return PAD.GET_IS_USING_ALTERNATE_DRIVEBY()
+end
+
+-- Returns profile setting 17
+function module.get_allow_movement_while_zoomed(): bool
+    return PAD.GET_ALLOW_MOVEMENT_WHILE_ZOOMED()
+end
+
+-- Set
+
+function module.set_use_adjusted_mouse_coords(toggle: bool): void
+    PAD.SET_USE_ADJUSTED_MOUSE_COORDS(toggle)
+end
+
+-- This is for simulating player input
+function module.set_value_next_frame(control: int, action: int, value: float): bool
+    return PAD.SET_CONTROL_VALUE_NEXT_FRAME(control, action, value)
+end
+
+function module.set_cursor_position(x: float, y: float): bool
+    return PAD.SET_CURSOR_POSITION(x, y)
+end
+
+function module.set_light_effect_color(control: int, red: int, green: int, blue: int): void
+    PAD.SET_CONTROL_LIGHT_EFFECT_COLOR(control, red, green, blue)
+end
+
+function module.set_shake(control: int, duration: int, frequency: int): void
+    PAD.SET_CONTROL_SHAKE(control, duration, frequency)
+end
+
+function module.set_trigger_shake(
+    control: int, left_duration: int, left_frequency: int, right_duration: int, right_frequency: int
+): void
+    -- body function:
+    PAD.SET_CONTROL_TRIGGER_SHAKE(control, left_duration, left_frequency, right_duration, right_frequency)
+end
+
+function module.set_shake_suppressed_id(control: int, unique_id: int): void
+    PAD.SET_CONTROL_SHAKE_SUPPRESSED_ID(control, unique_id)
+end
+
+function module.set_playerpad_shakes_when_controller_disabled(toggle: bool): void
+    PAD.SET_PLAYERPAD_SHAKES_WHEN_CONTROLLER_DISABLED(toggle)
+end
+
+function module.set_input_exclusive(control: int, action: int): void
+    PAD.SET_INPUT_EXCLUSIVE(control, action)
+end
+
+-- Actions
+
+function module.clear_light_effect(control: int): void
+    PAD.CLEAR_CONTROL_LIGHT_EFFECT(control)
+end
+
+function module.stop_shake(control: int): void
+    PAD.STOP_CONTROL_SHAKE(control)
+end
+
+function module.clear_shake_suppressed_id(control: int): void
+    PAD.CLEAR_CONTROL_SHAKE_SUPPRESSED_ID(control)
+end
+
+function module.disable_action(control: int, action: int, disable_related_actions: bool): void
+    PAD.DISABLE_CONTROL_ACTION(control, action, disable_related_actions)
+end
+
+function module.enable_action(control: int, action: int, enable_related_actions: bool): void
+    PAD.ENABLE_CONTROL_ACTION(control, action, enable_related_actions)
+end
+
+function module.disable_all_actions(control: int): void
+    PAD.DISABLE_ALL_CONTROL_ACTIONS(control)
+end
+
+function module.enable_all_actions(control: int): void
+    PAD.ENABLE_ALL_CONTROL_ACTIONS(control)
+end
+
+function module.init_pc_scripted_controls(scheme_name: string): bool
+    return PAD.INIT_PC_SCRIPTED_CONTROLS(scheme_name)
+end
+
+-- Same as INIT_PC_SCRIPTED_CONTROLS
+function module.switch_pc_scripted_controls(scheme_name: string): bool
+    return PAD.SWITCH_PC_SCRIPTED_CONTROLS(scheme_name)
+end
+
+function module.shutdown_pc_scripted_controls(): void
+    PAD.SHUTDOWN_PC_SCRIPTED_CONTROLS()
+end
+
+function module.allow_alternative_script_controls_layout(control: int): void
+    PAD.ALLOW_ALTERNATIVE_SCRIPT_CONTROLS_LAYOUT(control)
+end
+
+return module

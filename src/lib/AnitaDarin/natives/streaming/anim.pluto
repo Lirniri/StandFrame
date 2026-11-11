@@ -1,0 +1,51 @@
+-- Animation dictionaries, anim sets and clip sets
+
+local module = {}
+
+-- State
+
+function module.does_anim_dict_exist(anim_dict: string): bool
+    return STREAMING.DOES_ANIM_DICT_EXIST(anim_dict)
+end
+
+function module.has_anim_dict_loaded(anim_dict: string): bool
+    return STREAMING.HAS_ANIM_DICT_LOADED(anim_dict)
+end
+
+function module.has_anim_set_loaded(anim_set: string): bool
+    return STREAMING.HAS_ANIM_SET_LOADED(anim_set)
+end
+
+-- Alias for HAS_ANIM_SET_LOADED
+function module.has_clip_set_loaded(clip_set: string): bool
+    return STREAMING.HAS_CLIP_SET_LOADED(clip_set)
+end
+
+-- Actions
+
+function module.request_anim_dict(anim_dict: string): void
+    STREAMING.REQUEST_ANIM_DICT(anim_dict)
+end
+
+function module.remove_anim_dict(anim_dict: string): void
+    STREAMING.REMOVE_ANIM_DICT(anim_dict)
+end
+
+function module.request_anim_set(anim_set: string): void
+    STREAMING.REQUEST_ANIM_SET(anim_set)
+end
+
+function module.remove_anim_set(anim_set: string): void
+    STREAMING.REMOVE_ANIM_SET(anim_set)
+end
+
+function module.request_clip_set(clip_set: string): void
+    STREAMING.REQUEST_CLIP_SET(clip_set)
+end
+
+-- Alias for REMOVE_ANIM_SET
+function module.remove_clip_set(clip_set: string): void
+    STREAMING.REMOVE_CLIP_SET(clip_set)
+end
+
+return module

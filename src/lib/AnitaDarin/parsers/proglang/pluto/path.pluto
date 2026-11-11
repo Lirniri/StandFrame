@@ -8,6 +8,7 @@
 --     path.resolve("PLAYER.PLAYER_PED_ID()")    -- true, the native (the brackets are cut: see split)
 --     path.short_name("PLAYER.PLAYER_PED_ID")   -- "PLAYER_PED_ID"; "game.repair_vehicle" -> "repair_vehicle"
 --     path.find("get_user_vehicle_as_handle")   -- { "entities.get_user_vehicle_as_handle" }
+--     path.find("get_forward_z")                -- { "Atdar.natives.entity.get_forward_z" }
 --
 -- The first word is a global of Stand first (util, entities, menu, PLAYER, ...), else something of the script
 -- (game.repair_vehicle; a module's name may come first: VehicleManager.get). The script has tables named like
@@ -38,11 +39,15 @@ end
 -- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them)
 -- @return The path, and the text in the brackets
 function module.split(name: string)
+    
     expect("split", "name", name, "string")
+
     local path, inline = name:match("^(.-)%s*%((.*)%)%s*$")
+
     if path == nil then
         return name, nil
     end
+
     return path, inline
 end
 
@@ -50,15 +55,19 @@ end
 -- the owner to pass as self. Brackets at the end are not part of the path
 -- @return Whether there is something at the path, what it is, and its owner (nil for a plain path)
 function module.resolve(typed: string)
+
     expect("resolve", "typed", typed, "string")
+
     local path = module.split(typed)
     local owner_path = path
     local method = nil
+
     local colon = path:find(":", 1, true)
     if colon ~= nil then
         owner_path = path:sub(1, colon - 1)
         method = path:sub(colon + 1)
     end
+
     local current = Atdar
     local first = true
     for key in owner_path:gmatch("[^%.]+") do
@@ -81,18 +90,22 @@ function module.resolve(typed: string)
             return false
         end
     end
+
     if method == nil then
         return true, current
     end
+
     local fn = step(current, method)
     if type(fn) ~= "function" then
         return false
     end
+
     return true, fn, current
 end
 
--- How deep the tables of Atdar and of the globals are looked into by find
-local FIND_DEPTH = { atdar = 4, globals = 2 }
+-- How deep the tables of Atdar, of the script's natives (a module and the tables in it) and of the globals
+-- are looked into by find
+local FIND_DEPTH = { atdar = 4, natives = 2, globals = 2 }
 -- Globals that aren't looked into: the language's own and the ones that hold everything
 local FIND_SKIP = { _G = true, _ENV = true, Atdar = true, package = true, debug = true, io = true, os = true,
     string = true, table = true, math = true, utf8 = true, coroutine = true }
@@ -102,8 +115,11 @@ local function scan(tbl: table, prefix: string, depth: int, name: string, out: t
     if seen[tbl] then
         return
     end
+
     seen[tbl] = true
+
     local keys = {}
+
     -- A table of the script's may be a proxy that can't be walked: it's skipped then
     local walked = pcall(function()
         for key in pairs(tbl) do
@@ -112,10 +128,13 @@ local function scan(tbl: table, prefix: string, depth: int, name: string, out: t
             end
         end
     end)
+
     if not walked then
         return
     end
+
     table.sort(keys)
+
     for _, key in ipairs(keys) do
         local ok, value = pcall(function() return tbl[key] end)
         if ok then
@@ -128,18 +147,157 @@ local function scan(tbl: table, prefix: string, depth: int, name: string, out: t
     end
 end
 
+-- The natives' files as dotted paths from natives/ (entity.ped.task), kept after the first search
+local natives_files = nil
+
+-- Adds the .pluto files under dir to out, named by their path from natives/ with dots
+local function collect_natives(dir: string, prefix: string, out: table): void
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        local file = path:match("([^\\/]+)[\\/]?$")
+        if filesystem.is_dir(path) then
+            collect_natives($"{path}\\", $"{prefix}{file}.", out)
+        elseif file:match("%.pluto$") then
+            table.insert(out, prefix .. file:sub(1, -7))
+        end
+    end
+end
+
+-- Every file of the script's natives. They load on first use, so a table walk of Atdar doesn't see the ones
+-- nobody asked for yet: the search goes by the files, and loads each module it looks into
+local function natives_modules(): table
+
+    if natives_files ~= nil then
+        return natives_files
+    end
+
+    natives_files = {}
+
+    local dir = $"{filesystem.scripts_dir()}lib\\{Atdar.name}\\natives\\"
+
+    if filesystem.is_dir(dir) then
+        collect_natives(dir, "", natives_files)
+    end
+
+    table.sort(natives_files)
+
+    return natives_files
+end
+
+-- Adds every function of tbl, and of the tables in it down to depth, to index by its short name
+local function index_functions(tbl: table, prefix: string, depth: int, index: table, seen: table): void
+
+    if seen[tbl] then
+        return
+    end
+
+    seen[tbl] = true
+
+    local keys = {}
+
+    -- A table of the script's may be a proxy that can't be walked: it's skipped then
+    local walked = pcall(function()
+        for key in pairs(tbl) do
+            if type(key) == "string" and key:sub(1, 2) ~= "__" then
+                table.insert(keys, key)
+            end
+        end
+    end)
+
+    if not walked then
+        return
+    end
+
+    table.sort(keys)
+
+    for _, key in ipairs(keys) do
+        local ok, value = pcall(function() return tbl[key] end)
+        if ok then
+            if type(value) == "function" then
+                index[key] ??= {}
+                table.insert(index[key], $"{prefix}{key}")
+            elseif type(value) == "table" and depth > 1 then
+                index_functions(value, $"{prefix}{key}.", depth - 1, index, seen)
+            end
+        end
+    end
+end
+
+-- Short name -> the paths of the natives' functions of that name, made once: a search that walked every
+-- natives module each time cost milliseconds, and a loop that names its function by a short name searches
+-- at every call. Each file's module is looked into on its own: the other modules lying in it (entity.vehicle
+-- in entity) are left to their files, so none is cut short by being met first from the folder above
+local natives_index = nil
+
+local function natives_by_name(): table
+
+    if natives_index ~= nil then
+        return natives_index
+    end
+
+    -- No natives yet (a script without them): nothing is kept, so they're found once they're there
+    if Atdar.natives == nil then
+        return {}
+    end
+
+    natives_index = {}
+
+    local loaded = {}
+    local is_module = {}
+
+    for _, file in ipairs(natives_modules()) do
+        local path = $"Atdar.natives.{file}"
+        local found, tbl = module.resolve(path)
+        if found and type(tbl) == "table" then
+            table.insert(loaded, { path = path, tbl = tbl })
+            is_module[tbl] = true
+        end
+    end
+
+    for _, entry in ipairs(loaded) do
+        local seen = {}
+        for tbl in pairs(is_module) do
+            seen[tbl] = tbl ~= entry.tbl or nil
+        end
+        index_functions(entry.tbl, $"{entry.path}.", FIND_DEPTH.natives, natives_index, seen)
+    end
+
+    return natives_index
+end
+
+-- Forgets the natives' files and functions found, for the next search to look again: after the natives
+-- are loaded again (Reload Natives), whose functions are other ones then
+function module.forget_natives(): void
+    natives_files = nil
+    natives_index = nil
+end
+
 -- The full paths of the functions with this short name (no dot or colon in it), to call by it: what Atdar
--- has first (game.repair_vehicle), then the globals one level down (entities.get_user_vehicle_as_handle,
--- util.toast, PLAYER.PLAYER_PED_ID). Each part in alphabetical order, so the first is the same every time
+-- has first (game.repair_vehicle), then the script's natives (Atdar.natives.entity.get_forward_z), then the
+-- globals one level down (entities.get_user_vehicle_as_handle, util.toast, PLAYER.PLAYER_PED_ID). Each part
+-- in alphabetical order, so the first is the same every time. The first search loads every natives file
 -- @return The paths, the first is the one to use; empty when there's none
 function module.find(name: string): table
+
     expect("find", "name", name, "string")
+
     local out = {}
     if name == "" or name:find("[%.:%s]") then
         return out
     end
+
     local seen = {}
+
+    -- The natives are searched by their files below, not by what happens to be loaded now
+    if Atdar.natives ~= nil then
+        seen[Atdar.natives] = true
+    end
+
     scan(Atdar, "", FIND_DEPTH.atdar, name, out, seen)
+
+    for _, path in ipairs(natives_by_name()[name] or {}) do
+        table.insert(out, path)
+    end
+
     local globals = {}
     for key, value in pairs(_G) do
         if type(key) == "string" and type(value) == "table" and not FIND_SKIP[key] then
@@ -150,6 +308,7 @@ function module.find(name: string): table
     for _, key in ipairs(globals) do
         scan(_G[key], $"{key}.", FIND_DEPTH.globals, name, out, seen)
     end
+
     return out
 end
 

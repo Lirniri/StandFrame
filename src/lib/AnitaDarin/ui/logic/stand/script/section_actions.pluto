@@ -1,0 +1,116 @@
+-- lib/AnitaDarin/ui/logic/stand/script/section_actions.pluto
+-- What the plain buttons of the script's section do: opening the script's folders, clearing the logs and the
+-- game's feed, taking the cursor to an item. The items are in ui/stand/script/section.
+-- Strings: core/language "script_menu"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
+
+local log = new Logger("Menu")
+local text = select(2, i18n.scope("script_menu"))
+
+local module = {}
+
+-- Folders
+
+-- Opens a folder in Explorer; one that doesn't exist yet (resources) is made first, since Explorer can't
+-- open a missing folder
+function module.open_folder(path: string): void
+    if not filesystem.exists(path) then
+        filesystem.mkdirs(path)
+    end
+
+    util.open_folder(path)
+end
+
+-- Opens the folder the custom command names and words are kept in
+-- @param who "script" (Base Commands) or "menu" (Found Commands: there's none while no menu was loaded)
+function module.open_commands_folder(who: string): void
+
+    local dir = commands.folder_of(who)
+
+    if dir == nil then
+        log:warn(text("commands_folder.no_menu"))
+        return
+    end
+
+    module.open_folder(dir)
+end
+
+-- Logs
+
+-- A path from Lua Scripts on: "store\AnitaDarin\logs\" - short enough for a warning
+local function from_scripts_dir(path: string): string
+
+    local root = filesystem.scripts_dir()
+
+    if path:sub(1, #root) == root then
+        return path:sub(#root + 1)
+    end
+
+    return path
+end
+
+-- Today's log file only: the lines from before a test, without losing the other days
+function module.clear_log(): void
+    if Logger.clear_today() then
+        log:notify(text("clear_log.done"))
+        return
+    end
+
+    log:notify(text("clear_log.none"))
+end
+
+-- What the warning before Clear All Log Files says: the folder they're in
+function module.clear_logs_warning(): string
+    return text("clear_logs.warning"):format(from_scripts_dir(Logger.folder()))
+end
+
+-- Removes every log file
+function module.clear_logs(): void
+    log:notify(text("clear_logs.done"):format(Logger.clear()))
+end
+
+-- Game feed
+
+-- The script's cards and posts in the game's feed, all taken away (other scripts' and the game's stay).
+-- Told in Stand: a notice in the feed would be one more to take away
+function module.clear_feed(): void
+
+    local removed = Atdar.natives.visual.hud.thefeed.remove_all()
+
+    if removed == 0 then
+        log:notify(text("clear_feed.none"), "stand")
+        return
+    end
+
+    log:success(text("clear_feed.done"):format(removed), "stand")
+end
+
+-- Items
+
+-- An item's name as text; names may be Stand labels. "" for an item that's gone
+function module.item_name(ref): string
+
+    local ok, name = pcall(menu.get_menu_name, ref)
+
+    if not ok then
+        return ""
+    end
+
+    if type(name) == "number" then
+        return lang.get_localised(name)
+    end
+
+    return tostring(name)
+end
+
+-- Takes the cursor to the item itself. One hidden for now (debug mode is off) can't be reached
+function module.focus_item(ref): void
+    if not pcall(menu.focus, ref) then
+        log:warn(text("found_commands.focus.failed"))
+    end
+end
+
+return module

@@ -1,0 +1,45 @@
+-- Screen fades and widescreen borders
+
+local module = {}
+
+-- State
+
+function module.is_faded_out(): bool
+    return CAM.IS_SCREEN_FADED_OUT()
+end
+
+function module.is_faded_in(): bool
+    return CAM.IS_SCREEN_FADED_IN()
+end
+
+function module.is_fading_out(): bool
+    return CAM.IS_SCREEN_FADING_OUT()
+end
+
+function module.is_fading_in(): bool
+    return CAM.IS_SCREEN_FADING_IN()
+end
+
+function module.are_widescreen_borders_active(): bool
+    return CAM.ARE_WIDESCREEN_BORDERS_ACTIVE()
+end
+
+-- Set
+
+function module.set_widescreen_borders(p0: bool, p1: int): void
+    CAM.SET_WIDESCREEN_BORDERS(p0, p1)
+end
+
+-- Actions
+
+-- Fades the screen in
+function module.do_fade_in(duration: int): void
+    CAM.DO_SCREEN_FADE_IN(duration)
+end
+
+-- Fades the screen out
+function module.do_fade_out(duration: int): void
+    CAM.DO_SCREEN_FADE_OUT(duration)
+end
+
+return module

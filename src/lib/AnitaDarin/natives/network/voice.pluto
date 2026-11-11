@@ -1,0 +1,143 @@
+-- Voice chat
+
+local module = {}
+
+-- State
+
+function module.is_in_platform_party_chat(): bool
+    return NETWORK.NETWORK_IS_IN_PLATFORM_PARTY_CHAT()
+end
+
+-- This would be nice to see if someone is in party chat, but 2 sad notes
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_chatting_in_platform_party(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_CHATTING_IN_PLATFORM_PARTY(gamer_handle)
+end
+
+function module.has_automute_override(): bool
+    return NETWORK.NETWORK_HAS_AUTOMUTE_OVERRIDE()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_gamer_talking(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_GAMER_TALKING(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_text_chat_with_gamer(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_TEXT_CHAT_WITH_GAMER(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_gamer_muted_by_me(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_GAMER_MUTED_BY_ME(gamer_handle)
+end
+
+function module.is_player_talking(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_TALKING(player_id)
+end
+
+function module.is_player_muted_by_me(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_MUTED_BY_ME(player_id)
+end
+
+-- Checks for privilege 30
+function module.has_ros_privilege_mp_communication(): bool
+    return NETWORK._NETWORK_HAS_ROS_PRIVILEGE_MP_VOICE_COMMUNICATION()
+end
+
+-- Get
+
+function module.get_player_loudness(player_id: int): float
+    return NETWORK.NETWORK_GET_PLAYER_LOUDNESS(player_id)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.get_mute_count_for_player(p0: int, p1: int, p2: int): void
+    NETWORK.NETWORK_GET_MUTE_COUNT_FOR_PLAYER(p0, p1, p2)
+end
+
+-- Set
+
+function module.set_current_chat_option(new_chat_option: int): void
+    NETWORK.NETWORK_SET_CURRENT_CHAT_OPTION(new_chat_option)
+end
+
+function module.set_script_automuted(p0: any): bool
+    return NETWORK.NETWORK_SET_SCRIPT_AUTOMUTED(p0)
+end
+
+function module.set_active(toggle: bool): void
+    NETWORK.NETWORK_SET_VOICE_ACTIVE(toggle)
+end
+
+function module.set_team_only_chat(toggle: bool): void
+    NETWORK.NETWORK_SET_TEAM_ONLY_CHAT(toggle)
+end
+
+function module.set_no_spectator_chat(toggle: bool): void
+    NETWORK.NETWORK_SET_NO_SPECTATOR_CHAT(toggle)
+end
+
+function module.set_ignore_spectator_chat_limits_same_team(toggle: bool): void
+    NETWORK.NETWORK_SET_IGNORE_SPECTATOR_CHAT_LIMITS_SAME_TEAM(toggle)
+end
+
+function module.set_channel(channel: int): void
+    NETWORK.NETWORK_SET_VOICE_CHANNEL(channel)
+end
+
+function module.set_spectator_to_non_spectator_text_chat(toggle: bool): void
+    NETWORK.NETWORK_SET_SPECTATOR_TO_NON_SPECTATOR_TEXT_CHAT(toggle)
+end
+
+-- Actions
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.am_i_muted_by_gamer(gamer_handle: int): bool
+    return NETWORK.NETWORK_AM_I_MUTED_BY_GAMER(gamer_handle)
+end
+
+function module.am_i_muted_by_player(player_id: int): bool
+    return NETWORK.NETWORK_AM_I_MUTED_BY_PLAYER(player_id)
+end
+
+function module.remain_in_game_chat(p0: bool): void
+    NETWORK.NETWORK_REMAIN_IN_GAME_CHAT(p0)
+end
+
+-- Could possibly bypass being muted or automatically muted
+function module.override_chat_restrictions(player_id: int, toggle: bool): void
+    NETWORK.NETWORK_OVERRIDE_CHAT_RESTRICTIONS(player_id, toggle)
+end
+
+function module.clear_channel(): void
+    NETWORK.NETWORK_CLEAR_VOICE_CHANNEL()
+end
+
+function module.apply_proximity_override(x: float, y: float, z: float): void
+    NETWORK.NETWORK_APPLY_VOICE_PROXIMITY_OVERRIDE(x, y, z)
+end
+
+function module.clear_proximity_override(): void
+    NETWORK.NETWORK_CLEAR_VOICE_PROXIMITY_OVERRIDE()
+end
+
+function module.enable_bandwidth_restriction(player_id: int): void
+    NETWORK.NETWORK_ENABLE_VOICE_BANDWIDTH_RESTRICTION(player_id)
+end
+
+function module.disable_bandwidth_restriction(player_id: int): void
+    NETWORK.NETWORK_DISABLE_VOICE_BANDWIDTH_RESTRICTION(player_id)
+end
+
+function module.text_chat_is_typing(): bool
+    return NETWORK.NETWORK_TEXT_CHAT_IS_TYPING()
+end
+
+function module.show_chat_restriction_msc(player_id: int): void
+    NETWORK.NETWORK_SHOW_CHAT_RESTRICTION_MSC(player_id)
+end
+
+return module

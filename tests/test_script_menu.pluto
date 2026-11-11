@@ -22,16 +22,22 @@ local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
 local script_menu = Atdar.loader.load("ui/stand/script/section")
 local profiles_dir = $"{stand.store}AnitaDarin/profiles/"
 
+-- What the menu loader finds in store when Load Menu is opened
+FOUND_PACKS = { { folder = "AnitaDarin", name = "AnitaDarin" } }
+
 -- Rebuilding the section, as menu.pluto's rebuild_settings does; the menu picker is faked
 local function rebuild()
     stand.root.children = {}
     script_menu.build(new MenuNode(stand.root), {
         refresh = rebuild,
         packs = { { folder = "AnitaDarin", name = "AnitaDarin" } },
+        find_packs = || -> FOUND_PACKS,
         fill_menus = |node| -> node:divider("Menus"),
         unload = function() UNLOADED = true end,
     })
 end
+-- The tests read command names with the prefix in front, also the example made at the first build: the default may be either
+Atdar.profile.set("command_box_base_prefix_at_end", false)
 rebuild()
 -- The Modules list's items (the biggest file, with its parsers) aren't loaded with the section
 local MODULES_MENU = "AnitaDarin/ui/stand/modules/list"
@@ -73,17 +79,24 @@ local notifications = stand.find_item(appearance, "Notifications")
 profile.set("notify_feed_style", "ticker")
 profile.set("notify_subject_color_day", "white")
 profile.set("notify_subject_color_night", "white")
+profile.set("auto_copy_menu", "")
 profile.set("notify", "stand")
-profile.set("command_box_separator", "")
+profile.set("command_box_base_separator", "")
 profile.set("command_box_found_separator", "")
 profile.set("notify_flash", false)
 profile.set("notify_feed_icon", "CHAT_BOX")
 local default_picture_title = Atdar.loader.load("natives/visual/feed_picture").title(profile.default("notify_feed_picture"))
 stand.equal(names_in(notifications), "Type: Stand | Emoticons | Errors Always In Stand | Notification Examples | Stand | Text On A New Line"
-    .. " | Game | Notification Type: Post | Picture: " .. default_picture_title .. " | Icon: Chat | Flash Notifications | Day Starts At | Night Starts At"
-    .. " | Day Background Color | Day Flash Color | Day Subject Color: White"
-    .. " | Night Background Color | Night Flash Color | Night Subject Color: White",
-    "Notifications, the game's feed under the Game divider")
+    .. " | Game | Notification Type: Post | General | Message Options | Picture: " .. default_picture_title
+    .. " | Icon: Chat | Day Subject Color: White | Night Subject Color: White",
+    "Notifications, the game's feed under the Game divider: the type, General, then what the message card has")
+-- The two dividers in General are named by the language file as it is now: only their place is checked
+local general = stand.child(notifications, "General")
+stand.equal(names_in(general), "Flash Notifications | Day Starts At | Night Starts At | " .. stand.name_of(general.children[4])
+    .. " | Day Background Color | Night Background Color | " .. stand.name_of(general.children[7])
+    .. " | Day Flash Color | Night Flash Color",
+    "General: flashing, the hours, the background and flash colours by day and night")
+stand.check(general.children[4].kind == "divider" and general.children[7].kind == "divider", "each pair of colours under its divider")
 stand.equal(stand.child(notifications, "Game").kind, "divider", "Game is a divider")
 stand.click(stand.find_item(notifications, "Type"), 2)
 stand.equal(profile.get("notify"), "game", "Type picks the game's feed")
@@ -147,6 +160,7 @@ local game = notifications
 stand.click(stand.find_item(game, "Notification Type"), 1)
 stand.equal(profile.get("notify_feed_style"), "message", "Notification Type picks a message card")
 stand.equal(stand.name_of(stand.find_item(game, "Notification Type")), "Notification Type: Message", "and the caption follows")
+stand.equal(stand.find_item(game, "Message Options").visible, true, "the divider of the Message's own options is shown")
 -- Picture: the message card's only, so shown only while Message is picked; picking one asks the game to load it
 local requested_dicts = {}
 _G.GRAPHICS = {
@@ -181,6 +195,7 @@ stand.click(night_subject, 3)
 stand.click(stand.find_item(game, "Notification Type"), 2)
 stand.equal(picture.visible, false, "Picture hides while Post is picked")
 stand.equal(stand.find_item(game, "Icon").visible, false, "Icon too")
+stand.equal(stand.find_item(game, "Message Options").visible, false, "and the divider of the Message's own options goes with them")
 stand.check(not day_subject.visible and not night_subject.visible, "the subject colors too")
 local background = stand.find_item(game, "Day Background Color")
 stand.equal(background.transparency, true, "the colours have Opacity, as in Stand")
@@ -225,7 +240,10 @@ stand.check(night.default == 19 and night.value == 21, "the slider too: Stand de
 menu.set_value(night, 19)
 -- Saved with the menu's Save, so the checks below start without unsaved changes
 stand.click(stand.find_item(entry("main (active)"), "Save"))
-stand.equal(names_in(find("Load Menu")), "Unload | Menus", "Load Menu")
+stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu")
+-- Opening it looks for the menus again: the entries are made again, not added a second time
+find("Load Menu").on_click()
+stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu: opened, the menus made again")
 local update_list = find("Update")
 stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check | Check For Updates"
     .. " | Update Branch: main | Check On Start | Update | Update | Check Before Updating | Update Automatically"
@@ -246,8 +264,7 @@ stand.check(stand.toasts[#stand.toasts]:find("Couldn't check for updates", 1, tr
 stand.toasts = {}
 stand.click(update_list.children[10])
 stand.check(stand.toasts[#stand.toasts]:find("Couldn't check for updates", 1, true), "Update checks first and stops when it can't")
-stand.equal(names_in(find("Command Box")), "Base Commands Prefix | Base Commands Separator: None | Found Commands Prefix"
-    .. " | Found Commands Separator: None | Commands | Base Commands | Found Commands | User Commands", "Command Box")
+stand.equal(names_in(find("Command Box")), "Base Commands | Found Commands | User Commands", "Command Box")
 stand.equal(names_in(find("Open Folder")), "Open Lib Folder | Open Resource Folder | Open Store Folder | Open Log Folder", "Open Folder")
 
 -- Open Folder opens the script's own folders; a missing one is made first
@@ -261,7 +278,7 @@ stand.check(not io.isdir($"{resources_root}AnitaDarin"), "resources/AnitaDarin d
 stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaDarin\\", "Open Resource Folder")
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
-    "Debug Mode | Stop After Changes | Load Timing | Reload Natives | Logs | Options from other menus | Settings | Debug | Call Function"
+    "Debug Mode | Stop After Changes | Load Timing | Reload Natives | Logs | Debug | Options From Menu | Call Function"
     .. " | Modules | Delete Script", "Debug")
 -- The divider is called Logs too: the list is the one that opens
 local logs_list
@@ -273,9 +290,12 @@ end
 stand.equal(names_in(logs_list), "Name In Logs: "
     .. (profile.get("log_name") == "display" and "Display Name" or "Short Name")
     .. " | Keep Logs (Days) | Write Both Ways | Write Info At Once | Clear Current Log File | Clear All Log Files", "Debug > Logs")
-local debug_settings = stand.child(find("Debug"), "Settings")
-stand.equal(names_in(debug_settings), "Languages", "Debug > Settings")
-stand.equal(names_in(stand.child(debug_settings, "Languages")), "Show Keys | Send | Send Translation Path | Send File Path", "Debug > Settings > Languages")
+local from_menu = stand.child(find("Debug"), "Options From Menu")
+stand.equal(names_in(from_menu), "Settings", "Debug > Options From Menu")
+local debug_settings = stand.child(from_menu, "Settings")
+stand.equal(names_in(debug_settings), "Languages", "Debug > Options From Menu > Settings")
+stand.equal(names_in(stand.child(debug_settings, "Languages")), "Show Keys | Send | Send Translation Path | Send File Path",
+    "Debug > Options From Menu > Settings > Languages")
 stand.equal(names_in(profiles()), "Create Profile | Create Main Profile | Open Folder | Profiles | main (active)", "Profiles looks like Stand's")
 stand.equal(names_in(entry("main (active)")), "Save | Load | Automatically Save | Reset To Defaults | Delete", "a profile's own list")
 
@@ -287,9 +307,12 @@ stand.check(UNLOADED, "Unload calls the menu's unload")
 -- Found Commands is the loaded menu's: none here
 local found = stand.child(find("Command Box"), "Base Commands")
 stand.equal(names_in(stand.child(find("Command Box"), "Found Commands")),
-    "Open Commands Folder | Commands | No menu is loaded or it has no commands",
-    "Found Commands: its folder, the Commands divider, no menu, no commands")
-stand.equal(found.children[2].kind, "divider", "Base Commands: the Commands divider under its folder too")
+    "Found Commands Prefix | Prefix At The End | Found Commands Separator: None | Open Commands Folder | Commands"
+    .. " | No menu is loaded or it has no commands",
+    "Found Commands: its prefix, where it goes and its separator, its folder, the Commands divider, no menu, no commands")
+stand.equal(stand.name_of(found.children[1]), "Base Commands Prefix", "Base Commands: its own prefix first")
+stand.equal(stand.name_of(found.children[2]), "Prefix At The End", "then where the prefix goes")
+stand.equal(stand.child(found, "Commands").kind, "divider", "Base Commands: the Commands divider under its folder too")
 local function row(command)
     for _, child in found.children do
         if stand.name_of(child) == command then
@@ -300,13 +323,26 @@ local function row(command)
 end
 stand.check(#found.children > 5, $"Base Commands lists the section's commands ({#found.children})")
 -- Load Menu and what's in it: all start with menuloader
-for _, command in { "menuloader", "menuloaderunload", "clearlog", "clearlogs" } do
+for _, command in { "menuloader", "menuloaderunload", "menuloaderautocopy", "clearlog", "clearlogs" } do
     stand.check(row(command) ~= nil, $"Load Menu's command {command}")
 end
 local debug_row = row("debug")
 stand.equal(debug_row and debug_row.kind, "list", "a row is a list named by the command without the prefix")
 stand.equal(debug_row.help, "Debug Mode", "its help is the item's name")
 stand.check(row("settings"), "lists also show their command")
+-- Prefix At The End: the prefix goes after the command's name, the commands are renamed at once
+local full_before = stand.find_item(debug_row, "Command").value
+local prefix_now, separator_now = profile.get("command_box_base_prefix"), profile.get("command_box_base_separator")
+stand.equal(full_before, $"{prefix_now}{separator_now}debug", "the prefix in front by default")
+stand.click(stand.child(found, "Prefix At The End"))
+stand.equal(profile.get("command_box_base_prefix_at_end"), true, "Prefix At The End: kept in the profile")
+stand.equal(stand.find_item(debug_row, "Command").value, $"debug{separator_now}{prefix_now}", "the prefix goes after the name")
+stand.check(stand.by_command($"debug{separator_now}{prefix_now}") ~= nil, "Stand has the command under the new name")
+stand.equal(stand.find_item(stand.child(find("Command Box"), "Found Commands"), "Prefix At The End").value, false,
+    "the loaded menu's commands have their own switch")
+stand.click(stand.child(found, "Prefix At The End"))
+stand.equal(stand.find_item(debug_row, "Command").value, full_before, "off: in front again")
+profile.save()
 -- The script's own commands get custom names too, kept in store/<script>/commands/<base>.json
 -- Go To Item takes the cursor to the item itself
 stand.click(stand.find_item(debug_row, "Go To Item"))
@@ -340,18 +376,18 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 
 -- At the bottom of Debug, only in debug mode: the Debug divider, Call Function, Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[8], debug_list.children[9], debug_list.children[10], debug_list.children[11] }
+local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
     end
     return true
 end
-stand.check(all_visible(false), "divider, Call Function, Modules and Delete Script are hidden without debug mode")
+stand.check(all_visible(false), "Options From Menu, the divider, Call Function, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Show Call Time | Show Result On Screen | Result Length On Screen | Notice In Stand | Files Editor",
+stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Disable Call Time For All | Disable Result On Screen For All | Result Length On Screen | Notice In Stand | Files Editor",
     "Call Function: two lists, the Arguments Guide, then the settings")
 -- Arguments Guide: how to write the arguments, as a notice in Stand
 stand.toasts = {}
@@ -367,7 +403,7 @@ stand.check(stand.child(by_name, "Notice In Stand") == nil, "the Notice In Stand
 local call_button
 for _, child in by_name.children do
     -- "Call" is also the divider above it
-    if child.kind == "action" and stand.name_of(child) == "Call" then
+    if child.kind == "click_slider" and stand.name_of(child) == "Call" then
         call_button = child
     end
 end
@@ -385,6 +421,32 @@ stand.frame()
 stand.equal(called[2] and called[2].n, 2, "the brackets' content is the arguments when the Arguments field is empty")
 stand.equal(called[2] and called[2][1], 5, "the first one a number")
 stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
+-- A function typed by name with known parameters: the Arguments field becomes a field for each of them
+-- The fields are in the Arguments list of the panel
+local function args_list()
+    return stand.child(by_name, "Arguments")
+end
+local function by_name_text(): string
+    local names = {}
+    for _, child in args_list().children do
+        table.insert(names, stand.name_of(child))
+    end
+    return table.concat(names, " | ")
+end
+local typed_calls = {}
+Atdar.test_fields = function(count: int, note: string) table.insert(typed_calls, table.pack(count, note)) return count end
+function_name.on_change("test_fields", 0)
+stand.equal(args_list().kind, "list", "Arguments is a list")
+stand.check(by_name_text():find("count | Number | note | Text", 1, true) and by_name_text() ~= "Arguments",
+    "a function typed by name: a field for each parameter in its Arguments list")
+function_name.on_change("test_fields(4, hello)", 0)
+local fields_item = stand.child(args_list(), "Number")
+stand.check(fields_item ~= nil and fields_item.value == "4", "typed as a call: the brackets fill the fields")
+function_name.on_change("test_call", 0)
+stand.equal(by_name_text(), "Arguments", "another function with no parameters known: the one Arguments field again")
+function_name.on_change("test_fields", 0)
+stand.equal(stand.child(args_list(), "Number").value, "0", "back to the first: its fields start fresh, what was typed for the other isn't kept")
+Atdar.test_fields = nil
 -- A table result: the table settings are made at the end, right under the Value list; a plain one takes them away
 Atdar.test_table = function() return { 1, 2 } end
 Atdar.test_plain_value = function() return 5 end
@@ -426,28 +488,41 @@ stand.click(stand.child(by_name, "Loop"))
 stand.debug_texts = {}
 stand.frame()
 stand.equal(#stand.debug_texts, 0, "stopped: nothing drawn")
--- Show Result On Screen and Show Call Time: each can be turned off
-stand.equal(stand.child(call_list, "Show Result On Screen").value, true, "Show Result On Screen is on by default")
-stand.equal(stand.child(call_list, "Show Call Time").value, true, "Show Call Time is on by default")
+-- Disable Result On Screen For All and Disable Call Time For All: each turns it off for every function
+stand.equal(stand.child(call_list, "Disable Result On Screen For All").value, false, "Disable Result On Screen For All is off by default")
+stand.equal(stand.child(call_list, "Disable Call Time For All").value, false, "Disable Call Time For All is off by default")
 local timed = {}
 _G.profiling = { tick = function(label_text, fn) table.insert(timed, label_text) fn() end }
 Atdar.test_loop = function() return 7 end
 stand.click(stand.child(by_name, "Loop"))
 stand.frame()
 stand.equal(timed[#timed], "test_loop()", "Show Call Time on: the call is timed, with its name")
-stand.click(stand.child(call_list, "Show Call Time"))
+stand.click(stand.child(call_list, "Disable Call Time For All"))
 stand.equal(Atdar.loader.load("ui/stand/core/call_display").show_time, false, "(the setting is shared: ui/stand/core/call_display)")
 timed = {}
 stand.frame()
 stand.equal(#timed, 0, "off: not timed")
-stand.click(stand.child(call_list, "Show Result On Screen"))
+stand.click(stand.child(call_list, "Disable Result On Screen For All"))
 stand.debug_texts = {}
 stand.frame()
-stand.equal(#stand.debug_texts, 0, "Show Result On Screen off: nothing drawn")
-stand.click(stand.child(call_list, "Show Result On Screen"))
-stand.click(stand.child(call_list, "Show Call Time"))
+stand.equal(#stand.debug_texts, 0, "Disable Result On Screen For All on: nothing drawn")
+stand.click(stand.child(call_list, "Disable Result On Screen For All"))
+stand.click(stand.child(call_list, "Disable Call Time For All"))
 stand.frame()
-stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "and on again: drawn")
+stand.equal(stand.debug_texts[#stand.debug_texts], "test_loop -> 7", "and off again: drawn")
+-- A function's own switches, in its panel
+stand.click(stand.child(by_name, "Show Result On Screen"))
+stand.debug_texts = {}
+stand.frame()
+stand.equal(#stand.debug_texts, 0, "Show Result On Screen off in the function: nothing drawn")
+stand.click(stand.child(by_name, "Show Result On Screen"))
+stand.click(stand.child(by_name, "Show Call Time"))
+timed = {}
+stand.frame()
+stand.equal(#timed, 0, "Show Call Time off in the function: not timed")
+stand.click(stand.child(by_name, "Show Call Time"))
+stand.frame()
+stand.equal(timed[#timed], "test_loop()", "and on again: timed")
 -- Result Length On Screen: a long result is cut, so it doesn't run off the screen
 local length = stand.child(call_list, "Result Length On Screen")
 stand.check(length.kind == "slider" and length.value == 100, "Result Length On Screen is a slider, 100 by default")
@@ -513,33 +588,37 @@ stand.check(stand.find_log("is in the list already") and #functions_list.childre
 add_function.on_change("test_plain", 4)
 add_function.on_change("", 0)
 stand.equal(#functions_list.children, 8, "Stand putting the field back adds nothing, nor does an empty one")
+-- The fields of an added function are in its Arguments list
+local function fields_of(item) return stand.child(item, "Arguments") end
 local typed_item = stand.child(functions_list, "1: test_typed(count, name, ...)")
 local plain_item = stand.child(functions_list, "2: test_plain: int")
 stand.equal(plain_item.kind, "action", "a function without parameters is a button")
 stand.equal(typed_item.kind, "list", "one with parameters is a list")
+local typed_fields = stand.child(typed_item, "Arguments")
+stand.equal(typed_fields.kind, "list", "its parameters are in an Arguments list")
 stand.equal(stand.child(functions_list, "3: GET_THING(...)").kind, "list", "a function of any arguments (...) is a list: Stand's natives say nothing of theirs")
-stand.equal(stand.name_of(typed_item.children[1]) .. " | " .. stand.name_of(typed_item.children[2]), "count | Number",
+stand.equal(stand.name_of(typed_fields.children[1]) .. " | " .. stand.name_of(typed_fields.children[2]), "count | Number",
     "its first parameter: a divider and a Number field, int being written")
-stand.equal(stand.name_of(typed_item.children[3]) .. " | " .. stand.name_of(typed_item.children[4]), "name | Text", "the next: Text")
-stand.equal(stand.name_of(typed_item.children[5]) .. " | " .. stand.name_of(typed_item.children[6]), "... | Arguments", "and the rest")
+stand.equal(stand.name_of(typed_fields.children[3]) .. " | " .. stand.name_of(typed_fields.children[4]), "name | Text", "the next: Text")
+stand.equal(stand.name_of(typed_fields.children[5]) .. " | " .. stand.name_of(typed_fields.children[6]), "... | Arguments", "and the rest")
 stand.check(stand.child(typed_item, "Call") ~= nil and stand.child(typed_item, "Loop") ~= nil, "then the panel: Call, Loop...")
 stand.check(stand.child(typed_item, "Notice In Stand") == nil, "without the Notice In Stand toggle: it's in the settings")
 stand.click(plain_item)
 stand.frame()
 stand.equal(plain_calls, 1, "the button calls the function")
-menu.set_value(typed_item.children[2], "4")
-menu.set_value(typed_item.children[4], "hello there")
-menu.set_value(typed_item.children[6], "true, 9")
+menu.set_value(typed_fields.children[2], "4")
+menu.set_value(typed_fields.children[4], "hello there")
+menu.set_value(typed_fields.children[6], "true, 9")
 stand.click(stand.child(typed_item, "Call"))
 stand.frame()
 stand.check(#typed_calls == 1 and typed_calls[1][1] == 4 and typed_calls[1][2] == "hello there" and typed_calls[1][3] == true
     and typed_calls[1][4] == 9, "Call passes what's typed in the fields, in order")
-menu.set_value(typed_item.children[2], "x")
+menu.set_value(typed_fields.children[2], "x")
 stand.clear_logs()
 stand.click(stand.child(typed_item, "Call"))
 stand.frame()
 stand.check(#typed_calls == 1 and stand.find_log("count: a whole number is needed"), "a wrong value is told, nothing is called")
-menu.set_value(typed_item.children[2], "4")
+menu.set_value(typed_fields.children[2], "4")
 -- Clear takes one out by its number, the others are numbered again and keep what's typed
 stand.clear_logs()
 clear_one.on_change("7", 0)
@@ -548,10 +627,10 @@ clear_one.on_change("x", 0)
 stand.equal(#functions_list.children, 8, "so is what isn't a number")
 clear_one.on_change("1", 4)
 stand.equal(#functions_list.children, 8, "Stand putting the field back takes nothing out")
-menu.set_value(stand.child(functions_list, "3: GET_THING(...)").children[1], "5")
+menu.set_value(fields_of(stand.child(functions_list, "3: GET_THING(...)")).children[1], "5")
 clear_one.on_change("1", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...)", "Clear: the function gone, the others numbered again")
-stand.equal(stand.child(functions_list, "2: GET_THING(...)").children[1].value, "5", "the others keep what's typed in their fields")
+stand.equal(fields_of(stand.child(functions_list, "2: GET_THING(...)")).children[1].value, "5", "the others keep what's typed in their fields")
 add_function.on_change("test_typed", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "one added again goes to the end")
 -- Use Short Names: on, the last name only; off, the whole path is shown; the list follows at once
@@ -559,7 +638,7 @@ stand.equal(stand.child(call_list, "Use Short Names").value, true, "Use Short Na
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.equal(added_names(), "1: test_plain: int | 2: NATIVE_TEST.GET_THING(...) | 3: test_typed(count, name, ...)",
     "off: the native's whole path")
-stand.check(stand.child(functions_list, "2: NATIVE_TEST.GET_THING(...)").children[1].value == "5", "the fields keep what's typed")
+stand.check(fields_of(stand.child(functions_list, "2: NATIVE_TEST.GET_THING(...)")).children[1].value == "5", "the fields keep what's typed")
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "on again: the short name")
 stand.click(clear_all)
@@ -583,9 +662,14 @@ stand.check(stand.find_log("'unique_short_fn' not found"), "with Use Short Names
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.click(clear_all)
 -- The user's own short names, from store/<script>/user/call_function/short_names.json
+-- The files are read at most once a second (the clock stands still here): forget_files() after each one written
+local function forget_files(): void
+    Atdar.loader.load("ui/logic/stand/script/call_function_registry").forget()
+end
 local names_dir = $"{stand.store}AnitaDarin/user/call_function/"
 io.makedirs(names_dir)
 stand.write_file($"{names_dir}short_names.json", '{"mine": "test_deep.sub.unique_short_fn", "broken": "no.such.path", "bad": 5}')
+forget_files()
 stand.clear_logs()
 add_function.on_change("mine", 0)
 stand.equal(added_names(), "1: unique_short_fn: int", "a name from the file is the path it gives")
@@ -600,6 +684,7 @@ stand.check(stand.find_log("'mine' not found") and added_names() == "", "with Us
 stand.click(stand.child(call_list, "Use Short Names"))
 stand.click(clear_all)
 os.remove($"{names_dir}short_names.json")
+forget_files()
 Atdar.test_deep, TEST_SHORT = nil, nil
 
 -- Save Functions: the list is kept in a file while it's on, and comes back when the menu is first made
@@ -616,6 +701,7 @@ stand.check(not stand.read_file(saved_path):find("test_saved", 1, true), "Clear 
 add_function.on_change("test_saved", 0)
 -- A fresh copy of the list's code, as at the next start: the functions come back from the file
 package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
+package.loaded["AnitaDarin/ui/logic/stand/script/call_function"] = nil
 local fresh = Atdar.loader.load("ui/stand/script/call_function")
 local fresh_handle = fresh.build(new MenuNode(stand.root))
 stand.check(stand.find_item(fresh_handle, "1: test_saved(a)") ~= nil, "the functions come back from the file")
@@ -625,6 +711,7 @@ stand.check(io.exists(saved_path) and stand.read_file(saved_path):find("test_sav
 stand.check(stand.read_file(saved_path):find('"save": false', 1, true), "marked as not used")
 -- At the next start with it off: the list isn't taken from the file, the switch is off
 package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
+package.loaded["AnitaDarin/ui/logic/stand/script/call_function"] = nil
 local off_handle = Atdar.loader.load("ui/stand/script/call_function").build(new MenuNode(stand.root))
 stand.equal(stand.find_item(off_handle, "Save Functions").value, false, "the next start: Save Functions is off")
 stand.check(stand.find_item(off_handle, "test_saved") == nil, "and the file's list isn't used")
@@ -634,14 +721,14 @@ Atdar.test_saved = nil
 -- Made again (the section being built again): the functions added and what's typed in their fields stay
 Atdar.test_typed = function(count: int, name: string) end
 add_function.on_change("test_typed", 0)
-menu.set_value(stand.child(functions_list, "1: test_typed(count, name)").children[2], "6")
+menu.set_value(fields_of(stand.child(functions_list, "1: test_typed(count, name)")).children[2], "6")
 rebuild()
 debug_list = find("Debug")
-debug_only = { debug_list.children[8], debug_list.children[9], debug_list.children[10], debug_list.children[11] }
+debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
 call_list = stand.find_item(debug_list, "Call Function")
 functions_list = stand.child(call_list, "Functions")
 local rebuilt_item = stand.child(functions_list, "1: test_typed(count, name)")
-stand.check(rebuilt_item ~= nil and rebuilt_item.children[2].value == "6", "rebuilt: the function and the text in its field are kept")
+stand.check(rebuilt_item ~= nil and fields_of(rebuilt_item).children[2].value == "6", "rebuilt: the function and the text in its field are kept")
 stand.click(stand.child(functions_list, "Clear All"))
 Atdar.test_typed = nil
 
@@ -656,6 +743,7 @@ stand.write_file($"{registry_dir}short_name.json", '{"reg_one": {"path": "test_r
     .. ' "reg_none": {"path": "test_reg_none", "params": [], "returns": "int"},'
     .. ' "reg_bad": {"path": "test_reg_bad", "params": [{"include_last_vehicle": "x", "type": "bool"}], "returns": "int"},'
     .. ' "reg_no_path": {"params": [], "returns": "int"}}')
+forget_files()
 Atdar.test_reg_fn = function(...) end
 Atdar.test_reg_none = function(...) end
 Atdar.test_reg_bad = function(...) end
@@ -663,8 +751,8 @@ stand.click(clear_all)
 stand.clear_logs()
 add_function.on_change("reg_one", 0)
 stand.equal(added_names(), "1: test_reg_fn(a): int", "a registry name: its path, the params and the return type from the registry")
-stand.equal(stand.child(functions_list, "1: test_reg_fn(a): int").children[2].value, "3", "the field starts with the registry's default")
-stand.equal(stand.name_of(stand.child(functions_list, "1: test_reg_fn(a): int").children[2]), "Number", "named by the registry's type")
+stand.equal(fields_of(stand.child(functions_list, "1: test_reg_fn(a): int")).children[2].value, "3", "the field starts with the registry's default")
+stand.equal(stand.name_of(fields_of(stand.child(functions_list, "1: test_reg_fn(a): int")).children[2]), "Number", "named by the registry's type")
 add_function.on_change("reg_none", 0)
 stand.equal(stand.child(functions_list, "2: test_reg_none: int").kind, "action", "params [] in the registry: a function that takes none is a button")
 add_function.on_change("reg_bad", 0)
@@ -674,18 +762,97 @@ add_function.on_change("reg_no_path", 0)
 stand.check(stand.find_log("'reg_no_path' not found"), "an entry without a path isn't a short name")
 stand.click(clear_all)
 os.remove($"{registry_dir}short_name.json")
+forget_files()
 Atdar.test_reg_fn, Atdar.test_reg_none, Atdar.test_reg_bad = nil, nil, nil
 
+-- Arguments: a short name from the files in an expression; a call of a function with known parameters
+-- makes the field a list with a field for each of that function's parameters
+local outer_calls = {}
+Atdar.test_outer = function(handle: int, note: string) table.insert(outer_calls, table.pack(handle, note)) return handle end
+Atdar.test_inner = function(entity: int, alive: bool = false): int return alive and -entity or entity * 2 end
+Atdar.test_seven = function() return 7 end
+io.makedirs(registry_dir)
+stand.write_file($"{registry_dir}short_name.json", '{"inner": {"path": "test_inner"}, "seven": {"path": "test_seven"}}')
+forget_files()
+add_function.on_change("test_outer", 0)
+local function outer_item() return stand.child(functions_list, "1: test_outer(handle, note)") end
+local function call_outer()
+    stand.click(stand.child(outer_item(), "Call"))
+    return outer_calls[#outer_calls]
+end
+stand.equal(stand.name_of(fields_of(outer_item()).children[2]), "Number", "a parameter is one field")
+fields_of(outer_item()).children[2].on_change("seven()", 0)
+stand.equal(call_outer()[1], 7, "a short name of the files in an argument: seven() is test_seven()")
+fields_of(outer_item()).children[2].on_change("seven", 0)
+stand.equal(call_outer()[1], 7, "in a field that takes no text the brackets may be left out")
+stand.clear_logs()
+fields_of(outer_item()).children[2].on_change("math.nothing(1)", 0)
+call_outer()
+stand.check(stand.find_log("'math.nothing' isn't a function"), "a mistyped name is told by the name")
+-- A call of a function whose parameters are known: the field becomes a list
+fields_of(outer_item()).children[2].on_change("test_inner(21)", 0)
+local nested = fields_of(outer_item()).children[2]
+stand.equal(nested.kind, "list", "a call typed in a field: the field is a list")
+stand.equal(stand.name_of(nested), "Number: test_inner(21)", "named by the kind and the expression")
+stand.equal(names_in(nested), "Expression | entity | Number | alive | Boolean", "in it the expression, then the called function's parameters")
+stand.check(nested.children[1].value == "test_inner(21)" and nested.children[3].value == "21" and nested.children[5].value == "false",
+    "the fields start with what the expression has (and the code's default for what it leaves out)")
+stand.equal(call_outer()[1], 42, "called as before: the expression is what's worked out")
+nested.children[3].on_change("5", 0)
+stand.equal(stand.name_of(nested), "Number: test_inner(5, false)", "typing in a field writes the expression again")
+stand.equal(nested.children[1].value, "test_inner(5, false)", "the Expression field follows")
+stand.equal(call_outer()[1], 10, "and the call takes it")
+nested.children[5].on_change("true", 0)
+stand.equal(call_outer()[1], -5, "each field is one argument of the function called")
+-- A call inside the call: its field becomes a list too, inside the first
+nested.children[3].on_change("seven()", 0)
+stand.equal(nested.children[3].kind ~= "list", true, "a function without parameters stays a field")
+nested.children[3].on_change("test_inner(3)", 0)
+local deeper = nested.children[3]
+stand.check(deeper.kind == "list" and stand.name_of(deeper) == "Number: test_inner(3)", "a call inside the call is a list inside the list")
+deeper.children[3].on_change("4", 0)
+stand.equal(stand.name_of(nested), "Number: test_inner(test_inner(4, false), true)", "typing deep inside writes every expression above")
+stand.equal(call_outer()[1], -8, "and the whole is what's called")
+-- A short name as the function called
+nested.children[1].on_change("inner(6)", 0)
+nested = fields_of(outer_item()).children[2]
+stand.check(nested.kind == "list" and stand.name_of(nested) == "Number: inner(6)" and nested.children[3].value == "6",
+    "the Expression typed again: the fields follow; a short name is a function too")
+stand.equal(call_outer()[1], 12, "called through the short name")
+-- Back to a plain value: one field again
+nested.children[1].on_change("3", 0)
+stand.check(fields_of(outer_item()).children[2].kind ~= "list" and fields_of(outer_item()).children[2].value == "3", "a plain value typed: one field again")
+stand.equal(stand.child(outer_item(), "Call").kind, "click_slider", "the rest of the list is made again under the fields")
+stand.equal(call_outer()[1], 3, "and it's what is passed")
+stand.click(clear_all)
+os.remove($"{registry_dir}short_name.json")
+forget_files()
+Atdar.test_outer, Atdar.test_inner, Atdar.test_seven = nil, nil, nil
+
 -- The Stand API file: its place is core/call_function/stand_api.json; read as it's written
-local call_function_module = Atdar.loader.load("ui/stand/script/call_function")
-stand.equal(next(call_function_module.stand_api()), nil, "stand_api: no file in the store - empty")
+local registry_logic = Atdar.loader.load("ui/logic/stand/script/call_function_registry")
+stand.equal(next(registry_logic.stand_api()), nil, "stand_api: no file in the store - empty")
 local api_dir = $"{stand.store}AnitaDarin/core/call_function/"
 io.makedirs(api_dir)
-stand.write_file($"{api_dir}stand_api.json", '{"util.toast": {"params": [{"name": "text", "type": "string"}], "returns": "void"}}')
-stand.equal(call_function_module.stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
+stand.write_file($"{api_dir}stand_api.json", '{"util.toast": {"params": [{"name": "text", "type": "string"}], "returns": "void"},'
+    .. ' "test_api_fn": {"params": [{"name": "speed", "type": "float", "default": "1.5"}], "returns": "bool"}}')
+forget_files()
+stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
+stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "read again within a second: the same (kept, not read from disk)")
+forget_files()
+-- A function that says nothing of its parameters gets them from the Stand API file, by its path
+Atdar.test_api_fn = function(...) end
+add_function.on_change("test_api_fn", 0)
+stand.equal(added_names(), "1: test_api_fn(speed): bool", "stand_api: the params and the return type of a path")
+stand.equal(fields_of(stand.child(functions_list, "1: test_api_fn(speed): bool")).children[2].value, "1.5", "and the default")
+stand.click(clear_all)
+Atdar.test_api_fn = nil
 stand.write_file($"{api_dir}stand_api.json", "{broken")
-stand.equal(next(call_function_module.stand_api()), nil, "stand_api: a damaged file - empty")
+stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "a file changed on disk shows within a second, not at once")
+forget_files()
+stand.equal(next(registry_logic.stand_api()), nil, "stand_api: a damaged file - empty")
 os.remove($"{api_dir}stand_api.json")
+forget_files()
 
 -- ─── Files Editor: the JSON files of Call Function as a tree ─────────────────
 
@@ -693,8 +860,9 @@ local editor_core = $"{stand.store}AnitaDarin/core/call_function/"
 local editor_user = $"{stand.store}AnitaDarin/user/call_function/"
 io.makedirs(editor_core)
 io.makedirs(editor_user)
-stand.write_file($"{editor_core}short_name.json", '{"a": {"path": "x", "params": []}}')
+stand.write_file($"{editor_core}short_name.json", '{"a": {"params": [], "path": "x"}}')
 stand.write_file($"{editor_core}stand_api.json", '{}')
+stand.write_file($"{editor_user}free.json", '{"a": {"path": "x", "params": []}}')
 os.remove($"{editor_user}saved_functions.json")
 os.remove($"{editor_user}saved_functions.json.bak")
 
@@ -712,7 +880,7 @@ stand.check(#bare_files == 1 and bare_files[1].id == "core/call_function/short_n
 local editor = stand.child(call_list, "Files Editor")
 stand.equal(#editor.children, 0, "Files Editor: nothing in it until it's opened")
 stand.click(editor)
-stand.equal(names_in(editor), "Create File | Files | core/short_name.json | core/stand_api.json",
+stand.equal(names_in(editor), "Create File | Files | core/short_name.json | core/stand_api.json | user/free.json",
     "opened: Create File, the Files divider, a list per file (core first)")
 stand.equal(stand.child(editor, "Files").kind, "divider", "Files is a divider")
 
@@ -726,45 +894,105 @@ local files_logic = Atdar.loader.load("ui/logic/stand/script/call_function_files
 local refused, refused_why = files_logic.delete("core/call_function/short_name.json")
 stand.check(refused == false and refused_why == "protected" and io.exists($"{editor_core}short_name.json"), "the logic refuses to delete short_name.json too, not only the menu")
 stand.equal(select(2, files_logic.delete("core/call_function/stand_api.json")), "protected", "and stand_api.json")
-stand.equal(names_in(short_name_list), "Protected file: it can't be deleted | Add Value | Add Table | Remove | a (2)",
-    "the file's table: Add Value, Add Table, Remove, then the entries; a table is a list with how many it has")
 
--- Values: added under a name, changed, taken away; every change is written at once
 local function stored(name: string): string
     return stand.read_file($"{editor_core}{name}")
 end
-stand.child(short_name_list, "Add Value").on_change('speed = 5', 0)
-stand.check(stored("short_name.json"):find('"speed": 5', 1, true), "name = value: written to the file at once")
-stand.equal(stand.child(short_name_list, "speed").value, "5", "and shown as a field with the value")
-stand.child(short_name_list, "Add Value").on_change('kind = int', 0)
-stand.equal(stand.child(short_name_list, "kind").value, '"int"', "a bare word is text, shown in quotes (also one Lua knows: string, table)")
-stand.child(short_name_list, "Add Value").on_change('type = string', 0)
-stand.equal(stand.child(short_name_list, "type").value, '"string"', "a name of Lua's own is text too")
-stand.child(short_name_list, "speed").on_change('true', 0)
-stand.check(stored("short_name.json"):find('"speed": true', 1, true), "a field changed: written")
+
+-- A file with a shape (short_name.json): its own table takes functions only, each a ready-made entry
+stand.equal(names_in(short_name_list), "Protected file: it can't be deleted | Add Function | Remove | Functions | a (2)",
+    "short_name.json: Add Function and Remove, the Functions divider, then the functions")
+stand.equal(stand.child(short_name_list, "Functions").kind, "divider", "Functions is a divider")
+stand.child(short_name_list, "Add Function").on_change("veh", 0)
+stand.check(stand.child(short_name_list, "veh (1)") ~= nil, "Add Function: an entry under the name, with its path ready")
+stand.check(stored("short_name.json"):find('"veh": {%s*"path": ""'), "written to the file at once")
 stand.clear_logs()
-stand.child(short_name_list, "speed").on_change('util', 0)
-stand.check(stored("short_name.json"):find('"speed": "util"', 1, true), "a bare word is text, also util, which Lua knows")
-stand.child(short_name_list, "speed").on_change('5, 6', 0)
+stand.child(short_name_list, "Add Function").on_change("", 0)
+stand.check(stand.find_log("Type a name first"), "a function needs a name")
+
+-- A function's entry takes only its own keys; its params take parameters only, typed as the code writes them
+local entry_list = stand.child(short_name_list, "a (2)")
+stand.click(entry_list)
+stand.equal(names_in(entry_list), "Add Value | Add Table | Remove | Entries | path | params (0)",
+    "an entry: the keys in the order they're saved (path, params, returns), whatever order the file had")
+stand.clear_logs()
+stand.child(entry_list, "Add Value").on_change('path: = "y"', 0)
+stand.check(stand.find_log("This key doesn't belong here. It can be: path, params, returns"), "a key an entry doesn't have is refused")
+stand.check(not stored("short_name.json"):find("path:", 1, true), "and not written")
+stand.child(entry_list, "Add Value").on_change("returns = int", 0)
+stand.equal(stand.child(entry_list, "returns").value, '"int"', "its own key is taken")
+local shaped_params = stand.child(entry_list, "params (0)")
+stand.click(shaped_params)
+stand.equal(names_in(shaped_params), "Add Parameter | Remove | Parameters | Empty", "params: Add Parameter and Remove only")
+stand.child(shaped_params, "Add Parameter").on_change("speed: float = 1.5", 0)
+stand.check(stand.child(shaped_params, "[1] (3)") ~= nil, "a parameter typed as in code: name, type and default")
+local written = stored("short_name.json")
+local name_at, type_at, default_at = written:find('"name": "speed"', 1, true), written:find('"type": "float"', 1, true),
+    written:find('"default": "1.5"', 1, true)
+stand.check(name_at ~= nil and type_at ~= nil and default_at ~= nil and name_at < type_at and type_at < default_at,
+    "saved as name, type, default - in that order")
+stand.check(written:find('"path"', 1, true) < written:find('"params"', 1, true)
+    and written:find('"params"', 1, true) < written:find('"returns"', 1, true), "and the entry as path, params, returns")
+stand.child(shaped_params, "Add Parameter").on_change("handle", 0)
+stand.check(stand.child(shaped_params, "[2] (1)") ~= nil, "a name alone is a parameter too")
+stand.clear_logs()
+stand.child(shaped_params, "Add Parameter").on_change("5 bad", 0)
+stand.check(stand.find_log("A parameter starts with its name"), "what doesn't start with a name is refused")
+local param_list = stand.child(shaped_params, "[1] (3)")
+stand.click(param_list)
+stand.equal(names_in(param_list), "Add Value | Add Table | Remove | Entries | name | type | default", "a parameter: name, type, default")
+stand.clear_logs()
+stand.child(param_list, "Add Value").on_change("include_last_vehicle = x", 0)
+stand.check(stand.find_log("It can be: name, type, default"), "a parameter takes only name, type and default")
+stand.back(param_list)
+stand.back(shaped_params)
+stand.back(entry_list)
+stand.back(short_name_list)
+forget_files()
+
+-- A file without a shape (the user's own) takes anything
+local free_list = stand.child(editor, "user/free.json")
+stand.click(free_list)
+stand.equal(names_in(free_list), "Delete File | Add Value | Add Table | Remove | Entries | a (2)",
+    "the file's table: Add Value, Add Table, Remove, the Entries divider, then the entries; a table is a list with how many it has")
+
+-- Values: added under a name, changed, taken away; every change is written at once
+local function stored_free(): string
+    return stand.read_file($"{editor_user}free.json")
+end
+stand.child(free_list, "Add Value").on_change('speed = 5', 0)
+stand.check(stored_free():find('"speed": 5', 1, true), "name = value: written to the file at once")
+stand.equal(stand.child(free_list, "speed").value, "5", "and shown as a field with the value")
+stand.child(free_list, "Add Value").on_change('kind = int', 0)
+stand.equal(stand.child(free_list, "kind").value, '"int"', "a bare word is text, shown in quotes (also one Lua knows: string, table)")
+stand.child(free_list, "Add Value").on_change('type = string', 0)
+stand.equal(stand.child(free_list, "type").value, '"string"', "a name of Lua's own is text too")
+stand.child(free_list, "speed").on_change('true', 0)
+stand.check(stored_free():find('"speed": true', 1, true), "a field changed: written")
+stand.clear_logs()
+stand.child(free_list, "speed").on_change('util', 0)
+stand.check(stored_free():find('"speed": "util"', 1, true), "a bare word is text, also util, which Lua knows")
+stand.child(free_list, "speed").on_change('5, 6', 0)
 stand.check(stand.find_log("One value is needed"), "two values are refused")
-stand.child(short_name_list, "speed").on_change('v3.new(1, 2, 3)', 0)
+stand.child(free_list, "speed").on_change('v3.new(1, 2, 3)', 0)
 stand.check(stand.find_log("Only text, a number, true or false"), "a value that is none of those is refused: tables are made with Add Table")
-stand.child(short_name_list, "speed").on_change('nil', 0)
-stand.equal(stand.child(short_name_list, "speed"), nil, "nil takes the entry away")
-stand.check(not stored("short_name.json"):find('"speed"', 1, true), "and it's out of the file")
+stand.child(free_list, "speed").on_change('nil', 0)
+stand.equal(stand.child(free_list, "speed"), nil, "nil takes the entry away")
+stand.check(not stored_free():find('"speed"', 1, true), "and it's out of the file")
+stand.check(stored_free():find('"a"', 1, true) < stored_free():find('"kind"', 1, true), "the keys are saved by name")
 
 -- Tables: made, opened, filled; a value alone is added at the end of a list
-stand.child(short_name_list, "Add Table").on_change('params', 0)
-local params_list = stand.child(short_name_list, "params (0)")
+stand.child(free_list, "Add Table").on_change('things', 0)
+local params_list = stand.child(free_list, "things (0)")
 stand.check(params_list ~= nil and params_list.kind == "list", "Add Table: a table under the name, a list to open")
 stand.click(params_list)
-stand.equal(names_in(params_list), "Add Value | Add Table | Remove | Empty", "opened: the same controls, and Empty for a table with nothing in it")
+stand.equal(names_in(params_list), "Add Value | Add Table | Remove | Entries | Empty", "opened: the same controls, and Empty for a table with nothing in it")
 stand.child(params_list, "Add Value").on_change('"one"', 0)
 stand.child(params_list, "Add Value").on_change('2', 0)
-stand.equal(names_in(params_list), "Add Value | Add Table | Remove | [1] | [2]", "a value alone is added at the end of a list")
-stand.check(stored("short_name.json"):find('"one"', 1, true), "and written")
+stand.equal(names_in(params_list), "Add Value | Add Table | Remove | Entries | [1] | [2]", "a value alone is added at the end of a list")
+stand.check(stored_free():find('"one"', 1, true), "and written")
 stand.child(params_list, "Remove").on_change('1', 0)
-stand.equal(names_in(params_list), "Add Value | Add Table | Remove | [1]", "Remove takes an entry out by its number in a list")
+stand.equal(names_in(params_list), "Add Value | Add Table | Remove | Entries | [1]", "Remove takes an entry out by its number in a list")
 stand.equal(stand.child(params_list, "[1]").value, "2", "the others move up")
 stand.clear_logs()
 stand.child(params_list, "Remove").on_change('nothing', 0)
@@ -773,9 +1001,11 @@ stand.child(params_list, "Add Table").on_change('', 0)
 stand.check(stand.child(params_list, "[2] (0)") ~= nil, "Add Table with no name: a table at the end of a list")
 stand.back(params_list)
 stand.equal(#params_list.children, 0, "going back out of a table removes its items")
-stand.child(short_name_list, "Remove").on_change('params', 0)
-stand.check(stand.child(short_name_list, "params (2)") == nil and stand.child(short_name_list, "a (2)") ~= nil, "Remove by name: the table is out, the others stay")
-stand.back(short_name_list)
+stand.child(free_list, "Remove").on_change('things', 0)
+stand.check(stand.child(free_list, "things (2)") == nil and stand.child(free_list, "a (2)") ~= nil, "Remove by name: the table is out, the others stay")
+stand.back(free_list)
+os.remove($"{editor_user}free.json")
+os.remove($"{editor_user}free.json.bak")
 
 -- Create File: in user/call_function; a name with something else than letters, digits, _ and - is refused
 stand.clear_logs()
@@ -808,7 +1038,7 @@ stand.back(editor)
 stand.equal(#editor.children, 0, "going back out of the Files Editor removes its items")
 
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
-local modules_list = debug_list.children[10]
+local modules_list = debug_list.children[9]
 stand.click(modules_list)
 stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules/list")
 stand.check(#modules_list.children > 0, "and makes the list's items")
@@ -1138,16 +1368,25 @@ stand.click(stand.find_item(profiles(), "Create Main Profile"))
 stand.check(io.exists($"{profiles_dir}main.json"), "Create Main Profile writes the active main's file")
 stand.check(entry("main (active)") ~= nil, "and it's listed")
 
--- Command Box works from its new place
+-- Copy Menu To Core and Command Box work from their new places
+stand.click(stand.find_item(find("Load Menu"), "Copy Menu To Core"), 2)
+stand.equal(profile.get("auto_copy_menu"), "AnitaDarin", "Copy Menu To Core is set from Load Menu")
+-- A pack the profile names that isn't in store: its line says so
+profile.set("auto_copy_menu", "GonePack")
+find("Load Menu").on_click()
+stand.check(stand.find_item(find("Load Menu"), "GonePack (not in store)") ~= nil, "a pack that isn't in store is marked on its line")
+profile.set("auto_copy_menu", "AnitaDarin")
+find("Load Menu").on_click()
+stand.check(stand.find_item(find("Load Menu"), "GonePack (not in store)") == nil, "a pack that is there has none")
 stand.click(stand.find_item(find("Command Box"), "Separator"), 2)
-stand.equal(profile.get("command_box_separator"), "_", "Separator is set from Command Box")
+stand.equal(profile.get("command_box_base_separator"), "_", "Separator is set from Command Box")
 
 -- ─── Reset To Defaults: a second click within 5 seconds ──────────────────────
 
 local main_entry = entry("main (active)")
 local reset = stand.child(main_entry, "Reset To Defaults")
 profile.set("log_name", "display")
-profile.set("command_box_separator", "")
+profile.set("command_box_base_separator", "")
 stand.clear_logs()
 stand.click(reset)
 stand.equal(profile.get("log_name"), "display", "the first click resets nothing")
@@ -1159,10 +1398,12 @@ stand.equal(stand.name_of(reset), "Reset To Defaults", "going back out of the li
 stand.click(reset)
 stand.click(reset)
 stand.equal(profile.get("log_name"), profile.default("log_name"), "the second click resets the active profile")
-stand.equal(profile.get("command_box_separator"), profile.default("command_box_separator"), "every value")
+stand.equal(profile.get("command_box_base_separator"), profile.default("command_box_base_separator"), "every value")
 local log_name_shown = profile.default("log_name") == "display" and "Display Name" or "Short Name"
 stand.equal(stand.name_of(stand.find_item(find("Debug"), "Name In Logs")), $"Name In Logs: {log_name_shown}", "and the menu shows it")
 stand.check(profile.is_dirty(), "kept on Save, like any change")
+-- The defaults are back, the prefix place too: the tests after this read names with the prefix in front
+profile.set("command_box_base_prefix_at_end", false)
 
 -- ─── Rename Script: no warning while the script stops ────────────────────────
 
@@ -1235,8 +1476,8 @@ stand.equal(profile.get("update_branch"), "main", "main back")
 
 local user_dir = $"{stand.store}AnitaDarin\\commands\\user\\"
 local user_list = stand.child(find("Command Box"), "User Commands")
-stand.equal(names_in(user_list), "Prefix | Separator: None | Create | Remove | Commands | settingsatdar",
-    "User Commands: prefix, separator, Create, Remove, then the commands - the example made the first time")
+stand.equal(names_in(user_list), "Prefix | Prefix At The End | Separator: None | Create | Remove | Commands | settingsatdar",
+    "User Commands: prefix, where it goes, separator, Create, Remove, then the commands - the example made the first time")
 -- The example: settingsatdar opens the script's settings through their command
 local example = stand.child(user_list, "settingsatdar")
 stand.equal(stand.child(example, "Commands").value, "atdar.settings", "the example runs the settings' command (the dot by default)")

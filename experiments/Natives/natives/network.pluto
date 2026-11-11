@@ -1,0 +1,2312 @@
+local module = {}
+
+function module.does_net_id_exist(net_id)
+    return NETWORK.NETWORK_DOES_NETWORK_ID_EXIST(net_id)
+end
+
+-- State
+
+-- Returns whether the player is signed into Social Club
+function module.is_signed_in(): bool
+    return NETWORK.NETWORK_IS_SIGNED_IN()
+end
+
+-- Returns whether the game is not in offline mode
+function module.is_signed_online(): bool
+    return NETWORK.NETWORK_IS_SIGNED_ONLINE()
+end
+
+function module.is_np_available(): bool
+    return NETWORK.NETWORK_IS_NP_AVAILABLE()
+end
+
+function module.is_np_pending(): bool
+    return NETWORK.NETWORK_IS_NP_PENDING()
+end
+
+function module.is_conneted_to_np_presence(): bool
+    return NETWORK.NETWORK_IS_CONNETED_TO_NP_PRESENCE()
+end
+
+function module.is_logged_in_to_psn(): bool
+    return NETWORK.NETWORK_IS_LOGGED_IN_TO_PSN()
+end
+
+function module.is_cloud_available(): bool
+    return NETWORK.NETWORK_IS_CLOUD_AVAILABLE()
+end
+
+function module.was_game_suspended(): bool
+    return NETWORK.NETWORK_WAS_GAME_SUSPENDED()
+end
+
+function module.has_age_restrictions(): bool
+    return NETWORK.NETWORK_HAS_AGE_RESTRICTIONS()
+end
+
+function module.is_using_online_promotion(): bool
+    return NETWORK.NETWORK_IS_USING_ONLINE_PROMOTION()
+end
+
+function module.has_social_networking_sharing_priv(): bool
+    return NETWORK.NETWORK_HAS_SOCIAL_NETWORKING_SHARING_PRIV()
+end
+
+function module.have_platform_subscription(): bool
+    return NETWORK.NETWORK_HAVE_PLATFORM_SUBSCRIPTION()
+end
+
+function module.is_platform_subscription_check_pending(): bool
+    return NETWORK.NETWORK_IS_PLATFORM_SUBSCRIPTION_CHECK_PENDING()
+end
+
+function module.is_showing_system_ui_or_recently_requested_upsell(): bool
+    return NETWORK.NETWORK_IS_SHOWING_SYSTEM_UI_OR_RECENTLY_REQUESTED_UPSELL()
+end
+
+-- @param loading_state Pointer: pass memory.alloc(size) and read the result back
+function module.can_access_multiplayer(loading_state: int): bool
+    return NETWORK.NETWORK_CAN_ACCESS_MULTIPLAYER(loading_state)
+end
+
+function module.is_multiplayer_disabled(): bool
+    return NETWORK.NETWORK_IS_MULTIPLAYER_DISABLED()
+end
+
+function module.can_enter_multiplayer(): bool
+    return NETWORK.NETWORK_CAN_ENTER_MULTIPLAYER()
+end
+
+function module.is_finding_gamers(): bool
+    return NETWORK.NETWORK_IS_FINDING_GAMERS()
+end
+
+function module.is_getting_gamer_status(): bool
+    return NETWORK.NETWORK_IS_GETTING_GAMER_STATUS()
+end
+
+function module.is_game_in_progress(): bool
+    return NETWORK.NETWORK_IS_GAME_IN_PROGRESS()
+end
+
+function module.is_americas_version(): bool
+    return NETWORK._NETWORK_IS_AMERICAS_VERSION()
+end
+
+function module.is_activity_spectator(): bool
+    return NETWORK.NETWORK_IS_ACTIVITY_SPECTATOR()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_activity_spectator_from_handle(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_ACTIVITY_SPECTATOR_FROM_HANDLE(gamer_handle)
+end
+
+function module.is_in_platform_party(): bool
+    return NETWORK.NETWORK_IS_IN_PLATFORM_PARTY()
+end
+
+function module.is_player_connected(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_CONNECTED(player_id)
+end
+
+function module.is_participant_active(p0: int): bool
+    return NETWORK.NETWORK_IS_PARTICIPANT_ACTIVE(p0)
+end
+
+function module.is_player_a_participant(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_A_PARTICIPANT(player_id)
+end
+
+function module.is_script_active(script_name: string, instance_id: int, p2: bool, position_hash: int): bool
+    return NETWORK.NETWORK_IS_SCRIPT_ACTIVE(script_name, instance_id, p2, position_hash)
+end
+
+function module.is_script_active_by_hash(script_hash: int, p1: int, p2: bool, p3: int): bool
+    return NETWORK.NETWORK_IS_SCRIPT_ACTIVE_BY_HASH(script_hash, p1, p2, p3)
+end
+
+function module.is_thread_script(thread_id: int): bool
+    return NETWORK.NETWORK_IS_THREAD_A_NETWORK_SCRIPT(thread_id)
+end
+
+function module.is_player_a_participant_on_script(player_id: int, script: string, instance_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_A_PARTICIPANT_ON_SCRIPT(player_id, script, instance_id)
+end
+
+function module.is_local_player_invincible(): bool
+    return NETWORK.NETWORK_IS_LOCAL_PLAYER_INVINCIBLE()
+end
+
+function module.has_entity_been_registered_this_thread(entity: int): bool
+    return NETWORK.NETWORK_HAS_ENTITY_BEEN_REGISTERED_WITH_THIS_THREAD(entity)
+end
+
+function module.is_door_networked(door_hash: int): bool
+    return NETWORK.NETWORK_IS_DOOR_NETWORKED(door_hash)
+end
+
+-- @param gamer_handle1 Pointer: pass memory.alloc(size) and read the result back
+-- @param gamer_handle2 Pointer: pass memory.alloc(size) and read the result back
+function module.are_handles_the_same(gamer_handle1: int, gamer_handle2: int): bool
+    return NETWORK.NETWORK_ARE_HANDLES_THE_SAME(gamer_handle1, gamer_handle2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.is_inactive_profile(p0: int): bool
+    return NETWORK.NETWORK_IS_INACTIVE_PROFILE(p0)
+end
+
+function module.is_friend_online(name: string): bool
+    return NETWORK.NETWORK_IS_FRIEND_ONLINE(name)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_friend_handle_online(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_FRIEND_HANDLE_ONLINE(gamer_handle)
+end
+
+-- In scripts R* calls 'NETWORK_GET_FRIEND_NAME' in this param
+function module.is_friend_in_same_title(friend_name: string): bool
+    return NETWORK.NETWORK_IS_FRIEND_IN_SAME_TITLE(friend_name)
+end
+
+function module.is_friend_in_multiplayer(friend_name: string): bool
+    return NETWORK.NETWORK_IS_FRIEND_IN_MULTIPLAYER(friend_name)
+end
+
+function module.is_pending_friend(p0: any): bool
+    return NETWORK.NETWORK_IS_PENDING_FRIEND(p0)
+end
+
+function module.is_adding_friend(): bool
+    return NETWORK.NETWORK_IS_ADDING_FRIEND()
+end
+
+function module.is_friend_index_online(friend_index: int): bool
+    return NETWORK.NETWORK_IS_FRIEND_INDEX_ONLINE(friend_index)
+end
+
+function module.can_set_waypoint(): bool
+    return NETWORK.NETWORK_CAN_SET_WAYPOINT()
+end
+
+function module.does_communication_group_exist(communication_type: int): bool
+    return NETWORK._NETWORK_DOES_COMMUNICATION_GROUP_EXIST(communication_type)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.has_player_passed_check_type(check_type: int, gamer_handle: int): bool
+    return NETWORK._NETWORK_HAS_PLAYER_PASSED_CHECK_TYPE(check_type, gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_player_on_blocklist(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_ON_BLOCKLIST(gamer_handle)
+end
+
+function module.has_headset(): bool
+    return NETWORK.NETWORK_HAS_HEADSET()
+end
+
+function module.is_push_to_talk_active(): bool
+    return NETWORK.NETWORK_IS_PUSH_TO_TALK_ACTIVE()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_communicate_with_gamer(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_COMMUNICATE_WITH_GAMER(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_gamer_blocked_by_me(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_GAMER_BLOCKED_BY_ME(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_view_gamer_user_content(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_VIEW_GAMER_USER_CONTENT(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.has_view_gamer_user_content_result(gamer_handle: int): bool
+    return NETWORK.NETWORK_HAS_VIEW_GAMER_USER_CONTENT_RESULT(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_text_from_gamer_be_viewed(gamer_handle: int): bool
+    return NETWORK._NETWORK_CAN_TEXT_FROM_GAMER_BE_VIEWED(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_play_multiplayer_with_gamer(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_PLAY_MULTIPLAYER_WITH_GAMER(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_gamer_play_multiplayer_with_me(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_GAMER_PLAY_MULTIPLAYER_WITH_ME(gamer_handle)
+end
+
+function module.is_player_blocked_by_me(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_BLOCKED_BY_ME(player_id)
+end
+
+function module.is_any_player_near(p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any): bool
+    return NETWORK.NETWORK_IS_ANY_PLAYER_NEAR(p0, p1, p2, p3, p4, p5, p6)
+end
+
+-- Getter for SET_NETWORK_CUTSCENE_ENTITIES
+function module.are_cutscene_entities_networked(): bool
+    return NETWORK.ARE_CUTSCENE_ENTITIES_NETWORKED()
+end
+
+function module.is_player_fading(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_FADING(player_id)
+end
+
+function module.is_entity_fading(entity: int): bool
+    return NETWORK.NETWORK_IS_ENTITY_FADING(entity)
+end
+
+function module.is_player_in_cutscene(player_id: int): bool
+    return NETWORK.IS_PLAYER_IN_CUTSCENE(player_id)
+end
+
+function module.is_damage_tracker_active_on_player(player_id: int): bool
+    return NETWORK.IS_DAMAGE_TRACKER_ACTIVE_ON_PLAYER(player_id)
+end
+
+function module.is_sphere_visible_to_another_machine(p0: float, p1: float, p2: float, p3: float): bool
+    return NETWORK.IS_SPHERE_VISIBLE_TO_ANOTHER_MACHINE(p0, p1, p2, p3)
+end
+
+function module.is_sphere_visible_to_player(p0: any, p1: float, p2: float, p3: float, p4: float): bool
+    return NETWORK.IS_SPHERE_VISIBLE_TO_PLAYER(p0, p1, p2, p3, p4)
+end
+
+function module.can_register_mission_objects(amount: int): bool
+    return NETWORK.CAN_REGISTER_MISSION_OBJECTS(amount)
+end
+
+function module.can_register_mission_peds(amount: int): bool
+    return NETWORK.CAN_REGISTER_MISSION_PEDS(amount)
+end
+
+function module.can_register_mission_vehicles(amount: int): bool
+    return NETWORK.CAN_REGISTER_MISSION_VEHICLES(amount)
+end
+
+function module.can_register_mission_pickups(amount: int): bool
+    return NETWORK.CAN_REGISTER_MISSION_PICKUPS(amount)
+end
+
+function module.can_register_mission_doors(p0: any): bool
+    return NETWORK.CAN_REGISTER_MISSION_DOORS(p0)
+end
+
+function module.can_register_mission_entities(
+    ped_amt: int, vehicle_amt: int, object_amt: int, pickup_amt: int
+): bool
+    -- body function:
+    return NETWORK.CAN_REGISTER_MISSION_ENTITIES(ped_amt, vehicle_amt, object_amt, pickup_amt)
+end
+
+function module.has_time_started(): bool
+    return NETWORK.HAS_NETWORK_TIME_STARTED()
+end
+
+-- Subtracts the second argument from the first, then returns whether the result is negative
+function module.is_time_less_than(time_a: int, time_b: int): bool
+    return NETWORK.IS_TIME_LESS_THAN(time_a, time_b)
+end
+
+-- Subtracts the first argument from the second, then returns whether the result is negative
+function module.is_time_more_than(time_a: int, time_b: int): bool
+    return NETWORK.IS_TIME_MORE_THAN(time_a, time_b)
+end
+
+function module.is_time_equal(time_a: int, time_b: int): bool
+    return NETWORK.IS_TIME_EQUAL_TO(time_a, time_b)
+end
+
+function module.is_in_spectator_mode(): bool
+    return NETWORK.NETWORK_IS_IN_SPECTATOR_MODE()
+end
+
+function module.is_in_mp_cutscene(): bool
+    return NETWORK.NETWORK_IS_IN_MP_CUTSCENE()
+end
+
+function module.is_player_in_mp_cutscene(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_IN_MP_CUTSCENE(player_id)
+end
+
+function module.is_vehicle_running_respot_timer(network_id: int): bool
+    return NETWORK.IS_NETWORK_VEHICLE_RUNNING_RESPOT_TIMER(network_id)
+end
+
+function module.is_object_reassignment_in_progress(): bool
+    return NETWORK.IS_OBJECT_REASSIGNMENT_IN_PROGRESS()
+end
+
+function module.is_player_concealed(player_id: int): bool
+    return NETWORK.NETWORK_IS_PLAYER_CONCEALED(player_id)
+end
+
+function module.is_entity_concealed(entity: int): bool
+    return NETWORK.NETWORK_IS_ENTITY_CONCEALED(entity)
+end
+
+function module.is_clock_time_overridden(): bool
+    return NETWORK.NETWORK_IS_CLOCK_TIME_OVERRIDDEN()
+end
+
+function module.is_cloud_background_script_request_pending(): bool
+    return NETWORK.NETWORK_IS_CLOUD_BACKGROUND_SCRIPT_REQUEST_PENDING()
+end
+
+function module.is_tunable_cloud_request_pending(): bool
+    return NETWORK.NETWORK_IS_TUNABLE_CLOUD_REQUEST_PENDING()
+end
+
+function module.does_tunable_exist(tunable_context: string, tunable_name: string): bool
+    return NETWORK.NETWORK_DOES_TUNABLE_EXIST(tunable_context, tunable_name)
+end
+
+function module.does_tunable_exist_hash(tunable_context: int, tunable_name: int): bool
+    return NETWORK.NETWORK_DOES_TUNABLE_EXIST_HASH(tunable_context, tunable_name)
+end
+
+function module.has_bone_been_hit_by_killer(bone_index: int): bool
+    return NETWORK.NETWORK_HAS_BONE_BEEN_HIT_BY_KILLER(bone_index)
+end
+
+function module.has_cached_player_head_blend_data(player_id: int): bool
+    return NETWORK.NETWORK_HAS_CACHED_PLAYER_HEAD_BLEND_DATA(player_id)
+end
+
+function module.is_commerce_data_valid(): bool
+    return NETWORK.IS_COMMERCE_DATA_VALID()
+end
+
+function module.is_commerce_data_fetch_in_progress(): bool
+    return NETWORK.IS_COMMERCE_DATA_FETCH_IN_PROGRESS()
+end
+
+function module.is_commerce_store_open(): bool
+    return NETWORK.IS_COMMERCE_STORE_OPEN()
+end
+
+function module.is_store_available_to_user(): bool
+    return NETWORK.IS_STORE_AVAILABLE_TO_USER()
+end
+
+function module.is_user_old_enough_to_access_store(): bool
+    return NETWORK.IS_USER_OLD_ENOUGH_TO_ACCESS_STORE()
+end
+
+function module.is_cable_connected(): bool
+    return NETWORK.NETWORK_IS_CABLE_CONNECTED()
+end
+
+function module.have_scs_private_msg_priv(): bool
+    return NETWORK.NETWORK_HAVE_SCS_PRIVATE_MSG_PRIV()
+end
+
+function module.is_title_update_required(): bool
+    return NETWORK.NETWORK_IS_TITLE_UPDATE_REQUIRED()
+end
+
+function module.is_connected_via_relay(player_id: int): bool
+    return NETWORK.NETWORK_IS_CONNECTED_VIA_RELAY(player_id)
+end
+
+-- Get
+
+-- Online version is defined here: update\update.rpf\common\data\version.txt
+function module.get_online_version(): string
+    return NETWORK.GET_ONLINE_VERSION()
+end
+
+function module.get_np_unavailable_reason(): int
+    return NETWORK.NETWORK_GET_NP_UNAVAILABLE_REASON()
+end
+
+function module.get_age_group(): int
+    return NETWORK.NETWORK_GET_AGE_GROUP()
+end
+
+-- @param hours Pointer: pass memory.alloc(size) and read the result back
+-- @param minutes Pointer: pass memory.alloc(size) and read the result back
+-- @param seconds Pointer: pass memory.alloc(size) and read the result back
+function module.get_global_multiplayer_clock(hours: int, minutes: int, seconds: int): void
+    NETWORK.NETWORK_GET_GLOBAL_MULTIPLAYER_CLOCK(hours, minutes, seconds)
+end
+
+function module.get_num_found_gamers(): int
+    return NETWORK.NETWORK_GET_NUM_FOUND_GAMERS()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_found_gamer(p0: int, p1: any): bool
+    return NETWORK.NETWORK_GET_FOUND_GAMER(p0, p1)
+end
+
+function module.get_gamer_status_from_queue(): bool
+    return NETWORK.NETWORK_GET_GAMER_STATUS_FROM_QUEUE()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_gamer_status_result(p0: int, p1: any): bool
+    return NETWORK.NETWORK_GET_GAMER_STATUS_RESULT(p0, p1)
+end
+
+function module.get_game_mode(): int
+    return NETWORK.NETWORK_GET_GAME_MODE()
+end
+
+function module.get_activity_player_num(p0: bool): int
+    return NETWORK.NETWORK_GET_ACTIVITY_PLAYER_NUM(p0)
+end
+
+function module.get_platform_party_member_count(): int
+    return NETWORK.NETWORK_GET_PLATFORM_PARTY_MEMBER_COUNT()
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.get_platform_party_members(data: int, data_size: int): int
+    return NETWORK.NETWORK_GET_PLATFORM_PARTY_MEMBERS(data, data_size)
+end
+
+function module.get_random_int(): int
+    return NETWORK.NETWORK_GET_RANDOM_INT()
+end
+
+-- Same as GET_RANDOM_INT_IN_RANGE
+function module.get_random_int_ranged(range_start: int, range_end: int): int
+    return NETWORK.NETWORK_GET_RANDOM_INT_RANGED(range_start, range_end)
+end
+
+function module.get_random_float_ranged(range_start: float, range_end: float): float
+    return NETWORK._NETWORK_GET_RANDOM_FLOAT_RANGED(range_start, range_end)
+end
+
+function module.get_this_script_is_script(): bool
+    return NETWORK.NETWORK_GET_THIS_SCRIPT_IS_NETWORK_SCRIPT()
+end
+
+function module.get_max_num_participants(): int
+    return NETWORK.NETWORK_GET_MAX_NUM_PARTICIPANTS()
+end
+
+function module.get_num_participants(): int
+    return NETWORK.NETWORK_GET_NUM_PARTICIPANTS()
+end
+
+function module.get_script_status(): int
+    return NETWORK.NETWORK_GET_SCRIPT_STATUS()
+end
+
+function module.get_player_index(player_id: int): int
+    return NETWORK.NETWORK_GET_PLAYER_INDEX(player_id)
+end
+
+function module.get_participant_index(index: int): int
+    return NETWORK.NETWORK_GET_PARTICIPANT_INDEX(index)
+end
+
+-- Returns the amount of players connected in the current session. Only works when connected to a session/server
+function module.get_num_connected_players(): int
+    return NETWORK.NETWORK_GET_NUM_CONNECTED_PLAYERS()
+end
+
+function module.get_total_num_players(): int
+    return NETWORK.NETWORK_GET_TOTAL_NUM_PLAYERS()
+end
+
+function module.get_num_script_participants(script_name: string, instance_id: int, position_hash: int): int
+    return NETWORK.NETWORK_GET_NUM_SCRIPT_PARTICIPANTS(script_name, instance_id, position_hash)
+end
+
+function module.get_instance_id_this_script(): int
+    return NETWORK.NETWORK_GET_INSTANCE_ID_OF_THIS_SCRIPT()
+end
+
+function module.get_position_hash_this_script(): int
+    return NETWORK.NETWORK_GET_POSITION_HASH_OF_THIS_SCRIPT()
+end
+
+-- @param weapon_hash Pointer: pass memory.alloc(size) and read the result back
+function module.get_killer_of_player(player_id: int, weapon_hash: int): int
+    return NETWORK.NETWORK_GET_KILLER_OF_PLAYER(player_id, weapon_hash)
+end
+
+-- @param weapon_hash Pointer: pass memory.alloc(size) and read the result back
+function module.get_destroyer_of_entity(entity: int, weapon_hash: int): int
+    return NETWORK.NETWORK_GET_DESTROYER_OF_ENTITY(entity, weapon_hash)
+end
+
+-- NETWORK_GET_ASSISTED_DAMAGE_OF_ENTITY that ensures the entity is dead (IS_ENTITY_DEAD)
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.get_assisted_kill_of_entity(player_id: int, entity: int, p2: int): bool
+    return NETWORK.NETWORK_GET_ASSISTED_KILL_OF_ENTITY(player_id, entity, p2)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.get_assisted_damage_of_entity(player_id: int, entity: int, p2: int): bool
+    return NETWORK.NETWORK_GET_ASSISTED_DAMAGE_OF_ENTITY(player_id, entity, p2)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.get_local_handle(gamer_handle: int, gamer_handle_size: int): void
+    NETWORK.NETWORK_GET_LOCAL_HANDLE(gamer_handle, gamer_handle_size)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.get_gamertag_from_handle(gamer_handle: int): string
+    return NETWORK.NETWORK_GET_GAMERTAG_FROM_HANDLE(gamer_handle)
+end
+
+function module.get_displaynames_from_handles(p0: any, p1: any, p2: any): int
+    return NETWORK.NETWORK_GET_DISPLAYNAMES_FROM_HANDLES(p0, p1, p2)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.get_player_from_gamer_handle(gamer_handle: int): int
+    return NETWORK.NETWORK_GET_PLAYER_FROM_GAMER_HANDLE(gamer_handle)
+end
+
+function module.get_max_friends(): int
+    return NETWORK.NETWORK_GET_MAX_FRIENDS()
+end
+
+function module.get_friend_count(): int
+    return NETWORK.NETWORK_GET_FRIEND_COUNT()
+end
+
+function module.get_friend_name(friend_index: int): string
+    return NETWORK.NETWORK_GET_FRIEND_NAME(friend_index)
+end
+
+function module.get_friend_display_name(friend_index: int): string
+    return NETWORK.NETWORK_GET_FRIEND_DISPLAY_NAME(friend_index)
+end
+
+function module.get_player_owns_waypoint(player_id: int): bool
+    return NETWORK.NETWORK_GET_PLAYER_OWNS_WAYPOINT(player_id)
+end
+
+function module.get_communication_group_flags(communication_type: int): int
+    return NETWORK._NETWORK_GET_COMMUNICATION_GROUP_FLAGS(communication_type)
+end
+
+function module.get_talker_proximity(): float
+    return NETWORK.NETWORK_GET_TALKER_PROXIMITY()
+end
+
+function module.get_timeout_time(): int
+    return NETWORK.NETWORK_GET_TIMEOUT_TIME()
+end
+
+function module.get_num_reserved_mission_objects(p0: bool, p1: any): int
+    return NETWORK.GET_NUM_RESERVED_MISSION_OBJECTS(p0, p1)
+end
+
+function module.get_num_reserved_mission_peds(p0: bool, p1: any): int
+    return NETWORK.GET_NUM_RESERVED_MISSION_PEDS(p0, p1)
+end
+
+function module.get_num_reserved_mission_vehicles(p0: bool, p1: any): int
+    return NETWORK.GET_NUM_RESERVED_MISSION_VEHICLES(p0, p1)
+end
+
+function module.get_num_created_mission_objects(p0: bool): int
+    return NETWORK.GET_NUM_CREATED_MISSION_OBJECTS(p0)
+end
+
+function module.get_num_created_mission_peds(p0: bool): int
+    return NETWORK.GET_NUM_CREATED_MISSION_PEDS(p0)
+end
+
+function module.get_num_created_mission_vehicles(p0: bool): int
+    return NETWORK.GET_NUM_CREATED_MISSION_VEHICLES(p0)
+end
+
+-- @param out1 Pointer: pass memory.alloc(size) and read the result back
+-- @param out2 Pointer: pass memory.alloc(size) and read the result back
+-- @param out3 Pointer: pass memory.alloc(size) and read the result back
+function module.get_reserved_mission_entities_in_area(
+    x: float, y: float, z: float, p3: any, out1: int, out2: int, out3: int
+): void
+    -- body function:
+    NETWORK.GET_RESERVED_MISSION_ENTITIES_IN_AREA(x, y, z, p3, out1, out2, out3)
+end
+
+function module.get_max_num_objects(): int
+    return NETWORK.GET_MAX_NUM_NETWORK_OBJECTS()
+end
+
+function module.get_max_num_peds(): int
+    return NETWORK.GET_MAX_NUM_NETWORK_PEDS()
+end
+
+function module.get_max_num_vehicles(): int
+    return NETWORK.GET_MAX_NUM_NETWORK_VEHICLES()
+end
+
+function module.get_max_num_pickups(): int
+    return NETWORK.GET_MAX_NUM_NETWORK_PICKUPS()
+end
+
+function module.get_time(): int
+    return NETWORK.GET_NETWORK_TIME()
+end
+
+function module.get_time_accurate(): int
+    return NETWORK.GET_NETWORK_TIME_ACCURATE()
+end
+
+-- Adds the first argument to the second
+function module.get_time_offset(time_a: int, time_b: int): int
+    return NETWORK.GET_TIME_OFFSET(time_a, time_b)
+end
+
+-- Subtracts the second argument from the first
+function module.get_time_difference(time_a: int, time_b: int): int
+    return NETWORK.GET_TIME_DIFFERENCE(time_a, time_b)
+end
+
+function module.get_time_as_string(time: int): string
+    return NETWORK.GET_TIME_AS_STRING(time)
+end
+
+-- Same as GET_CLOUD_TIME_AS_INT but returns the value as a hex string (%I64X)
+function module.get_cloud_time_as_string(): string
+    return NETWORK.GET_CLOUD_TIME_AS_STRING()
+end
+
+function module.get_cloud_time_as_int(): int
+    return NETWORK.GET_CLOUD_TIME_AS_INT()
+end
+
+-- @param coordinates Pointer: pass memory.alloc(size) and read the result back
+-- @param heading Pointer: pass memory.alloc(size) and read the result back
+function module.get_respawn_result(random_int: int, coordinates: int, heading: int): void
+    NETWORK.NETWORK_GET_RESPAWN_RESULT(random_int, coordinates, heading)
+end
+
+function module.get_respawn_result_flags(p0: int): int
+    return NETWORK.NETWORK_GET_RESPAWN_RESULT_FLAGS(p0)
+end
+
+-- Actually returns the version (TUNABLE_VERSION)
+function module.get_tunable_cloud_crc(): int
+    return NETWORK.NETWORK_GET_TUNABLE_CLOUD_CRC()
+end
+
+-- Checks if the given tunable exists and returns its value. Otherwise returns defaultValue
+function module.get_tunables_registration_bool(tunable_name: int, default_value: bool): bool
+    return NETWORK._NETWORK_GET_TUNABLES_REGISTRATION_BOOL(tunable_name, default_value)
+end
+
+-- Checks if the given tunable exists and returns its value. Otherwise returns defaultValue
+function module.get_tunables_registration_int(tunable_name: int, default_value: int): int
+    return NETWORK._NETWORK_GET_TUNABLES_REGISTRATION_INT(tunable_name, default_value)
+end
+
+-- Checks if the given tunable exists and returns its value. Otherwise returns defaultValue
+function module.get_tunables_registration_float(tunable_name: int, default_value: float): float
+    return NETWORK._NETWORK_GET_TUNABLES_REGISTRATION_FLOAT(tunable_name, default_value)
+end
+
+-- Return the content modifier id (the tunables context if you want) of a specific content
+function module.get_content_modifier_list_id(content_hash: int): int
+    return NETWORK.NETWORK_GET_CONTENT_MODIFIER_LIST_ID(content_hash)
+end
+
+function module.get_bone_id_of_fatal_hit(): int
+    return NETWORK.NETWORK_GET_BONE_ID_OF_FATAL_HIT()
+end
+
+function module.get_number_body_tracker_hits(): int
+    return NETWORK.NETWORK_GET_NUMBER_BODY_TRACKER_HITS()
+end
+
+function module.get_num_commerce_items(): int
+    return NETWORK.GET_NUM_COMMERCE_ITEMS()
+end
+
+function module.get_commerce_item_id(index: int): string
+    return NETWORK.GET_COMMERCE_ITEM_ID(index)
+end
+
+function module.get_commerce_item_name(index: int): string
+    return NETWORK.GET_COMMERCE_ITEM_NAME(index)
+end
+
+function module.get_commerce_product_price(index: int): string
+    return NETWORK.GET_COMMERCE_PRODUCT_PRICE(index)
+end
+
+function module.get_commerce_item_num_cats(index: int): int
+    return NETWORK.GET_COMMERCE_ITEM_NUM_CATS(index)
+end
+
+function module.get_commerce_item_cat(index: int, index2: int): string
+    return NETWORK.GET_COMMERCE_ITEM_CAT(index, index2)
+end
+
+function module.get_commerce_item_texturename(index: int): string
+    return NETWORK.GET_COMMERCE_ITEM_TEXTURENAME(index)
+end
+
+-- Checks some commerce stuff
+function module.get_user_premium_access(): int
+    return NETWORK.GET_USER_PREMIUM_ACCESS()
+end
+
+-- Checks some commerce stuff
+function module.get_user_starter_access(): int
+    return NETWORK.GET_USER_STARTER_ACCESS()
+end
+
+function module.get_content_to_load_type(): int
+    return NETWORK.GET_CONTENT_TO_LOAD_TYPE()
+end
+
+function module.get_is_launch_from_live_area(): bool
+    return NETWORK.GET_IS_LAUNCH_FROM_LIVE_AREA()
+end
+
+function module.get_is_live_area_launch_with_content(): bool
+    return NETWORK.GET_IS_LIVE_AREA_LAUNCH_WITH_CONTENT()
+end
+
+function module.get_status_of_texture_download(p0: int): int
+    return NETWORK.GET_STATUS_OF_TEXTURE_DOWNLOAD(p0)
+end
+
+function module.get_average_latency(player_id: int): float
+    return NETWORK.NETWORK_GET_AVERAGE_LATENCY(player_id)
+end
+
+-- Same as NETWORK_GET_AVERAGE_LATENCY
+function module.get_average_ping(player_id: int): float
+    return NETWORK.NETWORK_GET_AVERAGE_PING(player_id)
+end
+
+function module.get_average_packet_loss(player_id: int): float
+    return NETWORK.NETWORK_GET_AVERAGE_PACKET_LOSS(player_id)
+end
+
+function module.get_num_unacked_reliables(player_id: int): int
+    return NETWORK.NETWORK_GET_NUM_UNACKED_RELIABLES(player_id)
+end
+
+function module.get_unreliable_resend_count(player_id: int): int
+    return NETWORK.NETWORK_GET_UNRELIABLE_RESEND_COUNT(player_id)
+end
+
+function module.get_highest_reliable_resend_count(player_id: int): int
+    return NETWORK.NETWORK_GET_HIGHEST_RELIABLE_RESEND_COUNT(player_id)
+end
+
+function module.get_last_entity_pos_received_over(entity: int): vector3
+    return NETWORK.NETWORK_GET_LAST_ENTITY_POS_RECEIVED_OVER_NETWORK(entity)
+end
+
+-- Returns the coordinates of another player
+function module.get_last_player_pos_received_over(player_id: int): vector3
+    return NETWORK.NETWORK_GET_LAST_PLAYER_POS_RECEIVED_OVER_NETWORK(player_id)
+end
+
+-- Used by NetBlender
+function module.get_last_vel_received_over(entity: int): vector3
+    return NETWORK.NETWORK_GET_LAST_VEL_RECEIVED_OVER_NETWORK(entity)
+end
+
+function module.get_predicted_velocity(entity: int, max_speed_to_predict: float): vector3
+    return NETWORK.NETWORK_GET_PREDICTED_VELOCITY(entity, max_speed_to_predict)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_signalling_info(p0: int): void
+    NETWORK.NETWORK_GET_SIGNALLING_INFO(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_net_statistics_info(p0: int): void
+    NETWORK.NETWORK_GET_NET_STATISTICS_INFO(p0)
+end
+
+function module.get_player_account_id(player_id: int): int
+    return NETWORK.NETWORK_GET_PLAYER_ACCOUNT_ID(player_id)
+end
+
+function module.get_game_restart_reason(): int
+    return NETWORK._NETWORK_GET_GAME_RESTART_REASON()
+end
+
+function module.get_game_restart_reason_message_label(): string
+    return NETWORK._NETWORK_GET_GAME_RESTART_REASON_MESSAGE_LABEL()
+end
+
+function module.get_battleye_error_message_label(error_code: int): string
+    return NETWORK._NETWORK_GET_BATTLEYE_ERROR_MESSAGE_LABEL(error_code)
+end
+
+-- Set
+
+function module.set_script_ready_for_events(toggle: bool): void
+    NETWORK.NETWORK_SET_SCRIPT_READY_FOR_EVENTS(toggle)
+end
+
+function module.set_activity_spectator(toggle: bool): void
+    NETWORK.NETWORK_SET_ACTIVITY_SPECTATOR(toggle)
+end
+
+function module.set_activity_player_max(p0: any): void
+    NETWORK.NETWORK_SET_ACTIVITY_PLAYER_MAX(p0)
+end
+
+function module.set_activity_spectator_max(max_spectators: int): void
+    NETWORK.NETWORK_SET_ACTIVITY_SPECTATOR_MAX(max_spectators)
+end
+
+function module.set_in_progress_finish_time(p0: any): void
+    NETWORK.NETWORK_SET_IN_PROGRESS_FINISH_TIME(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.set_current_data_manager_handle(p0: int): bool
+    return NETWORK.NETWORK_SET_CURRENT_DATA_MANAGER_HANDLE(p0)
+end
+
+function module.set_this_script_is_script(max_num_mission_participants: int, p1: bool, instance_id: int): void
+    NETWORK.NETWORK_SET_THIS_SCRIPT_IS_NETWORK_SCRIPT(max_num_mission_participants, p1, instance_id)
+end
+
+function module.set_mission_finished(): void
+    NETWORK.NETWORK_SET_MISSION_FINISHED()
+end
+
+function module.set_current_public_content_id(mission_id: string): void
+    NETWORK.NETWORK_SET_CURRENT_PUBLIC_CONTENT_ID(mission_id)
+end
+
+function module.set_current_spawn_location_option(mp_setting_spawn: int): void
+    NETWORK.NETWORK_SET_CURRENT_SPAWN_LOCATION_OPTION(mp_setting_spawn)
+end
+
+-- Used by MetricVEHICLE_DIST_DRIVEN
+function module.set_vehicle_driven_in_test_drive(toggle: bool): void
+    NETWORK.NETWORK_SET_VEHICLE_DRIVEN_IN_TEST_DRIVE(toggle)
+end
+
+-- Sets 'loc' variable used in MetricVEHICLE_DIST_DRIVEN
+function module.set_vehicle_driven_location(location: int): void
+    NETWORK.NETWORK_SET_VEHICLE_DRIVEN_LOCATION(location)
+end
+
+function module.set_local_player_invincible_time(time: int): void
+    NETWORK.NETWORK_SET_LOCAL_PLAYER_INVINCIBLE_TIME(time)
+end
+
+function module.set_local_player_sync_look(toggle: bool): void
+    NETWORK.NETWORK_SET_LOCAL_PLAYER_SYNC_LOOK_AT(toggle)
+end
+
+function module.set_player_is_passive(toggle: bool): void
+    NETWORK.NETWORK_SET_PLAYER_IS_PASSIVE(toggle)
+end
+
+function module.set_communication_group_flags(communication_type: int, communication_group_flag: int): void
+    NETWORK._NETWORK_SET_COMMUNICATION_GROUP_FLAGS(communication_type, communication_group_flag)
+end
+
+function module.set_look_at_talkers(p0: bool): void
+    NETWORK.NETWORK_SET_LOOK_AT_TALKERS(p0)
+end
+
+function module.set_talker_proximity(value: float): void
+    NETWORK.NETWORK_SET_TALKER_PROXIMITY(value)
+end
+
+function module.set_script_controlling_teams(p0: any): void
+    NETWORK.NETWORK_SET_SCRIPT_CONTROLLING_TEAMS(p0)
+end
+
+function module.set_same_team_as_local_player(p0: any, p1: any): bool
+    return NETWORK.NETWORK_SET_SAME_TEAM_AS_LOCAL_PLAYER(p0, p1)
+end
+
+function module.set_override_spectator_mode(toggle: bool): void
+    NETWORK.NETWORK_SET_OVERRIDE_SPECTATOR_MODE(toggle)
+end
+
+function module.set_proximity_affects_team(toggle: bool): void
+    NETWORK.NETWORK_SET_PROXIMITY_AFFECTS_TEAM(toggle)
+end
+
+function module.set_friendly_fire_option(toggle: bool): void
+    NETWORK.NETWORK_SET_FRIENDLY_FIRE_OPTION(toggle)
+end
+
+function module.set_rich_presence(p0: int, p1: int, p2: any, p3: any): void
+    NETWORK.NETWORK_SET_RICH_PRESENCE(p0, p1, p2, p3)
+end
+
+function module.set_rich_presence_string(p0: int, text_label: string): void
+    NETWORK.NETWORK_SET_RICH_PRESENCE_STRING(p0, text_label)
+end
+
+function module.set_entity_can_blend(entity: int, toggle: bool): void
+    NETWORK.NETWORK_SET_ENTITY_CAN_BLEND(entity, toggle)
+end
+
+function module.set_object_can_blend_when_fixed(object: int, toggle: bool): void
+    NETWORK.NETWORK_SET_OBJECT_CAN_BLEND_WHEN_FIXED(object, toggle)
+end
+
+function module.set_entity_only_exists_for_participants(entity: int, toggle: bool): void
+    NETWORK.NETWORK_SET_ENTITY_ONLY_EXISTS_FOR_PARTICIPANTS(entity, toggle)
+end
+
+function module.set_cutscene_entities(toggle: bool): void
+    NETWORK.SET_NETWORK_CUTSCENE_ENTITIES(toggle)
+end
+
+function module.set_remote_player_visible_in_cutscene(player_id: int, locally_visible: bool): void
+    NETWORK.SET_REMOTE_PLAYER_VISIBLE_IN_CUTSCENE(player_id, locally_visible)
+end
+
+function module.set_local_player_visible_in_cutscene(p0: bool, p1: bool): void
+    NETWORK.SET_LOCAL_PLAYER_VISIBLE_IN_CUTSCENE(p0, p1)
+end
+
+function module.set_local_player_invisible_locally(b_include_players_vehicle: bool): void
+    NETWORK.SET_LOCAL_PLAYER_INVISIBLE_LOCALLY(b_include_players_vehicle)
+end
+
+function module.set_local_player_visible_locally(b_include_players_vehicle: bool): void
+    NETWORK.SET_LOCAL_PLAYER_VISIBLE_LOCALLY(b_include_players_vehicle)
+end
+
+function module.set_player_invisible_locally(player_id: int, b_include_players_vehicle: bool): void
+    NETWORK.SET_PLAYER_INVISIBLE_LOCALLY(player_id, b_include_players_vehicle)
+end
+
+function module.set_player_visible_locally(player_id: int, b_include_players_vehicle: bool): void
+    NETWORK.SET_PLAYER_VISIBLE_LOCALLY(player_id, b_include_players_vehicle)
+end
+
+function module.set_entity_visible_in_cutscene(p0: any, p1: bool, p2: bool): void
+    NETWORK.SET_ENTITY_VISIBLE_IN_CUTSCENE(p0, p1, p2)
+end
+
+-- Makes the provided entity visible for yourself for the current frame
+function module.set_entity_locally_invisible(entity: int): void
+    NETWORK.SET_ENTITY_LOCALLY_INVISIBLE(entity)
+end
+
+function module.set_entity_locally_visible(entity: int): void
+    NETWORK.SET_ENTITY_LOCALLY_VISIBLE(entity)
+end
+
+function module.set_object_scope_distance(object: int, range: float): void
+    NETWORK.NETWORK_SET_OBJECT_SCOPE_DISTANCE(object, range)
+end
+
+-- A value between 1.0 and 5.0
+function module.set_task_cutscene_inscope_multipler(p0: any): void
+    NETWORK.NETWORK_SET_TASK_CUTSCENE_INSCOPE_MULTIPLER(p0)
+end
+
+function module.set_in_spectator_mode(toggle: bool, player_ped: int): void
+    NETWORK.NETWORK_SET_IN_SPECTATOR_MODE(toggle, player_ped)
+end
+
+function module.set_in_spectator_mode_extended(toggle: bool, player_ped: int, p2: bool): void
+    NETWORK.NETWORK_SET_IN_SPECTATOR_MODE_EXTENDED(toggle, player_ped, p2)
+end
+
+function module.set_in_free_cam_mode(toggle: bool): void
+    NETWORK.NETWORK_SET_IN_FREE_CAM_MODE(toggle)
+end
+
+function module.set_antagonistic_to_player(toggle: bool, player_id: int): void
+    NETWORK.NETWORK_SET_ANTAGONISTIC_TO_PLAYER(toggle, player_id)
+end
+
+function module.set_in_mp_cutscene(p0: bool, p1: bool): void
+    NETWORK.NETWORK_SET_IN_MP_CUTSCENE(p0, p1)
+end
+
+function module.set_vehicle_respot_timer(net_id: int, time: int, p2: any, p3: any): void
+    NETWORK.SET_NETWORK_VEHICLE_RESPOT_TIMER(net_id, time, p2, p3)
+end
+
+function module.set_vehicle_max_position_delta_multiplier(vehicle: int, multiplier: float): void
+    NETWORK.SET_NETWORK_VEHICLE_MAX_POSITION_DELTA_MULTIPLIER(vehicle, multiplier)
+end
+
+function module.set_enable_high_speed_edge_fall_detection(vehicle: int, toggle: bool): void
+    NETWORK.SET_NETWORK_ENABLE_HIGH_SPEED_EDGE_FALL_DETECTION(vehicle, toggle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+-- @param report_data Pointer: pass memory.alloc(size) and read the result back
+function module.set_freemode_report_data(gamer_handle: int, report_data: int): void
+    NETWORK._SET_FREEMODE_REPORT_DATA(gamer_handle, report_data)
+end
+
+function module.set_custom_arena_ball_params(net_id: int): void
+    NETWORK.NETWORK_SET_CUSTOM_ARENA_BALL_PARAMS(net_id)
+end
+
+-- @param tunable_context_data Pointer: pass memory.alloc(size) and read the result back
+function module.set_tunables_registration_contexts(tunable_context_data: int): void
+    NETWORK._NETWORK_SET_TUNABLES_REGISTRATION_CONTEXTS(tunable_context_data)
+end
+
+function module.set_attribute_damage_to_player(ped: int, player_id: int): bool
+    return NETWORK.NETWORK_SET_ATTRIBUTE_DAMAGE_TO_PLAYER(ped, player_id)
+end
+
+function module.set_no_longer_needed(entity: int, toggle: bool): void
+    NETWORK.NETWORK_SET_NO_LONGER_NEEDED(entity, toggle)
+end
+
+function module.set_property_id(id: int): void
+    NETWORK.NETWORK_SET_PROPERTY_ID(id)
+end
+
+function module.set_player_mental_state(p0: int): void
+    NETWORK.NETWORK_SET_PLAYER_MENTAL_STATE(p0)
+end
+
+function module.set_minimum_rank_for_mission(p0: bool): void
+    NETWORK.NETWORK_SET_MINIMUM_RANK_FOR_MISSION(p0)
+end
+
+-- Access to the store for shark cards etc
+function module.set_store_enabled(toggle: bool): void
+    NETWORK.SET_STORE_ENABLED(toggle)
+end
+
+function module.set_last_viewed_shop_item(p0: int, p1: int, p2: int): void
+    NETWORK.SET_LAST_VIEWED_SHOP_ITEM(p0, p1, p2)
+end
+
+-- Actions
+
+function module.should_show_promotion_alert_screen(): bool
+    return NETWORK.NETWORK_SHOULD_SHOW_PROMOTION_ALERT_SCREEN()
+end
+
+function module.show_account_upgrade_ui(): void
+    NETWORK.NETWORK_SHOW_ACCOUNT_UPGRADE_UI()
+end
+
+function module.need_to_start_new_game_but_blocked(): bool
+    return NETWORK.NETWORK_NEED_TO_START_NEW_GAME_BUT_BLOCKED()
+end
+
+function module.on_return_to_single_player(): void
+    NETWORK.NETWORK_ON_RETURN_TO_SINGLE_PLAYER()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.add_followers(p0: int, p1: int): void
+    NETWORK.NETWORK_ADD_FOLLOWERS(p0, p1)
+end
+
+function module.clear_followers(): void
+    NETWORK.NETWORK_CLEAR_FOLLOWERS()
+end
+
+function module.find_matched_gamers(
+    attribute: int, fallback_limit: float, lower_limit: float, upper_limit: float
+): bool
+    -- body function:
+    return NETWORK.NETWORK_FIND_MATCHED_GAMERS(attribute, fallback_limit, lower_limit, upper_limit)
+end
+
+function module.did_find_gamers_succeed(): bool
+    return NETWORK.NETWORK_DID_FIND_GAMERS_SUCCEED()
+end
+
+function module.clear_found_gamers(): void
+    NETWORK.NETWORK_CLEAR_FOUND_GAMERS()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.queue_gamer_for_status(p0: int): bool
+    return NETWORK.NETWORK_QUEUE_GAMER_FOR_STATUS(p0)
+end
+
+function module.did_get_gamer_status_succeed(): bool
+    return NETWORK.NETWORK_DID_GET_GAMER_STATUS_SUCCEED()
+end
+
+function module.clear_get_gamer_status(): void
+    NETWORK.NETWORK_CLEAR_GET_GAMER_STATUS()
+end
+
+-- Message is limited to 64 characters
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.send_text_message(message: string, gamer_handle: int): bool
+    return NETWORK.NETWORK_SEND_TEXT_MESSAGE(message, gamer_handle)
+end
+
+function module.clear_group_activity(): void
+    NETWORK.NETWORK_CLEAR_GROUP_ACTIVITY()
+end
+
+function module.retain_activity_group(): void
+    NETWORK.NETWORK_RETAIN_ACTIVITY_GROUP()
+end
+
+function module.mark_as_preferred_activity(p0: bool): void
+    NETWORK.NETWORK_MARK_AS_PREFERRED_ACTIVITY(p0)
+end
+
+function module.mark_as_waiting_async(p0: bool): void
+    NETWORK.NETWORK_MARK_AS_WAITING_ASYNC(p0)
+end
+
+function module.disable_realtime_multiplayer(): void
+    NETWORK.NETWORK_DISABLE_REALTIME_MULTIPLAYER()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.check_data_manager_succeeded_for_handle(p0: int, gamer_handle: int): bool
+    return NETWORK.NETWORK_CHECK_DATA_MANAGER_SUCCEEDED_FOR_HANDLE(p0, gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.check_data_manager_for_handle(p0: any, gamer_handle: int): bool
+    return NETWORK.NETWORK_CHECK_DATA_MANAGER_FOR_HANDLE(p0, gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.fillout_pm_player_list(gamer_handle: int, p1: any, p2: any): bool
+    return NETWORK.FILLOUT_PM_PLAYER_LIST(gamer_handle, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.fillout_pm_player_list_with_names(p0: int, p1: int, p2: any, p3: any): bool
+    return NETWORK.FILLOUT_PM_PLAYER_LIST_WITH_NAMES(p0, p1, p2, p3)
+end
+
+function module.refresh_player_list_stats(p0: int): bool
+    return NETWORK.REFRESH_PLAYER_LIST_STATS(p0)
+end
+
+function module.seed_random_number_generator(seed: int): void
+    NETWORK.NETWORK_SEED_RANDOM_NUMBER_GENERATOR(seed)
+end
+
+function module.player_is_cheater(): bool
+    return NETWORK.NETWORK_PLAYER_IS_CHEATER()
+end
+
+function module.player_get_cheater_reason(): int
+    return NETWORK.NETWORK_PLAYER_GET_CHEATER_REASON()
+end
+
+function module.player_is_badsport(): bool
+    return NETWORK.NETWORK_PLAYER_IS_BADSPORT()
+end
+
+function module.remote_cheater_player_detected(player_id: int, a: int, b: int): bool
+    return NETWORK.REMOTE_CHEATER_PLAYER_DETECTED(player_id, a, b)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.bad_sport_player_left_detected(gamer_handle: int, event: int, amount_received: int): bool
+    return NETWORK.BAD_SPORT_PLAYER_LEFT_DETECTED(gamer_handle, event, amount_received)
+end
+
+function module.add_invalid_object_model(model_hash: int, p1: any): void
+    NETWORK.NETWORK_ADD_INVALID_OBJECT_MODEL(model_hash, p1)
+end
+
+function module.remove_invalid_object_model(model_hash: int): void
+    NETWORK.NETWORK_REMOVE_INVALID_OBJECT_MODEL(model_hash)
+end
+
+function module.clear_invalid_object_models(): void
+    NETWORK.NETWORK_CLEAR_INVALID_OBJECT_MODELS()
+end
+
+function module.apply_ped_scar_data(ped: int, p1: int): void
+    NETWORK.NETWORK_APPLY_PED_SCAR_DATA(ped, p1)
+end
+
+function module.try_to_set_this_script_is_script(p0: any, p1: bool, p2: any): bool
+    return NETWORK.NETWORK_TRY_TO_SET_THIS_SCRIPT_IS_NETWORK_SCRIPT(p0, p1, p2)
+end
+
+-- @param vars Pointer: pass memory.alloc(size) and read the result back
+function module.register_player_broadcast_variables(vars: int, num_vars: int, debug_name: string): void
+    NETWORK.NETWORK_REGISTER_PLAYER_BROADCAST_VARIABLES(vars, num_vars, debug_name)
+end
+
+function module.register_high_frequency_player_broadcast_variables(p0: any, p1: any, p2: any): void
+    NETWORK.NETWORK_REGISTER_HIGH_FREQUENCY_PLAYER_BROADCAST_VARIABLES(p0, p1, p2)
+end
+
+function module.finish_broadcasting_data(): void
+    NETWORK.NETWORK_FINISH_BROADCASTING_DATA()
+end
+
+-- Return the local Participant ID
+function module.participant_id(): int
+    return NETWORK.PARTICIPANT_ID()
+end
+
+-- Return the local Participant ID
+function module.participant_id_to_int(): int
+    return NETWORK.PARTICIPANT_ID_TO_INT()
+end
+
+function module.resurrect_local_player(
+    x: float, y: float, z: float, heading: float, p4: bool, changetime: bool, p6: bool, p7: int,
+    p8: int
+): void
+    -- body function:
+    NETWORK.NETWORK_RESURRECT_LOCAL_PLAYER(x, y, z, heading, p4, changetime, p6, p7, p8)
+end
+
+function module.disable_invincible_flashing(player_id: int, toggle: bool): void
+    NETWORK.NETWORK_DISABLE_INVINCIBLE_FLASHING(player_id, toggle)
+end
+
+function module.patch_post_cutscene_hs4f_tun_ent(ped: int): void
+    NETWORK.NETWORK_PATCH_POST_CUTSCENE_HS4F_TUN_ENT(ped)
+end
+
+function module.unregister_networked_entity(entity: int): void
+    NETWORK.NETWORK_UNREGISTER_NETWORKED_ENTITY(entity)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.handle_from_user_id(user_id: string, gamer_handle: int, gamer_handle_size: int): void
+    NETWORK.NETWORK_HANDLE_FROM_USER_ID(user_id, gamer_handle, gamer_handle_size)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.handle_from_member_id(member_id: string, gamer_handle: int, gamer_handle_size: int): void
+    NETWORK.NETWORK_HANDLE_FROM_MEMBER_ID(member_id, gamer_handle, gamer_handle_size)
+end
+
+function module.hash_from_player_handle(player_id: int): int
+    return NETWORK.NETWORK_HASH_FROM_PLAYER_HANDLE(player_id)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.hash_from_gamer_handle(gamer_handle: int): int
+    return NETWORK.NETWORK_HASH_FROM_GAMER_HANDLE(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.handle_from_friend(friend_index: int, gamer_handle: int, gamer_handle_size: int): void
+    NETWORK.NETWORK_HANDLE_FROM_FRIEND(friend_index, gamer_handle, gamer_handle_size)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.gamertag_from_handle_start(gamer_handle: int): bool
+    return NETWORK.NETWORK_GAMERTAG_FROM_HANDLE_START(gamer_handle)
+end
+
+function module.gamertag_from_handle_pending(): bool
+    return NETWORK.NETWORK_GAMERTAG_FROM_HANDLE_PENDING()
+end
+
+function module.gamertag_from_handle_succeeded(): bool
+    return NETWORK.NETWORK_GAMERTAG_FROM_HANDLE_SUCCEEDED()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.displaynames_from_handles_start(p0: int, p1: any): int
+    return NETWORK.NETWORK_DISPLAYNAMES_FROM_HANDLES_START(p0, p1)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.member_id_from_gamer_handle(gamer_handle: int): string
+    return NETWORK.NETWORK_MEMBER_ID_FROM_GAMER_HANDLE(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.show_profile_ui(gamer_handle: int): void
+    NETWORK.NETWORK_SHOW_PROFILE_UI(gamer_handle)
+end
+
+function module.player_get_name(player_id: int): string
+    return NETWORK.NETWORK_PLAYER_GET_NAME(player_id)
+end
+
+-- Returns a string of the player's Rockstar Id
+-- @param user_id Pointer: pass memory.alloc(size) and read the result back
+function module.player_get_userid(player_id: int, user_id: int): string
+    return NETWORK.NETWORK_PLAYER_GET_USERID(player_id, user_id)
+end
+
+-- Checks if a specific value (BYTE) in CNetGamePlayer is nonzero
+function module.player_is_rockstar_dev(player_id: int): bool
+    return NETWORK.NETWORK_PLAYER_IS_ROCKSTAR_DEV(player_id)
+end
+
+function module.player_index_is_cheater(player_id: int): bool
+    return NETWORK.NETWORK_PLAYER_INDEX_IS_CHEATER(player_id)
+end
+
+function module.entity_get_object_id(entity: int): int
+    return NETWORK.NETWORK_ENTITY_GET_OBJECT_ID(entity)
+end
+
+-- Returns the name from given friend gamer handle
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.load_gamer_display_name(gamer_handle: int): string
+    return NETWORK._NETWORK_LOAD_GAMER_DISPLAY_NAME(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.add_friend(gamer_handle: int, message: string): bool
+    return NETWORK.NETWORK_ADD_FRIEND(gamer_handle, message)
+end
+
+function module.ignore_remote_waypoints(): void
+    NETWORK.NETWORK_IGNORE_REMOTE_WAYPOINTS()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.gamer_has_headset(gamer_handle: int): bool
+    return NETWORK.NETWORK_GAMER_HAS_HEADSET(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.permissions_has_gamer_record(gamer_handle: int): bool
+    return NETWORK.NETWORK_PERMISSIONS_HAS_GAMER_RECORD(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.am_i_blocked_by_gamer(gamer_handle: int): bool
+    return NETWORK.NETWORK_AM_I_BLOCKED_BY_GAMER(gamer_handle)
+end
+
+function module.player_has_headset(player_id: int): bool
+    return NETWORK.NETWORK_PLAYER_HAS_HEADSET(player_id)
+end
+
+function module.am_i_blocked_by_player(player_id: int): bool
+    return NETWORK.NETWORK_AM_I_BLOCKED_BY_PLAYER(player_id)
+end
+
+function module.override_team_restrictions(team: int, toggle: bool): void
+    NETWORK.NETWORK_OVERRIDE_TEAM_RESTRICTIONS(team, toggle)
+end
+
+-- This is used alongside the native,
+function module.override_send_restrictions(player_id: int, toggle: bool): void
+    NETWORK.NETWORK_OVERRIDE_SEND_RESTRICTIONS(player_id, toggle)
+end
+
+function module.override_send_restrictions_all(toggle: bool): void
+    NETWORK.NETWORK_OVERRIDE_SEND_RESTRICTIONS_ALL(toggle)
+end
+
+-- R* uses this to hear all player when spectating
+function module.override_receive_restrictions(player_id: int, toggle: bool): void
+    NETWORK.NETWORK_OVERRIDE_RECEIVE_RESTRICTIONS(player_id, toggle)
+end
+
+function module.override_receive_restrictions_all(toggle: bool): void
+    NETWORK.NETWORK_OVERRIDE_RECEIVE_RESTRICTIONS_ALL(toggle)
+end
+
+-- Starts a new singleplayer game (at the prologue)
+function module.shutdown_and_launch_single_player_game(): void
+    NETWORK.SHUTDOWN_AND_LAUNCH_SINGLE_PLAYER_GAME()
+end
+
+-- In singleplayer this will re-load your game
+function module.shutdown_and_load_most_recent_save(): bool
+    return NETWORK.SHUTDOWN_AND_LOAD_MOST_RECENT_SAVE()
+end
+
+function module.remove_all_sticky_bombs_from_entity(entity: int, ped: int): void
+    NETWORK.REMOVE_ALL_STICKY_BOMBS_FROM_ENTITY(entity, ped)
+end
+
+function module.keep_entity_collision_disabled_after_anim_scene(p0: any, p1: any): void
+    NETWORK.NETWORK_KEEP_ENTITY_COLLISION_DISABLED_AFTER_ANIM_SCENE(p0, p1)
+end
+
+function module.fade_out_local_player(p0: bool): void
+    NETWORK.FADE_OUT_LOCAL_PLAYER(p0)
+end
+
+function module.fade_out_entity(entity: int, normal: bool, slow: bool): void
+    NETWORK.NETWORK_FADE_OUT_ENTITY(entity, normal, slow)
+end
+
+function module.fade_in_entity(entity: int, state: bool, p2: any): void
+    NETWORK.NETWORK_FADE_IN_ENTITY(entity, state, p2)
+end
+
+function module.activate_damage_tracker_on_player(player_id: int, toggle: bool): void
+    NETWORK.ACTIVATE_DAMAGE_TRACKER_ON_PLAYER(player_id, toggle)
+end
+
+function module.reserve_mission_objects(amount: int): void
+    NETWORK.RESERVE_NETWORK_MISSION_OBJECTS(amount)
+end
+
+function module.reserve_mission_peds(amount: int): void
+    NETWORK.RESERVE_NETWORK_MISSION_PEDS(amount)
+end
+
+function module.reserve_mission_vehicles(amount: int): void
+    NETWORK.RESERVE_NETWORK_MISSION_VEHICLES(amount)
+end
+
+function module.reserve_local_mission_objects(amount: int): void
+    NETWORK.RESERVE_LOCAL_NETWORK_MISSION_OBJECTS(amount)
+end
+
+function module.reserve_local_mission_peds(amount: int): void
+    NETWORK.RESERVE_LOCAL_NETWORK_MISSION_PEDS(amount)
+end
+
+function module.reserve_local_mission_vehicles(amount: int): void
+    NETWORK.RESERVE_LOCAL_NETWORK_MISSION_VEHICLES(amount)
+end
+
+function module.allow_cloning_while_in_tutorial(p0: any, p1: any): void
+    NETWORK.NETWORK_ALLOW_CLONING_WHILE_IN_TUTORIAL(p0, p1)
+end
+
+-- Takes the specified time and writes it to the structure specified in the second argument
+-- @param time_structure Pointer: pass memory.alloc(size) and read the result back
+function module.convert_posix_time(posix_time: int, time_structure: int): void
+    NETWORK.CONVERT_POSIX_TIME(posix_time, time_structure)
+end
+
+function module.hide_projectile_in_cutscene(): void
+    NETWORK.NETWORK_HIDE_PROJECTILE_IN_CUTSCENE()
+end
+
+function module.use_player_colour_instead_of_team_colour(toggle: bool): void
+    NETWORK.USE_PLAYER_COLOUR_INSTEAD_OF_TEAM_COLOUR(toggle)
+end
+
+function module.create_synchronised_scene(
+    x: float, y: float, z: float, x_rot: float, y_rot: float, z_rot: float, rotation_order: int,
+    use_occlusion_portal: bool, looped: bool, p9: float, anim_time: float, p11: float
+): int
+    -- body function:
+    return NETWORK.NETWORK_CREATE_SYNCHRONISED_SCENE(x, y, z, x_rot, y_rot, z_rot, rotation_order, use_occlusion_portal, looped, p9, anim_time, p11)
+end
+
+function module.add_ped_to_synchronised_scene(
+    ped: int, net_scene: int, anim_dict: string, animn_name: string, speed: float,
+    speed_multiplier: float, duration: int, flag: int, playback_rate: float, p9: any
+): void
+    -- body function:
+    NETWORK.NETWORK_ADD_PED_TO_SYNCHRONISED_SCENE(ped, net_scene, anim_dict, animn_name, speed, speed_multiplier, duration, flag, playback_rate, p9)
+end
+
+function module.add_ped_to_synchronised_scene_with_ik(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any, p8: any, p9: any
+): void
+    -- body function:
+    NETWORK.NETWORK_ADD_PED_TO_SYNCHRONISED_SCENE_WITH_IK(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9)
+end
+
+function module.add_entity_to_synchronised_scene(
+    entity: int, net_scene: int, anim_dict: string, anim_name: string, speed: float,
+    speed_mulitiplier: float, flag: int
+): void
+    -- body function:
+    NETWORK.NETWORK_ADD_ENTITY_TO_SYNCHRONISED_SCENE(entity, net_scene, anim_dict, anim_name, speed, speed_mulitiplier, flag)
+end
+
+-- Similar structure as NETWORK_ADD_ENTITY_TO_SYNCHRONISED_SCENE but it includes this time a hash
+function module.add_map_entity_to_synchronised_scene(
+    net_scene: int, model_hash: int, x: float, y: float, z: float, p5: float, p6: string, p7: float,
+    p8: float, flags: int
+): void
+    -- body function:
+    NETWORK.NETWORK_ADD_MAP_ENTITY_TO_SYNCHRONISED_SCENE(net_scene, model_hash, x, y, z, p5, p6, p7, p8, flags)
+end
+
+function module.add_synchronised_scene_camera(net_scene: int, anim_dict: string, anim_name: string): void
+    NETWORK.NETWORK_ADD_SYNCHRONISED_SCENE_CAMERA(net_scene, anim_dict, anim_name)
+end
+
+function module.attach_synchronised_scene_to_entity(net_scene: int, entity: int, bone: int): void
+    NETWORK.NETWORK_ATTACH_SYNCHRONISED_SCENE_TO_ENTITY(net_scene, entity, bone)
+end
+
+function module.start_synchronised_scene(net_scene: int): void
+    NETWORK.NETWORK_START_SYNCHRONISED_SCENE(net_scene)
+end
+
+function module.stop_synchronised_scene(net_scene: int): void
+    NETWORK.NETWORK_STOP_SYNCHRONISED_SCENE(net_scene)
+end
+
+function module.force_local_use_of_synced_scene_camera(net_scene: int): void
+    NETWORK.NETWORK_FORCE_LOCAL_USE_OF_SYNCED_SCENE_CAMERA(net_scene)
+end
+
+function module.allow_remote_synced_scene_local_player_requests(p0: any): void
+    NETWORK.NETWORK_ALLOW_REMOTE_SYNCED_SCENE_LOCAL_PLAYER_REQUESTS(p0)
+end
+
+function module.find_largest_bunch_of_players(p0: int, p1: any): bool
+    return NETWORK.NETWORK_FIND_LARGEST_BUNCH_OF_PLAYERS(p0, p1)
+end
+
+-- One of the first things it does is get the players ped
+function module.start_respawn_search_for_player(
+    player_id: int, x: float, y: float, z: float, radius: float, p5: float, p6: float, p7: float,
+    flags: int
+): bool
+    -- body function:
+    return NETWORK.NETWORK_START_RESPAWN_SEARCH_FOR_PLAYER(player_id, x, y, z, radius, p5, p6, p7, flags)
+end
+
+function module.start_respawn_search_in_angled_area_for_player(
+    player_id: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float,
+    p8: float, p9: float, p10: float, flags: int
+): bool
+    -- body function:
+    return NETWORK.NETWORK_START_RESPAWN_SEARCH_IN_ANGLED_AREA_FOR_PLAYER(player_id, x1, y1, z1, x2, y2, z2, width, p8, p9, p10, flags)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.query_respawn_results(p0: int): int
+    return NETWORK.NETWORK_QUERY_RESPAWN_RESULTS(p0)
+end
+
+function module.cancel_respawn_search(): void
+    NETWORK.NETWORK_CANCEL_RESPAWN_SEARCH()
+end
+
+function module.conceal_player(player_id: int, toggle: bool, p2: bool): void
+    NETWORK.NETWORK_CONCEAL_PLAYER(player_id, toggle, p2)
+end
+
+function module.conceal_entity(entity: int, toggle: bool): void
+    NETWORK.NETWORK_CONCEAL_ENTITY(entity, toggle)
+end
+
+-- Works in Singleplayer too
+function module.override_clock_time(hours: int, minutes: int, seconds: int): void
+    NETWORK.NETWORK_OVERRIDE_CLOCK_TIME(hours, minutes, seconds)
+end
+
+function module.override_clock_rate(ms: int): void
+    NETWORK.NETWORK_OVERRIDE_CLOCK_RATE(ms)
+end
+
+function module.clear_clock_time_override(): void
+    NETWORK.NETWORK_CLEAR_CLOCK_TIME_OVERRIDE()
+end
+
+function module.add_entity_area(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float): int
+    return NETWORK.NETWORK_ADD_ENTITY_AREA(x1, y1, z1, x2, y2, z2)
+end
+
+-- To remove, see: NETWORK_REMOVE_ENTITY_AREA
+function module.add_entity_angled_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, width: float
+): int
+    -- body function:
+    return NETWORK.NETWORK_ADD_ENTITY_ANGLED_AREA(x1, y1, z1, x2, y2, z2, width)
+end
+
+function module.add_client_entity_area(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float): int
+    return NETWORK.NETWORK_ADD_CLIENT_ENTITY_AREA(x1, y1, z1, x2, y2, z2)
+end
+
+function module.add_client_entity_angled_area(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float, radius: float
+): int
+    -- body function:
+    return NETWORK.NETWORK_ADD_CLIENT_ENTITY_ANGLED_AREA(x1, y1, z1, x2, y2, z2, radius)
+end
+
+function module.remove_entity_area(area_handle: int): bool
+    return NETWORK.NETWORK_REMOVE_ENTITY_AREA(area_handle)
+end
+
+function module.entity_area_does_exist(area_handle: int): bool
+    return NETWORK.NETWORK_ENTITY_AREA_DOES_EXIST(area_handle)
+end
+
+function module.entity_area_have_all_replied(area_handle: int): bool
+    return NETWORK.NETWORK_ENTITY_AREA_HAVE_ALL_REPLIED(area_handle)
+end
+
+function module.entity_area_is_occupied(area_handle: int): bool
+    return NETWORK.NETWORK_ENTITY_AREA_IS_OCCUPIED(area_handle)
+end
+
+function module.use_high_precision_blending(net_id: int, toggle: bool): void
+    NETWORK.NETWORK_USE_HIGH_PRECISION_BLENDING(net_id, toggle)
+end
+
+function module.entity_use_high_precision_rotation(net_id: int, toggle: bool): void
+    NETWORK.NETWORK_ENTITY_USE_HIGH_PRECISION_ROTATION(net_id, toggle)
+end
+
+function module.request_cloud_background_scripts(): bool
+    return NETWORK.NETWORK_REQUEST_CLOUD_BACKGROUND_SCRIPTS()
+end
+
+function module.request_cloud_tunables(): void
+    NETWORK.NETWORK_REQUEST_CLOUD_TUNABLES()
+end
+
+-- Clears tunable contexts that were set up using _NETWORK_SET_TUNABLES_REGISTRATION_CONTEXTS
+function module.clear_tunables_registration_contexts(): void
+    NETWORK._NETWORK_CLEAR_TUNABLES_REGISTRATION_CONTEXTS()
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_int(tunable_context: string, tunable_name: string, value: int): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_INT(tunable_context, tunable_name, value)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_float(tunable_context: string, tunable_name: string, value: int): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_FLOAT(tunable_context, tunable_name, value)
+end
+
+function module.access_tunable_bool(tunable_context: string, tunable_name: string): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_BOOL(tunable_context, tunable_name)
+end
+
+function module.access_tunable_modification_detection_clear(): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_MODIFICATION_DETECTION_CLEAR()
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_int_hash(tunable_context: int, tunable_name: int, value: int): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_INT_HASH(tunable_context, tunable_name, value)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_int_modification_detection_registration_hash(
+    context_hash: int, name_hash: int, value: int
+): bool
+    -- body function:
+    return NETWORK.NETWORK_ACCESS_TUNABLE_INT_MODIFICATION_DETECTION_REGISTRATION_HASH(context_hash, name_hash, value)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_float_hash(tunable_context: int, tunable_name: int, value: int): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_FLOAT_HASH(tunable_context, tunable_name, value)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_float_modification_detection_registration_hash(
+    context_hash: int, name_hash: int, value: int
+): bool
+    -- body function:
+    return NETWORK.NETWORK_ACCESS_TUNABLE_FLOAT_MODIFICATION_DETECTION_REGISTRATION_HASH(context_hash, name_hash, value)
+end
+
+function module.access_tunable_bool_hash(tunable_context: int, tunable_name: int): bool
+    return NETWORK.NETWORK_ACCESS_TUNABLE_BOOL_HASH(tunable_context, tunable_name)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.access_tunable_bool_modification_detection_registration_hash(
+    context_hash: int, name_hash: int, value: int
+): bool
+    -- body function:
+    return NETWORK.NETWORK_ACCESS_TUNABLE_BOOL_MODIFICATION_DETECTION_REGISTRATION_HASH(context_hash, name_hash, value)
+end
+
+-- Returns defaultValue if the tunable doesn't exist
+function module.try_access_tunable_bool_hash(
+    tunable_context: int, tunable_name: int, default_value: bool
+): bool
+    -- body function:
+    return NETWORK.NETWORK_TRY_ACCESS_TUNABLE_BOOL_HASH(tunable_context, tunable_name, default_value)
+end
+
+function module.reset_body_tracker(): void
+    NETWORK.NETWORK_RESET_BODY_TRACKER()
+end
+
+-- Allows vehicle wheels to be destructible even when the vehicle entity is invincible
+function module.trigger_damage_event_for_zero_damage(entity: int, toggle: bool): void
+    NETWORK.NETWORK_TRIGGER_DAMAGE_EVENT_FOR_ZERO_DAMAGE(entity, toggle)
+end
+
+function module.trigger_damage_event_for_zero_ped_damage(entity: int, trigger: bool): void
+    NETWORK._NETWORK_TRIGGER_DAMAGE_EVENT_FOR_ZERO_PED_DAMAGE(entity, trigger)
+end
+
+function module.trigger_damage_event_for_zero_weapon_hash(entity: int, toggle: bool): void
+    NETWORK.NETWORK_TRIGGER_DAMAGE_EVENT_FOR_ZERO_WEAPON_HASH(entity, toggle)
+end
+
+function module.explode_heli(vehicle: int, is_audible: bool, is_invisible: bool, net_id: int): void
+    NETWORK.NETWORK_EXPLODE_HELI(vehicle, is_audible, is_invisible, net_id)
+end
+
+function module.use_logarithmic_blending_this_frame(entity: int): void
+    NETWORK.NETWORK_USE_LOGARITHMIC_BLENDING_THIS_FRAME(entity)
+end
+
+function module.override_coords_and_heading(entity: int, x: float, y: float, z: float, heading: float): void
+    NETWORK.NETWORK_OVERRIDE_COORDS_AND_HEADING(entity, x, y, z, heading)
+end
+
+function module.enable_extra_vehicle_orientation_blend_checks(net_id: int, toggle: bool): void
+    NETWORK.NETWORK_ENABLE_EXTRA_VEHICLE_ORIENTATION_BLEND_CHECKS(net_id, toggle)
+end
+
+function module.disable_proximity_migration(net_id: int): void
+    NETWORK.NETWORK_DISABLE_PROXIMITY_MIGRATION(net_id)
+end
+
+function module.clear_property_id(): void
+    NETWORK.NETWORK_CLEAR_PROPERTY_ID()
+end
+
+function module.cache_local_player_head_blend_data(): void
+    NETWORK.NETWORK_CACHE_LOCAL_PLAYER_HEAD_BLEND_DATA()
+end
+
+function module.apply_cached_player_head_blend_data(ped: int, player_id: int): bool
+    return NETWORK.NETWORK_APPLY_CACHED_PLAYER_HEAD_BLEND_DATA(ped, player_id)
+end
+
+function module.trigger_commerce_data_fetch(p0: any): void
+    NETWORK.TRIGGER_COMMERCE_DATA_FETCH(p0)
+end
+
+function module.open_commerce_store(p0: string, p1: string, p2: int): void
+    NETWORK.OPEN_COMMERCE_STORE(p0, p1, p2)
+end
+
+function module.request_commerce_item_image(index: int): bool
+    return NETWORK.REQUEST_COMMERCE_ITEM_IMAGE(index)
+end
+
+function module.release_all_commerce_item_images(): void
+    NETWORK.RELEASE_ALL_COMMERCE_ITEM_IMAGES()
+end
+
+function module.delay_mp_store_open(): void
+    NETWORK.DELAY_MP_STORE_OPEN()
+end
+
+function module.reset_store_game_tracking(): void
+    NETWORK.RESET_STORE_NETWORK_GAME_TRACKING()
+end
+
+function module.cloud_delete_member_file(p0: string): int
+    return NETWORK.CLOUD_DELETE_MEMBER_FILE(p0)
+end
+
+function module.cloud_has_request_completed(request_id: int): bool
+    return NETWORK.CLOUD_HAS_REQUEST_COMPLETED(request_id)
+end
+
+function module.cloud_did_request_succeed(request_id: int): bool
+    return NETWORK.CLOUD_DID_REQUEST_SUCCEED(request_id)
+end
+
+function module.cloud_check_availability(): void
+    NETWORK.CLOUD_CHECK_AVAILABILITY()
+end
+
+function module.cloud_is_checking_availability(): bool
+    return NETWORK.CLOUD_IS_CHECKING_AVAILABILITY()
+end
+
+function module.cloud_get_availability_check_result(): bool
+    return NETWORK.CLOUD_GET_AVAILABILITY_CHECK_RESULT()
+end
+
+function module.clear_service_event_arguments(): void
+    NETWORK.CLEAR_SERVICE_EVENT_ARGUMENTS()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_copy_content(p0: int, p1: int): bool
+    return NETWORK.UGC_COPY_CONTENT(p0, p1)
+end
+
+function module.ugc_is_creating(): bool
+    return NETWORK.UGC_IS_CREATING()
+end
+
+function module.ugc_has_create_finished(): bool
+    return NETWORK.UGC_HAS_CREATE_FINISHED()
+end
+
+function module.ugc_did_create_succeed(): bool
+    return NETWORK.UGC_DID_CREATE_SUCCEED()
+end
+
+function module.ugc_get_create_result(): int
+    return NETWORK.UGC_GET_CREATE_RESULT()
+end
+
+function module.ugc_get_create_content_id(): string
+    return NETWORK.UGC_GET_CREATE_CONTENT_ID()
+end
+
+function module.ugc_clear_create_result(): void
+    NETWORK.UGC_CLEAR_CREATE_RESULT()
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_query_my_content(p0: any, p1: any, p2: int, p3: any, p4: any, p5: any): bool
+    return NETWORK.UGC_QUERY_MY_CONTENT(p0, p1, p2, p3, p4, p5)
+end
+
+function module.ugc_query_by_category(p0: any, p1: any, p2: any, p3: string, p4: any, p5: bool): bool
+    return NETWORK.UGC_QUERY_BY_CATEGORY(p0, p1, p2, p3, p4, p5)
+end
+
+function module.ugc_query_by_content_id(
+    content_id: string, latest_version: bool, content_type_name: string
+): bool
+    -- body function:
+    return NETWORK.UGC_QUERY_BY_CONTENT_ID(content_id, latest_version, content_type_name)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_query_by_content_ids(
+    data: int, count: int, latest_version: bool, content_type_name: string
+): bool
+    -- body function:
+    return NETWORK.UGC_QUERY_BY_CONTENT_IDS(data, count, latest_version, content_type_name)
+end
+
+function module.ugc_query_most_recently_created_content(
+    offset: int, count: int, content_type_name: string, p3: int
+): bool
+    -- body function:
+    return NETWORK.UGC_QUERY_MOST_RECENTLY_CREATED_CONTENT(offset, count, content_type_name, p3)
+end
+
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_bookmarked_content(p0: any, p1: any, p2: string, p3: int): bool
+    return NETWORK.UGC_GET_BOOKMARKED_CONTENT(p0, p1, p2, p3)
+end
+
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_my_content(p0: any, p1: any, p2: string, p3: int): bool
+    return NETWORK.UGC_GET_MY_CONTENT(p0, p1, p2, p3)
+end
+
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_friend_content(p0: any, p1: any, p2: string, p3: int): bool
+    return NETWORK.UGC_GET_FRIEND_CONTENT(p0, p1, p2, p3)
+end
+
+-- @param p4 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_get_by_category(p0: any, p1: any, p2: any, p3: string, p4: int): bool
+    return NETWORK.UGC_GET_GET_BY_CATEGORY(p0, p1, p2, p3, p4)
+end
+
+function module.ugc_get_get_by_content_id(content_id: string, content_type_name: string): bool
+    return NETWORK.UGC_GET_GET_BY_CONTENT_ID(content_id, content_type_name)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_get_by_content_ids(data: int, data_count: int, content_type_name: string): bool
+    return NETWORK.UGC_GET_GET_BY_CONTENT_IDS(data, data_count, content_type_name)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_most_recently_created_content(p0: any, p1: any, p2: int, p3: int): bool
+    return NETWORK.UGC_GET_MOST_RECENTLY_CREATED_CONTENT(p0, p1, p2, p3)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_most_recently_played_content(p0: any, p1: any, p2: int, p3: int): bool
+    return NETWORK.UGC_GET_MOST_RECENTLY_PLAYED_CONTENT(p0, p1, p2, p3)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_top_rated_content(p0: any, p1: any, p2: int, p3: int): bool
+    return NETWORK.UGC_GET_TOP_RATED_CONTENT(p0, p1, p2, p3)
+end
+
+function module.ugc_cancel_query(): void
+    NETWORK.UGC_CANCEL_QUERY()
+end
+
+function module.ugc_is_getting(): bool
+    return NETWORK.UGC_IS_GETTING()
+end
+
+function module.ugc_has_get_finished(): bool
+    return NETWORK.UGC_HAS_GET_FINISHED()
+end
+
+function module.ugc_did_get_succeed(): bool
+    return NETWORK.UGC_DID_GET_SUCCEED()
+end
+
+function module.ugc_was_query_force_cancelled(): bool
+    return NETWORK.UGC_WAS_QUERY_FORCE_CANCELLED()
+end
+
+function module.ugc_get_query_result(): int
+    return NETWORK.UGC_GET_QUERY_RESULT()
+end
+
+function module.ugc_get_content_num(): int
+    return NETWORK.UGC_GET_CONTENT_NUM()
+end
+
+function module.ugc_get_content_total(): int
+    return NETWORK.UGC_GET_CONTENT_TOTAL()
+end
+
+function module.ugc_get_content_hash(): int
+    return NETWORK.UGC_GET_CONTENT_HASH()
+end
+
+function module.ugc_clear_query_results(): void
+    NETWORK.UGC_CLEAR_QUERY_RESULTS()
+end
+
+function module.ugc_get_content_user_id(p0: int): string
+    return NETWORK.UGC_GET_CONTENT_USER_ID(p0)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_content_creator_gamer_handle(p0: int, p1: int): bool
+    return NETWORK.UGC_GET_CONTENT_CREATOR_GAMER_HANDLE(p0, p1)
+end
+
+function module.ugc_get_content_created_by_local_player(p0: any): bool
+    return NETWORK.UGC_GET_CONTENT_CREATED_BY_LOCAL_PLAYER(p0)
+end
+
+function module.ugc_get_content_user_name(p0: any): string
+    return NETWORK.UGC_GET_CONTENT_USER_NAME(p0)
+end
+
+function module.ugc_get_content_category(p0: int): int
+    return NETWORK.UGC_GET_CONTENT_CATEGORY(p0)
+end
+
+-- Return the mission id of a job
+function module.ugc_get_content_id(p0: int): string
+    return NETWORK.UGC_GET_CONTENT_ID(p0)
+end
+
+-- Return the root content id of a job
+function module.ugc_get_root_content_id(p0: int): string
+    return NETWORK.UGC_GET_ROOT_CONTENT_ID(p0)
+end
+
+function module.ugc_get_content_name(p0: any): string
+    return NETWORK.UGC_GET_CONTENT_NAME(p0)
+end
+
+function module.ugc_get_content_description(index: int): string
+    return NETWORK.UGC_GET_CONTENT_DESCRIPTION(index)
+end
+
+function module.ugc_get_content_description_hash(p0: any): int
+    return NETWORK.UGC_GET_CONTENT_DESCRIPTION_HASH(p0)
+end
+
+function module.ugc_get_content_path(p0: int, p1: int): string
+    return NETWORK.UGC_GET_CONTENT_PATH(p0, p1)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_content_updated_date(p0: any, p1: int): void
+    NETWORK.UGC_GET_CONTENT_UPDATED_DATE(p0, p1)
+end
+
+function module.ugc_get_content_file_version(p0: any, p1: any): int
+    return NETWORK.UGC_GET_CONTENT_FILE_VERSION(p0, p1)
+end
+
+function module.ugc_get_content_has_lo_res_photo(p0: int): bool
+    return NETWORK.UGC_GET_CONTENT_HAS_LO_RES_PHOTO(p0)
+end
+
+function module.ugc_get_content_has_hi_res_photo(p0: int): bool
+    return NETWORK.UGC_GET_CONTENT_HAS_HI_RES_PHOTO(p0)
+end
+
+function module.ugc_get_content_language(p0: any): int
+    return NETWORK.UGC_GET_CONTENT_LANGUAGE(p0)
+end
+
+function module.ugc_get_content_is_published(p0: any): bool
+    return NETWORK.UGC_GET_CONTENT_IS_PUBLISHED(p0)
+end
+
+function module.ugc_get_content_is_verified(p0: any): bool
+    return NETWORK.UGC_GET_CONTENT_IS_VERIFIED(p0)
+end
+
+function module.ugc_get_content_rating(p0: any, p1: any): float
+    return NETWORK.UGC_GET_CONTENT_RATING(p0, p1)
+end
+
+function module.ugc_get_content_rating_count(p0: any, p1: any): int
+    return NETWORK.UGC_GET_CONTENT_RATING_COUNT(p0, p1)
+end
+
+function module.ugc_get_content_rating_positive_count(p0: any, p1: any): int
+    return NETWORK.UGC_GET_CONTENT_RATING_POSITIVE_COUNT(p0, p1)
+end
+
+function module.ugc_get_content_rating_negative_count(p0: any, p1: any): int
+    return NETWORK.UGC_GET_CONTENT_RATING_NEGATIVE_COUNT(p0, p1)
+end
+
+function module.ugc_get_content_has_player_record(p0: any): bool
+    return NETWORK.UGC_GET_CONTENT_HAS_PLAYER_RECORD(p0)
+end
+
+function module.ugc_get_content_has_player_bookmarked(p0: any): bool
+    return NETWORK.UGC_GET_CONTENT_HAS_PLAYER_BOOKMARKED(p0)
+end
+
+function module.ugc_request_content_data_from_index(p0: int, p1: int): int
+    return NETWORK.UGC_REQUEST_CONTENT_DATA_FROM_INDEX(p0, p1)
+end
+
+function module.ugc_request_content_data_from_params(
+    content_type_name: string, content_id: string, p2: int, p3: int, p4: int
+): int
+    -- body function:
+    return NETWORK.UGC_REQUEST_CONTENT_DATA_FROM_PARAMS(content_type_name, content_id, p2, p3, p4)
+end
+
+function module.ugc_request_cached_description(p0: int): int
+    return NETWORK.UGC_REQUEST_CACHED_DESCRIPTION(p0)
+end
+
+function module.ugc_is_description_request_in_progress(p0: any): bool
+    return NETWORK.UGC_IS_DESCRIPTION_REQUEST_IN_PROGRESS(p0)
+end
+
+function module.ugc_has_description_request_finished(p0: any): bool
+    return NETWORK.UGC_HAS_DESCRIPTION_REQUEST_FINISHED(p0)
+end
+
+function module.ugc_did_description_request_succeed(p0: any): bool
+    return NETWORK.UGC_DID_DESCRIPTION_REQUEST_SUCCEED(p0)
+end
+
+function module.ugc_get_cached_description(p0: any, p1: any): string
+    return NETWORK.UGC_GET_CACHED_DESCRIPTION(p0, p1)
+end
+
+function module.ugc_release_cached_description(p0: any): bool
+    return NETWORK.UGC_RELEASE_CACHED_DESCRIPTION(p0)
+end
+
+function module.ugc_release_all_cached_descriptions(): void
+    NETWORK.UGC_RELEASE_ALL_CACHED_DESCRIPTIONS()
+end
+
+function module.ugc_has_permission_to_write(): bool
+    return NETWORK.UGC_HAS_PERMISSION_TO_WRITE()
+end
+
+function module.ugc_publish(content_id: string, base_content_id: string, content_type_name: string): bool
+    return NETWORK.UGC_PUBLISH(content_id, base_content_id, content_type_name)
+end
+
+function module.ugc_set_bookmarked(content_id: string, bookmarked: bool, content_type_name: string): bool
+    return NETWORK.UGC_SET_BOOKMARKED(content_id, bookmarked, content_type_name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_set_deleted(p0: int, p1: bool, p2: string): bool
+    return NETWORK.UGC_SET_DELETED(p0, p1, p2)
+end
+
+function module.ugc_is_modifying(): bool
+    return NETWORK.UGC_IS_MODIFYING()
+end
+
+function module.ugc_has_modify_finished(): bool
+    return NETWORK.UGC_HAS_MODIFY_FINISHED()
+end
+
+function module.ugc_did_modify_succeed(): bool
+    return NETWORK.UGC_DID_MODIFY_SUCCEED()
+end
+
+function module.ugc_get_modify_result(): int
+    return NETWORK.UGC_GET_MODIFY_RESULT()
+end
+
+function module.ugc_clear_modify_result(): void
+    NETWORK.UGC_CLEAR_MODIFY_RESULT()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_creators_by_user_id(p0: int, p1: int): bool
+    return NETWORK.UGC_GET_CREATORS_BY_USER_ID(p0, p1)
+end
+
+function module.ugc_has_query_creators_finished(): bool
+    return NETWORK.UGC_HAS_QUERY_CREATORS_FINISHED()
+end
+
+function module.ugc_did_query_creators_succeed(): bool
+    return NETWORK.UGC_DID_QUERY_CREATORS_SUCCEED()
+end
+
+function module.ugc_get_creator_num(): int
+    return NETWORK.UGC_GET_CREATOR_NUM()
+end
+
+function module.ugc_load_offline_query(p0: any): bool
+    return NETWORK.UGC_LOAD_OFFLINE_QUERY(p0)
+end
+
+function module.ugc_clear_offline_query(): void
+    NETWORK.UGC_CLEAR_OFFLINE_QUERY()
+end
+
+function module.ugc_set_query_data_from_offline(p0: bool): void
+    NETWORK.UGC_SET_QUERY_DATA_FROM_OFFLINE(p0)
+end
+
+function module.ugc_set_using_offline_content(p0: bool): void
+    NETWORK.UGC_SET_USING_OFFLINE_CONTENT(p0)
+end
+
+function module.ugc_is_language_supported(p0: any): bool
+    return NETWORK.UGC_IS_LANGUAGE_SUPPORTED(p0)
+end
+
+function module.facebook_post_completed_heist(heist_name: string, cash_earned: int, xp_earned: int): bool
+    return NETWORK.FACEBOOK_POST_COMPLETED_HEIST(heist_name, cash_earned, xp_earned)
+end
+
+function module.facebook_post_create_character(): bool
+    return NETWORK.FACEBOOK_POST_CREATE_CHARACTER()
+end
+
+function module.facebook_post_completed_milestone(milestone_id: int): bool
+    return NETWORK.FACEBOOK_POST_COMPLETED_MILESTONE(milestone_id)
+end
+
+function module.facebook_has_post_completed(): bool
+    return NETWORK.FACEBOOK_HAS_POST_COMPLETED()
+end
+
+function module.facebook_did_post_succeed(): bool
+    return NETWORK.FACEBOOK_DID_POST_SUCCEED()
+end
+
+function module.facebook_can_post_to_facebook(): bool
+    return NETWORK.FACEBOOK_CAN_POST_TO_FACEBOOK()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.texture_download_request(gamer_handle: int, file_path: string, name: string, p3: bool): int
+    return NETWORK.TEXTURE_DOWNLOAD_REQUEST(gamer_handle, file_path, name, p3)
+end
+
+function module.title_texture_download_request(file_path: string, name: string, p2: bool): int
+    return NETWORK.TITLE_TEXTURE_DOWNLOAD_REQUEST(file_path, name, p2)
+end
+
+function module.ugc_texture_download_request(p0: string, p1: int, p2: int, p3: int, p4: string, p5: bool): int
+    return NETWORK.UGC_TEXTURE_DOWNLOAD_REQUEST(p0, p1, p2, p3, p4, p5)
+end
+
+function module.texture_download_release(p0: int): void
+    NETWORK.TEXTURE_DOWNLOAD_RELEASE(p0)
+end
+
+function module.texture_download_has_failed(p0: int): bool
+    return NETWORK.TEXTURE_DOWNLOAD_HAS_FAILED(p0)
+end
+
+function module.texture_download_get_name(p0: int): string
+    return NETWORK.TEXTURE_DOWNLOAD_GET_NAME(p0)
+end
+
+function module.should_show_strict_nat_warning(): bool
+    return NETWORK.NETWORK_SHOULD_SHOW_STRICT_NAT_WARNING()
+end
+
+-- Always returns -1. Seems to be XB1 specific
+-- @param net_handle Pointer: pass memory.alloc(size) and read the result back
+function module.start_user_content_permissions_check(net_handle: int): int
+    return NETWORK.NETWORK_START_USER_CONTENT_PERMISSIONS_CHECK(net_handle)
+end
+
+function module.skip_radio_reset_next_close(): void
+    NETWORK.NETWORK_SKIP_RADIO_RESET_NEXT_CLOSE()
+end
+
+function module.skip_radio_reset_next_open(): void
+    NETWORK.NETWORK_SKIP_RADIO_RESET_NEXT_OPEN()
+end
+
+function module.skip_radio_warning(): bool
+    return NETWORK.NETWORK_SKIP_RADIO_WARNING()
+end
+
+function module.force_local_player_scar_sync(): void
+    NETWORK.NETWORK_FORCE_LOCAL_PLAYER_SCAR_SYNC()
+end
+
+function module.allow_remote_attachment_modification(entity: int, toggle: bool): void
+    NETWORK.NETWORK_ALLOW_REMOTE_ATTACHMENT_MODIFICATION(entity, toggle)
+end
+
+function module.show_psn_ugc_restriction(): void
+    NETWORK.NETWORK_SHOW_PSN_UGC_RESTRICTION()
+end
+
+function module.quit_mp_to_desktop(): void
+    NETWORK.NETWORK_QUIT_MP_TO_DESKTOP()
+end
+
+function module.report_code_tamper(): void
+    NETWORK.NETWORK_REPORT_CODE_TAMPER()
+end
+
+function module.dump_net_if_config(): void
+    NETWORK.NETWORK_DUMP_NET_IF_CONFIG()
+end
+
+function module.ugc_nav(p0: any, p1: any): void
+    NETWORK.NETWORK_UGC_NAV(p0, p1)
+end
+
+function module.confirm_game_restart(): void
+    NETWORK._NETWORK_CONFIRM_GAME_RESTART()
+end
+
+return Atdar.loader.auto(module, "natives/network")

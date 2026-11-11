@@ -31,10 +31,14 @@ Settings > Debug > Modules, visible in debug mode (the "Debug Mode" checkbox is 
   and the others, and the base functions as a section. It's kept after "Reload".
 - **Base Functions** (a list; with categories disabled, a section): `on_start()` and `on_stop()` as buttons; `on_tick()`
   as a list for running the loop by hand (with init, loop only, for a while) and its status.
-- **Module functions:** for each function of the class, a list with a field for each parameter (if it has any), "Call",
-  "Call When Opened", "Call When Hovered", "Loop", "Loop With Interval" and "Stop". A call's result arrives as a
-  notification, loops draw theirs on screen, tables can be expanded.
-- **Arguments:** each parameter is a divider with its name and a field named by the type written in the code:
+- **Module functions:** for each function of the class, a list with "Arguments" (a field for each parameter, if it has
+  any), "Call", "Call When Opened", "Call When Hovered", "Show Call Time", "Show Result On Screen", "Loop", "Loop With
+  Interval" and "Stop". "Call" is a number picker: at 0 it calls now, with a number of milliseconds picked it is named
+  "Call After" and calls after that long. A call's result arrives as a notification, loops draw theirs on screen (the
+  two "Show" switches are per function; Debug > Call Function > Settings can turn them off for all), tables can be
+  expanded.
+- **Arguments:** the "Arguments" list holds, for each parameter, a divider with its name and a field named by the
+  type written in the code:
   `int` is "Number", `float` is "Float Number", `string` is "Text", `bool` is "Boolean", `vector3` is "3D Vector"
   (`1, 2, 3`), `table` is "Table", `function` is "Function" (the path of one), `userdata` is "Userdata". No type, or a
   type like `int|string`, is "Argument *". What goes in a field is written as in Lua: `5, true, "text"`,
@@ -119,7 +123,7 @@ Your own words and lists:
 -- For one module: the debug.categories option (see above)
 
 -- For all modules: in any file that loads before the menu is opened
-local modules_menu = Atdar.loader.load("ui/stand/modules/list")
+local modules_menu = Atdar.menu.modules
 modules_menu.add_category("getters", { "find", "fetch" })        -- more words for "Getters"
 modules_menu.add_category("checks", { "has", "can" })            -- and for "Checks"
 modules_menu.add_category("shop", { "buy", "sell" }, "Shop")     -- a new list at the end

@@ -1,0 +1,50 @@
+local module = {}
+
+function module.display_cash(toggle: bool): void
+    HUD.DISPLAY_CASH(toggle)
+end
+
+-- Set
+
+function module.set_multiplayer_wallet_cash(): void
+    HUD.SET_MULTIPLAYER_WALLET_CASH()
+end
+
+function module.set_multiplayer_bank_cash(): void
+    HUD.SET_MULTIPLAYER_BANK_CASH()
+end
+
+function module.set_multiplayer_cash(p0: int, p1: bool): void
+    HUD.SET_MULTIPLAYER_HUD_CASH(p0, p1)
+end
+
+-- Actions
+
+-- Related to displaying cash on the HUD
+function module.use_fake_mp_cash(toggle: bool): void
+    HUD.USE_FAKE_MP_CASH(toggle)
+end
+
+-- Displays cash change notifications on HUD
+function module.change_fake_mp_cash(cash: int, bank: int): void
+    HUD.CHANGE_FAKE_MP_CASH(cash, bank)
+end
+
+function module.allow_display_of_multiplayer_cash_text(allow: bool): void
+    HUD.ALLOW_DISPLAY_OF_MULTIPLAYER_CASH_TEXT(allow)
+end
+
+function module.remove_multiplayer_wallet_cash(): void
+    HUD.REMOVE_MULTIPLAYER_WALLET_CASH()
+end
+
+function module.remove_multiplayer_bank_cash(): void
+    HUD.REMOVE_MULTIPLAYER_BANK_CASH()
+end
+
+-- Removes multiplayer cash hud each frame
+function module.remove_multiplayer_cash(): void
+    HUD.REMOVE_MULTIPLAYER_HUD_CASH()
+end
+
+return module

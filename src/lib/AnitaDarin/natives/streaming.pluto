@@ -6,20 +6,221 @@ local log = new Logger("natives/streaming")
 -- is_loaded(...) checks, request(...) requests and waits, remove(...) frees (where the game allows it)
 local module = {}
 
+-- State
+
+function module.is_network_loading_scene(): bool
+    return STREAMING.IS_NETWORK_LOADING_SCENE()
+end
+
+function module.is_entity_focus(entity: int): bool
+    return STREAMING.IS_ENTITY_FOCUS(entity)
+end
+
+function module.is_streamvol_active(): bool
+    return STREAMING.IS_STREAMVOL_ACTIVE()
+end
+
+function module.is_new_load_scene_active(): bool
+    return STREAMING.IS_NEW_LOAD_SCENE_ACTIVE()
+end
+
+function module.is_new_load_scene_loaded(): bool
+    return STREAMING.IS_NEW_LOAD_SCENE_LOADED()
+end
+
+function module.is_safe_to_start_player_switch(): bool
+    return STREAMING.IS_SAFE_TO_START_PLAYER_SWITCH()
+end
+
+function module.is_player_switch_in_progress(): bool
+    return STREAMING.IS_PLAYER_SWITCH_IN_PROGRESS()
+end
+
+function module.is_switch_ready_for_descent(): bool
+    return STREAMING.IS_SWITCH_READY_FOR_DESCENT()
+end
+
+function module.is_switch_to_multi_firstpart_finished(): bool
+    return STREAMING.IS_SWITCH_TO_MULTI_FIRSTPART_FINISHED()
+end
+
+function module.is_switch_skipping_descent(): bool
+    return STREAMING.IS_SWITCH_SKIPPING_DESCENT()
+end
+
+function module.is_srl_loaded(): bool
+    return STREAMING.IS_SRL_LOADED()
+end
+
+-- Get
+
+function module.get_global_water_file(): int
+    return STREAMING.GET_GLOBAL_WATER_FILE()
+end
+
+function module.get_number_requests(): int
+    return STREAMING.GET_NUMBER_OF_STREAMING_REQUESTS()
+end
+
+function module.get_player_switch_type(): int
+    return STREAMING.GET_PLAYER_SWITCH_TYPE()
+end
+
+function module.get_ideal_player_switch_type(
+    x1: float, y1: float, z1: float, x2: float, y2: float, z2: float
+): int
+    -- body function:
+    return STREAMING.GET_IDEAL_PLAYER_SWITCH_TYPE(x1, y1, z1, x2, y2, z2)
+end
+
+function module.get_player_switch_state(): int
+    return STREAMING.GET_PLAYER_SWITCH_STATE()
+end
+
+function module.get_player_short_switch_state(): int
+    return STREAMING.GET_PLAYER_SHORT_SWITCH_STATE()
+end
+
+function module.get_player_switch_jump_cut_index(): int
+    return STREAMING.GET_PLAYER_SWITCH_JUMP_CUT_INDEX()
+end
+
+function module.get_player_switch_interp_out_duration(): int
+    return STREAMING.GET_PLAYER_SWITCH_INTERP_OUT_DURATION()
+end
+
+function module.get_player_switch_interp_out_current_time(): int
+    return STREAMING.GET_PLAYER_SWITCH_INTERP_OUT_CURRENT_TIME()
+end
+
+function module.get_lodscale(): float
+    return STREAMING.GET_LODSCALE()
+end
+
+function module.get_used_creator_budget(): float
+    return STREAMING.GET_USED_CREATOR_BUDGET()
+end
+
+-- Set
+
+function module.set_interior_active(interior_id: int, toggle: bool): void
+    STREAMING.SET_INTERIOR_ACTIVE(interior_id, toggle)
+end
+
+function module.set_streaming(toggle: bool): void
+    STREAMING.SET_STREAMING(toggle)
+end
+
+function module.set_game_pauses(toggle: bool): void
+    STREAMING.SET_GAME_PAUSES_FOR_STREAMING(toggle)
+end
+
+function module.set_vehicle_population_budget(p0: int): void
+    STREAMING.SET_VEHICLE_POPULATION_BUDGET(p0)
+end
+
+-- Control how many new (ambient?) peds will spawn in the game world
+function module.set_ped_population_budget(p0: int): void
+    STREAMING.SET_PED_POPULATION_BUDGET(p0)
+end
+
+-- Override the area where the camera will render the terrain
+function module.set_focus_pos_and_vel(
+    x: float, y: float, z: float, offset_x: float, offset_y: float, offset_z: float
+): void
+    -- body function:
+    STREAMING.SET_FOCUS_POS_AND_VEL(x, y, z, offset_x, offset_y, offset_z)
+end
+
+function module.set_focus_entity(entity: int): void
+    STREAMING.SET_FOCUS_ENTITY(entity)
+end
+
+function module.set_restore_focus_entity(p0: int): void
+    STREAMING.SET_RESTORE_FOCUS_ENTITY(p0)
+end
+
+function module.set_mapdatacullbox_enabled(name: string, toggle: bool): void
+    STREAMING.SET_MAPDATACULLBOX_ENABLED(name, toggle)
+end
+
+function module.set_all_mapdata_culled(p0: any): void
+    STREAMING.SET_ALL_MAPDATA_CULLED(p0)
+end
+
+function module.set_player_short_switch_style(p0: int): void
+    STREAMING.SET_PLAYER_SHORT_SWITCH_STYLE(p0)
+end
+
+function module.set_player_switch_outro(
+    camera_coord_x: float, camera_coord_y: float, camera_coord_z: float, cam_rotation_x: float,
+    cam_rotation_y: float, cam_rotation_z: float, cam_fov: float, cam_far_clip: float,
+    rotation_order: int
+): void
+    -- body function:
+    STREAMING.SET_PLAYER_SWITCH_OUTRO(camera_coord_x, camera_coord_y, camera_coord_z, cam_rotation_x, cam_rotation_y, cam_rotation_z, cam_fov, cam_far_clip, rotation_order)
+end
+
+-- All names can be found in playerswitchestablishingshots.meta
+function module.set_player_switch_establishing_shot(name: string): void
+    STREAMING.SET_PLAYER_SWITCH_ESTABLISHING_SHOT(name)
+end
+
+function module.set_scene_tracks_cam_pos_this_frame(): void
+    STREAMING.SET_SCENE_STREAMING_TRACKS_CAM_POS_THIS_FRAME()
+end
+
+function module.set_render_hd_only(toggle: bool): void
+    STREAMING.SET_RENDER_HD_ONLY(toggle)
+end
+
+function module.set_srl_time(p0: float): void
+    STREAMING.SET_SRL_TIME(p0)
+end
+
+function module.set_srl_post_cutscene_camera(p0: any, p1: any, p2: any, p3: any, p4: any, p5: any): void
+    STREAMING.SET_SRL_POST_CUTSCENE_CAMERA(p0, p1, p2, p3, p4, p5)
+end
+
+function module.set_srl_readahead_times(p0: any, p1: any, p2: any, p3: any): void
+    STREAMING.SET_SRL_READAHEAD_TIMES(p0, p1, p2, p3)
+end
+
+function module.set_srl_long_jump_mode(p0: bool): void
+    STREAMING.SET_SRL_LONG_JUMP_MODE(p0)
+end
+
+function module.set_srl_force_prestream(p0: any): void
+    STREAMING.SET_SRL_FORCE_PRESTREAM(p0)
+end
+
+function module.set_hd_area(x: float, y: float, z: float, radius: float): void
+    STREAMING.SET_HD_AREA(x, y, z, radius)
+end
+
+function module.set_island_enabled(name: string, toggle: bool): void
+    STREAMING.SET_ISLAND_ENABLED(name, toggle)
+end
+
 -- Actions
 
 -- Waits until is_loaded() or the timeout runs out; warns on timeout.
 -- Yields, so call it from a tick or thread, not the script's main body
 -- @return Whether the asset loaded
 function module.wait_loaded(what: string, is_loaded: function, timeout: int): bool
+
     local deadline = util.current_time_millis() + timeout
+    
     while not is_loaded() and util.current_time_millis() < deadline do
         util.yield()
     end
+
     if is_loaded() then
         return true
     end
+
     log:warn($"{what} didn't load in {timeout} ms")
+
     return false
 end
 
@@ -45,6 +246,166 @@ function module.request(opts: table): bool
         return false
     end
     return request(opts)
+end
+
+function module.load_all_objects_now(): void
+    STREAMING.LOAD_ALL_OBJECTS_NOW()
+end
+
+function module.load_scene(x: float, y: float, z: float): void
+    STREAMING.LOAD_SCENE(x, y, z)
+end
+
+function module.network_update_load_scene(): bool
+    return STREAMING.NETWORK_UPDATE_LOAD_SCENE()
+end
+
+function module.request_collision_at_coord(x: float, y: float, z: float): void
+    STREAMING.REQUEST_COLLISION_AT_COORD(x, y, z)
+end
+
+-- Alias of REQUEST_COLLISION_AT_COORD
+function module.request_additional_collision_at_coord(x: float, y: float, z: float): void
+    STREAMING.REQUEST_ADDITIONAL_COLLISION_AT_COORD(x, y, z)
+end
+
+function module.load_global_water_file(water_type: int): void
+    STREAMING.LOAD_GLOBAL_WATER_FILE(water_type)
+end
+
+function module.clear_focus(): void
+    STREAMING.CLEAR_FOCUS()
+end
+
+-- Always returns zero
+function module.streamvol_create_sphere(x: float, y: float, z: float, rad: float, p4: any, p5: any): int
+    return STREAMING.STREAMVOL_CREATE_SPHERE(x, y, z, rad, p4, p5)
+end
+
+-- Always returns zero
+function module.streamvol_create_frustum(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: float, p7: any, p8: any
+): int
+    -- body function:
+    return STREAMING.STREAMVOL_CREATE_FRUSTUM(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+end
+
+-- Always returns zero
+function module.streamvol_create_line(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: any
+): int
+    -- body function:
+    return STREAMING.STREAMVOL_CREATE_LINE(p0, p1, p2, p3, p4, p5, p6)
+end
+
+function module.streamvol_delete(unused: any): void
+    STREAMING.STREAMVOL_DELETE(unused)
+end
+
+function module.streamvol_has_loaded(unused: any): bool
+    return STREAMING.STREAMVOL_HAS_LOADED(unused)
+end
+
+function module.streamvol_is_valid(unused: any): bool
+    return STREAMING.STREAMVOL_IS_VALID(unused)
+end
+
+function module.new_load_scene_start(
+    pos_x: float, pos_y: float, pos_z: float, offset_x: float, offset_y: float, offset_z: float,
+    radius: float, p7: int
+): bool
+    -- body function:
+    return STREAMING.NEW_LOAD_SCENE_START(pos_x, pos_y, pos_z, offset_x, offset_y, offset_z, radius, p7)
+end
+
+function module.new_load_scene_start_sphere(x: float, y: float, z: float, radius: float, p4: any): bool
+    return STREAMING.NEW_LOAD_SCENE_START_SPHERE(x, y, z, radius, p4)
+end
+
+function module.new_load_scene_stop(): void
+    STREAMING.NEW_LOAD_SCENE_STOP()
+end
+
+function module.start_player_switch(from: int, to: int, flags: int, switch_type: int): void
+    STREAMING.START_PLAYER_SWITCH(from, to, flags, switch_type)
+end
+
+function module.stop_player_switch(): void
+    STREAMING.STOP_PLAYER_SWITCH()
+end
+
+function module.allow_player_switch_pan(): void
+    STREAMING.ALLOW_PLAYER_SWITCH_PAN()
+end
+
+function module.allow_player_switch_outro(): void
+    STREAMING.ALLOW_PLAYER_SWITCH_OUTRO()
+end
+
+function module.allow_player_switch_ascent(): void
+    STREAMING.ALLOW_PLAYER_SWITCH_ASCENT()
+end
+
+function module.allow_player_switch_descent(): void
+    STREAMING.ALLOW_PLAYER_SWITCH_DESCENT()
+end
+
+function module.enable_switch_pause_before_descent(): void
+    STREAMING.ENABLE_SWITCH_PAUSE_BEFORE_DESCENT()
+end
+
+function module.disable_switch_outro_fx(): void
+    STREAMING.DISABLE_SWITCH_OUTRO_FX()
+end
+
+function module.switch_to_multi_firstpart(ped: int, flags: int, switch_type: int): void
+    STREAMING.SWITCH_TO_MULTI_FIRSTPART(ped, flags, switch_type)
+end
+
+function module.switch_to_multi_secondpart(ped: int): void
+    STREAMING.SWITCH_TO_MULTI_SECONDPART(ped)
+end
+
+-- This allows you to override "extended distance scaling" setting. Needs to be called each frame
+function module.override_lodscale_this_frame(scaling: float): void
+    STREAMING.OVERRIDE_LODSCALE_THIS_FRAME(scaling)
+end
+
+function module.remap_lodscale_range_this_frame(p0: float, p1: float, p2: float, p3: float): void
+    STREAMING.REMAP_LODSCALE_RANGE_THIS_FRAME(p0, p1, p2, p3)
+end
+
+function module.suppress_hd_map_frame(): void
+    STREAMING.SUPPRESS_HD_MAP_STREAMING_THIS_FRAME()
+end
+
+function module.force_allow_time_based_fading_this_frame(): void
+    STREAMING.FORCE_ALLOW_TIME_BASED_FADING_THIS_FRAME()
+end
+
+function module.prefetch_srl(srl: string): void
+    STREAMING.PREFETCH_SRL(srl)
+end
+
+function module.begin_srl(): void
+    STREAMING.BEGIN_SRL()
+end
+
+-- Clear the current srl and stop rendering the area selected by PREFETCH_SRL and started with BEGIN_SRL
+function module.end_srl(): void
+    STREAMING.END_SRL()
+end
+
+function module.clear_hd_area(): void
+    STREAMING.CLEAR_HD_AREA()
+end
+
+function module.init_creator_budget(): void
+    STREAMING.INIT_CREATOR_BUDGET()
+end
+
+function module.shutdown_creator_budget(): void
+    STREAMING.SHUTDOWN_CREATOR_BUDGET()
 end
 
 return Atdar.loader.auto(module, "natives/streaming")

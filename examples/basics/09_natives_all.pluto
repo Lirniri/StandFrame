@@ -1,0 +1,47 @@
+-- EXAMPLE: every game native has a wrapper in Atdar.natives, grouped by what it's about.
+--
+-- A native NAMESPACE.SOME_NATIVE is the function some_native in the module of its topic, without the word that
+-- the module is named after: ENTITY.GET_ENTITY_HEALTH is natives.entity.get_health, PED.IS_PED_RAGDOLL is
+-- natives.entity.ped.is_ragdoll, CAM.GET_GAMEPLAY_CAM_FOV is natives.camera.gameplay.get_fov. Not sure where
+-- one is? Type its short name in Debug > Call Function: it is searched in the natives too.
+--
+-- The functions are typed (see the signature), and in a module they sit under State / Get / Set / Actions
+
+local natives = Atdar.natives
+
+local ped = natives.player.get_ped_id()
+
+-- ─── Where things are ────────────────────────────────────────────────────────
+
+-- The game's clock and the weather: world
+util.log($"it is {natives.world.time.get_hours()} o'clock")
+natives.world.weather.set_type_now("CLEAR")
+
+-- The camera the player sees through: camera.gameplay; scripted cameras: camera
+local look = natives.camera.gameplay.get_rot(2)
+util.log($"looking at pitch {look.x}, heading {look.z}")
+
+-- A control (a key or a button) by its group and id: input
+if natives.input.is_pressed(0, 22) then
+    util.log("jump is held")
+end
+
+-- Where the entity faces, as parts of its forward vector (there's no native for Z: it comes from the vector)
+util.log($"forward: {natives.entity.get_forward_z(ped)} up")
+
+-- Parts of a vehicle have a module of their own: mods, doors, wheels, plane, heli, boat, train
+local vehicle = natives.entity.ped.vehicle.get(ped)
+if vehicle ~= 0 then
+    natives.entity.vehicle.mods.set_colours(vehicle, 12, 12)
+end
+
+-- ─── Pointers ────────────────────────────────────────────────────────────────
+
+-- A native that gives its answer through a parameter takes a pointer there. The wrapper says which in a comment
+-- (@param out_position Pointer: ...): make room with memory.alloc, pass it, read it back
+local coords = natives.entity.get_coords(ped)
+local out_position = memory.alloc(24)
+if natives.world.path.get_closest_vehicle_node(coords.x, coords.y, coords.z, out_position, 1, 3.0, 0) then
+    local road = memory.read_vector3(out_position)
+    util.log($"the nearest road is at {road.x}, {road.y}, {road.z}")
+end

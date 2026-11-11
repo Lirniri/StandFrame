@@ -1,0 +1,74 @@
+-- Race checkpoints
+
+local module = {}
+
+-- Set
+
+function module.set_inside_cylinder_height_scale(checkpoint: int, scale: float): void
+    GRAPHICS.SET_CHECKPOINT_INSIDE_CYLINDER_HEIGHT_SCALE(checkpoint, scale)
+end
+
+function module.set_inside_cylinder_scale(checkpoint: int, scale: float): void
+    GRAPHICS.SET_CHECKPOINT_INSIDE_CYLINDER_SCALE(checkpoint, scale)
+end
+
+-- Sets the cylinder height of the checkpoint
+function module.set_cylinder_height(
+    checkpoint: int, near_height: float, far_height: float, radius: float
+): void
+    -- body function:
+    GRAPHICS.SET_CHECKPOINT_CYLINDER_HEIGHT(checkpoint, near_height, far_height, radius)
+end
+
+-- Sets the checkpoint color
+function module.set_rgba(checkpoint: int, red: int, green: int, blue: int, alpha: int): void
+    GRAPHICS.SET_CHECKPOINT_RGBA(checkpoint, red, green, blue, alpha)
+end
+
+-- Sets the checkpoint icon color
+function module.set_rgba2(checkpoint: int, red: int, green: int, blue: int, alpha: int): void
+    GRAPHICS.SET_CHECKPOINT_RGBA2(checkpoint, red, green, blue, alpha)
+end
+
+-- This does not move an existing checkpoint... so wtf
+function module.set_clipplane_with_pos_norm(
+    checkpoint: int, pos_x: float, pos_y: float, pos_z: float, unk_x: float, unk_y: float,
+    unk_z: float
+): void
+    -- body function:
+    GRAPHICS.SET_CHECKPOINT_CLIPPLANE_WITH_POS_NORM(checkpoint, pos_x, pos_y, pos_z, unk_x, unk_y, unk_z)
+end
+
+function module.set_force_old_arrow_pointing(checkpoint: int): void
+    GRAPHICS.SET_CHECKPOINT_FORCE_OLD_ARROW_POINTING(checkpoint)
+end
+
+-- Unknown. Called after creating a checkpoint (type: 51) in the creators
+function module.set_decal_rot_aligned_to_camera_rot(checkpoint: int): void
+    GRAPHICS.SET_CHECKPOINT_DECAL_ROT_ALIGNED_TO_CAMERA_ROT(checkpoint)
+end
+
+function module.set_force_direction(checkpoint: int): void
+    GRAPHICS.SET_CHECKPOINT_FORCE_DIRECTION(checkpoint)
+end
+
+function module.set_direction(checkpoint: int, pos_x: float, pos_y: float, pos_z: float): void
+    GRAPHICS.SET_CHECKPOINT_DIRECTION(checkpoint, pos_x, pos_y, pos_z)
+end
+
+-- Actions
+
+-- Creates a checkpoint. Returns the handle of the checkpoint
+function module.create(
+    type: int, pos_x1: float, pos_y1: float, pos_z1: float, pos_x2: float, pos_y2: float,
+    pos_z2: float, diameter: float, red: int, green: int, blue: int, alpha: int, reserved: int
+): int
+    -- body function:
+    return GRAPHICS.CREATE_CHECKPOINT(type, pos_x1, pos_y1, pos_z1, pos_x2, pos_y2, pos_z2, diameter, red, green, blue, alpha, reserved)
+end
+
+function module.delete(checkpoint: int): void
+    GRAPHICS.DELETE_CHECKPOINT(checkpoint)
+end
+
+return module

@@ -1,0 +1,1480 @@
+-- Player stats (STATS natives)
+
+local module = {}
+
+-- State
+
+function module.is_stats_tracking_enabled(): bool
+    return STATS.STAT_IS_STATS_TRACKING_ENABLED()
+end
+
+function module.is_recording(): bool
+    return STATS.STAT_IS_RECORDING_STAT()
+end
+
+-- Or non-flyable area
+function module.is_player_vehicle_above_ocean(): bool
+    return STATS.STAT_IS_PLAYER_VEHICLE_ABOVE_OCEAN()
+end
+
+-- Get
+
+function module.get_block_saves(): bool
+    return STATS.STAT_GET_BLOCK_SAVES()
+end
+
+function module.get_load_safe_to_progress_to_mp_from_sp(): bool
+    return STATS.STAT_GET_LOAD_SAFE_TO_PROGRESS_TO_MP_FROM_SP()
+end
+
+-- Returns stat hash based on dataType, statIndex/statId and characterSlot. Related to CStatsMpCharacterMappingData
+function module.get_hash_for_character(data_type: int, stat_index: int, char_slot: int): int
+    return STATS._GET_STAT_HASH_FOR_CHARACTER_STAT(data_type, stat_index, char_slot)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_int(stat_hash: int, out_value: int, p2: int): bool
+    return STATS.STAT_GET_INT(stat_hash, out_value, p2)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_float(stat_hash: int, out_value: int, p2: any): bool
+    return STATS.STAT_GET_FLOAT(stat_hash, out_value, p2)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_bool(stat_hash: int, out_value: int, p2: any): bool
+    return STATS.STAT_GET_BOOL(stat_hash, out_value, p2)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_date(stat_hash: int, out_value: int, num_fields: int, p3: any): bool
+    return STATS.STAT_GET_DATE(stat_hash, out_value, num_fields, p3)
+end
+
+function module.get_string(stat_hash: int, p1: int): string
+    return STATS.STAT_GET_STRING(stat_hash, p1)
+end
+
+-- @param out_x Pointer: pass memory.alloc(size) and read the result back
+-- @param out_y Pointer: pass memory.alloc(size) and read the result back
+-- @param out_z Pointer: pass memory.alloc(size) and read the result back
+function module.get_pos(stat_name: int, out_x: int, out_y: int, out_z: int, p4: any): bool
+    return STATS.STAT_GET_POS(stat_name, out_x, out_y, out_z, p4)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_masked_int(stat_hash: int, out_value: int, p2: int, p3: int, p4: any): bool
+    return STATS.STAT_GET_MASKED_INT(stat_hash, out_value, p2, p3, p4)
+end
+
+function module.get_user_id(stat_hash: int): string
+    return STATS.STAT_GET_USER_ID(stat_hash)
+end
+
+function module.get_license_plate(stat_name: int): string
+    return STATS.STAT_GET_LICENSE_PLATE(stat_name)
+end
+
+function module.get_number_of_days(stat_name: int): int
+    return STATS.STAT_GET_NUMBER_OF_DAYS(stat_name)
+end
+
+function module.get_number_of_hours(stat_name: int): int
+    return STATS.STAT_GET_NUMBER_OF_HOURS(stat_name)
+end
+
+function module.get_number_of_minutes(stat_name: int): int
+    return STATS.STAT_GET_NUMBER_OF_MINUTES(stat_name)
+end
+
+function module.get_number_of_seconds(stat_name: int): int
+    return STATS.STAT_GET_NUMBER_OF_SECONDS(stat_name)
+end
+
+function module.get_packed_int_key(index: int, sp_stat: bool, char_stat: bool, character: int): int
+    return STATS.GET_PACKED_INT_STAT_KEY(index, sp_stat, char_stat, character)
+end
+
+function module.get_packed_tu_int_key(index: int, sp_stat: bool, char_stat: bool, character: int): int
+    return STATS.GET_PACKED_TU_INT_STAT_KEY(index, sp_stat, char_stat, character)
+end
+
+function module.get_packed_ng_int_key(
+    index: int, sp_stat: bool, char_stat: bool, character: int, section: string
+): int
+    -- body function:
+    return STATS.GET_PACKED_NG_INT_STAT_KEY(index, sp_stat, char_stat, character, section)
+end
+
+function module.get_packed_bool_code(index: int, character_slot: int): bool
+    return STATS.GET_PACKED_STAT_BOOL_CODE(index, character_slot)
+end
+
+function module.get_packed_int_code(index: int, character_slot: int): int
+    return STATS.GET_PACKED_STAT_INT_CODE(index, character_slot)
+end
+
+function module.get_player_has_driven_all_vehicles(): bool
+    return STATS.GET_PLAYER_HAS_DRIVEN_ALL_VEHICLES()
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.get_save_migration_status(data: int): int
+    return STATS.STAT_GET_SAVE_MIGRATION_STATUS(data)
+end
+
+function module.get_cancel_save_migration_status(): int
+    return STATS.STAT_GET_CANCEL_SAVE_MIGRATION_STATUS()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_save_migration_consume_content_status(p0: int): int
+    return STATS.STAT_GET_SAVE_MIGRATION_CONSUME_CONTENT_STATUS(p0)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.get_recorded_value(value: int): bool
+    return STATS.STAT_GET_RECORDED_VALUE(value)
+end
+
+-- Perform the most near misses with other vehicles in a land vehicle without crashing
+function module.get_current_near_miss_nocrash_precise(): int
+    return STATS.STAT_GET_CURRENT_NEAR_MISS_NOCRASH_PRECISE()
+end
+
+-- Perform the longest wheelie on a motorcycle
+function module.get_current_rear_wheel_distance(): float
+    return STATS.STAT_GET_CURRENT_REAR_WHEEL_DISTANCE()
+end
+
+-- Perform the longest stoppie on a motorcycle
+function module.get_current_front_wheel_distance(): float
+    return STATS.STAT_GET_CURRENT_FRONT_WHEEL_DISTANCE()
+end
+
+-- Perform the longest jump in a land vehicle
+function module.get_current_jump_distance(): float
+    return STATS.STAT_GET_CURRENT_JUMP_DISTANCE()
+end
+
+-- Drive the furthest distance in a land vehicle without crashing
+function module.get_current_drive_nocrash_distance(): float
+    return STATS.STAT_GET_CURRENT_DRIVE_NOCRASH_DISTANCE()
+end
+
+-- Achieve the highest speed in a land vehicle
+function module.get_current_speed(): float
+    return STATS.STAT_GET_CURRENT_SPEED()
+end
+
+-- Reverse the longest distance without crashing
+function module.get_current_driving_reverse_distance(): float
+    return STATS.STAT_GET_CURRENT_DRIVING_REVERSE_DISTANCE()
+end
+
+-- Fall the longest distance with a parachute before opening it
+function module.get_current_skydiving_distance(): float
+    return STATS.STAT_GET_CURRENT_SKYDIVING_DISTANCE()
+end
+
+-- Fly low to the ground for the longest distance
+function module.get_challenge_flying_dist(): float
+    return STATS.STAT_GET_CHALLENGE_FLYING_DIST()
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_flying_altitude(out_value: int): bool
+    return STATS.STAT_GET_FLYING_ALTITUDE(out_value)
+end
+
+-- Travel the furthest distance when bailing from a vehicle
+function module.get_vehicle_bail_distance(): float
+    return STATS.STAT_GET_VEHICLE_BAIL_DISTANCE()
+end
+
+function module.get_boss_goon_uuid(character_slot: int, p1: any, p2: any): void
+    STATS.GET_BOSS_GOON_UUID(character_slot, p1, p2)
+end
+
+-- Set
+
+function module.set_open_savetype_in_job(p0: int): void
+    STATS.STAT_SET_OPEN_SAVETYPE_IN_JOB(p0)
+end
+
+function module.set_block_saves(toggle: bool): void
+    STATS.STAT_SET_BLOCK_SAVES(toggle)
+end
+
+function module.set_int(stat_name: int, value: int, save: bool): bool
+    return STATS.STAT_SET_INT(stat_name, value, save)
+end
+
+function module.set_float(stat_name: int, value: float, save: bool): bool
+    return STATS.STAT_SET_FLOAT(stat_name, value, save)
+end
+
+function module.set_bool(stat_name: int, value: bool, save: bool): bool
+    return STATS.STAT_SET_BOOL(stat_name, value, save)
+end
+
+function module.set_gxt_label(stat_name: int, value: string, save: bool): bool
+    return STATS.STAT_SET_GXT_LABEL(stat_name, value, save)
+end
+
+-- @param value Pointer: pass memory.alloc(size) and read the result back
+function module.set_date(stat_name: int, value: int, num_fields: int, save: bool): bool
+    return STATS.STAT_SET_DATE(stat_name, value, num_fields, save)
+end
+
+function module.set_string(stat_name: int, value: string, save: bool): bool
+    return STATS.STAT_SET_STRING(stat_name, value, save)
+end
+
+function module.set_pos(stat_name: int, x: float, y: float, z: float, save: bool): bool
+    return STATS.STAT_SET_POS(stat_name, x, y, z, save)
+end
+
+function module.set_masked_int(stat_name: int, p1: int, p2: int, p3: int, save: bool): bool
+    return STATS.STAT_SET_MASKED_INT(stat_name, p1, p2, p3, save)
+end
+
+function module.set_user_id(stat_name: int, value: string, save: bool): bool
+    return STATS.STAT_SET_USER_ID(stat_name, value, save)
+end
+
+function module.set_current_posix_time(stat_name: int, p1: bool): bool
+    return STATS.STAT_SET_CURRENT_POSIX_TIME(stat_name, p1)
+end
+
+function module.set_license_plate(stat_name: int, str: string): bool
+    return STATS.STAT_SET_LICENSE_PLATE(stat_name, str)
+end
+
+-- Does not take effect immediately, unfortunately
+function module.set_profile_setting_value(profile_setting: int, value: int): void
+    STATS.STAT_SET_PROFILE_SETTING_VALUE(profile_setting, value)
+end
+
+function module.set_packed_bool_code(index: int, value: bool, character_slot: int): void
+    STATS.SET_PACKED_STAT_BOOL_CODE(index, value, character_slot)
+end
+
+function module.set_packed_int_code(index: int, value: int, character_slot: int): void
+    STATS.SET_PACKED_STAT_INT_CODE(index, value, character_slot)
+end
+
+function module.set_has_posted_all_vehicles_driven(): void
+    STATS.SET_HAS_POSTED_ALL_VEHICLES_DRIVEN()
+end
+
+function module.set_profile_setting_prologue_complete(): void
+    STATS.SET_PROFILE_SETTING_PROLOGUE_COMPLETE()
+end
+
+-- Sets profile setting 939
+function module.set_profile_setting_sp_chop_mission_complete(): void
+    STATS.SET_PROFILE_SETTING_SP_CHOP_MISSION_COMPLETE()
+end
+
+-- Sets profile setting 933
+function module.set_profile_setting_creator_races_done(value: int): void
+    STATS.SET_PROFILE_SETTING_CREATOR_RACES_DONE(value)
+end
+
+-- Sets profile setting 934
+function module.set_profile_setting_creator_dm_done(value: int): void
+    STATS.SET_PROFILE_SETTING_CREATOR_DM_DONE(value)
+end
+
+-- Sets profile setting 935
+function module.set_profile_setting_creator_ctf_done(value: int): void
+    STATS.SET_PROFILE_SETTING_CREATOR_CTF_DONE(value)
+end
+
+function module.set_job_activity_id_started(p0: any, character_slot: int): void
+    STATS.SET_JOB_ACTIVITY_ID_STARTED(p0, character_slot)
+end
+
+function module.set_freemode_prologue_done(p0: any, character_slot: int): void
+    STATS.SET_FREEMODE_PROLOGUE_DONE(p0, character_slot)
+end
+
+-- Sets profile setting 940 and 941
+function module.set_freemode_strand_progression_status(profile_setting: int, setting_value: int): void
+    STATS.SET_FREEMODE_STRAND_PROGRESSION_STATUS(profile_setting, setting_value)
+end
+
+function module.set_cheat_is_active(): void
+    STATS.STAT_SET_CHEAT_IS_ACTIVE()
+end
+
+-- Sets profile setting 866
+function module.set_has_specialedition_content(value: int): void
+    STATS.SET_HAS_SPECIALEDITION_CONTENT(value)
+end
+
+-- Sets profile setting 501
+function module.set_save_migration_transaction_id_warning(transaction_id: int): void
+    STATS.SET_SAVE_MIGRATION_TRANSACTION_ID_WARNING(transaction_id)
+end
+
+-- Actions
+
+function module.clear_slot_for_reload(stat_slot: int): bool
+    return STATS.STAT_CLEAR_SLOT_FOR_RELOAD(stat_slot)
+end
+
+function module.load(stat_slot: int): bool
+    return STATS.STAT_LOAD(stat_slot)
+end
+
+function module.save(p0: int, p1: bool, p2: int, p3: bool): bool
+    return STATS.STAT_SAVE(p0, p1, p2, p3)
+end
+
+function module.load_pending(stat_slot: int): bool
+    return STATS.STAT_LOAD_PENDING(stat_slot)
+end
+
+function module.save_pending(): bool
+    return STATS.STAT_SAVE_PENDING()
+end
+
+function module.save_pending_or_requested(): bool
+    return STATS.STAT_SAVE_PENDING_OR_REQUESTED()
+end
+
+function module.delete_slot(p0: int): bool
+    return STATS.STAT_DELETE_SLOT(p0)
+end
+
+function module.slot_is_loaded(stat_slot: int): bool
+    return STATS.STAT_SLOT_IS_LOADED(stat_slot)
+end
+
+function module.cloud_slot_load_failed(p0: int): bool
+    return STATS.STAT_CLOUD_SLOT_LOAD_FAILED(p0)
+end
+
+function module.cloud_slot_load_failed_code(p0: any): int
+    return STATS.STAT_CLOUD_SLOT_LOAD_FAILED_CODE(p0)
+end
+
+function module.cloud_slot_save_failed(p0: any): bool
+    return STATS.STAT_CLOUD_SLOT_SAVE_FAILED(p0)
+end
+
+function module.clear_pending_saves(p0: any): void
+    STATS.STAT_CLEAR_PENDING_SAVES(p0)
+end
+
+function module.load_dirty_read_detected(): bool
+    return STATS.STAT_LOAD_DIRTY_READ_DETECTED()
+end
+
+function module.clear_dirty_read_detected(): void
+    STATS.STAT_CLEAR_DIRTY_READ_DETECTED()
+end
+
+function module.increment(stat_name: int, value: float): void
+    STATS.STAT_INCREMENT(stat_name, value)
+end
+
+function module.community_start_synch(): bool
+    return STATS.STAT_COMMUNITY_START_SYNCH()
+end
+
+function module.community_synch_is_pending(): bool
+    return STATS.STAT_COMMUNITY_SYNCH_IS_PENDING()
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.community_get_history(stat_name: int, p1: int, out_value: int): bool
+    return STATS.STAT_COMMUNITY_GET_HISTORY(stat_name, p1, out_value)
+end
+
+function module.reset_all_online_character_stats(p0: int): void
+    STATS.STAT_RESET_ALL_ONLINE_CHARACTER_STATS(p0)
+end
+
+function module.local_reset_all_online_character_stats(p0: int): void
+    STATS.STAT_LOCAL_RESET_ALL_ONLINE_CHARACTER_STATS(p0)
+end
+
+function module.stats_completed_character_creation(p0: any): void
+    STATS.STATS_COMPLETED_CHARACTER_CREATION(p0)
+end
+
+-- Needs more research. Possibly used to calculate the "mask" when calling "STAT_SET_MASKED_INT"?
+function module.packed_get_int_index(p0: int): int
+    return STATS.PACKED_STAT_GET_INT_STAT_INDEX(p0)
+end
+
+function module.playstats_background_script_action(action: string, value: int): void
+    STATS.PLAYSTATS_BACKGROUND_SCRIPT_ACTION(action, value)
+end
+
+function module.playstats_flow_low(
+    pos_x: float, pos_y: float, pos_z: float, action: string, p4: bool, p5: int
+): void
+    -- body function:
+    STATS._PLAYSTATS_FLOW_LOW(pos_x, pos_y, pos_z, action, p4, p5)
+end
+
+function module.playstats_flow_medium(
+    pos_x: float, pos_y: float, pos_z: float, action: string, p4: bool, p5: int
+): void
+    -- body function:
+    STATS._PLAYSTATS_FLOW_MEDIUM(pos_x, pos_y, pos_z, action, p4, p5)
+end
+
+function module.playstats_flow_high(
+    pos_x: float, pos_y: float, pos_z: float, action: string, p4: bool, p5: int
+): void
+    -- body function:
+    STATS._PLAYSTATS_FLOW_HIGH(pos_x, pos_y, pos_z, action, p4, p5)
+end
+
+function module.playstats_npc_invite(p0: string): void
+    STATS.PLAYSTATS_NPC_INVITE(p0)
+end
+
+function module.playstats_award_xp(amount: int, type: int, category: int): void
+    STATS.PLAYSTATS_AWARD_XP(amount, type, category)
+end
+
+function module.playstats_rank_up(rank: int): void
+    STATS.PLAYSTATS_RANK_UP(rank)
+end
+
+function module.playstats_started_session_in_offlinemode(): void
+    STATS.PLAYSTATS_STARTED_SESSION_IN_OFFLINEMODE()
+end
+
+function module.playstats_activity_done(p0: int, activity_id: int, p2: any): void
+    STATS.PLAYSTATS_ACTIVITY_DONE(p0, activity_id, p2)
+end
+
+function module.playstats_leave_job_chain(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_LEAVE_JOB_CHAIN(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_mission_started(p0: string, p1: any, p2: any, p3: bool): void
+    STATS.PLAYSTATS_MISSION_STARTED(p0, p1, p2, p3)
+end
+
+function module.playstats_mission_over(p0: string, p1: any, p2: any, p3: bool, p4: bool, p5: bool): void
+    STATS.PLAYSTATS_MISSION_OVER(p0, p1, p2, p3, p4, p5)
+end
+
+function module.playstats_mission_checkpoint(p0: string, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_MISSION_CHECKPOINT(p0, p1, p2, p3)
+end
+
+function module.playstats_random_mission_done(name: string, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_RANDOM_MISSION_DONE(name, p1, p2, p3)
+end
+
+function module.playstats_ros_bet(amount: int, act: int, player_id: int, cm: float): void
+    STATS.PLAYSTATS_ROS_BET(amount, act, player_id, cm)
+end
+
+function module.playstats_race_checkpoint(p0: int, p1: any, p2: int, p3: int, p4: any): void
+    STATS.PLAYSTATS_RACE_CHECKPOINT(p0, p1, p2, p3, p4)
+end
+
+-- @param player_account_id Pointer: pass memory.alloc(size) and read the result back
+-- @param posix_time Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_create_match_history_id_2(player_account_id: int, posix_time: int): bool
+    return STATS.PLAYSTATS_CREATE_MATCH_HISTORY_ID_2(player_account_id, posix_time)
+end
+
+function module.playstats_match_started(p0: any, p1: any, p2: any): void
+    STATS.PLAYSTATS_MATCH_STARTED(p0, p1, p2)
+end
+
+function module.playstats_shop_item(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_SHOP_ITEM(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_crate_drop_mission_done(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_CRATE_DROP_MISSION_DONE(p0, p1, p2, p3, p4, p5, p6, p7)
+end
+
+function module.playstats_crate_created(p0: float, p1: float, p2: float): void
+    STATS.PLAYSTATS_CRATE_CREATED(p0, p1, p2)
+end
+
+function module.playstats_hold_up_mission_done(p0: any, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_HOLD_UP_MISSION_DONE(p0, p1, p2, p3)
+end
+
+function module.playstats_import_export_mission_done(p0: any, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_IMPORT_EXPORT_MISSION_DONE(p0, p1, p2, p3)
+end
+
+function module.playstats_race_to_point_mission_done(p0: int, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_RACE_TO_POINT_MISSION_DONE(p0, p1, p2, p3)
+end
+
+function module.playstats_acquired_hidden_package(p0: any): void
+    STATS.PLAYSTATS_ACQUIRED_HIDDEN_PACKAGE(p0)
+end
+
+function module.playstats_website_visited(scaleform_hash: int, p1: int): void
+    STATS.PLAYSTATS_WEBSITE_VISITED(scaleform_hash, p1)
+end
+
+function module.playstats_friend_activity(p0: int, p1: bool): void
+    STATS.PLAYSTATS_FRIEND_ACTIVITY(p0, p1)
+end
+
+function module.playstats_oddjob_done(total_time_ms: int, p1: int, p2: bool): void
+    STATS.PLAYSTATS_ODDJOB_DONE(total_time_ms, p1, p2)
+end
+
+function module.playstats_prop_change(p0: int, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_PROP_CHANGE(p0, p1, p2, p3)
+end
+
+function module.playstats_cloth_change(p0: int, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_CLOTH_CHANGE(p0, p1, p2, p3, p4)
+end
+
+-- This is a typo made by R*. It's supposed to be called PLAYSTATS_WEAPON_MOD_CHANGE
+function module.playstats_weapon_mode_change(
+    weapon_hash: int, component_hash_to: int, component_hash_from: int
+): void
+    -- body function:
+    STATS.PLAYSTATS_WEAPON_MODE_CHANGE(weapon_hash, component_hash_to, component_hash_from)
+end
+
+function module.playstats_cheat_applied(cheat: string): void
+    STATS.PLAYSTATS_CHEAT_APPLIED(cheat)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_job_activity_end(p0: int, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_JOB_ACTIVITY_END(p0, p1, p2, p3)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_job_bend(p0: int, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_JOB_BEND(p0, p1, p2, p3)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_job_lts_end(p0: int, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_JOB_LTS_END(p0, p1, p2, p3)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_job_lts_round_end(p0: int, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_JOB_LTS_ROUND_END(p0, p1, p2, p3)
+end
+
+function module.playstats_quickfix_tool(element: int, item: string): void
+    STATS.PLAYSTATS_QUICKFIX_TOOL(element, item)
+end
+
+function module.playstats_idle_kick(ms_stood_idle: int): void
+    STATS.PLAYSTATS_IDLE_KICK(ms_stood_idle)
+end
+
+function module.playstats_set_join_type(join_type: int): void
+    STATS.PLAYSTATS_SET_JOIN_TYPE(join_type)
+end
+
+function module.playstats_heist_save_cheat(hash: int, p1: int): void
+    STATS.PLAYSTATS_HEIST_SAVE_CHEAT(hash, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_append_director_metric(p0: int): void
+    STATS.PLAYSTATS_APPEND_DIRECTOR_METRIC(p0)
+end
+
+function module.playstats_award_bad_sport(id: int): void
+    STATS.PLAYSTATS_AWARD_BAD_SPORT(id)
+end
+
+function module.playstats_pegasus_as_personal_aircraft(model_hash: int): void
+    STATS.PLAYSTATS_PEGASUS_AS_PERSONAL_AIRCRAFT(model_hash)
+end
+
+function module.playstats_shopmenu_nav(p0: any, p1: any, p2: any, p3: any): void
+    STATS._PLAYSTATS_SHOPMENU_NAV(p0, p1, p2, p3)
+end
+
+function module.playstats_fm_event_challenges(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_CHALLENGES(p0)
+end
+
+function module.playstats_fm_event_vehicletarget(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_VEHICLETARGET(p0)
+end
+
+function module.playstats_fm_event_urbanwarfare(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_URBANWARFARE(p0)
+end
+
+function module.playstats_fm_event_checkpointcollection(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_CHECKPOINTCOLLECTION(p0)
+end
+
+function module.playstats_fm_event_atob(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_ATOB(p0)
+end
+
+function module.playstats_fm_event_pennedin(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_PENNEDIN(p0)
+end
+
+function module.playstats_fm_event_passtheparcel(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_PASSTHEPARCEL(p0)
+end
+
+function module.playstats_fm_event_hotproperty(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_HOTPROPERTY(p0)
+end
+
+function module.playstats_fm_event_deaddrop(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_DEADDROP(p0)
+end
+
+function module.playstats_fm_event_kingofthecastle(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_KINGOFTHECASTLE(p0)
+end
+
+function module.playstats_fm_event_criminaldamage(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_CRIMINALDAMAGE(p0)
+end
+
+function module.playstats_fm_event_competitiveurbanwarfare(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_COMPETITIVEURBANWARFARE(p0)
+end
+
+function module.playstats_fm_event_huntbeast(p0: any): void
+    STATS.PLAYSTATS_FM_EVENT_HUNTBEAST(p0)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_pimenu_hide_options(data: int): void
+    STATS.PLAYSTATS_PIMENU_HIDE_OPTIONS(data)
+end
+
+-- Known text types: NAME_YACHT, NAME_ORG_OFFICE
+function module.playstats_named_user_content(
+    is_boss: bool, boss_type: int, boss_id1: int, boss_id2: int, text_type: int,
+    text_string: string, text_source: int
+): void
+    -- body function:
+    STATS._PLAYSTATS_NAMED_USER_CONTENT(is_boss, boss_type, boss_id1, boss_id2, text_type, text_string, text_source)
+end
+
+function module.leaderboards_get_number_of_columns(p0: int, p1: any): int
+    return STATS.LEADERBOARDS_GET_NUMBER_OF_COLUMNS(p0, p1)
+end
+
+function module.leaderboards_get_column_id(p0: int, p1: int, p2: int): int
+    return STATS.LEADERBOARDS_GET_COLUMN_ID(p0, p1, p2)
+end
+
+function module.leaderboards_get_column_type(p0: int, p1: any, p2: any): int
+    return STATS.LEADERBOARDS_GET_COLUMN_TYPE(p0, p1, p2)
+end
+
+function module.leaderboards_read_clear_all(): int
+    return STATS.LEADERBOARDS_READ_CLEAR_ALL()
+end
+
+function module.leaderboards_read_clear(p0: any, p1: any, p2: any): int
+    return STATS.LEADERBOARDS_READ_CLEAR(p0, p1, p2)
+end
+
+function module.leaderboards_read_pending(p0: any, p1: any, p2: any): bool
+    return STATS.LEADERBOARDS_READ_PENDING(p0, p1, p2)
+end
+
+function module.leaderboards_read_any_pending(): bool
+    return STATS.LEADERBOARDS_READ_ANY_PENDING()
+end
+
+function module.leaderboards_read_successful(p0: any, p1: any, p2: any): bool
+    return STATS.LEADERBOARDS_READ_SUCCESSFUL(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_friends_by_row(p0: int, p1: int, p2: any, p3: bool, p4: any, p5: any): bool
+    return STATS.LEADERBOARDS2_READ_FRIENDS_BY_ROW(p0, p1, p2, p3, p4, p5)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_by_handle(p0: int, p1: int): bool
+    return STATS.LEADERBOARDS2_READ_BY_HANDLE(p0, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_by_rank(p0: int, p1: any, p2: any): bool
+    return STATS.LEADERBOARDS2_READ_BY_RANK(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_by_radius(p0: int, p1: any, p2: int): bool
+    return STATS.LEADERBOARDS2_READ_BY_RADIUS(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_by_score_int(p0: int, p1: any, p2: any): bool
+    return STATS.LEADERBOARDS2_READ_BY_SCORE_INT(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_by_score_float(p0: int, p1: float, p2: any): bool
+    return STATS.LEADERBOARDS2_READ_BY_SCORE_FLOAT(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_rank_prediction(p0: int, p1: int, p2: int): bool
+    return STATS.LEADERBOARDS2_READ_RANK_PREDICTION(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_by_plaform(p0: int, gamer_handle_csv: string, platform_name: string): bool
+    return STATS.LEADERBOARDS2_READ_BY_PLAFORM(p0, gamer_handle_csv, platform_name)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_get_row_data_start(p0: int): bool
+    return STATS.LEADERBOARDS2_READ_GET_ROW_DATA_START(p0)
+end
+
+function module.leaderboards2_read_get_row_data_end(): void
+    STATS.LEADERBOARDS2_READ_GET_ROW_DATA_END()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_read_get_row_data_info(p0: any, p1: int): bool
+    return STATS.LEADERBOARDS2_READ_GET_ROW_DATA_INFO(p0, p1)
+end
+
+function module.leaderboards2_read_get_row_data_int(p0: any, p1: any): int
+    return STATS.LEADERBOARDS2_READ_GET_ROW_DATA_INT(p0, p1)
+end
+
+function module.leaderboards2_read_get_row_data_float(p0: any, p1: any): float
+    return STATS.LEADERBOARDS2_READ_GET_ROW_DATA_FLOAT(p0, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_write_data(p0: int): bool
+    return STATS.LEADERBOARDS2_WRITE_DATA(p0)
+end
+
+function module.leaderboards_write_add_column(p0: any, p1: any, p2: float): void
+    STATS.LEADERBOARDS_WRITE_ADD_COLUMN(p0, p1, p2)
+end
+
+function module.leaderboards_write_add_column_long(p0: any, p1: any, p2: any): void
+    STATS.LEADERBOARDS_WRITE_ADD_COLUMN_LONG(p0, p1, p2)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards_cache_data_row(p0: int): bool
+    return STATS.LEADERBOARDS_CACHE_DATA_ROW(p0)
+end
+
+function module.leaderboards_clear_cache_data(): void
+    STATS.LEADERBOARDS_CLEAR_CACHE_DATA()
+end
+
+function module.leaderboards_clear_cache_data_id(p0: any): void
+    STATS.LEADERBOARDS_CLEAR_CACHE_DATA_ID(p0)
+end
+
+function module.leaderboards_get_cache_exists(p0: any): bool
+    return STATS.LEADERBOARDS_GET_CACHE_EXISTS(p0)
+end
+
+function module.leaderboards_get_cache_time(p0: any): int
+    return STATS.LEADERBOARDS_GET_CACHE_TIME(p0)
+end
+
+function module.leaderboards_get_cache_number_of_rows(p0: any): int
+    return STATS.LEADERBOARDS_GET_CACHE_NUMBER_OF_ROWS(p0)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards_get_cache_data_row(p0: any, p1: any, p2: int): bool
+    return STATS.LEADERBOARDS_GET_CACHE_DATA_ROW(p0, p1, p2)
+end
+
+function module.presence_event_updatestat_int(stat_hash: int, value: int, p2: int): void
+    STATS.PRESENCE_EVENT_UPDATESTAT_INT(stat_hash, value, p2)
+end
+
+function module.presence_event_updatestat_float(stat_hash: int, value: float, p2: int): void
+    STATS.PRESENCE_EVENT_UPDATESTAT_FLOAT(stat_hash, value, p2)
+end
+
+function module.presence_event_updatestat_int_with_string(
+    stat_hash: int, value: int, p2: int, string: string
+): void
+    -- body function:
+    STATS.PRESENCE_EVENT_UPDATESTAT_INT_WITH_STRING(stat_hash, value, p2, string)
+end
+
+function module.network_increment_on_suicide(p0: any, p1: float): void
+    STATS.STAT_NETWORK_INCREMENT_ON_SUICIDE(p0, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.leaderboards2_write_data_for_event_type(p0: int, p1: int): bool
+    return STATS.LEADERBOARDS2_WRITE_DATA_FOR_EVENT_TYPE(p0, p1)
+end
+
+function module.force_cloud_mp_stats_download_and_overwrite_local_save(): void
+    STATS.FORCE_CLOUD_MP_STATS_DOWNLOAD_AND_OVERWRITE_LOCAL_SAVE()
+end
+
+function module.migrate_clear_for_restart(): void
+    STATS.STAT_MIGRATE_CLEAR_FOR_RESTART()
+end
+
+function module.migrate_savegame_start(platform_name: string): bool
+    return STATS.STAT_MIGRATE_SAVEGAME_START(platform_name)
+end
+
+function module.migrate_savegame_get_status(): int
+    return STATS.STAT_MIGRATE_SAVEGAME_GET_STATUS()
+end
+
+function module.migrate_check_already_done(): bool
+    return STATS.STAT_MIGRATE_CHECK_ALREADY_DONE()
+end
+
+function module.migrate_check_start(): bool
+    return STATS.STAT_MIGRATE_CHECK_START()
+end
+
+function module.migrate_check_get_is_platform_available(p0: int): int
+    return STATS.STAT_MIGRATE_CHECK_GET_IS_PLATFORM_AVAILABLE(p0)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.migrate_check_get_platform_status(p0: int, p1: int): int
+    return STATS.STAT_MIGRATE_CHECK_GET_PLATFORM_STATUS(p0, p1)
+end
+
+function module.save_migration_cancel_pending_operation(): bool
+    return STATS.STAT_SAVE_MIGRATION_CANCEL_PENDING_OPERATION()
+end
+
+function module.save_migration_consume_content(
+    content_id: int, src_platform: string, src_gamer_handle: string
+): bool
+    -- body function:
+    return STATS.STAT_SAVE_MIGRATION_CONSUME_CONTENT(content_id, src_platform, src_gamer_handle)
+end
+
+function module.enable_stats_tracking(): void
+    STATS.STAT_ENABLE_STATS_TRACKING()
+end
+
+-- Prevents updates to CStatsMgr (e.g., STAT_SET_* natives)
+function module.disable_stats_tracking(): void
+    STATS.STAT_DISABLE_STATS_TRACKING()
+end
+
+function module.start_record(stat_type: int, value_type: int): bool
+    return STATS.STAT_START_RECORD_STAT(stat_type, value_type)
+end
+
+function module.stop_record(): bool
+    return STATS.STAT_STOP_RECORD_STAT()
+end
+
+function module.rollback_save_migration(): bool
+    return STATS.STAT_ROLLBACK_SAVE_MIGRATION()
+end
+
+function module.playstats_bw_bossonbossdeathmatch(p0: any): void
+    STATS.PLAYSTATS_BW_BOSSONBOSSDEATHMATCH(p0)
+end
+
+function module.playstats_bw_yatchattack(p0: any): void
+    STATS.PLAYSTATS_BW_YATCHATTACK(p0)
+end
+
+function module.playstats_bw_hunt_the_boss(p0: any): void
+    STATS.PLAYSTATS_BW_HUNT_THE_BOSS(p0)
+end
+
+function module.playstats_bw_sightseer(p0: any): void
+    STATS.PLAYSTATS_BW_SIGHTSEER(p0)
+end
+
+function module.playstats_bw_assault(p0: any): void
+    STATS.PLAYSTATS_BW_ASSAULT(p0)
+end
+
+function module.playstats_bw_belly_the_beast(p0: any): void
+    STATS.PLAYSTATS_BW_BELLY_OF_THE_BEAST(p0)
+end
+
+function module.playstats_bw_head_hunter(p0: any): void
+    STATS.PLAYSTATS_BW_HEAD_HUNTER(p0)
+end
+
+function module.playstats_bw_fragile_goods(p0: any): void
+    STATS.PLAYSTATS_BW_FRAGILE_GOODS(p0)
+end
+
+function module.playstats_bw_air_freight(p0: any): void
+    STATS.PLAYSTATS_BW_AIR_FREIGHT(p0)
+end
+
+function module.playstats_bc_car_jacking(p0: any): void
+    STATS.PLAYSTATS_BC_CAR_JACKING(p0)
+end
+
+function module.playstats_bc_smash_and_grab(p0: any): void
+    STATS.PLAYSTATS_BC_SMASH_AND_GRAB(p0)
+end
+
+function module.playstats_bc_protection_racket(p0: any): void
+    STATS.PLAYSTATS_BC_PROTECTION_RACKET(p0)
+end
+
+function module.playstats_bc_most_wanted(p0: any): void
+    STATS.PLAYSTATS_BC_MOST_WANTED(p0)
+end
+
+function module.playstats_bc_finders_keepers(p0: any): void
+    STATS.PLAYSTATS_BC_FINDERS_KEEPERS(p0)
+end
+
+function module.playstats_bc_point_to_point(p0: any): void
+    STATS.PLAYSTATS_BC_POINT_TO_POINT(p0)
+end
+
+function module.playstats_bc_cashing(p0: any): void
+    STATS.PLAYSTATS_BC_CASHING(p0)
+end
+
+function module.playstats_bc_salvage(p0: any): void
+    STATS.PLAYSTATS_BC_SALVAGE(p0)
+end
+
+function module.playstats_spent_pi_custom_loadout(amount: int): void
+    STATS.PLAYSTATS_SPENT_PI_CUSTOM_LOADOUT(amount)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_buy_contraband_mission(data: int): void
+    STATS.PLAYSTATS_BUY_CONTRABAND_MISSION(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_sell_contraband_mission(data: int): void
+    STATS.PLAYSTATS_SELL_CONTRABAND_MISSION(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_defend_contraband_mission(data: int): void
+    STATS.PLAYSTATS_DEFEND_CONTRABAND_MISSION(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_recover_contraband_mission(data: int): void
+    STATS.PLAYSTATS_RECOVER_CONTRABAND_MISSION(data)
+end
+
+function module.playstats_hit_contraband_destroy_limit(p0: any): void
+    STATS.PLAYSTATS_HIT_CONTRABAND_DESTROY_LIMIT(p0)
+end
+
+function module.start_being_boss(p0: any, p1: any, p2: any): void
+    STATS.START_BEING_BOSS(p0, p1, p2)
+end
+
+function module.start_being_goon(p0: any, p1: any, p2: any): void
+    STATS.START_BEING_GOON(p0, p1, p2)
+end
+
+function module.end_being_boss(p0: any, p1: any, p2: any): void
+    STATS.END_BEING_BOSS(p0, p1, p2)
+end
+
+function module.end_being_goon(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.END_BEING_GOON(p0, p1, p2, p3, p4)
+end
+
+function module.hired_limo(p0: any, p1: any): void
+    STATS.HIRED_LIMO(p0, p1)
+end
+
+function module.order_boss_vehicle(p0: any, p1: any, vehicle_hash: int): void
+    STATS.ORDER_BOSS_VEHICLE(p0, p1, vehicle_hash)
+end
+
+function module.change_uniform(p0: any, p1: any, p2: any): void
+    STATS.CHANGE_UNIFORM(p0, p1, p2)
+end
+
+function module.change_goon_looking_for_work(p0: any): void
+    STATS.CHANGE_GOON_LOOKING_FOR_WORK(p0)
+end
+
+function module.send_metric_ghosting_to_player(p0: any): void
+    STATS.SEND_METRIC_GHOSTING_TO_PLAYER(p0)
+end
+
+function module.send_metric_vip_poach(p0: any, p1: any, p2: any): void
+    STATS.SEND_METRIC_VIP_POACH(p0, p1, p2)
+end
+
+function module.send_metric_punish_bodyguard(p0: any): void
+    STATS.SEND_METRIC_PUNISH_BODYGUARD(p0)
+end
+
+-- Allows CEventNetworkStuntPerformed to be triggered
+function module.playstats_start_tracking_stunts(): void
+    STATS.PLAYSTATS_START_TRACKING_STUNTS()
+end
+
+-- Disallows CEventNetworkStuntPerformed to be triggered
+function module.playstats_stop_tracking_stunts(): void
+    STATS.PLAYSTATS_STOP_TRACKING_STUNTS()
+end
+
+function module.playstats_mission_ended(p0: any): void
+    STATS.PLAYSTATS_MISSION_ENDED(p0)
+end
+
+function module.playstats_impexp_mission_ended(p0: any): void
+    STATS.PLAYSTATS_IMPEXP_MISSION_ENDED(p0)
+end
+
+function module.playstats_change_mc_role(
+    p0: any, p1: any, p2: any, p3: any, role: int, p5: int, p6: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_CHANGE_MC_ROLE(p0, p1, p2, p3, role, p5, p6)
+end
+
+function module.playstats_change_mc_outfit(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_CHANGE_MC_OUTFIT(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_switch_mc_emblem(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_SWITCH_MC_EMBLEM(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_mc_request_bike(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_MC_REQUEST_BIKE(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_mc_killed_rival_mc_member(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_MC_KILLED_RIVAL_MC_MEMBER(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_abandoned_mc(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_ABANDONED_MC(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_earned_mc_points(p0: any, p1: any, p2: any, p3: any, p4: any, p5: any): void
+    STATS.PLAYSTATS_EARNED_MC_POINTS(p0, p1, p2, p3, p4, p5)
+end
+
+function module.playstats_mc_formation_ends(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_MC_FORMATION_ENDS(p0, p1, p2, p3, p4, p5, p6)
+end
+
+function module.playstats_mc_clubhouse_activity(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_MC_CLUBHOUSE_ACTIVITY(p0, p1, p2, p3, p4, p5, p6, p7)
+end
+
+function module.playstats_rival_behavior(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any, p8: any, p9: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_RIVAL_BEHAVIOR(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9)
+end
+
+function module.playstats_copy_rank_into_new_slot(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_COPY_RANK_INTO_NEW_SLOT(p0, p1, p2, p3, p4, p5, p6)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_dupe_detected(data: int): void
+    STATS.PLAYSTATS_DUPE_DETECTED(data)
+end
+
+function module.playstats_ban_alert(p0: int): void
+    STATS.PLAYSTATS_BAN_ALERT(p0)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_gunrunning_mission_ended(data: int): void
+    STATS.PLAYSTATS_GUNRUNNING_MISSION_ENDED(data)
+end
+
+function module.playstats_gunrunning_rnd(p0: any): void
+    STATS.PLAYSTATS_GUNRUNNING_RND(p0)
+end
+
+function module.playstats_business_battle_ended(p0: any): void
+    STATS.PLAYSTATS_BUSINESS_BATTLE_ENDED(p0)
+end
+
+function module.playstats_warehouse_mission_ended(p0: any): void
+    STATS.PLAYSTATS_WAREHOUSE_MISSION_ENDED(p0)
+end
+
+function module.playstats_nightclub_mission_ended(p0: any): void
+    STATS.PLAYSTATS_NIGHTCLUB_MISSION_ENDED(p0)
+end
+
+function module.playstats_dj_usage(p0: any, p1: any): void
+    STATS.PLAYSTATS_DJ_USAGE(p0, p1)
+end
+
+function module.playstats_minigame_usage(p0: any, p1: any, p2: any): void
+    STATS.PLAYSTATS_MINIGAME_USAGE(p0, p1, p2)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_stone_hatchet_ended(data: int): void
+    STATS.PLAYSTATS_STONE_HATCHET_ENDED(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_smuggler_mission_ended(data: int): void
+    STATS.PLAYSTATS_SMUGGLER_MISSION_ENDED(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_fm_heist_prep_ended(data: int): void
+    STATS.PLAYSTATS_FM_HEIST_PREP_ENDED(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_instanced_heist_ended(data: int, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_INSTANCED_HEIST_ENDED(data, p1, p2, p3)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_dar_checkpoint(data: int): void
+    STATS.PLAYSTATS_DAR_CHECKPOINT(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_enter_session_pack(data: int): void
+    STATS.PLAYSTATS_ENTER_SESSION_PACK(data)
+end
+
+function module.playstats_drone_usage(p0: int, p1: int, p2: int): void
+    STATS.PLAYSTATS_DRONE_USAGE(p0, p1, p2)
+end
+
+function module.playstats_spin_wheel(p0: int, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_SPIN_WHEEL(p0, p1, p2, p3)
+end
+
+function module.playstats_arena_wars_spectator(p0: int, p1: int, p2: int, p3: int, p4: int): void
+    STATS.PLAYSTATS_ARENA_WARS_SPECTATOR(p0, p1, p2, p3, p4)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_arena_wars_ended(data: int): void
+    STATS.PLAYSTATS_ARENA_WARS_ENDED(data)
+end
+
+function module.playstats_switch_passive_mode(p0: bool, p1: int, p2: int, p3: int): void
+    STATS.PLAYSTATS_SWITCH_PASSIVE_MODE(p0, p1, p2, p3)
+end
+
+function module.playstats_collectible_picked_up(
+    p0: int, object_hash: int, p2: any, p3: any, money_amount: int, rp_amount: int,
+    chips_amount: int, p7: any, p8: int, p9: any, p10: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_COLLECTIBLE_PICKED_UP(p0, object_hash, p2, p3, money_amount, rp_amount, chips_amount, p7, p8, p9, p10)
+end
+
+function module.playstats_casino_story_mission_ended(p0: any, p1: any): void
+    STATS.PLAYSTATS_CASINO_STORY_MISSION_ENDED(p0, p1)
+end
+
+function module.playstats_casino_chip(p0: any): void
+    STATS.PLAYSTATS_CASINO_CHIP(p0)
+end
+
+function module.playstats_casino_roulette(p0: any): void
+    STATS.PLAYSTATS_CASINO_ROULETTE(p0)
+end
+
+function module.playstats_casino_blackjack(p0: any): void
+    STATS.PLAYSTATS_CASINO_BLACKJACK(p0)
+end
+
+function module.playstats_casino_three_card_poker(p0: any): void
+    STATS.PLAYSTATS_CASINO_THREE_CARD_POKER(p0)
+end
+
+function module.playstats_casino_slot_machine(p0: any): void
+    STATS.PLAYSTATS_CASINO_SLOT_MACHINE(p0)
+end
+
+function module.playstats_casino_inside_track(p0: any): void
+    STATS.PLAYSTATS_CASINO_INSIDE_TRACK(p0)
+end
+
+function module.playstats_casino_lucky_seven(p0: any): void
+    STATS.PLAYSTATS_CASINO_LUCKY_SEVEN(p0)
+end
+
+function module.playstats_casino_roulette_light(p0: any): void
+    STATS.PLAYSTATS_CASINO_ROULETTE_LIGHT(p0)
+end
+
+function module.playstats_casino_blackjack_light(p0: any): void
+    STATS.PLAYSTATS_CASINO_BLACKJACK_LIGHT(p0)
+end
+
+function module.playstats_casino_three_card_poker_light(p0: any): void
+    STATS.PLAYSTATS_CASINO_THREE_CARD_POKER_LIGHT(p0)
+end
+
+function module.playstats_casino_slot_machine_light(p0: any): void
+    STATS.PLAYSTATS_CASINO_SLOT_MACHINE_LIGHT(p0)
+end
+
+function module.playstats_casino_inside_track_light(p0: any): void
+    STATS.PLAYSTATS_CASINO_INSIDE_TRACK_LIGHT(p0)
+end
+
+function module.playstats_arcade_game(p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any): void
+    STATS.PLAYSTATS_ARCADE_GAME(p0, p1, p2, p3, p4, p5, p6)
+end
+
+function module.playstats_arcade_love_match(p0: any, p1: any): void
+    STATS.PLAYSTATS_ARCADE_LOVE_MATCH(p0, p1)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_freemode_casino_mission_ended(data: int): void
+    STATS.PLAYSTATS_FREEMODE_CASINO_MISSION_ENDED(data)
+end
+
+function module.playstats_heist3_drone(p0: any): void
+    STATS.PLAYSTATS_HEIST3_DRONE(p0)
+end
+
+function module.playstats_heist3_hack(p0: any, p1: any, p2: any, p3: any, p4: any, p5: any): void
+    STATS.PLAYSTATS_HEIST3_HACK(p0, p1, p2, p3, p4, p5)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_npc_phone(p0: int): void
+    STATS.PLAYSTATS_NPC_PHONE(p0)
+end
+
+function module.playstats_arcade_cabinet(p0: any): void
+    STATS.PLAYSTATS_ARCADE_CABINET(p0)
+end
+
+function module.playstats_heist3_finale(p0: any): void
+    STATS.PLAYSTATS_HEIST3_FINALE(p0)
+end
+
+function module.playstats_heist3_prep(p0: any): void
+    STATS.PLAYSTATS_HEIST3_PREP(p0)
+end
+
+function module.playstats_master_control(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_MASTER_CONTROL(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_quit_mode(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_QUIT_MODE(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_mission_vote(p0: any): void
+    STATS.PLAYSTATS_MISSION_VOTE(p0)
+end
+
+function module.playstats_njvs_vote(p0: any): void
+    STATS.PLAYSTATS_NJVS_VOTE(p0)
+end
+
+function module.playstats_fm_mission_end(p0: any, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_FM_MISSION_END(p0, p1, p2, p3)
+end
+
+function module.playstats_heist4_prep(p0: any): void
+    STATS.PLAYSTATS_HEIST4_PREP(p0)
+end
+
+function module.playstats_heist4_finale(p0: any): void
+    STATS.PLAYSTATS_HEIST4_FINALE(p0)
+end
+
+function module.playstats_heist4_hack(p0: any, p1: any, p2: any, p3: any, p4: any): void
+    STATS.PLAYSTATS_HEIST4_HACK(p0, p1, p2, p3, p4)
+end
+
+function module.playstats_sub_weap(p0: any, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_SUB_WEAP(p0, p1, p2, p3)
+end
+
+function module.playstats_fast_trvl(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any, p6: any, p7: any, p8: any, p9: any,
+    p10: any
+): void
+    -- body function:
+    STATS.PLAYSTATS_FAST_TRVL(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)
+end
+
+function module.playstats_hub_entry(p0: any): void
+    STATS.PLAYSTATS_HUB_ENTRY(p0)
+end
+
+function module.playstats_dj_mission_ended(p0: any): void
+    STATS.PLAYSTATS_DJ_MISSION_ENDED(p0)
+end
+
+function module.playstats_robbery_prep(p0: any): void
+    STATS.PLAYSTATS_ROBBERY_PREP(p0)
+end
+
+function module.playstats_robbery_finale(p0: any): void
+    STATS.PLAYSTATS_ROBBERY_FINALE(p0)
+end
+
+function module.playstats_extra_event(p0: any): void
+    STATS.PLAYSTATS_EXTRA_EVENT(p0)
+end
+
+function module.playstats_carclub_points(p0: any): void
+    STATS.PLAYSTATS_CARCLUB_POINTS(p0)
+end
+
+function module.playstats_carclub_challenge(p0: any, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_CARCLUB_CHALLENGE(p0, p1, p2, p3)
+end
+
+function module.playstats_carclub_prize(p0: int, vehicle_model: int): void
+    STATS.PLAYSTATS_CARCLUB_PRIZE(p0, vehicle_model)
+end
+
+function module.playstats_award_nav(p0: any, p1: any, p2: any, p3: any): void
+    STATS.PLAYSTATS_AWARD_NAV(p0, p1, p2, p3)
+end
+
+function module.playstats_init_multiplayer(p0: any, p1: any, p2: any): void
+    STATS._PLAYSTATS_INIT_MULTIPLAYER(p0, p1, p2)
+end
+
+function module.playstats_inst_mission_end(p0: any): void
+    STATS.PLAYSTATS_INST_MISSION_END(p0)
+end
+
+function module.playstats_hub_exit(p0: any): void
+    STATS.PLAYSTATS_HUB_EXIT(p0)
+end
+
+function module.playstats_veh_del(
+    boss_id1: int, boss_id2: int, boss_type: int, vehicle_id: int, reason: int
+): void
+    -- body function:
+    STATS.PLAYSTATS_VEH_DEL(boss_id1, boss_id2, boss_type, vehicle_id, reason)
+end
+
+function module.playstats_inventory(p0: any): void
+    STATS.PLAYSTATS_INVENTORY(p0)
+end
+
+function module.playstats_acid_mission_end(p0: any): void
+    STATS._PLAYSTATS_ACID_MISSION_END(p0)
+end
+
+function module.playstats_acid_rnd(p0: any): void
+    STATS._PLAYSTATS_ACID_RND(p0)
+end
+
+function module.playstats_idle(p0: any, p1: any, p2: any): void
+    STATS._PLAYSTATS_IDLE(p0, p1, p2)
+end
+
+function module.playstats_player_style(p0: any): void
+    STATS._PLAYSTATS_PLAYER_STYLE(p0)
+end
+
+function module.playstats_random_event(p0: any): void
+    STATS._PLAYSTATS_RANDOM_EVENT(p0)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_alert(data: int): void
+    STATS._PLAYSTATS_ALERT(data)
+end
+
+function module.playstats_attrition_stage_end(p0: any): void
+    STATS._PLAYSTATS_ATTRITION_STAGE_END(p0)
+end
+
+function module.playstats_showroom_nav(p0: any, p1: any, entity: int): void
+    STATS._PLAYSTATS_SHOWROOM_NAV(p0, p1, entity)
+end
+
+-- Data struct contains various tunables related to test drives at Simeons Showroom or Luxury Showcase
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_showroom_overview(data: int): void
+    STATS._PLAYSTATS_SHOWROOM_OVERVIEW(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_pimenu_nav(data: int): void
+    STATS._PLAYSTATS_PIMENU_NAV(data)
+end
+
+-- @param data Pointer: pass memory.alloc(size) and read the result back
+function module.playstats_recover_vehicle(data: int): void
+    STATS._PLAYSTATS_RECOVER_VEHICLE(data)
+end
+
+return module

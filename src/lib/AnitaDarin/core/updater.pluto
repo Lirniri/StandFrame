@@ -73,9 +73,11 @@ function module.target_of(path: string, o: table): ?string
     if path:find("..", 1, true) or path:find("\\", 1, true) or path:find(":", 1, true) or path:sub(1, 1) == "/" then
         return nil
     end
+
     if path == $"{o.project}.pluto" then
         return $"{o.scripts_dir}{o.name}.pluto"
     end
+    
     for _, root in ipairs(ROOTS) do
         local prefix = $"{root}/{o.project}/"
         if path:sub(1, #prefix) == prefix and #path > #prefix then
@@ -83,25 +85,32 @@ function module.target_of(path: string, o: table): ?string
             return $"{o.scripts_dir}{root}\\{o.name}\\{rest}"
         end
     end
+    
     return nil
 end
 
 -- Whether the file is the user's, written by the script while it runs: made when missing, never
 -- replaced or removed. "store/AnitaDarin/config.json", "store/AnitaDarin/profiles/main.json"
 function module.is_user_data(path: string, project: string): bool
+    
     local prefix = $"store/{project}/"
+    
     if path:sub(1, #prefix) ~= prefix then
         return false
     end
+    
     local rest = path:sub(#prefix + 1)
+    
     if rest == "config.json" then
         return true
     end
+    
     for folder in rest:gmatch("([^/]+)/") do
         if USER_FOLDERS[folder] then
             return true
         end
     end
+    
     return false
 end
 
@@ -156,7 +165,9 @@ end
 -- GETs https://<host><path> and waits for the answer. Yields: call it from a thread
 -- @return The body, or nil and why not
 function module.fetch(host: string, path: string, timeout: int = 15000)
+    
     local done, body, err = false, nil, nil
+    
     async_http.init(host, path, function(result, headers, status)
         if status ~= nil and status ~= 200 then
             err = $"HTTP {status}"
@@ -168,14 +179,18 @@ function module.fetch(host: string, path: string, timeout: int = 15000)
         err = reason or "failed"
         done = true
     end)
+    
     async_http.dispatch()
+    
     local started = util.current_time_millis()
+    
     while not done do
         if util.current_time_millis() - started > timeout then
             return nil, "timed out"
         end
         util.yield()
     end
+    
     return body, err
 end
 
@@ -197,9 +212,15 @@ end
 -- download - missing or different (user data only when missing); remove - put there by the last update,
 -- gone from this release; skipped - paths outside the script's places, never written
 function module.plan(manifest: table, o: table): table
-    local plan = { version = manifest.version, download = {}, remove = {}, skipped = {}, manifest = manifest, opts = o }
+    local plan = {
+        version = manifest.version,
+        download = {}, remove = {}, skipped = {},
+        manifest = manifest, opts = o
+    }
+
     for i, path in ipairs(sorted_keys(manifest.files)) do
         local target = module.target_of(path, o)
+
         if target == nil then
             table.insert(plan.skipped, path)
         elseif module.is_user_data(path, o.project) then
@@ -212,12 +233,14 @@ function module.plan(manifest: table, o: table): table
                 table.insert(plan.download, path)
             end
         end
+
         if i % 25 == 0 then
             util.yield()
         end
     end
     -- Only what an update put there: a file the updater doesn't know of stays
     local installed = module.installed(o)
+
     if installed ~= nil then
         for _, path in ipairs(sorted_keys(installed.files)) do
             local target = module.target_of(path, o)
@@ -227,6 +250,7 @@ function module.plan(manifest: table, o: table): table
             end
         end
     end
+
     return plan
 end
 
@@ -244,21 +268,29 @@ end
 -- @param opts Over DEFAULTS: name (the script's name, Atdar.name), scripts_dir, repo, branch, ...
 -- @return The plan (see plan), or nil and why not
 function module.check(opts: ?table)
+
     local o = options(opts)
+
     if not module.has_access() then
         return nil, $"the script has no internet access (turn off Disable Internet Access in Stand > Lua Scripts > {o.name})"
     end
+
     local body, err = module.fetch(o.host, raw_path(o, o.manifest), o.timeout)
+
     if body == nil then
         return nil, $"manifest: {err}"
     end
+
     local manifest = json_parser.decode(body)
+
     if type(manifest) ~= "table" or type(manifest.files) ~= "table" then
         return nil, "manifest: not a manifest"
     end
+
     if manifest.project ~= o.project then
         return nil, $"manifest: it's for '{tostring(manifest.project)}', not '{o.project}'"
     end
+
     return module.plan(manifest, o), nil
 end
 
@@ -286,18 +318,23 @@ end
 -- @return true, or false and why not (nothing written then); a third value "stale" when a download
 -- didn't match the manifest (GitHub's cache)
 function module.apply(plan: table, on_progress: ?function)
+
     local o = plan.opts
     local contents = {}
+
     for i, path in ipairs(plan.download) do
         local body, err = module.fetch(o.host, raw_path(o, $"{o.src}/{path}"), o.timeout)
         if body == nil then
             return false, $"{path}: {err}"
         end
+
         -- GitHub may serve a file older than the manifest for a few minutes
         if module.hash(path, body) ~= plan.manifest.files[path].sha256 then
             return false, $"{path}: doesn't match the manifest, try again in a few minutes", "stale"
         end
+
         contents[path] = body
+
         if on_progress ~= nil then
             on_progress(i, #plan.download)
         end
@@ -306,14 +343,17 @@ function module.apply(plan: table, on_progress: ?function)
     -- Written next to their places first: a failure leaves the script as it was
     local written = {}
     for _, path in ipairs(plan.download) do
+
         local temp = module.target_of(path, o) .. ".update"
         local ok, err = write_file(temp, contents[path])
+
         if not ok then
             for _, done in ipairs(written) do
                 os.remove(done)
             end
             return false, $"{path}: {err}"
         end
+        
         table.insert(written, temp)
     end
     for _, path in ipairs(plan.download) do

@@ -2,31 +2,29 @@
 --   header      - "Profile: main" divider, Display Name, Short Name
 --   (the Language list is ui/stand/script/language)
 --   log_name    - Name In Logs
---   appearance  - Appearance > Notifications: flash, where they show, errors always in Stand, a test;
---                 under the Game divider how they look in the game's feed (post or message card with its picture,
---                 day and night hours, colours for each)
+--   appearance  - Appearance > Notifications: where they show, emoticons, errors always in Stand, examples;
+--                 under the Stand divider how Stand's look, under the Game divider how they look in the game's
+--                 feed (post or message card with its picture, day and night hours, colours for each)
 --   profiles    - Profiles list laid out like Stand's: Create Profile, Open Folder, then one list per profile
---                 with Save, Load, Automatically Save and Delete
---   command_box - Command Prefix and Separator
---   debug       - Debug Mode, Load Timing
---   log_keep_days - Keep Logs (Days)
+--                 with Save, Load, Automatically Save, Reset and Delete
+--   auto_copy   - Copy Menu To Core, and the pack picked on the line under it
+--   command_box_base_prefix / command_box_found_prefix / user_command_box - a prefix, Prefix At The End, a separator
+--   debug       - Debug Mode, Stop After Changes, Load Timing, Reload Natives
+--   log_keep_days, updater_log_both_ways, log_info_at_once - the Logs settings
 --   rename      - Rename Script
--- Strings live in core/language under "profile".
 --
--- Changes apply right away but reach the profile file only on Save, like Stand's own profiles,
--- unless the profile saves automatically.
--- Items are updated in place (captions, field values) rather than by rebuilding the section:
--- rebuilding deletes the list the user is in, which Stand doesn't do cleanly. Only creating and
--- deleting a profile rebuild it, since the list of profiles changes
+-- Only the layout is here. What an item does with the profile - writes its value, follows a profile loaded
+-- or reset, makes its caption again - is in ui/logic/stand/script/profile_view; what the buttons do is in
+-- ui/logic/stand/script/profile_actions.
+-- Strings live in core/language under "profile"
 
 local i18n = Atdar.loader.load("core/i18n")
-local installer = Atdar.loader.load("core/installer")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local view = Atdar.loader.load("ui/logic/stand/script/profile_view")
+local actions = Atdar.loader.load("ui/logic/stand/script/profile_actions")
 local Logger = Atdar.loader.load("core/logger")
-local color = Atdar.loader.load("utils/color")
 local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
 local confirm = Atdar.loader.load("ui/stand/core/confirm")
-local texture_dict = Atdar.loader.load("natives/streaming/texture_dict/asset")
-local thefeed = Atdar.loader.load("natives/visual/hud/thefeed")
 
 local log = new Logger("Profile")
 
@@ -35,507 +33,212 @@ local module = {}
 -- Strings under "profile"
 local label, text = i18n.scope("profile")
 
--- Option index -> profile value for the two fixed-choice settings
+-- The values of the fixed-choice settings, in the menu's order
 local SEPARATORS = { "", "_", "." }
 -- Each separator's word in the menu
 local SEPARATOR_NAMES = { [""] = "separator.none", ["_"] = "separator.underscore", ["."] = "separator.dot" }
 local LOG_NAMES = { "short", "display" }
 local NOTIFY_TARGETS = { "stand", "game", "none" }
 local FEED_STYLES = { "message", "ticker" }
--- Subject Color options, in the menu's order: "level" or natives/visual/hud/text COLOR names
+-- "level" or natives/visual/hud/text COLOR names
 local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "black", "red", "green", "blue",
     "yellow", "orange", "purple", "pink" }
-
--- What a colour item shows while its profile value is "" (the game's own colour)
-local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
-
--- Profile keys edited through text fields
-local INPUT_KEYS = { "display_name", "short_name", "command_box_prefix", "command_box_found_prefix", "command_box_user_prefix",
-    "notify_emoticon_info", "notify_emoticon_warn", "notify_emoticon_error", "notify_emoticon_success" }
-
--- Items of the latest build, updated in place when profile values change. Reset by begin()
-local view = { inputs = {}, entries = {}, packs = {}, colors = {}, sliders = {}, subject_colors = {} }
--- Set while values are written from code, so their on_change doesn't count as an edit
-local updating = false
--- Stand calls text fields again while the script stops; showing a warning then is an error
-local stopping = false
-util.on_stop(function() stopping = true end)
-
--- "main", "main (active)" or "main (active)*" with unsaved changes
-local function entry_caption(name: string): string
-    local profile = Atdar.profile
-    if name ~= profile.active_name() then
-        return name
-    end
-    return text("entry.active"):format(name) .. (profile.is_dirty() ? "*" : "")
-end
-
-local function settings_caption(): string
-    return text("settings.of"):format(Atdar.profile.active_name())
-end
-
--- "Base Commands Separator: None"; key: the profile key, name: the caption's label key
-local function separator_caption(key: string = "command_box_separator", name: string = "separator.name"): string
-    local value = SEPARATOR_NAMES[Atdar.profile.get(key) or ""] or "separator.none"
-    return text(name):format(text(value))
-end
-
-local function log_name_caption(): string
-    local key = Atdar.profile.get("log_name") == "display" ? "log_name.display" : "log_name.short"
-    return text("log_name.name"):format(text(key))
-end
-
--- "Show In: Stand", "Show In: Game Feed" or "Show In: Log Only"
-local function notify_caption(): string
-    local target = Atdar.profile.get("notify")
-    if target ~= "game" and target ~= "none" then
-        target = "stand"
-    end
-    return text("notify.target.name"):format(text($"notify.target.{target}"))
-end
-
--- "Notification Type: Post" or "Notification Type: Message"
-local function feed_style_caption(): string
-    local key = Atdar.profile.get("notify_feed_style") == "message" ? "feed.style.message" : "feed.style.ticker"
-    return text("feed.style.name"):format(text(key))
-end
-
--- "Picture: Social Club"
-local function feed_picture_caption(): string
-    return text("feed.picture.name"):format(feed_picture.title(Atdar.profile.get("notify_feed_picture") or ""))
-end
-
--- "Day Subject Color: White"; period "day" or "night"
-local function subject_color_caption(period: string): string
-    local name = Atdar.profile.get($"notify_subject_color_{period}") or "default"
-    return text($"feed.subject_color_{period}.name"):format(text($"feed.subject_color.{name}"))
-end
-
--- Message icons in the menu's order (natives/visual/hud/thefeed ICON names)
+-- natives/visual/hud/thefeed ICON names
 local FEED_ICONS = { "CHAT_BOX", "EMAIL", "FRIEND_REQUEST", "ARROW", "RP", "MONEY", "NONE" }
 
--- "Icon: Chat"
-local function feed_icon_caption(): string
-    local name = Atdar.profile.get("notify_feed_icon") or "CHAT_BOX"
-    return text("feed.icon.name"):format(text($"feed.icon.{name:lower()}"))
+-- The picture, the icon and the subject are the message card's only: hidden while posts are chosen
+local function is_message(): bool
+    return Atdar.profile.get("notify_feed_style") == "message"
 end
 
--- Asks the game to load the profile's picture now, without waiting, so message cards show it
-local function load_feed_picture(): void
-    local name = Atdar.profile.get("notify_feed_picture")
-    if type(name) ~= "string" or name == "" then
-        return
-    end
-    pcall(texture_dict.request, name, false)
-end
-
--- A colour kept in the profile as hex -> the Stand colour a colour item shows
-local function profile_color(key: string): table
-    return color.from_hex(Atdar.profile.get(key) or "") or DEFAULT_COLOR
-end
-
--- The same for the key's default (core/profile DEFAULTS)
-local function default_color(key: string): table
-    return color.from_hex(Atdar.profile.default(key) or "") or DEFAULT_COLOR
-end
-
--- Stand resets an item to the default it was made with when it loads a Stand profile without that item
--- (click type 4). So items are made with the real default, not the profile's value at that moment,
--- and then set to the profile's value. Called with updating set, so it isn't saved as a change
-local function show_profile_value(ref, key: string, value): void
-    if Atdar.profile.get(key) ~= Atdar.profile.default(key) then
-        pcall(menu.set_value, ref, value)
-    end
-end
-
--- The refs may belong to a section that was already removed, so a failed update is just skipped
-local function rename(ref, caption: string): void
-    if ref then
-        pcall(menu.set_menu_name, ref, caption)
-    end
-end
-
-local function update_captions(): void
-    for name, ref in pairs(view.entries) do
-        rename(ref, entry_caption(name))
-    end
-    rename(view.settings_of, settings_caption())
-    rename(view.separator, separator_caption())
-    rename(view.found_separator, separator_caption("command_box_found_separator", "found_separator.name"))
-    rename(view.user_separator, separator_caption("command_box_user_separator", "user_separator.name"))
-    rename(view.log_name, log_name_caption())
-    rename(view.notify_target, notify_caption())
-    rename(view.feed_style, feed_style_caption())
-    rename(view.feed_picture, feed_picture_caption())
-    rename(view.feed_icon, feed_icon_caption())
-    for period, ref in pairs(view.subject_colors) do
-        rename(ref, subject_color_caption(period))
-    end
-    -- The picture and the subject are the message card's only: hidden while posts are chosen
-    local is_message = Atdar.profile.get("notify_feed_style") == "message"
-    pcall(menu.set_visible, view.feed_picture, is_message)
-    pcall(menu.set_visible, view.feed_icon, is_message)
-    for _, ref in pairs(view.subject_colors) do
-        pcall(menu.set_visible, ref, is_message)
-    end
-end
-
--- After another profile is loaded its values go into the fields
--- @return Whether every field took its new value; if not, the caller rebuilds the section instead
-local function update_fields(): bool
-    local ok = true
-    updating = true
-    for _, key in ipairs(INPUT_KEYS) do
-        local ref = view.inputs[key]
-        if ref and not pcall(menu.set_value, ref, Atdar.profile.get(key)) then
-            ok = false
-        end
-    end
-    if view.debug and not pcall(menu.set_value, view.debug, Atdar.profile.get("debug") == true) then
-        ok = false
-    end
-    if view.stop_on_change and not pcall(menu.set_value, view.stop_on_change, Atdar.profile.get("stop_on_change") == true) then
-        ok = false
-    end
-    if view.load_timing and not pcall(menu.set_value, view.load_timing, Atdar.profile.get("load_timing") == true) then
-        ok = false
-    end
-    if view.log_info_at_once
-        and not pcall(menu.set_value, view.log_info_at_once, Atdar.profile.get("log_info_at_once") == true) then
-        ok = false
-    end
-    if view.updater_log_both_ways
-        and not pcall(menu.set_value, view.updater_log_both_ways, Atdar.profile.get("updater_log_both_ways") == true) then
-        ok = false
-    end
-    if view.notify_errors
-        and not pcall(menu.set_value, view.notify_errors, Atdar.profile.get("notify_errors_in_stand") == true) then
-        ok = false
-    end
-    if view.notify_emoticons
-        and not pcall(menu.set_value, view.notify_emoticons, Atdar.profile.get("notify_emoticons") == true) then
-        ok = false
-    end
-    if view.notify_newline
-        and not pcall(menu.set_value, view.notify_newline, Atdar.profile.get("notify_stand_newline") == true) then
-        ok = false
-    end
-    if view.notify_flash and not pcall(menu.set_value, view.notify_flash, Atdar.profile.get("notify_flash") == true) then
-        ok = false
-    end
-    for key, ref in pairs(view.colors) do
-        if not pcall(menu.set_value, ref, profile_color(key)) then
-            ok = false
-        end
-    end
-    for key, ref in pairs(view.sliders) do
-        if not pcall(menu.set_value, ref, Atdar.profile.get(key)) then
-            ok = false
-        end
-    end
-    updating = false
-    return ok
-end
-
--- The profile's language applies to the whole script, also after loading another profile.
--- Registered before the captions update below, so captions come out in the new language
-i18n.set_language(Atdar.profile.get("language"))
-Atdar.profile.on_change(function(key: string, value)
-    if key == "language" then
-        i18n.set_language(value)
-    end
-end)
-
--- Any change (an edit, a load, a save) can change the captions, e.g. the unsaved mark
-Atdar.profile.on_change(|| -> update_captions())
--- Captions are texts in the shown language, so they're made again when it changes (also Stand's own)
-i18n.on_change(|| -> update_captions())
-
--- Starts a new build of the section; items made before it are forgotten.
--- packs: menu packs in store (menu_builder.find_loadable_packs), offered for copying to core
+-- Starts a new build of the section
+-- @param packs Menu packs in store, offered for copying to core
 function module.begin(packs: table = {}): void
-    view = { inputs = {}, entries = {}, packs = packs, colors = {}, sliders = {}, subject_colors = {} }
+    view.begin(packs)
 end
 
--- A text field for a profile value. command: its command name; none given - the key without "_"
--- (no "= nil" default: Pluto shifts the other defaults with one)
-local function input(node: table, key: string, allow_empty: bool, command): void
-    if command == nil then
-        command = key:gsub("_", "")
-    end
-    view.inputs[key] = node:text_input(label($"{key}.name"), { command }, function(value)
-        if updating or (value == "" and not allow_empty) then
-            return
-        end
-        Atdar.profile.set(key, value)
-    end, label($"{key}.help"), Atdar.profile.get(key))
-end
-
--- ─── Header: whose values these are, and the names ──────────────────────────
+-- Header: whose values these are, and the names
 
 function module.header(node: table): void
-    view.settings_of = node:divider(settings_caption())
-    input(node, "display_name", false)
-    input(node, "short_name", false)
+    view.caption(node:divider(view.settings_caption()), view.settings_caption)
+    view.input(node, "display_name")
+    view.input(node, "short_name")
 end
 
--- ─── Name In Logs ────────────────────────────────────────────────────────────
+-- Name In Logs
 
 function module.log_name(node: table): void
-    view.log_name = node:list_action(log_name_caption(),
-        { label("log_name.short"), label("log_name.display") }, function(index)
-        Atdar.profile.set("log_name", LOG_NAMES[index])
-    end, { "logname" }, label("log_name.help"))
+    view.choice(node, "log_name", { strings = "log_name", values = LOG_NAMES, commands = { "logname" } })
 end
 
--- ─── Appearance ──────────────────────────────────────────────────────────────
+-- Appearance
 
--- The cards Notification Examples put in the game's feed, taken away again (going back out of
--- Notifications, or before new ones): Stand's own notifications can't be taken away
-local test_posts = {}
-
-local function remove_test_post(): void
-    for _, id in ipairs(test_posts) do
-        pcall(thefeed.remove, id)
-    end
-    test_posts = {}
-end
-
--- The kinds of notification an example shows, in order: the logger's method and the strings' key
-local EXAMPLE_KINDS = {
-    { method = "notify", key = "info" },
-    { method = "warn", key = "warn" },
-    { method = "error", key = "error" },
-    { method = "success", key = "success" },
-}
-
--- Shows an example of each kind given, the way it really looks (where it shows, subject, colours,
--- emoticon); the examples before are taken away first, so clicking again doesn't pile them up
-local function show_examples(kinds: table): void
-    remove_test_post()
-    for _, kind in ipairs(kinds) do
-        local id = log[kind.method](log, text($"notify.examples.{kind.key}.text"))
-        if id ~= nil then
-            table.insert(test_posts, id)
-        end
-    end
-end
-
--- Flashing, where notifications show (Stand, the game's feed, log only), errors always in Stand, a test
+-- Where notifications show (Stand, the game's feed, log only), emoticons, errors always in Stand, examples
 local function notifications(list: table): void
-    local profile = Atdar.profile
 
-    view.notify_target = list:list_action(notify_caption(),
-        { label("notify.target.stand"), label("notify.target.game"), label("notify.target.none") }, function(index)
-        profile.set("notify", NOTIFY_TARGETS[index])
-    end, { "" }, label("notify.target.help"))
+    view.choice(list, "notify", { strings = "notify.target", values = NOTIFY_TARGETS, fallback = "stand", commands = { "" } })
 
     -- Emoticons: on, and the one for each kind of notification
     local emoticons = list:list(label("notify.emoticons.name"), {}, label("notify.emoticons.help"))
-    view.notify_emoticons = emoticons:toggle(label("notify.emoticons.on.name"), function(on)
-        if not updating then
-            profile.set("notify_emoticons", on)
-        end
-    end, {}, label("notify.emoticons.on.help"), profile.get("notify_emoticons") == true)
-    for _, kind in ipairs({ "info", "warn", "error", "success" }) do
-        input(emoticons, $"notify_emoticon_{kind}", true, $"notifyemoticon{kind}")
-    end
+    view.toggle(emoticons, "notify_emoticons", "notify.emoticons.on")
+    view.input(emoticons, "notify_emoticon_info", true, "notifyemoticoninfo")
+    view.input(emoticons, "notify_emoticon_warn", true, "notifyemoticonwarn")
+    view.input(emoticons, "notify_emoticon_error", true, "notifyemoticonerror")
+    view.input(emoticons, "notify_emoticon_success", true, "notifyemoticonsuccess")
 
-    view.notify_errors = list:toggle(label("notify.errors.name"), function(on)
-        if not updating then
-            profile.set("notify_errors_in_stand", on)
-        end
-    end, {}, label("notify.errors.help"), profile.get("notify_errors_in_stand") == true)
+    view.toggle(list, "notify_errors_in_stand", "notify.errors")
 
-    -- The previous test card is taken away from the game's feed first, so clicking again doesn't pile them up
-    -- (Stand's own notifications can't be taken away)
+    -- An example of each kind, the way it really looks; the ones before are taken away first
     local examples = list:list(label("notify.examples.name"), {}, label("notify.examples.help"))
-    for _, kind in ipairs(EXAMPLE_KINDS) do
-        examples:action(label($"notify.examples.{kind.key}.name"), || -> show_examples({ kind }), {},
+    for _, kind in ipairs(actions.EXAMPLE_KINDS) do
+        examples:action(label($"notify.examples.{kind.key}.name"), || -> actions.show_examples({ kind }), {},
             label("notify.examples.one.help"))
     end
-    examples:action(label("notify.examples.all.name"), || -> show_examples(EXAMPLE_KINDS), {},
+    examples:action(label("notify.examples.all.name"), || -> actions.show_examples(actions.EXAMPLE_KINDS), {},
         label("notify.examples.all.help"))
 end
 
 -- The Stand divider: how Stand's notifications look
 local function stand_notifications(list: table): void
-    local profile = Atdar.profile
     list:divider(label("notify.stand.divider"))
-    view.notify_newline = list:toggle(label("notify.stand.newline.name"), function(on)
-        if not updating then
-            profile.set("notify_stand_newline", on)
-        end
-    end, {}, label("notify.stand.newline.help"), profile.get("notify_stand_newline") == true)
+    view.toggle(list, "notify_stand_newline", "notify.stand.newline")
 end
 
--- A colour item with opacity for a profile key kept as hex RRGGBBAA
-local function color_item(node: table, key: string, name: string, commands: table): void
-    view.colors[key] = node:color(label($"feed.{name}.name"), default_color(key), function(colour, click_type)
-        local hex = color.to_hex(colour, true)
-        -- Who changes the colour and when: the user or Stand by itself (debug mode)
-        log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)}, updating {tostring(updating)})")
-        -- Stand also calls this when the script stops, with the colour the item shows: for "" (the game's
-        -- own) that's black, which would then be saved as picked. Only a different colour is a pick
-        if updating or stopping or hex == color.to_hex(profile_color(key), true) then
-            return
-        end
-        Atdar.profile.set(key, hex)
-    end, commands, label($"feed.{name}.help"), true)
-    show_profile_value(view.colors[key], key, profile_color(key))
-end
-
--- An hour (0 - 23) for a profile key
-local function hour_item(node: table, key: string, name: string, commands: table): void
-    view.sliders[key] = node:slider(label($"feed.{name}.name"), 0, 23, Atdar.profile.default(key), 1, function(value)
-        if not updating then
-            Atdar.profile.set(key, value)
-        end
-    end, commands, label($"feed.{name}.help"))
-    show_profile_value(view.sliders[key], key, Atdar.profile.get(key))
-end
-
--- The message card's subject colour for "day" or "night"; shown only while Message is picked
-local function subject_color_item(node: table, period: string): void
-    local names = {}
-    for _, name in ipairs(SUBJECT_COLORS) do
-        table.insert(names, label($"feed.subject_color.{name}"))
-    end
-    local ref = node:list_action(subject_color_caption(period), names, function(index)
-        Atdar.profile.set($"notify_subject_color_{period}", SUBJECT_COLORS[index])
-    end, { $"feedsubject{period}" }, label($"feed.subject_color_{period}.help"))
-    view.subject_colors[period] = ref
-    pcall(menu.set_visible, ref, Atdar.profile.get("notify_feed_style") == "message")
+-- The message card's subject colour for "day" or "night"
+local function subject_color(list: table, period: string): void
+    view.shown_when(view.choice(list, $"notify_subject_color_{period}", {
+        strings = $"feed.subject_color_{period}",
+        values = SUBJECT_COLORS,
+        option = |name| -> $"feed.subject_color.{name}",
+        fallback = "default",
+        commands = { $"notifyfeedsubject{period}" },
+    }), is_message)
 end
 
 -- The Game divider and below it how notifications look in the game's feed
 local function feed(list: table): void
+
     list:divider(label("feed.name"))
 
-    view.feed_style = list:list_action(feed_style_caption(),
-        { label("feed.style.message"), label("feed.style.ticker") }, function(index)
-        Atdar.profile.set("notify_feed_style", FEED_STYLES[index])
-    end, {}, label("feed.style.help"))
+    view.choice(list, "notify_feed_style", {
+        strings = "feed.style",
+        values = FEED_STYLES,
+        fallback = "ticker"
+    })
 
-    local pictures = feed_picture.list()
-    local titles = {}
-    for _, name in ipairs(pictures) do
-        table.insert(titles, feed_picture.title(name))
-    end
-    view.feed_picture = list:list_action(feed_picture_caption(), titles, function(index)
-        Atdar.profile.set("notify_feed_picture", pictures[index])
-        load_feed_picture()
-    end, {}, label("feed.picture.help"))
-    pcall(menu.set_visible, view.feed_picture, Atdar.profile.get("notify_feed_style") == "message")
-    load_feed_picture()
-
-    local icon_names = {}
-    for _, name in ipairs(FEED_ICONS) do
-        table.insert(icon_names, label($"feed.icon.{name:lower()}"))
-    end
-    view.feed_icon = list:list_action(feed_icon_caption(), icon_names, function(index)
-        Atdar.profile.set("notify_feed_icon", FEED_ICONS[index])
-    end, {}, label("feed.icon.help"))
-    pcall(menu.set_visible, view.feed_icon, Atdar.profile.get("notify_feed_style") == "message")
+    local feed_general_list = list:list(label("feed.general.name"), {}, label("feed.general.help"))
 
     -- Flashing is the game feed's only (Stand's notifications don't flash), so it's here
-    view.notify_flash = list:toggle(label("notify.flash.name"), function(on)
-        if not updating then
-            Atdar.profile.set("notify_flash", on)
-        end
-    end, {}, label("notify.flash.help"), Atdar.profile.get("notify_flash") == true)
+    view.toggle(feed_general_list, "notify_flash", "notify.flash")
+    
+    view.slider(feed_general_list, "notify_day_start", "feed.day_start", 0, 23, { "notifyfeeddaystart" })
+    view.slider(feed_general_list, "notify_night_start", "feed.night_start", 0, 23, { "notifyfeednightstart" })
+    
+    feed_general_list:divider(label("feed.background_color.divider"))
+    
+    view.color(feed_general_list, "notify_background_day", "feed.background_day", { "notifyfeedbgday" })
+    view.color(feed_general_list, "notify_background_night", "feed.background_night", { "notifyfeedbgnight" })
+    
+    feed_general_list:divider(label("feed.flash_color.divider"))
 
-    -- Made with updating set: the profile's values are put in after (show_profile_value), not saved as changes
-    updating = true
-    hour_item(list, "notify_day_start", "day_start", { "notifyfeeddaystart" })
-    hour_item(list, "notify_night_start", "night_start", { "notifyfeednightstart" })
-    color_item(list, "notify_background_day", "background_day", { "notifyfeedbgday" })
-    color_item(list, "notify_flash_color_day", "flash_color_day", { "notifyfeedflashday" })
-    subject_color_item(list, "day")
-    color_item(list, "notify_background_night", "background_night", { "notifyfeedbgnight" })
-    color_item(list, "notify_flash_color_night", "flash_color_night", { "notifyfeedflashnight" })
-    subject_color_item(list, "night")
-    updating = false
+    view.color(feed_general_list, "notify_flash_color_day", "feed.flash_color_day", { "notifyfeedflashday" })
+    view.color(feed_general_list, "notify_flash_color_night", "feed.flash_color_night", { "notifyfeedflashnight" })
+
+    -- Above the options only the Message style has (Picture, Icon, Subject Color); a Post has none, so it's hidden then
+    view.shown_when(list:divider(label("feed.message.divider")), is_message)
+    
+    view.shown_when(view.choice(list, "notify_feed_picture", {
+        strings = "feed.picture",
+        values = feed_picture.list(),
+        title = feed_picture.title,
+        after = actions.load_feed_picture,
+    }), is_message)
+    actions.load_feed_picture()
+
+    view.shown_when(view.choice(list, "notify_feed_icon", {
+        strings = "feed.icon",
+        values = FEED_ICONS,
+        option = |name| -> $"feed.icon.{name:lower()}",
+        fallback = "CHAT_BOX",
+    }), is_message)
+
+    subject_color(list, "day")
+    subject_color(list, "night")
 end
 
 -- Appearance > Notifications, with the game's feed under the Game divider (utils/util.toast reads what they set)
 function module.appearance(node: table): void
     local appearance = node:list(label("appearance.name"), { "appearance" }, label("appearance.help"))
-    -- Going back out of Notifications takes the test card away too: it was only there to look at
-    local list = appearance:list(label("notify.name"), { "notify" }, label("notify.help"), remove_test_post)
+    -- Going back out of Notifications takes the example cards away too: they were only there to look at
+    local list = appearance:list(label("notify.name"), { "notify" }, label("notify.help"), actions.remove_examples)
     notifications(list)
     stand_notifications(list)
     feed(list)
 end
 
--- ─── Profiles ────────────────────────────────────────────────────────────────
+-- Profiles
 
--- After a profile is made, deleted or loaded (set by profiles())
-local changed
+-- One profile's list: Save, Load, Automatically Save, Reset, Delete
+-- @param changed function() a profile was made, deleted or loaded: the entries and the section follow
+local function build_entry(parent: table, name: string, changed: function): void
 
-local function build_entry(parent: table, name: string, refresh: function): void
     local profile = Atdar.profile
     -- Going back out of the list cancels a first click on Reset
     local cancel_reset = nil
-    local entry = parent:list(entry_caption(name), {}, label("entry.help"), function()
+
+    local entry = parent:list(view.entry_caption(name), {}, label("entry.help"), function()
         if cancel_reset then
             cancel_reset()
         end
     end)
-    view.entries[name] = entry.handle
+    view.caption(entry.handle, || -> view.entry_caption(name), $"entry.{name}")
+
+    -- The profile's values changed (loaded, reset): the section's items take them in place. The entries
+    -- stay: making them again would delete the list the user is in
+    local function values_changed(): void
+        if not view.update() then
+            changed()
+        end
+    end
 
     local save_ref
     save_ref = entry:action(label("save.name"), function(click_type)
         local function save(): void
-            if profile.save_to(name) then
-                update_captions()
-                log:notify(text("save.done"):format(name))
-            end
+            actions.save(name, view.update_captions)
         end
+
         -- Saving into another profile overwrites what it had
-        if name ~= profile.active_name() then
-            menu.show_warning(save_ref, click_type, text("save.overwrite"):format(name, profile.active_name()), save)
-        else
+        if name == profile.active_name() then
             save()
+            return
         end
+
+        menu.show_warning(save_ref, click_type, text("save.overwrite"):format(name, profile.active_name()), save)
     end, {}, label("save.help"))
 
     local load_ref
     load_ref = entry:action(label("load.name"), function(click_type)
         local function load_profile(): void
-            profile.switch(name)
-            update_captions()
-            if not update_fields() then
-                refresh()
-            end
-            log:notify(text("load.done"):format(name))
+            actions.load(name, values_changed)
         end
-        if profile.is_dirty() then
-            menu.show_warning(load_ref, click_type, text("load.unsaved"):format(profile.active_name()), load_profile)
-        else
+
+        if not profile.is_dirty() then
             load_profile()
+            return
         end
+
+        menu.show_warning(load_ref, click_type, text("load.unsaved"):format(profile.active_name()), load_profile)
     end, {}, label("load.help"))
 
     entry:toggle(label("autosave.name"), function(on)
         profile.set_autosave(name, on)
-        update_captions()
+        view.update_captions()
     end, {}, label("autosave.help"), profile.is_autosave(name))
 
     -- Every value back to the defaults in core/profile, after a second click
     local _
     _, cancel_reset = confirm.action(entry, label("reset.name"), label("reset.again"), function()
-        if not profile.reset(name) then
-            log:warn(text("reset.failed"):format(name))
-            return
-        end
-        if name == profile.active_name() then
-            update_captions()
-            if not update_fields() then
-                refresh()
-            end
-        end
-        log:notify(text("reset.done"):format(name))
+        actions.reset(name, values_changed)
     end, function()
         log:warn(text("reset.warning"):format(name, confirm.WAIT_MS // 1000))
     end, label("reset.help"))
@@ -543,43 +246,46 @@ local function build_entry(parent: table, name: string, refresh: function): void
     local delete_ref
     delete_ref = entry:action(label("delete.name"), function(click_type)
         menu.show_warning(delete_ref, click_type, text("delete.warning"):format(name), function()
-            if profile.delete(name) then
-                refresh()
-            end
+            actions.delete(name, changed)
         end)
     end, {}, label("delete.help"))
 end
 
--- The Profiles list. Its entries are made again in place when it's opened and after a profile is made or
--- deleted; the rest of the section follows the active profile's values (captions, fields). Rebuilding
+-- The Profiles list. Its entries are made again in place when it's opened and after a profile is made,
+-- deleted or loaded; the rest of the section follows the active profile's values (view.update). Rebuilding
 -- the whole section from inside this list would leave the user in the old, deleted one.
--- refresh() rebuilds the section: only when the fields can't take the values in place
+-- refresh() rebuilds the section: only when the items can't take the values in place
 function module.profiles(node: table, refresh: function): void
+
     local profile = Atdar.profile
     local list = nil
     -- Where the entries start, so they're made again without the items above
     local first = nil
+    local changed
 
     local function fill_entries(): void
         if first == nil then
             return
         end
+
         list:clear_from(first)
+
         local names = profile.list()
+
         for _, name in ipairs(names) do
             build_entry(list, name, changed)
         end
+
         -- All deleted: the script goes on with the values it has; Create Main Profile or Save brings one back
         if #names == 0 then
             list:readonly_name(label("no_profiles"))
         end
     end
 
-    -- A profile made, deleted or loaded: the entries again, the section's captions and fields to its values
+    -- A profile made, deleted or loaded: the entries again, the section's captions and items to its values
     changed = function()
         fill_entries()
-        update_captions()
-        if not update_fields() then
+        if not view.update() then
             refresh()
         end
     end
@@ -596,19 +302,15 @@ function module.profiles(node: table, refresh: function): void
     local create_main_ref
     create_main_ref = list:action(label("create_main.name"), function(click_type)
         local main = profile.main_name()
-        local existed = profile.exists(main)
         local function make(): void
-            if not profile.create_main() then
-                log:warn(text("create_main.failed"):format(main))
-                return
-            end
-            log:notify(text(existed and "create_main.recreated" or "create_main.done"):format(main))
-            changed()
+            actions.create_main(changed)
         end
-        if not existed then
+
+        if not profile.exists(main) then
             make()
             return
         end
+
         menu.show_warning(create_main_ref, click_type, text("create_main.warning"):format(main), make)
     end, {}, label("create_main.help"))
 
@@ -621,148 +323,144 @@ function module.profiles(node: table, refresh: function): void
     fill_entries()
 end
 
--- ─── Command Box: prefix and separator ───────────────────────────────────────
+-- Copy Menu To Core
 
--- Base Commands (the script's own) and Found Commands (the loaded menu's) each have a prefix and a separator
-function module.command_box(node: table): void
-    local options = { label("separator.none"), label("separator.underscore"), label("separator.dot") }
-    -- Commands start with cb (command box): cbprefix, cbseparator, cbfoundprefix, cbfoundseparator
-    input(node, "command_box_prefix", true, "cbprefix")
-    view.separator = node:list_action(separator_caption(), options, function(index)
-        Atdar.profile.set("command_box_separator", SEPARATORS[index])
-    end, { "cbseparator" }, label("separator.help"))
-    input(node, "command_box_found_prefix", true, "cbfoundprefix")
-    view.found_separator = node:list_action(separator_caption("command_box_found_separator", "found_separator.name"), options,
-        function(index)
-        Atdar.profile.set("command_box_found_separator", SEPARATORS[index])
-    end, { "cbfoundseparator" }, label("found_separator.help"))
+-- Off, then every pack in store; takes effect at the next start (menu_loader's auto_copy)
+-- @param changed function() another pack was picked: the list makes the line under the item again
+function module.auto_copy(node: table, changed: function): void
+    local ref = node:list_action(view.auto_copy_caption(), view.auto_copy_options(), function(index)
+        view.set_auto_copy(index)
+        changed()
+    end, { "menuloaderautocopy" }, view.auto_copy_help())
+
+    view.caption(ref, view.auto_copy_caption)
+    view.help(ref, view.auto_copy_help)
+    module.auto_copy_ref = ref
 end
 
--- The user's own commands' prefix and separator, at the top of User Commands: cbuserprefix, cbuserseparator
+-- The pack picked, on a line of its own right under Copy Menu To Core; nothing while it's off
+function module.auto_copy_picked(node: table): void
+
+    local pack = view.auto_copy_pack()
+
+    if pack ~= nil then
+        node:divider(view.auto_copy_line(pack))
+    end
+end
+
+-- The packs in store were read again (Load Menu was opened): Copy Menu To Core offers what's there now
+function module.refresh_packs(packs: table): void
+    view.set_packs(packs)
+    if module.auto_copy_ref ~= nil then
+        pcall(menu.set_list_action_options, module.auto_copy_ref, view.auto_copy_options())
+    end
+end
+
+-- Command Box: a prefix, where it goes, a separator
+
+-- The three items of one kind of commands
+-- @param key The profile key of the prefix ("command_box_base_prefix"): "<key>_at_end" is where it goes
+-- @param separator_key The profile key of the separator, strings: the separator's strings
+-- @param command The base of the commands: cbprefix, cbprefixatend
+local function prefix_items(node: table, key: string, separator_key: string, strings: string, command: string,
+    separator_command: string
+): void
+    -- body function:
+    view.input(node, key, true, command)
+    view.toggle(node, $"{key}_at_end", "prefix_at_end", { $"{command}atend" })
+    view.choice(node, separator_key, {
+        strings = strings,
+        values = SEPARATORS,
+        option = |value| -> SEPARATOR_NAMES[value],
+        commands = { separator_command },
+    })
+end
+
+-- Of the script's own commands (Base Commands): cbprefix, cbprefixatend, cbseparator
+function module.command_box_base_prefix(node: table): void
+    prefix_items(node, "command_box_base_prefix", "command_box_base_separator", "separator", "cbprefix", "cbseparator")
+end
+
+-- Of the loaded menu's commands (Found Commands): cbfoundprefix, cbfoundprefixatend, cbfoundseparator
+function module.command_box_found_prefix(node: table): void
+    prefix_items(node, "command_box_found_prefix", "command_box_found_separator", "found_separator", "cbfoundprefix",
+        "cbfoundseparator")
+end
+
+-- Of the user's own commands, at the top of User Commands: cbuserprefix, cbuserprefixatend, cbuserseparator
 function module.user_command_box(node: table): void
-    local options = { label("separator.none"), label("separator.underscore"), label("separator.dot") }
-    input(node, "command_box_user_prefix", true, "cbuserprefix")
-    view.user_separator = node:list_action(separator_caption("command_box_user_separator", "user_separator.name"), options,
-        function(index)
-        Atdar.profile.set("command_box_user_separator", SEPARATORS[index])
-    end, { "cbuserseparator" }, label("user_separator.help"))
+    prefix_items(node, "command_box_user_prefix", "command_box_user_separator", "user_separator", "cbuserprefix",
+        "cbuserseparator")
 end
 
--- ─── Debug Mode ──────────────────────────────────────────────────────────────
+-- Debug Mode
 
 function module.debug(node: table): void
-    view.debug = node:toggle(label("debug.name"), function(on)
-        if not updating then
-            Atdar.profile.set("debug", on)
-        end
-    end, { "debug" }, label("debug.help"), Atdar.profile.get("debug") == true)
+
+    view.toggle(node, "debug", "debug", { "debug" })
 
     -- The script stops by itself when its files change on disk (core/file_watch)
-    view.stop_on_change = node:toggle(label("stop_on_change.name"), function(on)
-        -- Stand also calls this at every start, restoring the state from its own profile:
-        -- the notice is only for a real switch on
-        if updating or Atdar.profile.get("stop_on_change") == on then
-            return
-        end
-        Atdar.profile.set("stop_on_change", on)
+    view.toggle(node, "stop_on_change", "stop_on_change", { "stoponchange" }, function(on)
         if on then
             log:notify(text("stop_on_change.on"))
         end
-    end, { "stoponchange" }, label("stop_on_change.help"), Atdar.profile.get("stop_on_change") == true)
+    end)
 
     -- Works without debug mode too: it only adds lines to the log
-    view.load_timing = node:toggle(label("load_timing.name"), function(on)
-        -- Stand also calls this at every start, restoring the state from its own profile:
-        -- the notice is only for a real switch on
-        if updating or Atdar.profile.get("load_timing") == on then
-            return
-        end
-        Atdar.profile.set("load_timing", on)
+    view.toggle(node, "load_timing", "load_timing", { "loadtiming" }, function(on)
         if on then
             log:notify(text("load_timing.on"))
         end
-    end, { "loadtiming" }, label("load_timing.help"), Atdar.profile.get("load_timing") == true)
+    end)
 
     -- The native wrappers read from disk again, to try a change without restarting the script
-    node:action(label("reload_natives.name"), function()
-        local count = Atdar.loader.reload(Atdar.natives, "natives")
-        log:success(text("reload_natives.done"):format(count))
-    end, { "debugreloadnatives" }, label("reload_natives.help"))
+    node:action(label("reload_natives.name"), actions.reload_natives, { "reloadnatives" }, label("reload_natives.help"))
 end
 
--- ─── Keep Logs ───────────────────────────────────────────────────────────────
+-- Logs
 
--- Days of log files kept (core/logger), under the Logs divider of Debug
+-- Days of log files kept (core/logger). Fewer days apply right away, not only at the next start or day
 function module.log_keep_days(node: table): void
-    -- Made with the default, then set to the profile's value (see show_profile_value)
-    updating = true
-    view.sliders.log_keep_days = node:slider(label("log_keep_days.name"), 0, 365, Atdar.profile.default("log_keep_days"), 1,
-        function(value)
-            if updating then
-                return
-            end
-            Atdar.profile.set("log_keep_days", value)
-            -- Fewer days apply right away, not only at the next start or day
-            Logger.remove_old()
-        end, { "logkeepdays" }, label("log_keep_days.help"))
-    show_profile_value(view.sliders.log_keep_days, "log_keep_days", Atdar.profile.get("log_keep_days"))
-    updating = false
+    view.slider(node, "log_keep_days", "log_keep_days", 0, 365, { "logkeepdays" }, || -> Logger.remove_old())
 end
 
 -- Write updater changes to both log file and Stand
 function module.updater_log_both_ways(node: table): void
-    view.updater_log_both_ways = node:toggle(label("updater_log_both_ways.name"), function(on)
-        if updating or Atdar.profile.get("updater_log_both_ways") == on then
-            return
-        end
-
-        Atdar.profile.set("updater_log_both_ways", on)
-    end, { "updaterlogbothways" }, label("updater_log_both_ways.help"), Atdar.profile.get("updater_log_both_ways") == true)
+    view.toggle(node, "updater_log_both_ways", "updater_log_both_ways", { "updaterlogbothways" })
 end
 
--- Info lines on disk at once too (core/logger): warnings and errors always are, the rest within a second
+-- Info lines on disk at once too (core/logger): warnings and errors always are, the rest within a second.
+-- What waits goes now: nothing written before stays behind
 function module.log_info_at_once(node: table): void
-    view.log_info_at_once = node:toggle(label("log_info_at_once.name"), function(on)
-        if updating or Atdar.profile.get("log_info_at_once") == on then
-            return
-        end
-        Atdar.profile.set("log_info_at_once", on)
-        -- What waits goes now: nothing written before stays behind
-        Logger.flush()
-    end, { "loginfoatonce" }, label("log_info_at_once.help"), Atdar.profile.get("log_info_at_once") == true)
+    view.toggle(node, "log_info_at_once", "log_info_at_once", { "loginfoatonce" }, || -> Logger.flush())
 end
 
--- ─── Rename Script ───────────────────────────────────────────────────────────
+-- Rename Script
 
 function module.rename(node: table): void
+
     local rename_ref
     -- Stand calls the field again while the script stops (after a rename, or any stop);
     -- showing a warning then is an error, so nothing is asked then
     local renaming = false
+
     rename_ref = node:text_input(label("rename.name"), { "renamescript" }, function(value, click_type)
-        if renaming or stopping or value == Atdar.name then
+        if renaming or clicks.is_stopping() or value == Atdar.name then
             return
         end
-        if not installer.valid_name(value) then
-            log:warn(text("rename.invalid"):format(value))
+
+        if not actions.is_valid_name(value) then
             return
         end
+
         -- Still possible if Stand stops the script before our on_stop handler runs
         local shown = pcall(menu.show_warning, rename_ref, click_type, text("rename.warning"):format(Atdar.name, value), function()
             renaming = true
-            local ok, reason, busy_folder = installer.rename(value)
-            if not ok then
+            if not actions.rename_script(value) then
                 renaming = false
-                if busy_folder then
-                    log:warn(text("rename.busy"):format(busy_folder))
-                    return
-                end
-                log:warn(text("rename.failed"):format(reason))
-                return
             end
-            log:notify(text("rename.done"):format(value, value))
-            installer.stop()
         end)
+
         if not shown then
             log:debug($"rename to '{value}' not asked: the script is stopping")
         end

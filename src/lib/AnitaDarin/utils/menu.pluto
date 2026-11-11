@@ -1,4 +1,55 @@
+-- lib/AnitaDarin/utils/menu.pluto
+--
+-- Atdar.menu: what a menu file (a pack's or the script's own) builds its menu with, in one place, so a pack
+-- needn't know where each part lives in lib.
+--
+--   Items Stand doesn't have ready-made, made in a Stand ref (a MenuNode's is node.handle):
+--     Atdar.menu.spoiler(ref, "Address", "Vinewood 12")       -- a line that hides its value until clicked
+--     Atdar.menu.color(ref, "Color", { "color" }, "", { r = 1, g = 0, b = 0 }, on_change)
+--
+--   The parts of the script's own menu, each loaded the first time it's asked for:
+--     Atdar.menu.Node        MenuNode: new Atdar.menu.Node(ref) wraps a Stand ref (ui/stand/core/menu_node)
+--     Atdar.menu.builder     builder.build_items(node, items): a submenu written as a table (menu_builder)
+--     Atdar.menu.confirm     confirm.action(node, name, again_name, on_confirm): a button that acts on a
+--                            second click (ui/stand/core/confirm)
+--     Atdar.menu.settings    the script's own section: set_parent, set_divider, set_name, add (ui/stand/core/settings)
+--     Atdar.menu.commands    command names with the profile's prefix: names, track (ui/logic/stand/commands)
+--     Atdar.menu.arguments   a field for each parameter of a function, by its type (ui/stand/core/arguments)
+--     Atdar.menu.modules     modules.list_in(node), modules.module_in(node, name): the Modules list in any menu
+--     Atdar.menu.clicks      clicks.is_user_action(click_type): whether a handler's call is the user's
+
 local module = {}
+
+-- Where each part is in lib
+local PARTS = {
+    Node = "ui/stand/core/menu_node",
+    builder = "ui/stand/core/menu_builder",
+    confirm = "ui/stand/core/confirm",
+    settings = "ui/stand/core/settings",
+    commands = "ui/logic/stand/commands",
+    arguments = "ui/stand/core/arguments",
+    modules = "ui/stand/modules/place",
+    clicks = "ui/logic/stand/clicks",
+}
+
+-- A part is loaded when it's first asked for and kept: this file loads before the profile and the features
+-- the parts need. A name that is no part stays nil, so a typo isn't hidden
+setmetatable(module, {
+    __index = function(self, key)
+
+        local path = PARTS[key]
+
+        if path == nil then
+            return nil
+        end
+
+        local part = Atdar.loader.load(path)
+
+        rawset(self, key, part)
+
+        return part
+    end,
+})
 
 -- A spoiler: a line that hides its value until clicked; another click hides it again.
 --

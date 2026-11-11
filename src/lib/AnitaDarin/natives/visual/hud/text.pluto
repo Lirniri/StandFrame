@@ -19,10 +19,407 @@ module.COLOR = {
     pink = "~q~",
 }
 
+-- State
+
+function module.does_block_exist(gxt: string): bool
+    return HUD.DOES_TEXT_BLOCK_EXIST(gxt)
+end
+
+function module.has_additional_loaded(slot: int): bool
+    return HUD.HAS_ADDITIONAL_TEXT_LOADED(slot)
+end
+
+function module.is_streaming_additional(p0: int): bool
+    return HUD.IS_STREAMING_ADDITIONAL_TEXT(p0)
+end
+
+-- Checks if the specified gxt has loaded into the passed slot
+function module.has_this_additional_loaded(gxt: string, slot: int): bool
+    return HUD.HAS_THIS_ADDITIONAL_TEXT_LOADED(gxt, slot)
+end
+
+-- Checks if the passed gxt name exists in the game files
+function module.does_label_exist(gxt: string): bool
+    return HUD.DOES_TEXT_LABEL_EXIST(gxt)
+end
+
+function module.is_subtitle_preference_switched_on(): bool
+    return HUD.IS_SUBTITLE_PREFERENCE_SWITCHED_ON()
+end
+
+function module.is_help_message_on_screen(): bool
+    return HUD.IS_HELP_MESSAGE_ON_SCREEN()
+end
+
+function module.has_script_hidden_help_this_frame(): bool
+    return HUD.HAS_SCRIPT_HIDDEN_HELP_THIS_FRAME()
+end
+
+function module.is_help_message_being_displayed(): bool
+    return HUD.IS_HELP_MESSAGE_BEING_DISPLAYED()
+end
+
+function module.is_help_message_fading_out(): bool
+    return HUD.IS_HELP_MESSAGE_FADING_OUT()
+end
+
+function module.is_floating_help_on_screen(hud_index: int): bool
+    return HUD.IS_FLOATING_HELP_TEXT_ON_SCREEN(hud_index)
+end
+
+-- Returns whether or not the text chat (MULTIPLAYER_CHAT Scaleform component) is active
+function module.is_mp_chat_typing(): bool
+    return HUD.IS_MP_TEXT_CHAT_TYPING()
+end
+
+-- Get
+
+function module.get_first_n_characters_of_literal_string(string: string, length: int): string
+    return HUD.GET_FIRST_N_CHARACTERS_OF_LITERAL_STRING(string, length)
+end
+
+-- Returns the string length of the string from the gxt string 
+function module.get_length_of_string_label(gxt: string): int
+    return HUD.GET_LENGTH_OF_STRING_WITH_THIS_TEXT_LABEL(gxt)
+end
+
+-- Returns the length of the string passed (much like strlen)
+function module.get_length_of_literal_string(string: string): int
+    return HUD.GET_LENGTH_OF_LITERAL_STRING(string)
+end
+
+function module.get_length_of_literal_string_in_bytes(string: string): int
+    return HUD.GET_LENGTH_OF_LITERAL_STRING_IN_BYTES(string)
+end
+
+-- Set
+
+function module.set_colour_of_next_component(hud_color: int): void
+    HUD.SET_COLOUR_OF_NEXT_TEXT_COMPONENT(hud_color)
+end
+
+-- Size range : 0F to 1.0F
+function module.set_scale(scale: float, size: float): void
+    HUD.SET_TEXT_SCALE(scale, size)
+end
+
+function module.set_colour(red: int, green: int, blue: int, alpha: int): void
+    HUD.SET_TEXT_COLOUR(red, green, blue, alpha)
+end
+
+function module.set_centre(align: bool): void
+    HUD.SET_TEXT_CENTRE(align)
+end
+
+function module.set_right_justify(toggle: bool): void
+    HUD.SET_TEXT_RIGHT_JUSTIFY(toggle)
+end
+
+function module.set_justification(justify_type: int): void
+    HUD.SET_TEXT_JUSTIFICATION(justify_type)
+end
+
+function module.set_line_height_mult(line_height_mult: float): void
+    HUD.SET_TEXT_LINE_HEIGHT_MULT(line_height_mult)
+end
+
+function module.set_wrap(start: float, _end: float): void
+    HUD.SET_TEXT_WRAP(start, _end)
+end
+
+function module.set_leading(p0: int): void
+    HUD.SET_TEXT_LEADING(p0)
+end
+
+function module.set_proportional(p0: bool): void
+    HUD.SET_TEXT_PROPORTIONAL(p0)
+end
+
+function module.set_font(font_type: int): void
+    HUD.SET_TEXT_FONT(font_type)
+end
+
+function module.set_drop_shadow(): void
+    HUD.SET_TEXT_DROP_SHADOW()
+end
+
+function module.set_dropshadow(distance: int, r: int, g: int, b: int, a: int): void
+    HUD.SET_TEXT_DROPSHADOW(distance, r, g, b, a)
+end
+
+function module.set_outline(): void
+    HUD.SET_TEXT_OUTLINE()
+end
+
+function module.set_edge(p0: int, r: int, g: int, b: int, a: int): void
+    HUD.SET_TEXT_EDGE(p0, r, g, b, a)
+end
+
+function module.set_render_id(render_id: int): void
+    HUD.SET_TEXT_RENDER_ID(render_id)
+end
+
+function module.set_help_message_style(style: int, hud_color: int, alpha: int, p3: int, p4: int): void
+    HUD.SET_HELP_MESSAGE_STYLE(style, hud_color, alpha, p3, p4)
+end
+
+function module.set_description_for_ugc_mission_eight_strings(
+    p0: bool, p1: string, p2: string, p3: string, p4: string, p5: string, p6: string, p7: string,
+    p8: string
+): void
+    -- body function:
+    HUD.SET_DESCRIPTION_FOR_UGC_MISSION_EIGHT_STRINGS(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+end
+
+function module.set_floating_help_screen_position(hud_index: int, x: float, y: float): void
+    HUD.SET_FLOATING_HELP_TEXT_SCREEN_POSITION(hud_index, x, y)
+end
+
+function module.set_floating_help_world_position(hud_index: int, x: float, y: float, z: float): void
+    HUD.SET_FLOATING_HELP_TEXT_WORLD_POSITION(hud_index, x, y, z)
+end
+
+function module.set_floating_help_to_entity(
+    hud_index: int, entity: int, offset_x: float, offset_y: float
+): void
+    -- body function:
+    HUD.SET_FLOATING_HELP_TEXT_TO_ENTITY(hud_index, entity, offset_x, offset_y)
+end
+
+function module.set_floating_help_style(hud_index: int, p1: int, p2: int, p3: int, p4: int, p5: int): void
+    HUD.SET_FLOATING_HELP_TEXT_STYLE(hud_index, p1, p2, p3, p4, p5)
+end
+
+function module.set_mp_gamer_tag_big(gamer_tag_id: int, string: string): void
+    HUD.SET_MP_GAMER_TAG_BIG_TEXT(gamer_tag_id, string)
+end
+
+-- You can use this native for custom input, without having to use any scaleform-related natives
+function module.set_warning_message_with_header_and_substring_flags(
+    entry_header: string, entry_line1: string, instructional_key: int, entry_line2: string,
+    p4: bool, p5: any, additional_int_info: any, additional_text_info_line1: string,
+    additional_text_info_line2: string, show_background: bool, error_code: int
+): void
+    -- body function:
+    HUD.SET_WARNING_MESSAGE_WITH_HEADER_AND_SUBSTRING_FLAGS(entry_header, entry_line1, instructional_key, entry_line2, p4, p5, additional_int_info, additional_text_info_line1, additional_text_info_line2, show_background, error_code)
+end
+
+function module.set_warning_message_with_header_and_substring_flags_extended(
+    label_title: string, label_message: string, p2: int, p3: int, label_message2: string, p5: bool,
+    p6: int, p7: int, p8: string, p9: string, background: bool, error_code: int
+): void
+    -- body function:
+    HUD.SET_WARNING_MESSAGE_WITH_HEADER_AND_SUBSTRING_FLAGS_EXTENDED(label_title, label_message, p2, p3, label_message2, p5, p6, p7, p8, p9, background, error_code)
+end
+
+function module.set_input_box_enabled(p0: bool): void
+    HUD.SET_TEXT_INPUT_BOX_ENABLED(p0)
+end
+
+function module.set_allow_comma_on_input(p0: any): void
+    HUD.SET_ALLOW_COMMA_ON_TEXT_INPUT(p0)
+end
+
 -- Actions
 
 function module.add_string(text: string): void
     HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(text)
+end
+
+-- Initializes the text entry for the the text next to a loading prompt. All natives for building UI texts can be used here
+function module.begin_command_busyspinner_on(string: string): void
+    HUD.BEGIN_TEXT_COMMAND_BUSYSPINNER_ON(string)
+end
+
+function module.end_command_busyspinner_on(busy_spinner_type: int): void
+    HUD.END_TEXT_COMMAND_BUSYSPINNER_ON(busy_spinner_type)
+end
+
+function module.begin_command_print(gxt_entry: string): void
+    HUD.BEGIN_TEXT_COMMAND_PRINT(gxt_entry)
+end
+
+-- Draws the subtitle at middle center of the screen
+function module.end_command_print(duration: int, draw_immediately: bool): void
+    HUD.END_TEXT_COMMAND_PRINT(duration, draw_immediately)
+end
+
+function module.begin_command_is_message_displayed(text: string): void
+    HUD.BEGIN_TEXT_COMMAND_IS_MESSAGE_DISPLAYED(text)
+end
+
+function module.end_command_is_message_displayed(): bool
+    return HUD.END_TEXT_COMMAND_IS_MESSAGE_DISPLAYED()
+end
+
+function module.begin_command_display(text: string): void
+    HUD.BEGIN_TEXT_COMMAND_DISPLAY_TEXT(text)
+end
+
+function module.end_command_display(x: float, y: float, p2: int): void
+    HUD.END_TEXT_COMMAND_DISPLAY_TEXT(x, y, p2)
+end
+
+function module.begin_command_get_screen_width_of_display(text: string): void
+    HUD.BEGIN_TEXT_COMMAND_GET_SCREEN_WIDTH_OF_DISPLAY_TEXT(text)
+end
+
+function module.end_command_get_screen_width_of_display(p0: bool): float
+    return HUD.END_TEXT_COMMAND_GET_SCREEN_WIDTH_OF_DISPLAY_TEXT(p0)
+end
+
+function module.begin_command_get_number_of_lines_for_string(entry: string): void
+    HUD.BEGIN_TEXT_COMMAND_GET_NUMBER_OF_LINES_FOR_STRING(entry)
+end
+
+-- Determines how many lines the text string will use when drawn on screen
+function module.end_command_get_number_of_lines_for_string(x: float, y: float): int
+    return HUD.END_TEXT_COMMAND_GET_NUMBER_OF_LINES_FOR_STRING(x, y)
+end
+
+-- Used to be known as _SET_TEXT_COMPONENT_FORMAT
+function module.begin_command_display_help(input_type: string): void
+    HUD.BEGIN_TEXT_COMMAND_DISPLAY_HELP(input_type)
+end
+
+function module.end_command_display_help(p0: int, loop: bool, beep: bool, shape: int): void
+    HUD.END_TEXT_COMMAND_DISPLAY_HELP(p0, loop, beep, shape)
+end
+
+function module.begin_command_is_this_help_message_being_displayed(label_name: string): void
+    HUD.BEGIN_TEXT_COMMAND_IS_THIS_HELP_MESSAGE_BEING_DISPLAYED(label_name)
+end
+
+function module.end_command_is_this_help_message_being_displayed(p0: int): bool
+    return HUD.END_TEXT_COMMAND_IS_THIS_HELP_MESSAGE_BEING_DISPLAYED(p0)
+end
+
+function module.begin_command_add_directly_to_previous_briefs(p0: string): void
+    HUD.BEGIN_TEXT_COMMAND_ADD_DIRECTLY_TO_PREVIOUS_BRIEFS(p0)
+end
+
+function module.end_command_add_directly_to_previous_briefs(p0: bool): void
+    HUD.END_TEXT_COMMAND_ADD_DIRECTLY_TO_PREVIOUS_BRIEFS(p0)
+end
+
+function module.begin_command_clear_print(text: string): void
+    HUD.BEGIN_TEXT_COMMAND_CLEAR_PRINT(text)
+end
+
+function module.end_command_clear_print(): void
+    HUD.END_TEXT_COMMAND_CLEAR_PRINT()
+end
+
+function module.begin_command_override_button(gxt_entry: string): void
+    HUD.BEGIN_TEXT_COMMAND_OVERRIDE_BUTTON_TEXT(gxt_entry)
+end
+
+function module.end_command_override_button(p0: int): void
+    HUD.END_TEXT_COMMAND_OVERRIDE_BUTTON_TEXT(p0)
+end
+
+function module.add_component_integer(value: int): void
+    HUD.ADD_TEXT_COMPONENT_INTEGER(value)
+end
+
+function module.add_component_float(value: float, decimal_places: int): void
+    HUD.ADD_TEXT_COMPONENT_FLOAT(value, decimal_places)
+end
+
+function module.add_component_substring_label(label_name: string): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_TEXT_LABEL(label_name)
+end
+
+function module.add_component_substring_label_hash_key(gxt_entry_hash: int): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_TEXT_LABEL_HASH_KEY(gxt_entry_hash)
+end
+
+-- Adds a timer (e.g. "00:00:00:000"). The appearance of the timer depends on the flags, which needs more research
+function module.add_component_substring_time(timestamp: int, flags: int): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_TIME(timestamp, flags)
+end
+
+function module.add_component_formatted_integer(value: int, comma_separated: bool): void
+    HUD.ADD_TEXT_COMPONENT_FORMATTED_INTEGER(value, comma_separated)
+end
+
+function module.add_component_substring_phone_number(p0: string, p1: int): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PHONE_NUMBER(p0, p1)
+end
+
+function module.add_component_substring_website(website: string): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_WEBSITE(website)
+end
+
+function module.add_component_substring_keyboard_display(string: string): void
+    HUD.ADD_TEXT_COMPONENT_SUBSTRING_KEYBOARD_DISPLAY(string)
+end
+
+function module.clear_prints(): void
+    HUD.CLEAR_PRINTS()
+end
+
+function module.clear_all_help_messages(): void
+    HUD.CLEAR_ALL_HELP_MESSAGES()
+end
+
+function module.clear_this_print(p0: string): void
+    HUD.CLEAR_THIS_PRINT(p0)
+end
+
+function module.clear_small_prints(): void
+    HUD.CLEAR_SMALL_PRINTS()
+end
+
+-- Request a gxt into the passed slot
+function module.request_additional(gxt: string, slot: int): void
+    HUD.REQUEST_ADDITIONAL_TEXT(gxt, slot)
+end
+
+function module.request_additional_for_dlc(gxt: string, slot: int): void
+    HUD.REQUEST_ADDITIONAL_TEXT_FOR_DLC(gxt, slot)
+end
+
+function module.clear_additional(p0: int, p1: bool): void
+    HUD.CLEAR_ADDITIONAL_TEXT(p0, p1)
+end
+
+function module.hide_help_frame(): void
+    HUD.HIDE_HELP_TEXT_THIS_FRAME()
+end
+
+-- The messages are localized strings
+function module.display_help_frame(message: string, p1: bool): void
+    HUD.DISPLAY_HELP_TEXT_THIS_FRAME(message, p1)
+end
+
+function module.force_close_input_box(): void
+    HUD.FORCE_CLOSE_TEXT_INPUT_BOX()
+end
+
+function module.override_mp_chat_team_string(gxt_entry_hash: int): void
+    HUD.OVERRIDE_MP_TEXT_CHAT_TEAM_STRING(gxt_entry_hash)
+end
+
+function module.close_mp_chat(): void
+    HUD.CLOSE_MP_TEXT_CHAT()
+end
+
+function module.mp_chat_is_team_job(p0: any): void
+    HUD.MP_TEXT_CHAT_IS_TEAM_JOB(p0)
+end
+
+function module.override_mp_chat_color(p0: int, hud_color: int): void
+    HUD.OVERRIDE_MP_TEXT_CHAT_COLOR(p0, hud_color)
+end
+
+-- Hides the chat history, closes the input box and makes it unable to be opened unless called again with FALSE
+function module.mp_chat_disable(toggle: bool): void
+    HUD.MP_TEXT_CHAT_DISABLE(toggle)
+end
+
+function module.flag_player_context_in_tournament(toggle: bool): void
+    HUD.FLAG_PLAYER_CONTEXT_IN_TOURNAMENT(toggle)
 end
 
 return module

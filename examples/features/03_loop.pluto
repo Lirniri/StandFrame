@@ -10,7 +10,7 @@ return Atdar.features.add(new Feature({
     kind = "loop",
 
     on_tick = function(self)
-        PLAYER.RESET_PLAYER_STAMINA(Atdar.natives.player.get_id())
+        Atdar.natives.player.movement.reset_sprint_stamina(Atdar.natives.player.get_id())
     end,
 
     -- Optional: once when switched off

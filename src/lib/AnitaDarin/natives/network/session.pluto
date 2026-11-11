@@ -52,4 +52,595 @@ function module.get_status(): table
     
 end
 
+-- State
+
+function module.is_host(): bool
+    return NETWORK.NETWORK_IS_HOST()
+end
+
+function module.can_bail(): bool
+    return NETWORK.NETWORK_CAN_BAIL()
+end
+
+function module.has_pending_invite(): bool
+    return NETWORK.NETWORK_HAS_PENDING_INVITE()
+end
+
+function module.has_confirmed_invite(): bool
+    return NETWORK.NETWORK_HAS_CONFIRMED_INVITE()
+end
+
+function module.was_invited(): bool
+    return NETWORK.NETWORK_SESSION_WAS_INVITED()
+end
+
+-- Seems to be true while "Getting GTA Online session details" shows up
+function module.is_awaiting_invite_response(): bool
+    return NETWORK.NETWORK_SESSION_IS_AWAITING_INVITE_RESPONSE()
+end
+
+function module.is_displaying_invite_confirmation(): bool
+    return NETWORK.NETWORK_SESSION_IS_DISPLAYING_INVITE_CONFIRMATION()
+end
+
+function module.is_offline_invite_pending(): bool
+    return NETWORK.NETWORK_IS_OFFLINE_INVITE_PENDING()
+end
+
+function module.is_in(): bool
+    return NETWORK.NETWORK_IS_IN_SESSION()
+end
+
+-- This checks if player is playing on gta online or not
+function module.is_session_started(): bool
+    return NETWORK.NETWORK_IS_SESSION_STARTED()
+end
+
+function module.can_end(): bool
+    return NETWORK.NETWORK_CAN_SESSION_END()
+end
+
+function module.is_in_voice(): bool
+    return NETWORK.NETWORK_SESSION_IS_IN_VOICE_SESSION()
+end
+
+function module.is_voice_active(): bool
+    return NETWORK.NETWORK_SESSION_IS_VOICE_SESSION_ACTIVE()
+end
+
+function module.is_voice_busy(): bool
+    return NETWORK.NETWORK_SESSION_IS_VOICE_SESSION_BUSY()
+end
+
+function module.is_activity(): bool
+    return NETWORK.NETWORK_IS_ACTIVITY_SESSION()
+end
+
+function module.has_follow_invite(): bool
+    return NETWORK.NETWORK_HAS_FOLLOW_INVITE()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.has_invited_gamer(p0: int): bool
+    return NETWORK.NETWORK_HAS_INVITED_GAMER(p0)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.has_made_invite_decision(gamer_handle: int): bool
+    return NETWORK.NETWORK_HAS_MADE_INVITE_DECISION(gamer_handle)
+end
+
+function module.can_queue_for_previous_join(): bool
+    return NETWORK.NETWORK_CAN_QUEUE_FOR_PREVIOUS_SESSION_JOIN()
+end
+
+function module.is_queuing_for_join(): bool
+    return NETWORK.NETWORK_IS_QUEUING_FOR_SESSION_JOIN()
+end
+
+function module.has_received_host_broadcast_data(): bool
+    return NETWORK.NETWORK_HAS_RECEIVED_HOST_BROADCAST_DATA()
+end
+
+function module.is_host_this_script(): bool
+    return NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.is_gamer_in_my(gamer_handle: int): bool
+    return NETWORK.NETWORK_IS_GAMER_IN_MY_SESSION(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_send_local_invite(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_SEND_LOCAL_INVITE(gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.can_receive_local_invite(gamer_handle: int): bool
+    return NETWORK.NETWORK_CAN_RECEIVE_LOCAL_INVITE(gamer_handle)
+end
+
+function module.is_entity_a_ghost(entity: int): bool
+    return NETWORK.IS_ENTITY_A_GHOST(entity)
+end
+
+function module.is_entity_in_ghost_collision(entity: int): bool
+    return NETWORK.IS_ENTITY_IN_GHOST_COLLISION(entity)
+end
+
+function module.is_in_tutorial(): bool
+    return NETWORK.NETWORK_IS_IN_TUTORIAL_SESSION()
+end
+
+function module.is_tutorial_change_pending(): bool
+    return NETWORK.NETWORK_IS_TUTORIAL_SESSION_CHANGE_PENDING()
+end
+
+function module.are_players_in_same_tutorial(player_id: int, index: int): bool
+    return NETWORK.NETWORK_ARE_PLAYERS_IN_SAME_TUTORIAL_SESSION(player_id, index)
+end
+
+-- Get
+
+function module.get_host_player_index(): int
+    return NETWORK.NETWORK_GET_HOST_PLAYER_INDEX()
+end
+
+function module.get_kick_vote(player_id: int): bool
+    return NETWORK.NETWORK_SESSION_GET_KICK_VOTE(player_id)
+end
+
+function module.get_matchmaking_group_free(p0: int): int
+    return NETWORK.NETWORK_SESSION_GET_MATCHMAKING_GROUP_FREE(p0)
+end
+
+function module.get_unique_crew_limit(): int
+    return NETWORK.NETWORK_SESSION_GET_UNIQUE_CREW_LIMIT()
+end
+
+function module.get_host_aim_preference(): int
+    return NETWORK.NETWORK_SESSION_GET_HOST_AIM_PREFERENCE()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.get_inviter(gamer_handle: int): void
+    NETWORK.NETWORK_SESSION_GET_INVITER(gamer_handle)
+end
+
+function module.get_private_slots(): int
+    return NETWORK.NETWORK_SESSION_GET_PRIVATE_SLOTS()
+end
+
+function module.get_presence_invite_index_by_id(p0: int): int
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_INDEX_BY_ID(p0)
+end
+
+function module.get_num_presence_invites(): int
+    return NETWORK.NETWORK_GET_NUM_PRESENCE_INVITES()
+end
+
+function module.get_presence_invite_id(p0: int): int
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_ID(p0)
+end
+
+function module.get_presence_invite_inviter(p0: int): string
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_INVITER(p0)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_presence_invite_handle(p0: any, p1: int): bool
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_HANDLE(p0, p1)
+end
+
+function module.get_presence_invite_session_id(p0: any): int
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_SESSION_ID(p0)
+end
+
+function module.get_presence_invite_content_id(p0: int): string
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_CONTENT_ID(p0)
+end
+
+function module.get_presence_invite_playlist_length(p0: int): int
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_PLAYLIST_LENGTH(p0)
+end
+
+function module.get_presence_invite_playlist_current(p0: int): int
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_PLAYLIST_CURRENT(p0)
+end
+
+function module.get_presence_invite_from_admin(p0: int): bool
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_FROM_ADMIN(p0)
+end
+
+function module.get_presence_invite_is_tournament(p0: any): bool
+    return NETWORK.NETWORK_GET_PRESENCE_INVITE_IS_TOURNAMENT(p0)
+end
+
+function module.get_invite_reply_status(p0: any): int
+    return NETWORK.NETWORK_GET_INVITE_REPLY_STATUS(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_currently_selected_gamer_handle_from_invite_menu(p0: int): bool
+    return NETWORK.NETWORK_GET_CURRENTLY_SELECTED_GAMER_HANDLE_FROM_INVITE_MENU(p0)
+end
+
+function module.get_host_this_script(): int
+    return NETWORK.NETWORK_GET_HOST_OF_THIS_SCRIPT()
+end
+
+function module.get_host_of_script(script_name: string, instance_id: int, position_hash: int): int
+    return NETWORK.NETWORK_GET_HOST_OF_SCRIPT(script_name, instance_id, position_hash)
+end
+
+function module.get_player_tutorial_instance(player_id: int): int
+    return NETWORK.NETWORK_GET_PLAYER_TUTORIAL_SESSION_INSTANCE(player_id)
+end
+
+-- Set
+
+function module.set_matchmaking_group(matchmaking_group: int): void
+    NETWORK.NETWORK_SESSION_SET_MATCHMAKING_GROUP(matchmaking_group)
+end
+
+function module.set_matchmaking_group_max(player_type: int, player_count: int): void
+    NETWORK.NETWORK_SESSION_SET_MATCHMAKING_GROUP_MAX(player_type, player_count)
+end
+
+function module.set_unique_crew_limit(p0: any): void
+    NETWORK.NETWORK_SESSION_SET_UNIQUE_CREW_LIMIT(p0)
+end
+
+function module.set_matchmaking_property_id(p0: bool): void
+    NETWORK.NETWORK_SESSION_SET_MATCHMAKING_PROPERTY_ID(p0)
+end
+
+function module.set_matchmaking_mental_state(p0: int): void
+    NETWORK.NETWORK_SESSION_SET_MATCHMAKING_MENTAL_STATE(p0)
+end
+
+function module.set_num_bosses(num: int): void
+    NETWORK.NETWORK_SESSION_SET_NUM_BOSSES(num)
+end
+
+function module.set_script_validate_join(): void
+    NETWORK.NETWORK_SESSION_SET_SCRIPT_VALIDATE_JOIN()
+end
+
+function module.set_gamemode(p0: any): void
+    NETWORK.NETWORK_SESSION_SET_GAMEMODE(p0)
+end
+
+function module.set_can_receive_rs_invites(p0: bool): void
+    NETWORK.NETWORK_SET_CAN_RECEIVE_RS_INVITES(p0)
+end
+
+-- Appears to set whether a transition should be started when the session is migrating
+function module.set_do_not_launch_from_join_as_migrated_host(toggle: bool): void
+    NETWORK.NETWORK_SET_DO_NOT_LAUNCH_FROM_JOIN_AS_MIGRATED_HOST(toggle)
+end
+
+function module.set_presence_invites_blocked(toggle: bool): void
+    NETWORK.NETWORK_SET_PRESENCE_SESSION_INVITES_BLOCKED(toggle)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.set_currently_selected_gamer_handle_from_invite_menu(p0: int): bool
+    return NETWORK.NETWORK_SET_CURRENTLY_SELECTED_GAMER_HANDLE_FROM_INVITE_MENU(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.set_invite_on_call_for_invite_menu(p0: int): void
+    NETWORK.NETWORK_SET_INVITE_ON_CALL_FOR_INVITE_MENU(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.set_invite_failed_message_for_invite_menu(p0: int, p1: int): void
+    NETWORK.NETWORK_SET_INVITE_FAILED_MESSAGE_FOR_INVITE_MENU(p0, p1)
+end
+
+function module.set_override_tutorial_chat(toggle: bool): void
+    NETWORK.NETWORK_SET_OVERRIDE_TUTORIAL_SESSION_CHAT(toggle)
+end
+
+function module.set_vehicle_as_ghost(vehicle: int, toggle: bool): void
+    NETWORK.SET_NETWORK_VEHICLE_AS_GHOST(vehicle, toggle)
+end
+
+function module.set_local_player_as_ghost(toggle: bool, p1: bool): void
+    NETWORK.SET_LOCAL_PLAYER_AS_GHOST(toggle, p1)
+end
+
+function module.set_non_participants_this_script_as_ghosts(p0: bool): void
+    NETWORK.SET_NON_PARTICIPANTS_OF_THIS_SCRIPT_AS_GHOSTS(p0)
+end
+
+-- Enables ghosting between specific players
+function module.set_remote_player_as_ghost(player_id: int, p1: bool): void
+    NETWORK.SET_REMOTE_PLAYER_AS_GHOST(player_id, p1)
+end
+
+-- Must be a value between 1 and 254
+function module.set_ghost_alpha(alpha: int): void
+    NETWORK.SET_GHOST_ALPHA(alpha)
+end
+
+function module.set_entity_ghosted_for_ghost_players(entity: int, toggle: bool): void
+    NETWORK.SET_ENTITY_GHOSTED_FOR_GHOST_PLAYERS(entity, toggle)
+end
+
+function module.set_invert_ghosting(p0: bool): void
+    NETWORK.SET_INVERT_GHOSTING(p0)
+end
+
+-- Actions
+
+function module.bail(p0: int, p1: int, p2: int): void
+    NETWORK.NETWORK_BAIL(p0, p1, p2)
+end
+
+function module.do_freeroam_quickmatch(p0: any, p1: any, p2: any): bool
+    return NETWORK.NETWORK_SESSION_DO_FREEROAM_QUICKMATCH(p0, p1, p2)
+end
+
+function module.do_friend_matchmaking(p0: int, p1: int, p2: int): bool
+    return NETWORK.NETWORK_SESSION_DO_FRIEND_MATCHMAKING(p0, p1, p2)
+end
+
+function module.do_crew_matchmaking(crew_id: int, p1: int, p2: int, max_players: int): bool
+    return NETWORK.NETWORK_SESSION_DO_CREW_MATCHMAKING(crew_id, p1, p2, max_players)
+end
+
+function module.do_activity_quickmatch(p0: any, p1: any, p2: any, p3: any, p4: any): bool
+    return NETWORK.NETWORK_SESSION_DO_ACTIVITY_QUICKMATCH(p0, p1, p2, p3, p4)
+end
+
+function module.host(p0: int, max_players: int, p2: bool): bool
+    return NETWORK.NETWORK_SESSION_HOST(p0, max_players, p2)
+end
+
+function module.host_closed(p0: int, max_players: int): bool
+    return NETWORK.NETWORK_SESSION_HOST_CLOSED(p0, max_players)
+end
+
+function module.host_friends_only(p0: int, max_players: int): bool
+    return NETWORK.NETWORK_SESSION_HOST_FRIENDS_ONLY(p0, max_players)
+end
+
+function module.leave_including_reason(leave_flags: int, leave_reason: int): bool
+    return NETWORK._NETWORK_SESSION_LEAVE_INCLUDING_REASON(leave_flags, leave_reason)
+end
+
+function module.end_(p0: bool, p1: bool): bool
+    return NETWORK.NETWORK_SESSION_END(p0, p1)
+end
+
+function module.leave(p0: any): bool
+    return NETWORK.NETWORK_SESSION_LEAVE(p0)
+end
+
+-- Only works as host
+function module.kick_player(player_id: int): void
+    NETWORK.NETWORK_SESSION_KICK_PLAYER(player_id)
+end
+
+function module.join_previously_failed(): bool
+    return NETWORK.NETWORK_JOIN_PREVIOUSLY_FAILED_SESSION()
+end
+
+function module.add_active_matchmaking_group(group_id: int): void
+    NETWORK.NETWORK_SESSION_ADD_ACTIVE_MATCHMAKING_GROUP(group_id)
+end
+
+function module.validate_join(p0: bool): void
+    NETWORK.NETWORK_SESSION_VALIDATE_JOIN(p0)
+end
+
+function module.join_invite(): void
+    NETWORK.NETWORK_SESSION_JOIN_INVITE()
+end
+
+function module.cancel_invite(): void
+    NETWORK.NETWORK_SESSION_CANCEL_INVITE()
+end
+
+function module.force_cancel_invite(): void
+    NETWORK.NETWORK_SESSION_FORCE_CANCEL_INVITE()
+end
+
+-- Triggers a CEventNetworkInviteConfirmed event
+function module.request_invite_confirmed_event(): bool
+    return NETWORK.NETWORK_REQUEST_INVITE_CONFIRMED_EVENT()
+end
+
+function module.suppress_invite(toggle: bool): void
+    NETWORK.NETWORK_SUPPRESS_INVITE(toggle)
+end
+
+function module.block_invites(toggle: bool): void
+    NETWORK.NETWORK_BLOCK_INVITES(toggle)
+end
+
+function module.block_join_queue_invites(toggle: bool): void
+    NETWORK.NETWORK_BLOCK_JOIN_QUEUE_INVITES(toggle)
+end
+
+function module.store_invite_through_restart(): void
+    NETWORK.NETWORK_STORE_INVITE_THROUGH_RESTART()
+end
+
+function module.allow_invite_process_in_player_switch(p0: bool): void
+    NETWORK.NETWORK_ALLOW_INVITE_PROCESS_IN_PLAYER_SWITCH(p0)
+end
+
+function module.clear_offline_invite_pending(): void
+    NETWORK.NETWORK_CLEAR_OFFLINE_INVITE_PENDING()
+end
+
+-- Retrieves the failed invite join alert reason
+function module.invite_get_join_fail_reason(): string
+    return NETWORK._NETWORK_INVITE_GET_JOIN_FAIL_REASON()
+end
+
+-- Clears the failed invite join alert reason
+function module.invite_clear_join_fail_reason(): void
+    NETWORK._NETWORK_INVITE_CLEAR_JOIN_FAIL_REASON()
+end
+
+-- Loads up the map that is loaded when beeing in mission creator
+function module.host_single_player(p0: int): void
+    NETWORK.NETWORK_SESSION_HOST_SINGLE_PLAYER(p0)
+end
+
+function module.leave_single_player(): void
+    NETWORK.NETWORK_SESSION_LEAVE_SINGLE_PLAYER()
+end
+
+function module.mark_visible(toggle: bool): void
+    NETWORK.NETWORK_SESSION_MARK_VISIBLE(toggle)
+end
+
+function module.block_join_requests(toggle: bool): void
+    NETWORK.NETWORK_SESSION_BLOCK_JOIN_REQUESTS(toggle)
+end
+
+function module.change_slots(slots: int, p1: bool): void
+    NETWORK.NETWORK_SESSION_CHANGE_SLOTS(slots, p1)
+end
+
+function module.voice_host(): bool
+    return NETWORK.NETWORK_SESSION_VOICE_HOST()
+end
+
+function module.voice_leave(): bool
+    return NETWORK.NETWORK_SESSION_VOICE_LEAVE()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.voice_connect_to_player(gamer_handle: int): void
+    NETWORK.NETWORK_SESSION_VOICE_CONNECT_TO_PLAYER(gamer_handle)
+end
+
+function module.voice_respond_to_request(p0: bool, p1: int): void
+    NETWORK.NETWORK_SESSION_VOICE_RESPOND_TO_REQUEST(p0, p1)
+end
+
+function module.voice_set_timeout(timeout: int): void
+    NETWORK.NETWORK_SESSION_VOICE_SET_TIMEOUT(timeout)
+end
+
+function module.join_group_activity(): bool
+    return NETWORK.NETWORK_JOIN_GROUP_ACTIVITY()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.send_invite_via_presence(gamer_handle: int, p1: string, data_count: int, p3: int): bool
+    return NETWORK.NETWORK_SEND_INVITE_VIA_PRESENCE(gamer_handle, p1, data_count, p3)
+end
+
+function module.accept_presence_invite(p0: int): bool
+    return NETWORK.NETWORK_ACCEPT_PRESENCE_INVITE(p0)
+end
+
+function module.remove_presence_invite(p0: int): bool
+    return NETWORK.NETWORK_REMOVE_PRESENCE_INVITE(p0)
+end
+
+function module.action_follow_invite(): bool
+    return NETWORK.NETWORK_ACTION_FOLLOW_INVITE()
+end
+
+function module.clear_follow_invite(): bool
+    return NETWORK.NETWORK_CLEAR_FOLLOW_INVITE()
+end
+
+function module.remove_and_cancel_all_invites(): void
+    NETWORK.NETWORK_REMOVE_AND_CANCEL_ALL_INVITES()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.invite_gamers(p0: int, p1: any, p2: int, p3: any): bool
+    return NETWORK.NETWORK_INVITE_GAMERS(p0, p1, p2, p3)
+end
+
+function module.clear_queued_join_request(): void
+    NETWORK.NETWORK_CLEAR_QUEUED_JOIN_REQUEST()
+end
+
+function module.send_queued_join_request(): void
+    NETWORK.NETWORK_SEND_QUEUED_JOIN_REQUEST()
+end
+
+function module.remove_all_queued_join_requests(): void
+    NETWORK.NETWORK_REMOVE_ALL_QUEUED_JOIN_REQUESTS()
+end
+
+-- @param vars Pointer: pass memory.alloc(size) and read the result back
+function module.register_host_broadcast_variables(vars: int, num_vars: int, debug_name: string): void
+    NETWORK.NETWORK_REGISTER_HOST_BROADCAST_VARIABLES(vars, num_vars, debug_name)
+end
+
+function module.register_high_frequency_host_broadcast_variables(p0: any, p1: any, p2: any): void
+    NETWORK.NETWORK_REGISTER_HIGH_FREQUENCY_HOST_BROADCAST_VARIABLES(p0, p1, p2)
+end
+
+function module.prevent_script_host_migration(): void
+    NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+end
+
+function module.request_to_be_host_this_script(): void
+    NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+end
+
+function module.leave_ped_behind_before_warp(
+    player_id: int, x: float, y: float, z: float, p4: bool, p5: bool
+): void
+    -- body function:
+    NETWORK.NETWORK_LEAVE_PED_BEHIND_BEFORE_WARP(player_id, x, y, z, p4, p5)
+end
+
+function module.leave_ped_behind_before_cutscene(player_id: int, p1: bool): void
+    NETWORK.NETWORK_LEAVE_PED_BEHIND_BEFORE_CUTSCENE(player_id, p1)
+end
+
+function module.clan_join(clan_desc: int): bool
+    return NETWORK.NETWORK_CLAN_JOIN(clan_desc)
+end
+
+function module.hide_entity_in_tutorial(net_handle: int, hide: bool): void
+    NETWORK._NETWORK_HIDE_ENTITY_IN_TUTORIAL_SESSION(net_handle, hide)
+end
+
+-- Resets the entity ghost alpha to the default value (128)
+function module.reset_ghost_alpha(): void
+    NETWORK.RESET_GHOST_ALPHA()
+end
+
+function module.start_solo_tutorial(): void
+    NETWORK.NETWORK_START_SOLO_TUTORIAL_SESSION()
+end
+
+function module.allow_gang_to_join_tutorial(team_id: int, instance_id: int): void
+    NETWORK.NETWORK_ALLOW_GANG_TO_JOIN_TUTORIAL_SESSION(team_id, instance_id)
+end
+
+function module.end_tutorial(): void
+    NETWORK.NETWORK_END_TUTORIAL_SESSION()
+end
+
+function module.waiting_pop_clear_tutorial(): bool
+    return NETWORK.NETWORK_WAITING_POP_CLEAR_TUTORIAL_SESSION()
+end
+
+function module.block_proxy_migration_between_tutorial_sessions(p0: any): void
+    NETWORK.NETWORK_BLOCK_PROXY_MIGRATION_BETWEEN_TUTORIAL_SESSIONS(p0)
+end
+
+function module.disable_leave_remote_ped_behind(toggle: bool): void
+    NETWORK.NETWORK_DISABLE_LEAVE_REMOTE_PED_BEHIND(toggle)
+end
+
 return Atdar.loader.auto(module, "natives/network/session")

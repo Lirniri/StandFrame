@@ -12,10 +12,12 @@ local function colored_subject(subject: string, level: ?string, period: string):
     if name == "level" then
         name = LEVEL_COLORS[level] or "default"
     end
+    
     local code = hud_text.COLOR[name]
     if code == nil or name == "default" then
         return subject
     end
+
     return code .. subject
 end
 local texture_dict = Atdar.loader.load("natives/streaming/texture_dict/asset")
@@ -93,8 +95,10 @@ end
 
 -- Posts to the game's feed, looking the way the profile says unless opts says otherwise
 local function post_to_feed(message: string, opts: table): int
+
     local style = opts.style or setting("notify_feed_style") or "ticker"
     local post = POST[style]
+
     if not post then
         error($"[util.toast] unknown style '{style}', expected ticker or message")
     end
@@ -107,6 +111,7 @@ local function post_to_feed(message: string, opts: table): int
     local thefeed = Atdar.natives.visual.hud.thefeed
     local period = time_of_day()
     local r, g, b, a = game_color($"notify_background_{period}")
+
     if r then
         thefeed.set_next_background_color(r, g, b, a)
     end
@@ -116,6 +121,7 @@ local function post_to_feed(message: string, opts: table): int
             thefeed.set_next_flash_color(fr, fg, fb, fa)
         end
     end
+
     return post(thefeed, message, opts, flash, period)
 end
 
@@ -139,13 +145,16 @@ end
 --   for Stand's notification with the text on a line of its own (notify_stand_newline)
 -- @return The post's id for "game" (thefeed.remove(id) takes it away), otherwise nil
 function module.toast(message: string, opts: table = {}): ?int
+
     local target = opts.target or setting("notify") or "stand"
+
     -- While the script is leaving (deleted, renamed, stopping) nothing goes to the game's feed: posting
     -- calls the game with texts and pictures, and doing that as the script goes away crashed the game.
     -- Stand's own notification is plain text
     if target == "game" and Atdar.leaving then
         target = "stand"
     end
+
     if target == "stand" then
         stand_toast(message, opts)
     elseif target == "game" then
@@ -158,21 +167,25 @@ function module.toast(message: string, opts: table = {}): ?int
         end
         return post_to_feed(message, opts)
     end
+
     return nil
 end
 
 -- Model name -> hash; a number is taken as a hash already
-function module.hash(name_or_hash: int|string, reverse: bool = false): int
-    if reverse then
-        if type(name_or_hash) == "string" then
-            return util.reverse_joaat(name_or_hash)
-        end
-    else
-        if type(name_or_hash) == "string" then
-            return util.joaat(name_or_hash)
-        end
+function module.hash(name_or_hash: int|string): int
+    if type(name_or_hash) == "string" then
+        return util.joaat(name_or_hash)
     end
     return name_or_hash
+end
+
+-- Returns an empty string if the given hash is not found in Stand's dictionaries.
+function module.reverse_hash(name_or_hash: int|string): int
+    local hash = name_or_hash
+    if type(hash) == "string" then
+        hash = module.hash(name_or_hash)
+    end
+    return util.reverse_joaat(hash)
 end
 
 function module.uhash(hash: string): int

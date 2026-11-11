@@ -1,0 +1,21 @@
+-- System language (LOCALIZATION natives)
+
+local module = {}
+
+-- Get
+
+-- Same return values as GET_CURRENT_LANGUAGE
+function module.get_system_language(): int
+    return LOCALIZATION.LOCALIZATION_GET_SYSTEM_LANGUAGE()
+end
+
+function module.get_current_language(): int
+    return LOCALIZATION.GET_CURRENT_LANGUAGE()
+end
+
+-- Possible return values: 0, 1, 2
+function module.get_system_date_type(): int
+    return LOCALIZATION.LOCALIZATION_GET_SYSTEM_DATE_TYPE()
+end
+
+return module

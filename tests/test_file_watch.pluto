@@ -63,7 +63,8 @@ for i = 1, 5 do
 end
 look()
 stand.equal(look(), true, "after the last file it stops")
-stand.check(stand.find_log("first.pluto changed on disk") or stand.find_log("first.pluto"), "and names the first file that changed")
+-- Added files are found when the folder is listed again (every 5 s), several at once: any of them may be named
+stand.check(stand.find_log(".pluto changed on disk"), "and names a file that changed")
 for _, name in ipairs({ "first" }) do os.remove($"{lib}{name}.pluto") end
 for i = 1, 5 do os.remove($"{lib}more{i}.pluto") end
 
@@ -79,9 +80,12 @@ for _, change in ipairs({
     look()
     stand.equal(stand.stopped, nil, $"{change[1]}: not stopped before the change")
     change[2]()
-    look()
-    look()
-    stand.equal(look(), true, $"{change[1]} stops the script")
+    -- An added file is seen at the next full listing of the folder (every 5 s), then two quiet seconds
+    local stopped = false
+    for _ = 1, 8 do
+        stopped = look()
+    end
+    stand.equal(stopped, true, $"{change[1]} stops the script")
 end
 
 stand.finish()

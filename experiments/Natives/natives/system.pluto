@@ -1,0 +1,126 @@
+-- Script runtime helpers of the game (timers, math, thread priority)
+
+local module = {}
+
+-- Set
+
+function module.set_this_thread_priority(priority: int): void
+    SYSTEM.SET_THIS_THREAD_PRIORITY(priority)
+end
+
+-- Actions
+
+function module.wait(ms: int): void
+    SYSTEM.WAIT(ms)
+end
+
+function module.start_new_script(script_name: string, stack_size: int): int
+    return SYSTEM.START_NEW_SCRIPT(script_name, stack_size)
+end
+
+-- @param args Pointer: pass memory.alloc(size) and read the result back
+function module.start_new_script_with_args(
+    script_name: string, args: int, arg_count: int, stack_size: int
+): int
+    -- body function:
+    return SYSTEM.START_NEW_SCRIPT_WITH_ARGS(script_name, args, arg_count, stack_size)
+end
+
+function module.start_new_script_with_name_hash(script_hash: int, stack_size: int): int
+    return SYSTEM.START_NEW_SCRIPT_WITH_NAME_HASH(script_hash, stack_size)
+end
+
+-- @param args Pointer: pass memory.alloc(size) and read the result back
+function module.start_new_script_with_name_hash_and_args(
+    script_hash: int, args: int, arg_count: int, stack_size: int
+): int
+    -- body function:
+    return SYSTEM.START_NEW_SCRIPT_WITH_NAME_HASH_AND_ARGS(script_hash, args, arg_count, stack_size)
+end
+
+function module.timera(): int
+    return SYSTEM.TIMERA()
+end
+
+function module.timerb(): int
+    return SYSTEM.TIMERB()
+end
+
+function module.settimera(value: int): void
+    SYSTEM.SETTIMERA(value)
+end
+
+function module.settimerb(value: int): void
+    SYSTEM.SETTIMERB(value)
+end
+
+-- Gets the current frame time
+function module.timestep(): float
+    return SYSTEM.TIMESTEP()
+end
+
+function module.sin(value: float): float
+    return SYSTEM.SIN(value)
+end
+
+function module.cos(value: float): float
+    return SYSTEM.COS(value)
+end
+
+function module.sqrt(value: float): float
+    return SYSTEM.SQRT(value)
+end
+
+function module.pow(base: float, exponent: float): float
+    return SYSTEM.POW(base, exponent)
+end
+
+function module.log10(value: float): float
+    return SYSTEM.LOG10(value)
+end
+
+-- Calculates the magnitude of a vector
+function module.vmag(x: float, y: float, z: float): float
+    return SYSTEM.VMAG(x, y, z)
+end
+
+-- Calculates the magnitude of a vector but does not perform Sqrt operations. (Its way faster)
+function module.vmag2(x: float, y: float, z: float): float
+    return SYSTEM.VMAG2(x, y, z)
+end
+
+-- Calculates distance between vectors
+function module.vdist(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float): float
+    return SYSTEM.VDIST(x1, y1, z1, x2, y2, z2)
+end
+
+-- Calculates distance between vectors but does not perform Sqrt operations. (Its way faster)
+function module.vdist2(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float): float
+    return SYSTEM.VDIST2(x1, y1, z1, x2, y2, z2)
+end
+
+function module.shift_left(value: int, bit_shift: int): int
+    return SYSTEM.SHIFT_LEFT(value, bit_shift)
+end
+
+function module.shift_right(value: int, bit_shift: int): int
+    return SYSTEM.SHIFT_RIGHT(value, bit_shift)
+end
+
+function module.floor(value: float): int
+    return SYSTEM.FLOOR(value)
+end
+
+function module.ceil(value: float): int
+    return SYSTEM.CEIL(value)
+end
+
+function module.round(value: float): int
+    return SYSTEM.ROUND(value)
+end
+
+function module.to_float(value: int): float
+    return SYSTEM.TO_FLOAT(value)
+end
+
+return module

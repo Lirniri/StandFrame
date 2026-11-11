@@ -1,0 +1,301 @@
+-- lib/AnitaDarin/ui/logic/stand/menu_packs.pluto
+-- Menu packs as files: finding the packs in store and their feature files, running the features, and copying
+-- a pack into the script (core) and back out. What builds a menu from a pack's layout is ui/stand/core/menu_builder;
+-- what loads and unloads the menu is ui/logic/stand/menu_loader.
+
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local Logger = Atdar.loader.load("core/logger")
+-- Pack files copied and compared as they are
+local plain = Atdar.loader.load("core/filesystem/file")
+
+local log = new Logger("MenuPacks")
+
+local module = {}
+
+-- @return Decoded JSON, or nil if the file is missing or damaged
+local function read_json(path: string): ?table
+    return new JsonFile(path):read()
+end
+
+-- Where a pack's Stand menu files are
+function module.layout_dir(pack_dir: string): string
+    return $"{pack_dir}menu\\stand\\"
+end
+
+-- @return Info of every folder in packs_dir that has an info.json with a name, sorted by name
+function module.find_packs(packs_dir: string): table
+
+    local packs = {}
+
+    -- A lean install has no packs folder, list_files fails on it
+    if not filesystem.is_dir(packs_dir) then
+        return packs
+    end
+
+    for _, path in ipairs(filesystem.list_files(packs_dir)) do
+        if filesystem.is_dir(path) then
+
+            local info = read_json($"{path}\\info.json")
+
+            if type(info) == "table" and type(info.name) == "string" then
+                info.dir = $"{path}\\"
+
+                -- The pack's id, e.g. for the profile's auto_copy_menu
+                info.folder = path:match("([^\\/]+)$")
+                table.insert(packs, info)
+            end
+        end
+    end
+    table.sort(packs, |a, b| -> a.name < b.name)
+    return packs
+end
+
+local function collect_pluto_files(dir: string, out: table): void
+    for _, path in ipairs(filesystem.list_files(dir)) do
+        if filesystem.is_dir(path) then
+            collect_pluto_files($"{path}\\", out)
+        elseif path:match("%.pluto$") then
+            table.insert(out, path)
+        end
+    end
+end
+
+-- @return Paths of all .pluto files in dir and its subfolders, sorted; empty if dir doesn't exist
+function module.find_feature_files(dir: string): table
+    local files = {}
+    if filesystem.is_dir(dir) then
+        collect_pluto_files(dir, files)
+        table.sort(files)
+    end
+    return files
+end
+
+-- Runs each feature file; a broken file or a taken feature id skips only that file
+-- @return Number of files that ran without errors
+function module.load_feature_files(files: table): int
+
+    local loaded = 0
+
+    for _, path in ipairs(files) do
+        -- Timed (loader.report): compiling and running the file, with the lib files it loads
+        local ok, err = Atdar.loader.measure(path, function()
+            local chunk, load_err = loadfile(path)
+            if not chunk then
+                return false, load_err
+            end
+            return pcall(chunk)
+        end)
+
+        if ok then
+            loaded += 1
+        else
+            log:error($"feature file failed: {path}\n{err}")
+        end
+    end
+
+    return loaded
+end
+
+local function copy_file(from: string, to: string): bool
+    local content = plain.read(from, true)
+    if content == nil then
+        return false
+    end
+    return (plain.write(to, content, true))
+end
+
+-- Lists what copy_pack_to_core put into the script, so remove_copied_core can take exactly that out
+local function manifest_path(lib_dir: string): string
+    return $"{lib_dir}ui\\stand\\menu_from_store\\.copied.json"
+end
+
+-- Where a copied pack's translations are, in the script's store
+function module.core_language_dir(store_dir: string): string
+    return $"{store_dir}core\\menu\\language\\"
+end
+
+-- @return { pack = name, files = { paths relative to lib }, store_files = { paths relative to store } }
+-- if the built-in menu came from a copy, else nil
+function module.read_core_manifest(lib_dir: string): ?table
+    local manifest = read_json(manifest_path(lib_dir))
+    if type(manifest) ~= "table" or type(manifest.files) ~= "table" then
+        return nil
+    end
+    return manifest
+end
+
+-- Full paths of everything in a manifest. One written before translations moved to store has no store_files
+local function copied_paths(manifest: table, lib_dir: string, store_dir: string): table
+    local paths = {}
+    for _, relative in ipairs(manifest.files) do
+        table.insert(paths, $"{lib_dir}{relative}")
+    end
+    for _, relative in ipairs(manifest.store_files or {}) do
+        table.insert(paths, $"{store_dir}{relative}")
+    end
+    return paths
+end
+
+-- Deletes the files a pack copy added to the script, then the manifest itself
+-- @return true and the number of deleted files, or false and a reason
+function module.remove_copied_core(lib_dir: string, store_dir: string): (bool, any)
+
+    local manifest = module.read_core_manifest(lib_dir)
+
+    if not manifest then
+        return false, "the built-in menu wasn't copied from a pack"
+    end
+
+    local removed = 0
+
+    for _, path in ipairs(copied_paths(manifest, lib_dir, store_dir)) do
+        if os.remove(path) then
+            removed += 1
+        end
+    end
+
+    new JsonFile(manifest_path(lib_dir)):remove()
+
+    return true, removed
+end
+
+-- What copying a pack into the script copies: { from, to } for its features, menu files and translations
+local function copy_plan(info: table, lib_dir: string, store_dir: string): table
+
+    local plan = {}
+    local features_dir = $"{info.dir}features\\"
+
+    for _, path in ipairs(info.feature_files) do
+        table.insert(plan, { from = path, to = $"{lib_dir}features\\{path:sub(#features_dir + 1)}" })
+    end
+
+    local layout = module.layout_dir(info.dir)
+    for _, path in ipairs(module.find_feature_files(layout)) do
+        table.insert(plan, { from = path, to = $"{lib_dir}ui\\stand\\menu_from_store\\{path:sub(#layout + 1)}" })
+    end
+
+    -- The menu's translations, where the built-in menu looks for them
+    local language_dir = $"{info.dir}language\\"
+    local core_language_dir = module.core_language_dir(store_dir)
+
+    if filesystem.is_dir(language_dir) then
+        for _, path in ipairs(filesystem.list_files(language_dir)) do
+            if path:match("%.json$") then
+                table.insert(plan, { from = path, to = $"{core_language_dir}{path:sub(#language_dir + 1)}", in_store = true })
+            end
+        end
+    end
+
+    return plan
+end
+
+-- A file's whole content, nil if it can't be read
+local function read_bytes(path: string): ?string
+    return plain.read(path, true)
+end
+
+-- Whether the copy of this pack in the script is the same as the pack: the same files, each with the
+-- same content. Then copying again would change nothing and can be skipped
+function module.core_copy_is_current(info: table, lib_dir: string, store_dir: string): bool
+
+    local manifest = module.read_core_manifest(lib_dir)
+
+    if not manifest or manifest.pack ~= info.name then
+        return false
+    end
+
+    local plan = copy_plan(info, lib_dir, store_dir)
+    local paths = copied_paths(manifest, lib_dir, store_dir)
+
+    if #plan ~= #paths then
+        return false
+    end
+
+    local listed = {}
+
+    for _, path in ipairs(paths) do
+        listed[path] = true
+    end
+
+    for _, step in ipairs(plan) do
+        if not listed[step.to] then
+            return false
+        end
+        
+        local copied = read_bytes(step.to)
+        
+        if copied == nil or copied ~= read_bytes(step.from) then
+            return false
+        end
+    end
+
+    return true
+end
+
+-- Copies a pack's features and menu files into lib and its translations into store, where they become
+-- the built-in menu. Nothing is overwritten: if any target file exists, nothing is copied
+-- @return true and the number of copied files, or false and a reason
+function module.copy_pack_to_core(info: table, lib_dir: string, store_dir: string): (bool, any)
+    if module.read_core_manifest(lib_dir) then
+        return false, "another copied menu is already in the script, remove it first"
+    end
+    local plan = copy_plan(info, lib_dir, store_dir)
+
+    local conflicts = 0
+    for _, step in ipairs(plan) do
+        if filesystem.exists(step.to) then
+            conflicts += 1
+        end
+    end
+    if conflicts > 0 then
+        return false, $"{conflicts} file(s) already exist in the script"
+    end
+
+    local copied = {}
+
+    for _, step in ipairs(plan) do
+        if not copy_file(step.from, step.to) then
+            -- Don't leave a half-copied menu behind
+            for _, path in ipairs(copied) do
+                os.remove(path)
+            end
+            return false, $"failed to copy {step.from}"
+        end
+        table.insert(copied, step.to)
+    end
+
+    local files, store_files = {}, {}
+
+    for _, step in ipairs(plan) do
+        if step.in_store then
+            table.insert(store_files, step.to:sub(#store_dir + 1))
+        else
+            table.insert(files, step.to:sub(#lib_dir + 1))
+        end
+    end
+
+    -- Without the manifest the copy couldn't be removed later, so a failed write undoes it
+    if not new JsonFile(manifest_path(lib_dir)):write({ pack = info.name, files = files, store_files = store_files }) then
+        for _, path in ipairs(copied) do
+            os.remove(path)
+        end
+        
+        return false, "couldn't save the list of copied files"
+    end
+
+    return true, #plan
+end
+
+-- @return Packs that have a Stand menu, each with feature_files filled in
+function module.find_loadable_packs(packs_dir: string): table
+    local packs = {}
+    for _, info in ipairs(module.find_packs(packs_dir)) do
+        if filesystem.exists($"{module.layout_dir(info.dir)}main.pluto") then
+            info.feature_files = module.find_feature_files($"{info.dir}features\\")
+            table.insert(packs, info)
+        end
+    end
+    return packs
+end
+
+return module

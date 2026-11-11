@@ -1,0 +1,108 @@
+-- The player's special ability (its charge, activation)
+
+local module = {}
+
+-- State
+
+function module.is_unlocked(player_model: int): bool
+    return PLAYER.IS_SPECIAL_ABILITY_UNLOCKED(player_model)
+end
+
+function module.is_active(player_id: int, p1: any): bool
+    return PLAYER.IS_SPECIAL_ABILITY_ACTIVE(player_id, p1)
+end
+
+function module.is_meter_full(player_id: int, p1: any): bool
+    return PLAYER.IS_SPECIAL_ABILITY_METER_FULL(player_id, p1)
+end
+
+function module.is_enabled(player_id: int, p1: any): bool
+    return PLAYER.IS_SPECIAL_ABILITY_ENABLED(player_id, p1)
+end
+
+-- Set
+
+function module.set_mp(player_id: int, p1: int, p2: any): void
+    PLAYER.SET_SPECIAL_ABILITY_MP(player_id, p1, p2)
+end
+
+function module.set_multiplier(multiplier: float): void
+    PLAYER.SET_SPECIAL_ABILITY_MULTIPLIER(multiplier)
+end
+
+-- Actions
+
+function module.activate(player_id: int, p1: int): void
+    PLAYER.SPECIAL_ABILITY_ACTIVATE(player_id, p1)
+end
+
+function module.deactivate_mp(player_id: int, p1: int): void
+    PLAYER.SPECIAL_ABILITY_DEACTIVATE_MP(player_id, p1)
+end
+
+function module.deactivate(player_id: int, p1: any): void
+    PLAYER.SPECIAL_ABILITY_DEACTIVATE(player_id, p1)
+end
+
+function module.deactivate_fast(player_id: int, p1: any): void
+    PLAYER.SPECIAL_ABILITY_DEACTIVATE_FAST(player_id, p1)
+end
+
+function module.reset(player_id: int, p1: any): void
+    PLAYER.SPECIAL_ABILITY_RESET(player_id, p1)
+end
+
+function module.charge_on_mission_failed(player_id: int, p1: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_ON_MISSION_FAILED(player_id, p1)
+end
+
+function module.charge_small(player_id: int, p1: bool, p2: bool, p3: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_SMALL(player_id, p1, p2, p3)
+end
+
+function module.charge_medium(player_id: int, p1: bool, p2: bool, p3: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_MEDIUM(player_id, p1, p2, p3)
+end
+
+function module.charge_large(player_id: int, p1: bool, p2: bool, p3: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_LARGE(player_id, p1, p2, p3)
+end
+
+function module.charge_continuous(player_id: int, p1: int, p2: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_CONTINUOUS(player_id, p1, p2)
+end
+
+function module.charge_absolute(player_id: int, p1: int, p2: bool, p3: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_ABSOLUTE(player_id, p1, p2, p3)
+end
+
+function module.charge_normalized(player_id: int, normalized_value: float, p2: bool, p3: any): void
+    PLAYER.SPECIAL_ABILITY_CHARGE_NORMALIZED(player_id, normalized_value, p2, p3)
+end
+
+-- Also known as _RECHARGE_SPECIAL_ABILITY
+function module.fill_meter(player_id: int, p1: bool, p2: any): void
+    PLAYER.SPECIAL_ABILITY_FILL_METER(player_id, p1, p2)
+end
+
+function module.deplete_meter(player_id: int, p1: bool, p2: any): void
+    PLAYER.SPECIAL_ABILITY_DEPLETE_METER(player_id, p1, p2)
+end
+
+function module.lock(player_model: int, p1: any): void
+    PLAYER.SPECIAL_ABILITY_LOCK(player_model, p1)
+end
+
+function module.unlock(player_model: int, p1: any): void
+    PLAYER.SPECIAL_ABILITY_UNLOCK(player_model, p1)
+end
+
+function module.enable(player_id: int, toggle: bool, p2: any): void
+    PLAYER.ENABLE_SPECIAL_ABILITY(player_id, toggle, p2)
+end
+
+function module.update_from_stat(player_id: int, p1: any): void
+    PLAYER.UPDATE_SPECIAL_ABILITY_FROM_STAT(player_id, p1)
+end
+
+return module

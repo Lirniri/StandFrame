@@ -1,0 +1,254 @@
+-- Scaleform movies
+
+local module = {}
+
+-- State
+
+function module.has_movie_loaded(scaleform_handle: int): bool
+    return GRAPHICS.HAS_SCALEFORM_MOVIE_LOADED(scaleform_handle)
+end
+
+-- @param scaleform_handle Pointer: pass memory.alloc(size) and read the result back
+function module.has_movie_named_loaded(scaleform_handle: int, scaleform_name: string): bool
+    return GRAPHICS._HAS_SCALEFORM_MOVIE_NAMED_LOADED(scaleform_handle, scaleform_name)
+end
+
+function module.is_active_movie_deleting(val: int): bool
+    return GRAPHICS.IS_ACTIVE_SCALEFORM_MOVIE_DELETING(val)
+end
+
+function module.is_movie_deleting(val: int): bool
+    return GRAPHICS.IS_SCALEFORM_MOVIE_DELETING(val)
+end
+
+function module.has_movie_filename_loaded(scaleform_name: string): bool
+    return GRAPHICS.HAS_SCALEFORM_MOVIE_FILENAME_LOADED(scaleform_name)
+end
+
+function module.has_container_movie_loaded_into_parent(scaleform_handle: int): bool
+    return GRAPHICS.HAS_SCALEFORM_CONTAINER_MOVIE_LOADED_INTO_PARENT(scaleform_handle)
+end
+
+function module.is_movie_method_return_value_ready(method_return: int): bool
+    return GRAPHICS.IS_SCALEFORM_MOVIE_METHOD_RETURN_VALUE_READY(method_return)
+end
+
+function module.has_script_hud_movie_loaded(hud_component: int): bool
+    return GRAPHICS.HAS_SCALEFORM_SCRIPT_HUD_MOVIE_LOADED(hud_component)
+end
+
+-- Get
+
+function module.get_movie_method_return_value_int(method_return: int): int
+    return GRAPHICS.GET_SCALEFORM_MOVIE_METHOD_RETURN_VALUE_INT(method_return)
+end
+
+function module.get_movie_method_return_value_bool(method_return: int): bool
+    return GRAPHICS.GET_SCALEFORM_MOVIE_METHOD_RETURN_VALUE_BOOL(method_return)
+end
+
+function module.get_movie_method_return_value_string(method_return: int): string
+    return GRAPHICS.GET_SCALEFORM_MOVIE_METHOD_RETURN_VALUE_STRING(method_return)
+end
+
+-- Set
+
+-- @param scaleform_handle Pointer: pass memory.alloc(size) and read the result back
+function module.set_movie_as_no_longer_needed(scaleform_handle: int): void
+    GRAPHICS.SET_SCALEFORM_MOVIE_AS_NO_LONGER_NEEDED(scaleform_handle)
+end
+
+function module.set_movie_named_as_no_longer_needed(scaleform_handle: int, scaleform_name: string): void
+    GRAPHICS._SET_SCALEFORM_MOVIE_NAMED_AS_NO_LONGER_NEEDED(scaleform_handle, scaleform_name)
+end
+
+function module.set_movie_to_use_system_time(scaleform: int, toggle: bool): void
+    GRAPHICS.SET_SCALEFORM_MOVIE_TO_USE_SYSTEM_TIME(scaleform, toggle)
+end
+
+function module.set_movie_to_use_large_rt(scaleform_handle: int, toggle: bool): void
+    GRAPHICS.SET_SCALEFORM_MOVIE_TO_USE_LARGE_RT(scaleform_handle, toggle)
+end
+
+-- This native is used in some casino scripts to fit the scaleform in the rendertarget
+function module.set_movie_to_use_super_large_rt(scaleform_handle: int, toggle: bool): void
+    GRAPHICS.SET_SCALEFORM_MOVIE_TO_USE_SUPER_LARGE_RT(scaleform_handle, toggle)
+end
+
+-- Actions
+
+function module.request_movie(scaleform_name: string): int
+    return GRAPHICS.REQUEST_SCALEFORM_MOVIE(scaleform_name)
+end
+
+-- Another REQUEST_SCALEFORM_MOVIE equivalent
+function module.request_movie_with_ignore_super_widescreen(scaleform_name: string): int
+    return GRAPHICS.REQUEST_SCALEFORM_MOVIE_WITH_IGNORE_SUPER_WIDESCREEN(scaleform_name)
+end
+
+function module.request_movie_instance(scaleform_name: string): int
+    return GRAPHICS.REQUEST_SCALEFORM_MOVIE_INSTANCE(scaleform_name)
+end
+
+-- Similar to REQUEST_SCALEFORM_MOVIE, but seems to be some kind of "interactive" scaleform movie?
+function module.request_movie_skip_render_while_paused(scaleform_name: string): int
+    return GRAPHICS.REQUEST_SCALEFORM_MOVIE_SKIP_RENDER_WHILE_PAUSED(scaleform_name)
+end
+
+function module.draw_movie(
+    scaleform_handle: int, x: float, y: float, width: float, height: float, red: int, green: int,
+    blue: int, alpha: int, p9: int
+): void
+    -- body function:
+    GRAPHICS.DRAW_SCALEFORM_MOVIE(scaleform_handle, x, y, width, height, red, green, blue, alpha, p9)
+end
+
+function module.draw_movie_fullscreen(
+    scaleform: int, red: int, green: int, blue: int, alpha: int, p5: int
+): void
+    -- body function:
+    GRAPHICS.DRAW_SCALEFORM_MOVIE_FULLSCREEN(scaleform, red, green, blue, alpha, p5)
+end
+
+function module.draw_movie_fullscreen_masked(
+    scaleform1: int, scaleform2: int, red: int, green: int, blue: int, alpha: int
+): void
+    -- body function:
+    GRAPHICS.DRAW_SCALEFORM_MOVIE_FULLSCREEN_MASKED(scaleform1, scaleform2, red, green, blue, alpha)
+end
+
+function module.draw_movie_3d(
+    scaleform: int, pos_x: float, pos_y: float, pos_z: float, rot_x: float, rot_y: float,
+    rot_z: float, p7: float, p8: float, p9: float, scale_x: float, scale_y: float, scale_z: float,
+    rotation_order: int
+): void
+    -- body function:
+    GRAPHICS.DRAW_SCALEFORM_MOVIE_3D(scaleform, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, p7, p8, p9, scale_x, scale_y, scale_z, rotation_order)
+end
+
+function module.draw_movie_3d_solid(
+    scaleform: int, pos_x: float, pos_y: float, pos_z: float, rot_x: float, rot_y: float,
+    rot_z: float, p7: float, p8: float, p9: float, scale_x: float, scale_y: float, scale_z: float,
+    rotation_order: int
+): void
+    -- body function:
+    GRAPHICS.DRAW_SCALEFORM_MOVIE_3D_SOLID(scaleform, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, p7, p8, p9, scale_x, scale_y, scale_z, rotation_order)
+end
+
+-- Calls the Scaleform function
+function module.call_movie_method(scaleform: int, method: string): void
+    GRAPHICS.CALL_SCALEFORM_MOVIE_METHOD(scaleform, method)
+end
+
+-- Calls the Scaleform function and passes the parameters as floats
+function module.call_movie_method_with_number(
+    scaleform: int, method_name: string, param1: float, param2: float, param3: float, param4: float,
+    param5: float
+): void
+    -- body function:
+    GRAPHICS.CALL_SCALEFORM_MOVIE_METHOD_WITH_NUMBER(scaleform, method_name, param1, param2, param3, param4, param5)
+end
+
+-- Calls the Scaleform function and passes the parameters as strings
+function module.call_movie_method_with_string(
+    scaleform: int, method_name: string, param1: string, param2: string, param3: string,
+    param4: string, param5: string
+): void
+    -- body function:
+    GRAPHICS.CALL_SCALEFORM_MOVIE_METHOD_WITH_STRING(scaleform, method_name, param1, param2, param3, param4, param5)
+end
+
+function module.call_movie_method_with_number_and_string(
+    scaleform: int, method_name: string, float_param1: float, float_param2: float,
+    float_param3: float, float_param4: float, float_param5: float, string_param1: string,
+    string_param2: string, string_param3: string, string_param4: string, string_param5: string
+): void
+    -- body function:
+    GRAPHICS.CALL_SCALEFORM_MOVIE_METHOD_WITH_NUMBER_AND_STRING(scaleform, method_name, float_param1, float_param2, float_param3, float_param4, float_param5, string_param1, string_param2, string_param3, string_param4, string_param5)
+end
+
+function module.begin_script_hud_movie_method(hud_component: int, method_name: string): bool
+    return GRAPHICS.BEGIN_SCALEFORM_SCRIPT_HUD_MOVIE_METHOD(hud_component, method_name)
+end
+
+-- Push a function from the Scaleform onto the stack
+function module.begin_movie_method(scaleform: int, method_name: string): bool
+    return GRAPHICS.BEGIN_SCALEFORM_MOVIE_METHOD(scaleform, method_name)
+end
+
+-- Starts frontend (pause menu) scaleform movie methods
+function module.begin_movie_method_on_frontend(method_name: string): bool
+    return GRAPHICS.BEGIN_SCALEFORM_MOVIE_METHOD_ON_FRONTEND(method_name)
+end
+
+-- Starts frontend (pause menu) scaleform movie methods for header options
+function module.begin_movie_method_on_frontend_header(method_name: string): bool
+    return GRAPHICS.BEGIN_SCALEFORM_MOVIE_METHOD_ON_FRONTEND_HEADER(method_name)
+end
+
+-- Pops and calls the Scaleform function on the stack
+function module.end_movie_method(): void
+    GRAPHICS.END_SCALEFORM_MOVIE_METHOD()
+end
+
+function module.end_movie_method_return_value(): int
+    return GRAPHICS.END_SCALEFORM_MOVIE_METHOD_RETURN_VALUE()
+end
+
+-- Pushes an integer for the Scaleform function onto the stack
+function module.movie_method_add_param_int(value: int): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_INT(value)
+end
+
+function module.movie_method_add_param_float(value: float): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_FLOAT(value)
+end
+
+-- Pushes a boolean for the Scaleform function onto the stack
+function module.movie_method_add_param_bool(value: bool): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_BOOL(value)
+end
+
+function module.begin_text_command_string(component_type: string): void
+    GRAPHICS.BEGIN_TEXT_COMMAND_SCALEFORM_STRING(component_type)
+end
+
+function module.end_text_command_string(): void
+    GRAPHICS.END_TEXT_COMMAND_SCALEFORM_STRING()
+end
+
+-- Same as END_TEXT_COMMAND_SCALEFORM_STRING but does not perform HTML conversion for text tokens
+function module.end_text_command_unparsed_string(): void
+    GRAPHICS.END_TEXT_COMMAND_UNPARSED_SCALEFORM_STRING()
+end
+
+-- Same as SCALEFORM_MOVIE_METHOD_ADD_PARAM_TEXTURE_NAME_STRING
+function module.movie_method_add_param_literal_string(string: string): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_LITERAL_STRING(string)
+end
+
+function module.movie_method_add_param_texture_name_string(string: string): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_TEXTURE_NAME_STRING(string)
+end
+
+function module.movie_method_add_param_player_name_string(string: string): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_PLAYER_NAME_STRING(string)
+end
+
+function module.movie_method_add_param_latest_brief_string(value: int): void
+    GRAPHICS.SCALEFORM_MOVIE_METHOD_ADD_PARAM_LATEST_BRIEF_STRING(value)
+end
+
+function module.request_script_hud_movie(hud_component: int): void
+    GRAPHICS.REQUEST_SCALEFORM_SCRIPT_HUD_MOVIE(hud_component)
+end
+
+function module.remove_script_hud_movie(hud_component: int): void
+    GRAPHICS.REMOVE_SCALEFORM_SCRIPT_HUD_MOVIE(hud_component)
+end
+
+function module.pass_keyboard_input(scaleform_handle: int): bool
+    return GRAPHICS.PASS_KEYBOARD_INPUT_TO_SCALEFORM(scaleform_handle)
+end
+
+return module

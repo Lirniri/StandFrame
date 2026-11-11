@@ -1,0 +1,111 @@
+-- Rockstar Editor recording and replay (RECORDING, REPLAY natives)
+
+local module = {}
+
+-- State
+
+function module.is_recording(): bool
+    return RECORDING.IS_REPLAY_RECORDING()
+end
+
+function module.is_initialized(): bool
+    return RECORDING.IS_REPLAY_INITIALIZED()
+end
+
+function module.is_available(): bool
+    return RECORDING.IS_REPLAY_AVAILABLE()
+end
+
+function module.is_record_space_available(p0: bool): bool
+    return RECORDING.IS_REPLAY_RECORD_SPACE_AVAILABLE(p0)
+end
+
+-- Set
+
+-- Disables some other rendering (internal)
+function module.set_scripts_have_cleaned_up_for_system(): void
+    REPLAY.SET_SCRIPTS_HAVE_CLEANED_UP_FOR_REPLAY_SYSTEM()
+end
+
+function module.set_system_paused_for_save(p0: bool): void
+    REPLAY.SET_REPLAY_SYSTEM_PAUSED_FOR_SAVE(p0)
+end
+
+-- Actions
+
+function module.start_event(p0: int): void
+    RECORDING.REPLAY_START_EVENT(p0)
+end
+
+function module.stop_event(): void
+    RECORDING.REPLAY_STOP_EVENT()
+end
+
+function module.cancel_event(): void
+    RECORDING.REPLAY_CANCEL_EVENT()
+end
+
+function module.record_back_for_time(p0: float, p1: float, p2: int): void
+    RECORDING.REPLAY_RECORD_BACK_FOR_TIME(p0, p1, p2)
+end
+
+function module.check_for_event_this_frame(mission_name_label: string, p1: any): void
+    RECORDING.REPLAY_CHECK_FOR_EVENT_THIS_FRAME(mission_name_label, p1)
+end
+
+-- This disable the recording feature and has to be called every frame
+function module.prevent_recording_this_frame(): void
+    RECORDING.REPLAY_PREVENT_RECORDING_THIS_FRAME()
+end
+
+function module.reset_event_info(): void
+    RECORDING.REPLAY_RESET_EVENT_INFO()
+end
+
+-- This will disable the ability to make camera changes in R* Editor
+function module.disable_camera_movement_this_frame(): void
+    RECORDING.REPLAY_DISABLE_CAMERA_MOVEMENT_THIS_FRAME()
+end
+
+function module.record_greatest_moment(p0: int, p1: int, p2: int): void
+    RECORDING.RECORD_GREATEST_MOMENT(p0, p1, p2)
+end
+
+-- Starts recording a replay
+function module.start_recording(mode: int): void
+    RECORDING.START_REPLAY_RECORDING(mode)
+end
+
+-- Stops recording and saves the recorded clip
+function module.stop_recording(): void
+    RECORDING.STOP_REPLAY_RECORDING()
+end
+
+-- Stops recording and discards the recorded clip
+function module.cancel_recording(): void
+    RECORDING.CANCEL_REPLAY_RECORDING()
+end
+
+function module.save_recording(): bool
+    return RECORDING.SAVE_REPLAY_RECORDING()
+end
+
+function module.register_effect_for_editor(p0: string, p1: bool): void
+    REPLAY.REGISTER_EFFECT_FOR_REPLAY_EDITOR(p0, p1)
+end
+
+function module.system_has_requested_a_script_cleanup(): bool
+    return REPLAY.REPLAY_SYSTEM_HAS_REQUESTED_A_SCRIPT_CLEANUP()
+end
+
+-- Sets (almost, not sure) all Rockstar Editor values (bIsRecording etc) to 0
+function module.control_shutdown(): void
+    REPLAY.REPLAY_CONTROL_SHUTDOWN()
+end
+
+-- Please note that you will need to call DO_SCREEN_FADE_IN after exiting the Rockstar Editor when you call this
+function module.activate_rockstar_editor(p0: int): void
+    REPLAY.ACTIVATE_ROCKSTAR_EDITOR(p0)
+end
+
+return module

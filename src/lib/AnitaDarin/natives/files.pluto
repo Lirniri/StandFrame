@@ -1,0 +1,293 @@
+-- Shop ped apparel and tattoo DLC items (FILES natives)
+
+local module = {}
+
+-- State
+
+function module.does_shop_ped_apparel_have_restriction_tag(
+    component_hash: int, restriction_tag_hash: int, component_id: int
+): bool
+    -- body function:
+    return FILES.DOES_SHOP_PED_APPAREL_HAVE_RESTRICTION_TAG(component_hash, restriction_tag_hash, component_id)
+end
+
+function module.does_current_ped_component_have_restriction_tag(
+    ped: int, component_id: int, restriction_tag_hash: int
+): bool
+    -- body function:
+    return FILES.DOES_CURRENT_PED_COMPONENT_HAVE_RESTRICTION_TAG(ped, component_id, restriction_tag_hash)
+end
+
+function module.does_current_ped_prop_have_restriction_tag(
+    ped: int, component_id: int, restriction_tag_hash: int
+): bool
+    -- body function:
+    return FILES.DOES_CURRENT_PED_PROP_HAVE_RESTRICTION_TAG(ped, component_id, restriction_tag_hash)
+end
+
+function module.is_content_item_locked(item_hash: int): bool
+    return FILES.IS_CONTENT_ITEM_LOCKED(item_hash)
+end
+
+function module.is_dlc_vehicle_mod(hash: int): bool
+    return FILES.IS_DLC_VEHICLE_MOD(hash)
+end
+
+-- Get
+
+function module.get_num_tattoo_shop_dlc_items(character: int): int
+    return FILES.GET_NUM_TATTOO_SHOP_DLC_ITEMS(character)
+end
+
+-- @param out_component Pointer: pass memory.alloc(size) and read the result back
+function module.get_tattoo_shop_dlc_item_data(
+    character_type: int, decoration_index: int, out_component: int
+): bool
+    -- body function:
+    return FILES.GET_TATTOO_SHOP_DLC_ITEM_DATA(character_type, decoration_index, out_component)
+end
+
+-- Returns some sort of index/offset for overlays/decorations
+function module.get_tattoo_shop_dlc_item_index(overlay_hash: int, p1: any, character: int): int
+    return FILES.GET_TATTOO_SHOP_DLC_ITEM_INDEX(overlay_hash, p1, character)
+end
+
+-- @param out_component Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_query_component(component_id: int, out_component: int): void
+    FILES.GET_SHOP_PED_QUERY_COMPONENT(component_id, out_component)
+end
+
+-- Returns some sort of index/offset for components
+function module.get_shop_ped_query_component_index(component_hash: int): int
+    return FILES.GET_SHOP_PED_QUERY_COMPONENT_INDEX(component_hash)
+end
+
+-- @param out_component Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_component(component_hash: int, out_component: int): void
+    FILES.GET_SHOP_PED_COMPONENT(component_hash, out_component)
+end
+
+-- @param out_prop Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_query_prop(component_id: int, out_prop: int): void
+    FILES.GET_SHOP_PED_QUERY_PROP(component_id, out_prop)
+end
+
+-- Returns some sort of index/offset for props
+function module.get_shop_ped_query_prop_index(component_hash: int): int
+    return FILES.GET_SHOP_PED_QUERY_PROP_INDEX(component_hash)
+end
+
+-- @param out_prop Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_prop(component_hash: int, out_prop: int): void
+    FILES.GET_SHOP_PED_PROP(component_hash, out_prop)
+end
+
+function module.get_hash_name_for_component(
+    entity: int, component_id: int, drawable_variant: int, texture_variant: int
+): int
+    -- body function:
+    return FILES.GET_HASH_NAME_FOR_COMPONENT(entity, component_id, drawable_variant, texture_variant)
+end
+
+function module.get_hash_name_for_prop(
+    entity: int, component_id: int, prop_index: int, prop_texture_index: int
+): int
+    -- body function:
+    return FILES.GET_HASH_NAME_FOR_PROP(entity, component_id, prop_index, prop_texture_index)
+end
+
+function module.get_shop_ped_apparel_variant_component_count(component_hash: int): int
+    return FILES.GET_SHOP_PED_APPAREL_VARIANT_COMPONENT_COUNT(component_hash)
+end
+
+function module.get_shop_ped_apparel_variant_prop_count(prop_hash: int): int
+    return FILES.GET_SHOP_PED_APPAREL_VARIANT_PROP_COUNT(prop_hash)
+end
+
+-- @param name_hash Pointer: pass memory.alloc(size) and read the result back
+-- @param enum_value Pointer: pass memory.alloc(size) and read the result back
+-- @param component_type Pointer: pass memory.alloc(size) and read the result back
+function module.get_variant_component(
+    component_hash: int, variant_component_index: int, name_hash: int, enum_value: int,
+    component_type: int
+): void
+    -- body function:
+    FILES.GET_VARIANT_COMPONENT(component_hash, variant_component_index, name_hash, enum_value, component_type)
+end
+
+-- @param name_hash Pointer: pass memory.alloc(size) and read the result back
+-- @param enum_value Pointer: pass memory.alloc(size) and read the result back
+-- @param anchor_point Pointer: pass memory.alloc(size) and read the result back
+function module.get_variant_prop(
+    component_hash: int, variant_prop_index: int, name_hash: int, enum_value: int, anchor_point: int
+): void
+    -- body function:
+    FILES.GET_VARIANT_PROP(component_hash, variant_prop_index, name_hash, enum_value, anchor_point)
+end
+
+-- Returns number of possible values of the forcedComponentIndex argument of GET_FORCED_COMPONENT
+function module.get_shop_ped_apparel_forced_component_count(component_hash: int): int
+    return FILES.GET_SHOP_PED_APPAREL_FORCED_COMPONENT_COUNT(component_hash)
+end
+
+-- Returns number of possible values of the forcedPropIndex argument of GET_FORCED_PROP
+function module.get_shop_ped_apparel_forced_prop_count(component_hash: int): int
+    return FILES.GET_SHOP_PED_APPAREL_FORCED_PROP_COUNT(component_hash)
+end
+
+-- @param name_hash Pointer: pass memory.alloc(size) and read the result back
+-- @param enum_value Pointer: pass memory.alloc(size) and read the result back
+-- @param component_type Pointer: pass memory.alloc(size) and read the result back
+function module.get_forced_component(
+    component_hash: int, forced_component_index: int, name_hash: int, enum_value: int,
+    component_type: int
+): void
+    -- body function:
+    FILES.GET_FORCED_COMPONENT(component_hash, forced_component_index, name_hash, enum_value, component_type)
+end
+
+-- @param name_hash Pointer: pass memory.alloc(size) and read the result back
+-- @param enum_value Pointer: pass memory.alloc(size) and read the result back
+-- @param anchor_point Pointer: pass memory.alloc(size) and read the result back
+function module.get_forced_prop(
+    component_hash: int, forced_prop_index: int, name_hash: int, enum_value: int, anchor_point: int
+): void
+    -- body function:
+    FILES.GET_FORCED_PROP(component_hash, forced_prop_index, name_hash, enum_value, anchor_point)
+end
+
+-- @param outfit Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_query_outfit(outfit_index: int, outfit: int): void
+    FILES.GET_SHOP_PED_QUERY_OUTFIT(outfit_index, outfit)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_outfit(p0: any, p1: int): void
+    FILES.GET_SHOP_PED_OUTFIT(p0, p1)
+end
+
+function module.get_shop_ped_outfit_locate(p0: any): int
+    return FILES.GET_SHOP_PED_OUTFIT_LOCATE(p0)
+end
+
+-- @param out_prop_variant Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_outfit_prop_variant(
+    outfit_hash: int, variant_index: int, out_prop_variant: int
+): bool
+    -- body function:
+    return FILES.GET_SHOP_PED_OUTFIT_PROP_VARIANT(outfit_hash, variant_index, out_prop_variant)
+end
+
+-- @param out_component_variant Pointer: pass memory.alloc(size) and read the result back
+function module.get_shop_ped_outfit_component_variant(
+    outfit_hash: int, variant_index: int, out_component_variant: int
+): bool
+    -- body function:
+    return FILES.GET_SHOP_PED_OUTFIT_COMPONENT_VARIANT(outfit_hash, variant_index, out_component_variant)
+end
+
+function module.get_num_dlc_vehicles(): int
+    return FILES.GET_NUM_DLC_VEHICLES()
+end
+
+function module.get_dlc_vehicle_model(dlc_vehicle_index: int): int
+    return FILES.GET_DLC_VEHICLE_MODEL(dlc_vehicle_index)
+end
+
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_dlc_vehicle_data(dlc_vehicle_index: int, out_data: int): bool
+    return FILES.GET_DLC_VEHICLE_DATA(dlc_vehicle_index, out_data)
+end
+
+function module.get_dlc_vehicle_flags(dlc_vehicle_index: int): int
+    return FILES.GET_DLC_VEHICLE_FLAGS(dlc_vehicle_index)
+end
+
+-- Returns the total number of DLC weapons
+function module.get_num_dlc_weapons(): int
+    return FILES.GET_NUM_DLC_WEAPONS()
+end
+
+-- Returns the total number of DLC weapons that are available in SP (availableInSP field in shop_weapon.meta)
+function module.get_num_dlc_weapons_sp(): int
+    return FILES.GET_NUM_DLC_WEAPONS_SP()
+end
+
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_dlc_weapon_data(dlc_weapon_index: int, out_data: int): bool
+    return FILES.GET_DLC_WEAPON_DATA(dlc_weapon_index, out_data)
+end
+
+-- Same as GET_DLC_WEAPON_DATA but only works for DLC weapons that are available in SP
+-- @param out_data Pointer: pass memory.alloc(size) and read the result back
+function module.get_dlc_weapon_data_sp(dlc_weapon_index: int, out_data: int): bool
+    return FILES.GET_DLC_WEAPON_DATA_SP(dlc_weapon_index, out_data)
+end
+
+-- Returns the total number of DLC weapon components
+function module.get_num_dlc_weapon_components(dlc_weapon_index: int): int
+    return FILES.GET_NUM_DLC_WEAPON_COMPONENTS(dlc_weapon_index)
+end
+
+-- Returns the total number of DLC weapon components that are available in SP
+function module.get_num_dlc_weapon_components_sp(dlc_weapon_index: int): int
+    return FILES.GET_NUM_DLC_WEAPON_COMPONENTS_SP(dlc_weapon_index)
+end
+
+-- @param component_data_ptr Pointer: pass memory.alloc(size) and read the result back
+function module.get_dlc_weapon_component_data(
+    dlc_weapon_index: int, dlc_weap_comp_index: int, component_data_ptr: int
+): bool
+    -- body function:
+    return FILES.GET_DLC_WEAPON_COMPONENT_DATA(dlc_weapon_index, dlc_weap_comp_index, component_data_ptr)
+end
+
+-- Same as GET_DLC_WEAPON_COMPONENT_DATA but only works for DLC components that are available in SP
+-- @param component_data_ptr Pointer: pass memory.alloc(size) and read the result back
+function module.get_dlc_weapon_component_data_sp(
+    dlc_weapon_index: int, dlc_weap_comp_index: int, component_data_ptr: int
+): bool
+    -- body function:
+    return FILES.GET_DLC_WEAPON_COMPONENT_DATA_SP(dlc_weapon_index, dlc_weap_comp_index, component_data_ptr)
+end
+
+function module.get_dlc_vehicle_mod_lock_hash(hash: int): int
+    return FILES.GET_DLC_VEHICLE_MOD_LOCK_HASH(hash)
+end
+
+-- Actions
+
+-- @param out_component Pointer: pass memory.alloc(size) and read the result back
+function module.init_shop_ped_component(out_component: int): void
+    FILES.INIT_SHOP_PED_COMPONENT(out_component)
+end
+
+-- @param out_prop Pointer: pass memory.alloc(size) and read the result back
+function module.init_shop_ped_prop(out_prop: int): void
+    FILES.INIT_SHOP_PED_PROP(out_prop)
+end
+
+function module.setup_shop_ped_apparel_query(p0: int, p1: int, p2: int, p3: int): int
+    return FILES.SETUP_SHOP_PED_APPAREL_QUERY(p0, p1, p2, p3)
+end
+
+function module.setup_shop_ped_apparel_query_tu(
+    character: int, p1: int, p2: int, p3: bool, p4: int, component_id: int
+): int
+    -- body function:
+    return FILES.SETUP_SHOP_PED_APPAREL_QUERY_TU(character, p1, p2, p3, p4, component_id)
+end
+
+function module.setup_shop_ped_outfit_query(character: int, p1: bool): int
+    return FILES.SETUP_SHOP_PED_OUTFIT_QUERY(character, p1)
+end
+
+function module.execute_content_changeset_group_for_all(hash: int): void
+    FILES.EXECUTE_CONTENT_CHANGESET_GROUP_FOR_ALL(hash)
+end
+
+function module.revert_content_changeset_group_for_all(hash: int): void
+    FILES.REVERT_CONTENT_CHANGESET_GROUP_FOR_ALL(hash)
+end
+
+return module

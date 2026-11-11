@@ -26,14 +26,18 @@ end
 -- @param binary Written as it is ("wb"); otherwise as text
 -- @return true, or false and why not
 function module.write(path: string, content: string, binary: bool = false)
+
     local folder = path:match("^(.+)[\\/][^\\/]+$")
     if folder ~= nil and not filesystem.exists(folder) then
         filesystem.mkdirs(folder)
     end
+
     local handle, err = io.open(path, binary ? "wb" : "w")
+
     if handle == nil then
         return false, err
     end
+
     handle:write(content)
     handle:close()
     return true, nil
@@ -45,7 +49,9 @@ function module.remove(path: string): bool
     if not filesystem.exists(path) then
         return false
     end
+
     os.remove(path)
+    
     return not filesystem.exists(path)
 end
 

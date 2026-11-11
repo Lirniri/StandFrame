@@ -12,8 +12,21 @@ function module.get_rotation(player_id: int): vector3
     return players.get_cam_rot(player_id)
 end
 
+function module.get_are_camera_controls_disabled(): bool
+    return PLAYER.GET_ARE_CAMERA_CONTROLS_DISABLED()
+end
+
+-- Returns profile setting 243
+function module.get_is_using_hood_camera(): bool
+    return PLAYER.GET_IS_USING_HOOD_CAMERA()
+end
+
 -- Set
 
 -- Actions
+
+function module.disable_camera_view_mode_cycle(player_id: int): void
+    PLAYER.DISABLE_CAMERA_VIEW_MODE_CYCLE(player_id)
+end
 
 return module

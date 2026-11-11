@@ -10,14 +10,18 @@ local module = {}
 -- "RRGGBB" or "RRGGBBAA", a leading # allowed, any case -> the Stand colour { r, g, b, a }, 0.0 - 1.0
 -- @return The colour, or nil if the text isn't 6 or 8 hex digits ("" too)
 function module.hex(text: string): ?table
+
     local digits = text:gsub("^#", "")
+    
     if not (#digits == 6 or #digits == 8) or digits:find("[^%x]") then
         return nil
     end
+
     local alpha = 1.0
     if #digits == 8 then
         alpha = tonumber(digits:sub(7, 8), 16) / 255
     end
+
     return {
         r = tonumber(digits:sub(1, 2), 16) / 255,
         g = tonumber(digits:sub(3, 4), 16) / 255,

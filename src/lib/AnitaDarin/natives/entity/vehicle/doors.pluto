@@ -1,0 +1,209 @@
+-- Doors, windows and roofs of vehicles
+
+local module = {}
+
+-- State
+
+function module.is_stuck_on_roof(vehicle: int): bool
+    return VEHICLE.IS_VEHICLE_STUCK_ON_ROOF(vehicle)
+end
+
+function module.have_rear_doors_been_blown_open_by_stickybomb(vehicle: int): bool
+    return VEHICLE.HAVE_VEHICLE_REAR_DOORS_BEEN_BLOWN_OPEN_BY_STICKYBOMB(vehicle)
+end
+
+function module.is_door_fully_open(vehicle: int, door_id: int): bool
+    return VEHICLE.IS_VEHICLE_DOOR_FULLY_OPEN(vehicle, door_id)
+end
+
+function module.does_have_roof(vehicle: int): bool
+    return VEHICLE.DOES_VEHICLE_HAVE_ROOF(vehicle)
+end
+
+function module.is_door_damaged(veh: int, door_id: int): bool
+    return VEHICLE.IS_VEHICLE_DOOR_DAMAGED(veh, door_id)
+end
+
+function module.is_convertible(vehicle: int, p1: bool): bool
+    return VEHICLE.IS_VEHICLE_A_CONVERTIBLE(vehicle, p1)
+end
+
+function module.is_window_intact(vehicle: int, window_index: int): bool
+    return VEHICLE.IS_VEHICLE_WINDOW_INTACT(vehicle, window_index)
+end
+
+function module.are_all_windows_intact(vehicle: int): bool
+    return VEHICLE.ARE_ALL_VEHICLE_WINDOWS_INTACT(vehicle)
+end
+
+-- Get
+
+function module.get_doors_locked_for_player(vehicle: int, player_id: int): bool
+    return VEHICLE.GET_VEHICLE_DOORS_LOCKED_FOR_PLAYER(vehicle, player_id)
+end
+
+function module.get_door_angle_ratio(vehicle: int, door_id: int): float
+    return VEHICLE.GET_VEHICLE_DOOR_ANGLE_RATIO(vehicle, door_id)
+end
+
+function module.get_ped_using_door(vehicle: int, doord: int): int
+    return VEHICLE.GET_PED_USING_VEHICLE_DOOR(vehicle, doord)
+end
+
+function module.get_door_lock_status(vehicle: int): int
+    return VEHICLE.GET_VEHICLE_DOOR_LOCK_STATUS(vehicle)
+end
+
+-- Returns vehicle door lock state previously set with SET_VEHICLE_INDIVIDUAL_DOORS_LOCKED
+function module.get_individual_door_lock_status(vehicle: int, door_id: int): int
+    return VEHICLE.GET_VEHICLE_INDIVIDUAL_DOOR_LOCK_STATUS(vehicle, door_id)
+end
+
+function module.get_convertible_roof_state(vehicle: int): int
+    return VEHICLE.GET_CONVERTIBLE_ROOF_STATE(vehicle)
+end
+
+function module.get_are_bomb_bay_doors_open(aircraft: int): bool
+    return VEHICLE.GET_ARE_BOMB_BAY_DOORS_OPEN(aircraft)
+end
+
+function module.get_number_doors(vehicle: int): int
+    return VEHICLE.GET_NUMBER_OF_VEHICLE_DOORS(vehicle)
+end
+
+function module.get_is_door_valid(vehicle: int, door_id: int): bool
+    return VEHICLE.GET_IS_DOOR_VALID(vehicle, door_id)
+end
+
+-- Set
+
+function module.set_doors_locked(vehicle: int, door_lock_status: int): void
+    VEHICLE.SET_VEHICLE_DOORS_LOCKED(vehicle, door_lock_status)
+end
+
+function module.set_individual_doors_locked(vehicle: int, door_id: int, door_lock_status: int): void
+    VEHICLE.SET_VEHICLE_INDIVIDUAL_DOORS_LOCKED(vehicle, door_id, door_lock_status)
+end
+
+function module.set_doors_locked_for_player(vehicle: int, player_id: int, toggle: bool): void
+    VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_PLAYER(vehicle, player_id, toggle)
+end
+
+-- After some analysis, I've decided that these are what the parameters are
+function module.set_doors_locked_for_all_players(vehicle: int, toggle: bool): void
+    VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_ALL_PLAYERS(vehicle, toggle)
+end
+
+function module.set_doors_locked_for_non_script_players(vehicle: int, toggle: bool): void
+    VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_NON_SCRIPT_PLAYERS(vehicle, toggle)
+end
+
+function module.set_doors_locked_for_team(vehicle: int, team: int, toggle: bool): void
+    VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_TEAM(vehicle, team, toggle)
+end
+
+function module.set_doors_locked_for_all_teams(vehicle: int, toggle: bool): void
+    VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_ALL_TEAMS(vehicle, toggle)
+end
+
+function module.set_open_rear_doors_on_explosion(vehicle: int, toggle: bool): void
+    VEHICLE.SET_OPEN_REAR_DOORS_ON_EXPLOSION(vehicle, toggle)
+end
+
+function module.set_doors_shut(vehicle: int, close_instantly: bool): void
+    VEHICLE.SET_VEHICLE_DOORS_SHUT(vehicle, close_instantly)
+end
+
+function module.set_door_open(vehicle: int, door_id: int, loose: bool, open_instantly: bool): void
+    VEHICLE.SET_VEHICLE_DOOR_OPEN(vehicle, door_id, loose, open_instantly)
+end
+
+function module.set_door_auto_lock(vehicle: int, door_id: int, toggle: bool): void
+    VEHICLE.SET_VEHICLE_DOOR_AUTO_LOCK(vehicle, door_id, toggle)
+end
+
+function module.set_door_control(vehicle: int, door_id: int, speed: int, angle: float): void
+    VEHICLE.SET_VEHICLE_DOOR_CONTROL(vehicle, door_id, speed, angle)
+end
+
+function module.set_door_latched(vehicle: int, door_id: int, p2: bool, p3: bool, p4: bool): void
+    VEHICLE.SET_VEHICLE_DOOR_LATCHED(vehicle, door_id, p2, p3, p4)
+end
+
+function module.set_door_shut(vehicle: int, door_id: int, close_instantly: bool): void
+    VEHICLE.SET_VEHICLE_DOOR_SHUT(vehicle, door_id, close_instantly)
+end
+
+function module.set_door_broken(vehicle: int, door_id: int, delete_door: bool): void
+    VEHICLE.SET_VEHICLE_DOOR_BROKEN(vehicle, door_id, delete_door)
+end
+
+function module.set_door_allowed_to_be_broken_off(vehicle: int, door_id: int, is_breakable: bool): void
+    VEHICLE.SET_DOOR_ALLOWED_TO_BE_BROKEN_OFF(vehicle, door_id, is_breakable)
+end
+
+function module.set_convertible_roof(vehicle: int, p1: bool): void
+    VEHICLE.SET_CONVERTIBLE_ROOF(vehicle, p1)
+end
+
+function module.set_convertible_roof_latch_state(vehicle: int, state: bool): void
+    VEHICLE.SET_CONVERTIBLE_ROOF_LATCH_STATE(vehicle, state)
+end
+
+function module.set_override_door_torque(p0: any, p1: any, p2: any): void
+    VEHICLE.SET_OVERRIDE_VEHICLE_DOOR_TORQUE(p0, p1, p2)
+end
+
+-- Actions
+
+function module.remove_window(vehicle: int, window_index: int): void
+    VEHICLE.REMOVE_VEHICLE_WINDOW(vehicle, window_index)
+end
+
+-- Roll down all the windows of the vehicle passed through the first parameter
+function module.roll_down_windows(vehicle: int): void
+    VEHICLE.ROLL_DOWN_WINDOWS(vehicle)
+end
+
+function module.roll_down_window(vehicle: int, window_index: int): void
+    VEHICLE.ROLL_DOWN_WINDOW(vehicle, window_index)
+end
+
+function module.roll_up_window(vehicle: int, window_index: int): void
+    VEHICLE.ROLL_UP_WINDOW(vehicle, window_index)
+end
+
+function module.smash_window(vehicle: int, window_index: int): void
+    VEHICLE.SMASH_VEHICLE_WINDOW(vehicle, window_index)
+end
+
+function module.fix_window(vehicle: int, window_index: int): void
+    VEHICLE.FIX_VEHICLE_WINDOW(vehicle, window_index)
+end
+
+-- Pops off the "roof" bone in the direction of the specified offset from the vehicle
+function module.pop_off_roof_with_impulse(vehicle: int, x: float, y: float, z: float): void
+    VEHICLE.POP_OFF_VEHICLE_ROOF_WITH_IMPULSE(vehicle, x, y, z)
+end
+
+function module.lower_convertible_roof(vehicle: int, instantly_lower: bool): void
+    VEHICLE.LOWER_CONVERTIBLE_ROOF(vehicle, instantly_lower)
+end
+
+function module.raise_convertible_roof(vehicle: int, instantly_raise: bool): void
+    VEHICLE.RAISE_CONVERTIBLE_ROOF(vehicle, instantly_raise)
+end
+
+function module.open_bomb_bay_doors(vehicle: int): void
+    VEHICLE.OPEN_BOMB_BAY_DOORS(vehicle)
+end
+
+function module.close_bomb_bay_doors(vehicle: int): void
+    VEHICLE.CLOSE_BOMB_BAY_DOORS(vehicle)
+end
+
+function module.lock_doors_when_no_longer_needed(vehicle: int): void
+    VEHICLE.LOCK_DOORS_WHEN_NO_LONGER_NEEDED(vehicle)
+end
+
+return module
