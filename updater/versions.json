@@ -1,6 +1,10 @@
 {
   "versions": [
     {
+      "version": "0.1.15",
+      "branch": "experiment"
+    },
+    {
       "version": "0.1.14",
       "branch": "experiment"
     },
