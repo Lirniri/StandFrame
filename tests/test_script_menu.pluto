@@ -246,13 +246,60 @@ find("Load Menu").on_click()
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu: opened, the menus made again")
 local update_list = find("Update")
 stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check | Check For Updates"
-    .. " | Update Branch: main | Check On Start | Update | Update | Update Automatically | Check Before Updating"
+    .. " | Branch: main | Check On Start | Update | Update | Update Automatically | Check Before Updating"
     .. " | Check For Updates Every (Days) | Update To Version",
     "Update: the version lines, Changes, Check For Updates and its branch, then the Update divider with Update and its settings")
 stand.equal(update_list.children[9].kind, "divider", "the Update divider under the branch")
 local version_list = stand.child(update_list, "Update To Version")
 stand.equal(version_list.kind, "list", "Update To Version is a list")
-stand.equal(names_in(version_list), "Version | Versions", "the field, then the Versions divider (the releases are read when it's opened)")
+stand.equal(names_in(version_list), "Version | Sync With Branch | Limit Shown To | Versions", "the field, Limit Shown To, then the Versions divider (the releases are read when it's opened)")
+local limit = stand.child(version_list, "Limit Shown To")
+stand.check(limit.kind == "slider" and limit.value == 7, "Limit Shown To is a slider, 7 by default")
+stand.equal(profile.get("update_versions_shown"), 7, "kept in the profile")
+limit.on_change(3, 7, 4)
+stand.equal(profile.get("update_versions_shown"), 3, "Stand's own change (Reset Settings, Set To Min) counts too")
+limit.on_change(7, 3, 4)
+stand.equal(profile.get("update_versions_shown"), 7, "and Reset Settings puts the default back")
+-- Sync With Branch is a switch: on by default, kept in the profile, installs nothing
+local sync = stand.child(version_list, "Sync With Branch")
+stand.check(sync.kind == "toggle" and sync.value == true, "Sync With Branch is a switch, on by default")
+_G.async_http = { have_access = || -> false }
+stand.click(sync)
+stand.frame()
+stand.equal(profile.get("update_versions_sync"), false, "switching it off is saved")
+stand.click(sync)
+stand.equal(profile.get("update_versions_sync"), true, "and on again")
+-- The rows of the list: the version, and with Sync With Branch off its branch too
+local view = Atdar.loader.load("ui/logic/stand/script/updater_view")
+Atdar.loader.load("core/update_manager").versions_found = { { version = "0.1.11", branch = "main" }, { version = "0.1.10", branch = "experiment" } }
+local rows = view.version_rows(true)
+stand.check(rows[1].caption == "0.1.11" and rows[2].caption == "0.1.10", "Sync With Branch on: the versions as they are")
+profile.set("update_versions_sync", false)
+rows = view.version_rows(true)
+stand.check(rows[1].caption == "0.1.11: main" and rows[2].caption == "0.1.10: experiment", "off: each version with its branch")
+stand.equal(rows[2].version, "0.1.10", "the version itself is what is installed")
+profile.set("update_versions_sync", true)
+Atdar.loader.load("core/update_manager").versions_found = nil
+-- Nothing was loaded yet (the list wasn't opened): the value is kept, nothing is asked of the network
+stand.clear_logs()
+menu.set_value(limit, 3)
+stand.frame()
+stand.equal(profile.get("update_versions_shown"), 3, "a value picked is saved")
+stand.check(not stand.find_log("Couldn't load the versions"), "before the list was opened nothing is loaded")
+-- Versions were loaded: the list is made again from them, no more than the limit
+Atdar.loader.load("core/update_manager").versions_found = { { version = "0.1.3", branch = "main" }, { version = "0.1.2", branch = "main" }, { version = "0.1.1", branch = "main" }, { version = "0.1.0", branch = "main" } }
+menu.set_value(limit, 2)
+stand.frame()
+stand.equal(names_in(version_list), "Version | Sync With Branch | Limit Shown To | Versions | 0.1.3 | 0.1.2", "the list follows the limit")
+limit.on_change(4, 2, 4)
+stand.frame()
+stand.equal(#version_list.children, 8, "Stand's own Reset Settings changes the list too")
+Atdar.loader.load("core/update_manager").versions_found = nil
+_G.async_http = { have_access = || -> false }
+menu.set_value(limit, 7)
+_G.async_http = nil
+-- Saved again, so the checks below start without unsaved changes
+stand.click(stand.find_item(entry("main (active)*"), "Save"))
 stand.equal(version_list.children[1].kind, "text_input", "the version is typed in a text field")
 stand.equal(update_list.children[2].value, "not checked", "the available version isn't known before a check")
 stand.equal(update_list.children[3].value, "never", "and no check ran")
@@ -1468,10 +1515,10 @@ stand.click(check_days, 0)
 stand.check(stand.toasts[#stand.toasts]:find("won't be checked", 1, true), "0: never")
 profile.set("update_check_days", days_before)
 local branch_item = update_list.children[7]
-stand.equal(stand.name_of(branch_item), "Update Branch: main", "Update Branch shows the profile's branch")
+stand.equal(stand.name_of(branch_item), "Branch: main", "Branch shows the profile's branch")
 stand.click(branch_item, 2)
 stand.equal(profile.get("update_branch"), "experiment", "picking experiment saves it")
-stand.equal(stand.name_of(branch_item), "Update Branch: experiment", "and the item shows it")
+stand.equal(stand.name_of(branch_item), "Branch: experiment", "and the item shows it")
 stand.check(stand.toasts[#stand.toasts]:find("from the experiment branch", 1, true), "and says so")
 stand.click(branch_item, 1)
 stand.equal(profile.get("update_branch"), "main", "main back")

@@ -1130,12 +1130,20 @@
                 "name": "Version",
                 "help": "A version (0.1.8: the release tagged v0.1.8), or a tag, a branch or a commit of the repo. Installed when typed"
             },
+            "sync": {
+                "name": "Sync With Branch",
+                "help": "On: the list below is the releases of the Branch picked above. Off: the releases of every branch, each marked with its branch (0.1.11: main). Installs nothing"
+            },
+            "limit": {
+                "name": "Limit Shown To",
+                "help": "How many of the newest versions the list below shows"
+            },
             "divider": "Versions",
             "item_help": "Installs this version, then the script restarts",
             "installed": "%s (installed)"
         },
         "branch": {
-            "name": "Update Branch: %s",
+            "name": "Branch: %s",
             "help": "Where updates come from: main - tried versions, experiment - the newest, less tried",
             "main": "main (tried)",
             "experiment": "experiment (newest)",

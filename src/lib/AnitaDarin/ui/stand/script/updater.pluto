@@ -8,7 +8,7 @@
 --   ── Check ──
 --   Check For Updates
 --   Check On Start                 (profile: update_check_on_start)
---   Update Branch: main            (profile: update_branch)
+--   Branch: main                   (profile: update_branch)
 --   ── Update ──
 --   Update
 --   Check Before Updating          (profile: update_check_before)
@@ -16,6 +16,8 @@
 --   Check For Updates Every (Days) (profile: update_check_days)
 --   Update To Version              (a list)
 --     Version                      (a version, a tag, a branch or a commit to install, an older one too)
+--     Sync With Branch             (the Branch's releases; off: every branch's, each marked; profile: update_versions_sync)
+--     Limit Shown To               (how many of the newest versions are listed; profile: update_versions_shown)
 --     ── Versions ──
 --     0.1.10, 0.1.9, ...           (the releases, read when the list is opened; one is installed by a click)
 --
@@ -23,7 +25,7 @@
 -- in a thread and shows what it found. The texts of the lines and what the other items do are in
 -- ui/logic/stand/script/updater_view.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
--- updaterbranch, updaterbefore, updaterchanges, updaterstart, updaterversion
+-- updaterbranch, updaterbefore, updaterchanges, updaterstart, updaterversion, updatersync
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -81,7 +83,7 @@ function module.build(node: table): table
     list:divider(label("check_divider"))
     threaded(list, "check", "updatercheck", manager.check)
 
-    -- The branch updates come from, its name in the item: "Update Branch: main"
+    -- The branch updates come from, its name in the item: "Branch: main"
     view.branch = list:list_action(updater.branch_caption(), updater.branch_options(), function(index)
         updater.set_branch(index)
         pcall(menu.set_menu_name, view.branch, updater.branch_caption())
@@ -124,6 +126,17 @@ function module.build(node: table): table
     versions:text_input(label("version.input.name"), { "updaterversion" }, function(value, click_type)
         updater.update_to_version(value, click_type)
     end, label("version.input.help"))
+    versions:toggle(label("version.sync.name"), function(on)
+        if updater.set_versions_synced(on) and updater.versions_loaded() then
+            fill_versions()
+        end
+    end, { "updatersync" }, label("version.sync.help"), updater.versions_synced())
+    -- Also Stand's own Reset Settings and Set To Min / Max: the list follows, from the versions it has
+    versions:slider(label("version.limit.name"), 1, 50, updater.versions_shown(), 1, function(count)
+        if updater.set_versions_shown(count) and updater.versions_loaded() then
+            fill_versions(true)
+        end
+    end, { "updaterversionsshown" }, label("version.limit.help"))
     versions:divider(label("version.divider"))
     first_version = #versions.children + 1
 

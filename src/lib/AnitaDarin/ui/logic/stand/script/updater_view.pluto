@@ -55,7 +55,7 @@ end
 
 -- Branch
 
--- "Update Branch: main"
+-- "Branch: main"
 function module.branch_caption(): string
     return text("branch.name"):format(Atdar.profile.get("update_branch") or "main")
 end
@@ -113,6 +113,23 @@ function module.update_to(version: string): void
     util.create_thread(|| -> manager.install_version_and_restart(version))
 end
 
+-- Sync With Branch: whether the list of versions is the update branch's (on), or always main's
+function module.versions_synced(): bool
+    return Atdar.profile.get("update_versions_sync") ~= false
+end
+
+-- Sync With Branch was switched: by the user, or by Stand's own Reset Settings
+-- @return Whether it changed, for the list to be made again
+function module.set_versions_synced(on: bool): bool
+
+    if clicks.is_stopping() or on == module.versions_synced() then
+        return false
+    end
+
+    Atdar.profile.set("update_versions_sync", on)
+    return true
+end
+
 -- The version typed in the field. Not Stand putting the text back
 function module.update_to_version(value: string, click_type): void
 
@@ -153,8 +170,9 @@ function module.set_versions_shown(count: int): bool
 end
 
 -- The released versions for the list under the field: { version, caption } newest first, the installed one
--- marked. Yields: call it from a thread. Empty (and told) when they can't be loaded
-function module.version_rows(): table
+-- marked, no more than Limit Shown To; with Sync With Branch off the caption says the branch ("0.1.11: main"). Yields: call it from a thread. Empty (and told) when they can't be loaded
+-- @param kept Take the ones the last fetch got, without going to the network again
+function module.version_rows(kept: bool = false): table
 
     local versions = kept and manager.versions_found or nil
     local err = nil
@@ -171,8 +189,20 @@ function module.version_rows(): table
     local installed = manager.installed_version()
     local rows = {}
 
-    for _, version in ipairs(versions) do
-        local caption = version
+    local with_branch = not module.versions_synced()
+
+    for index, entry in ipairs(versions) do
+
+        if index > module.versions_shown() then
+            break
+        end
+
+        local caption = entry.version
+
+        -- Every branch's versions are in the list: each says which branch it's of, "0.1.11: main"
+        if with_branch then
+            caption = $"{entry.version}: {entry.branch}"
+        end
 
         if entry.version == installed then
             caption = text("version.installed"):format(caption)

@@ -204,6 +204,30 @@ for _, name in { "util", "filesystem", "lang" } do
 end
 Atdar.profile = { get = || -> nil, set = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
 local manager = Atdar.loader.load("core/update_manager")
+-- The list of versions is the update branch's; with Sync With Branch off every branch's, each with its branch
+local profile_values = { update_branch = "experiment" }
+Atdar.profile.get = |key| -> profile_values[key]
+served["/Lirniri/Stand-AnitaDarin/experiment/updater/versions.json"] = json.encode({ versions = { "0.1.10", "0.1.9", "0.1.2" } })
+served["/Lirniri/Stand-AnitaDarin/main/updater/versions.json"] = json.encode({ versions = { "0.1.10", "0.1.2" } })
+requests = {}
+local found = manager.fetch_versions()
+stand.check(#requests == 1 and requests[1]:find("/experiment/updater/versions.json", 1, true) ~= nil, "Sync With Branch on: only the update branch's list")
+stand.check(#found == 3 and found[1].version == "0.1.10" and found[1].branch == "experiment", "its versions, each of the update branch")
+profile_values.update_versions_sync = false
+requests = {}
+found = manager.fetch_versions()
+stand.check(#requests == 2 and requests[1]:find("/main/", 1, true) ~= nil and requests[2]:find("/experiment/", 1, true) ~= nil, "off: main's list, then experiment's")
+local seen_text = {}
+for _, entry in ipairs(found) do
+    table.insert(seen_text, $"{entry.version}: {entry.branch}")
+end
+stand.equal(table.concat(seen_text, ", "), "0.1.10: main, 0.1.9: experiment, 0.1.2: main",
+    "every version once, newest first, under the branch that has it (main first; one only experiment has is experiment's)")
+served["/Lirniri/Stand-AnitaDarin/main/updater/versions.json"] = nil
+found = manager.fetch_versions()
+stand.equal(#found, 3, "a branch that can't be read is skipped")
+Atdar.profile.get = || -> nil
+served["/Lirniri/Stand-AnitaDarin/experiment/updater/versions.json"] = nil
 requests = {}
 stand.clear_logs()
 stand.equal(manager.install_version("9.9.9"), "failed", "a version with no release: fails")

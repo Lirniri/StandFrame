@@ -218,10 +218,88 @@ function module.install(): string
     return apply_plan(plan)
 end
 
--- The versions released, newest first, from the update branch. Yields: call it from a thread
--- @return The versions, or nil and why not
+-- The versions the last fetch_versions got, nil before one
+module.versions_found = nil
+
+-- The branches that make releases: main - the tried ones, experiment - all of them, the newest too
+local RELEASE_BRANCHES = { "main", "experiment" }
+
+-- Whether version a is newer than b: "0.1.10" is newer than "0.1.9"
+local function is_newer(a: string, b: string): bool
+
+    local left, right = {}, {}
+
+    for number in a:gmatch("%d+") do
+        table.insert(left, tonumber(number))
+    end
+
+    for number in b:gmatch("%d+") do
+        table.insert(right, tonumber(number))
+    end
+
+    for i = 1, math.max(#left, #right) do
+        local x, y = left[i] or 0, right[i] or 0
+        if x ~= y then
+            return x > y
+        end
+    end
+
+    return false
+end
+
+-- The versions released, newest first, each with the branch it was released to: { version, branch }.
+-- With Sync With Branch on (the default) it's the update branch's list. Off: the lists of every branch together;
+-- a version main has is "main", one only experiment has is "experiment". Yields: call it from a thread
+-- @return The entries, or nil and why not
 function module.fetch_versions()
-    return updater.versions(options())
+
+    local o = options()
+    local entries = {}
+
+    if Atdar.profile.get("update_versions_sync") ~= false then
+
+        local versions, err = updater.versions(o)
+
+        if versions == nil then
+            return nil, err
+        end
+
+        for _, version in ipairs(versions) do
+            table.insert(entries, { version = version, branch = o.branch })
+        end
+
+        module.versions_found = entries
+        return entries, nil
+    end
+
+    -- Each version once, under the first branch that has it; a branch that can't be read is skipped
+    local seen = {}
+    local last_err = nil
+
+    for _, branch in ipairs(RELEASE_BRANCHES) do
+
+        o.branch = branch
+        local versions, err = updater.versions(o)
+
+        if versions == nil then
+            last_err = err
+        else
+            for _, version in ipairs(versions) do
+                if not seen[version] then
+                    seen[version] = true
+                    table.insert(entries, { version = version, branch = branch })
+                end
+            end
+        end
+    end
+
+    if #entries == 0 then
+        return nil, last_err
+    end
+
+    table.sort(entries, |a, b| -> is_newer(a.version, b.version))
+    module.versions_found = entries
+    return entries, nil
 end
 
 -- The refs of the repo a typed version can mean: "0.1.8" is the release tagged v0.1.8 (or 0.1.8); anything
