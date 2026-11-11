@@ -1,7 +1,7 @@
 -- lib/AnitaDarin/parsers/stand/command_box.pluto
 --
 -- Command names for Stand's command box, as people type them and files keep them. Stand takes
--- only a-z, 0-9 and _ in a command; ui/stand/core/commands builds the full names from what this gives.
+-- only a-z, 0-9 and _ in a command; ui/logic/stand/commands builds the full names from what this gives.
 --   sanitize(text)            - a name Stand takes: "God Mode!" -> "godmode"
 --   bases(names)              - an item's base names cleaned: sanitized, no empty ones, no repeats
 --   entry(base, name, words)  - one command's file, commands/<base>.json { name, words }, cleaned

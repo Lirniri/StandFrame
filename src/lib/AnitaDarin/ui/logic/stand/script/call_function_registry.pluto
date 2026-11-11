@@ -12,7 +12,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-local arguments = Atdar.loader.load("ui/stand/core/arguments")
+local arguments = Atdar.loader.load("ui/logic/stand/arguments")
 local paths = Atdar.loader.load("parsers/proglang/pluto/path")
 
 local log = new Logger("CallFunction")

@@ -10,7 +10,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
 
 local log = new Logger("Commands")

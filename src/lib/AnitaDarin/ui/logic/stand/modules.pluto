@@ -10,7 +10,7 @@ local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
 local Logger = Atdar.loader.load("core/logger")
 local Module = Atdar.loader.load("core/module")
 -- The signatures of a function's arguments, the types from the source, the words of a function's name
-local arguments = Atdar.loader.load("ui/stand/core/arguments")
+local arguments = Atdar.loader.load("ui/logic/stand/arguments")
 local source_parser = Atdar.loader.load("parsers/proglang/pluto/source")
 local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
 -- What calls gave, and values as text

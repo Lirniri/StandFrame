@@ -5,7 +5,7 @@
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 
 local log = new Logger("Menu")
 local text = select(2, i18n.scope("script_menu"))

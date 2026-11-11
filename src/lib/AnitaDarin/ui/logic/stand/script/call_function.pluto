@@ -52,7 +52,7 @@ local function path_parser(): table
 end
 
 local function arguments(): table
-    return Atdar.loader.load("ui/stand/core/arguments")
+    return Atdar.loader.load("ui/logic/stand/arguments")
 end
 
 local function registry(): table

@@ -15,7 +15,7 @@
 -- Strings: core/language "script_menu.user_commands"
 
 local i18n = Atdar.loader.load("core/i18n")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 local profile_menu = Atdar.loader.load("ui/stand/script/profile")
 local user_commands = Atdar.loader.load("ui/logic/stand/script/user_commands")
 

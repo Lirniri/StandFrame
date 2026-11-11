@@ -24,7 +24,7 @@ local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local delete_script_logic = Atdar.loader.load("ui/logic/stand/script/delete_script")
 local Logger = Atdar.loader.load("core/logger")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 local command_names = Atdar.loader.load("ui/logic/stand/script/command_names")
 local actions = Atdar.loader.load("ui/logic/stand/script/section_actions")
 local profile_menu = Atdar.loader.load("ui/stand/script/profile")
@@ -76,7 +76,7 @@ local short_names = command_names.short_names
 local full_names = command_names.full_names
 
 -- A command: a list with its full command, its custom name and a reset, then its extra words. They're
--- kept by ui/stand/core/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
+-- kept by ui/logic/stand/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
 local function command_entry(list: table, ref): table
     local entry = list:list(short_names(ref), {}, actions.item_name(ref))
     local found = { ref = ref, row = entry.handle }
@@ -164,7 +164,7 @@ local function fill_command_lists(base: table, found: table): void
     end
 end
 
--- A new prefix, its place or separator renames the commands (ui/stand/core/commands): the full ones inside the
+-- A new prefix, its place or separator renames the commands (ui/logic/stand/commands): the full ones inside the
 -- lists follow
 Atdar.profile.on_change(function(key: string)
     if not commands.is_name_key(key) then

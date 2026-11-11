@@ -1,13 +1,13 @@
 -- lib/AnitaDarin/ui/logic/stand/script/command_names.pluto
 -- What the lists of Found Commands and Base Commands do: rename an item's command, give it back its own
--- name, add and take off extra words. The names are kept by ui/stand/core/commands; the lists that show them
+-- name, add and take off extra words. The names are kept by ui/logic/stand/commands; the lists that show them
 -- are in ui/stand/script/section.
 -- Each takes changed(): what the menu does when the names changed (its captions, the word buttons).
 -- Strings: core/language "script_menu" ("found_commands.*")
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
 
 local log = new Logger("Menu")

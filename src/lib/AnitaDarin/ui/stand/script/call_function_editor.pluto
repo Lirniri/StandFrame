@@ -22,7 +22,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local Logger = Atdar.loader.load("core/logger")
-local commands = Atdar.loader.load("ui/stand/core/commands")
+local commands = Atdar.loader.load("ui/logic/stand/commands")
 local confirm = Atdar.loader.load("ui/stand/core/confirm")
 
 local log = new Logger("CallFunctionEditor")

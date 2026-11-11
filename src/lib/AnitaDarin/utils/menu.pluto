@@ -13,7 +13,7 @@
 --     Atdar.menu.confirm     confirm.action(node, name, again_name, on_confirm): a button that acts on a
 --                            second click (ui/stand/core/confirm)
 --     Atdar.menu.settings    the script's own section: set_parent, set_divider, set_name, add (ui/stand/core/settings)
---     Atdar.menu.commands    command names with the profile's prefix: names, track (ui/stand/core/commands)
+--     Atdar.menu.commands    command names with the profile's prefix: names, track (ui/logic/stand/commands)
 --     Atdar.menu.arguments   a field for each parameter of a function, by its type (ui/stand/core/arguments)
 --     Atdar.menu.modules     modules.list_in(node), modules.module_in(node, name): the Modules list in any menu
 --     Atdar.menu.clicks      clicks.is_user_action(click_type): whether a handler's call is the user's
@@ -26,7 +26,7 @@ local PARTS = {
     builder = "ui/stand/core/menu_builder",
     confirm = "ui/stand/core/confirm",
     settings = "ui/stand/core/settings",
-    commands = "ui/stand/core/commands",
+    commands = "ui/logic/stand/commands",
     arguments = "ui/stand/core/arguments",
     modules = "ui/stand/modules/place",
     clicks = "ui/logic/stand/clicks",

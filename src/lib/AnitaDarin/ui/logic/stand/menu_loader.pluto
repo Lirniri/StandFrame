@@ -11,7 +11,7 @@ local packs = load("ui/logic/stand/menu_packs")
 local settings = load("ui/stand/core/settings")
 local i18n = load("core/i18n")
 local Logger = load("core/logger")
-local commands = load("ui/stand/core/commands")
+local commands = load("ui/logic/stand/commands")
 local features = Atdar.features
 local paths = Atdar.filesystem.paths
 
