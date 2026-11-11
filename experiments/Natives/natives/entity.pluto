@@ -22,12 +22,12 @@ function module.is_in_air(entity: int)
 end
 
 -- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
-function module.is_on_ground(entity: int, max_height: number|bool = false): bool
+function module.is_on_ground(entity: int, alive, max_height: number|bool = false): bool
     if module.is_in_air(entity) then
         return false
     end
 
-    local coords = ENTITY.GET_ENTITY_COORDS(entity)
+    local coords = module.get_coords(entity, alive)
     local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
     if not found or coords.z < ground_z then
         return false
@@ -325,6 +325,11 @@ end
 -- Gets the Y-component of the entity's forward vector
 function module.get_forward_y(entity: int): float
     return ENTITY.GET_ENTITY_FORWARD_Y(entity)
+end
+
+-- Gets the Z-component of the entity's forward vector. There is no native for it, so it is read from the whole vector
+function module.get_forward_z(entity: int): float
+    return ENTITY.GET_ENTITY_FORWARD_VECTOR(entity).z
 end
 
 function module.get_height(

@@ -722,8 +722,15 @@ function module.set_fire_ammo_this_frame(player_id: int): void
     MISC.SET_FIRE_AMMO_THIS_FRAME(player_id)
 end
 
+-- Only work in singleplayer TODO: Needs alternative method
 function module.set_explosive_melee_this_frame(player_id: int): void
-    MISC.SET_EXPLOSIVE_MELEE_THIS_FRAME(player_id)
+
+    if util.is_session_started() then
+
+    else
+        MISC.SET_EXPLOSIVE_MELEE_THIS_FRAME(player_id)
+    end
+
 end
 
 function module.set_super_jump_this_frame(player_id: int): void
