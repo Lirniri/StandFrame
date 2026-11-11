@@ -3,7 +3,8 @@
 --
 -- Every method takes the item's name (a text or a label from Atdar.lang.translate) and, where it
 -- has them, commands: base command names, the script's prefix is added ({ "garage" } -> "atdargarage").
--- Methods return the item's ref; list() returns a MenuNode to add items into
+-- This is the old form, one argument after another; options.pluto shows the same items with a table of options.
+-- Methods return a MenuItem to change the item later (changing.pluto); list() returns a MenuNode to add items into
 
 local Logger = Atdar.loader.load("core/logger")
 local log = new Logger("Items")

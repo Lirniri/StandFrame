@@ -1,0 +1,58 @@
+-- EXAMPLE: changing items after they're made, as a menu file of a pack (menu/stand/changing.pluto).
+-- main.pluto calls it: ctx.load("changing").build(node, ctx)
+--
+-- An item method gives back a MenuItem. Keep it and change the item through it, no Stand ref needed:
+--   set_name, set_help, set_value, get_value, set_visible, set_options, focus, remove
+--   on_focus(fn), on_blur(fn), on_view_tick(fn)
+-- Every change is safe on an item that's gone already: it just does nothing.
+--
+-- Or bind a part of it to a function, set again when the language or the profile changes and on
+-- Atdar.menu.live.refresh():
+--   caption(fn)    the name          shown_when(fn)   shown only while fn() is true
+--   help_from(fn)  the help text     value_from(fn)   the value
+-- The same as options: { caption = fn, shown_when = fn, ... }
+
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Changing")
+
+return {
+    build = function(node, ctx)
+        local list = node:list({ name = "Changing Items" })
+        local running = false
+        local clicks = 0
+
+        -- A value changed later
+        local status = list:readonly({ name = "Status", value = "Stopped" })
+
+        -- set_value from code doesn't run the item's own handler: it isn't the user's change.
+        -- set_value(value, true) runs it, as if the user did it
+        local runner = list:toggle({ name = "Running", on_change = function(on)
+            running = on
+            status:set_value(on ? "Running" : "Stopped")
+            Atdar.menu.live.refresh()
+        end })
+
+        -- Shown only while running; it switches the toggle off as the user would
+        list:action({ name = "Stop", shown_when = || -> running, on_click = function()
+            runner:set_value(false, true)
+        end })
+
+        -- A name that follows a function
+        local counter = list:readonly_name({ caption = || -> $"Clicks: {clicks}" })
+
+        list:action({ name = "Click Me", on_click = function()
+            clicks += 1
+            Atdar.menu.live.refresh()
+        end })
+
+        -- A hint while the cursor is on the item
+        counter:on_focus(function()
+            log:info("that's how many times Click Me was clicked")
+        end)
+
+        list:action({ name = "Rename The Counter", on_click = function()
+            counter:set_help("Counts the clicks of Click Me")
+        end })
+    end,
+}
