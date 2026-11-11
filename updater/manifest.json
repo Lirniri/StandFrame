@@ -21,8 +21,8 @@
       "size": 1839
     },
     "lib/AnitaDarin/core/filesystem/json/file.pluto": {
-      "sha256": "dd2cf9aef1d493efc7da12c56a9e322191620fce58a55ab33f5d1a53843bd44a",
-      "size": 5316
+      "sha256": "106161bec2c4c801c9a10f0d962b07bb9b78af3efded1720fe4df802474ceb59",
+      "size": 7916
     },
     "lib/AnitaDarin/core/filesystem/json/storage.pluto": {
       "sha256": "3d094bb565b9b7cf81eca4b65bbfad2488afb964d99ec1e6d7fe5453cb1ee91a",
@@ -57,8 +57,8 @@
       "size": 13464
     },
     "lib/AnitaDarin/core/profile.pluto": {
-      "sha256": "172f4aa389ea3dc2bbcfb47f57734c7e79a080a8187808eee5762922556fd963",
-      "size": 15551
+      "sha256": "fea782f3fb5ab1570eb185095e801a4bec13ef5a1e58cb147986cf4e2fa3f2b7",
+      "size": 15942
     },
     "lib/AnitaDarin/core/update_manager.pluto": {
       "sha256": "132140753b4d5bfeb8ae935f51da101901e6442113c52a3bafa444eea1bd4536",
@@ -93,8 +93,8 @@
       "size": 724
     },
     "lib/AnitaDarin/modules/VehicleManager/VehicleManager.pluto": {
-      "sha256": "a6173e02cdc8a26644e16898d8e49dd1c0d5b3d2caeef1e37ae3204a474c54e0",
-      "size": 18559
+      "sha256": "267b2b1ff20d54501fa30d1a5f733b5065955d15f89e66d659b87aba1017709c",
+      "size": 18909
     },
     "lib/AnitaDarin/modules/VehicleManager/language/en-us.json": {
       "sha256": "e62cb62ce8882be6876f212214b642209f60af1b6c13ebb66db66791ca1dd6d6",
@@ -104,109 +104,269 @@
       "sha256": "f730901d019dbcf815f3d76ed1a030846c2b648b7ddedecb982780c8a4971747",
       "size": 745
     },
+    "lib/AnitaDarin/natives/app.pluto": {
+      "sha256": "1bfe8a637949d193bdbaaf76a879d8960d9cb07dd74981b8a15168c59abbcc6f",
+      "size": 1634
+    },
     "lib/AnitaDarin/natives/audio.pluto": {
-      "sha256": "5f555096ce7d2d1c5f0f44ddbbf036100e68a5af04cd1098452393bdb42b9461",
-      "size": 69
+      "sha256": "de65cd4cdf5d5d57c037024217846f4cf3b52a0ae13061bd943e6e276ecd5d67",
+      "size": 10790
+    },
+    "lib/AnitaDarin/natives/audio/music.pluto": {
+      "sha256": "ba295b80b9ea5d06ffb689629063e86ac72435094b1d64b41b06ba6ab8188680",
+      "size": 1639
     },
     "lib/AnitaDarin/natives/audio/phone.pluto": {
-      "sha256": "5eaf143f98711eb309ceec94eb5db541c0ed731e0f80fd594aec8b46a61511c4",
-      "size": 359
+      "sha256": "65400da35ebd49410309967e3e88b35d6b387bc3a49c6a94ac04b4b630567ebd",
+      "size": 1813
+    },
+    "lib/AnitaDarin/natives/audio/radio.pluto": {
+      "sha256": "3125a55c18591053cf367b319512138d48ef5418052368f7e23c9a9e379ccdc7",
+      "size": 5679
+    },
+    "lib/AnitaDarin/natives/audio/sound.pluto": {
+      "sha256": "751f51e5a0739d2e3ca5308308855ec630d04e69070551f328aae2623af408b1",
+      "size": 4041
+    },
+    "lib/AnitaDarin/natives/audio/speech.pluto": {
+      "sha256": "46ee9fa55f9b3c8d17e165a3059ac29e7eb588bf13f0eb22ce9f4536b15658e0",
+      "size": 8348
+    },
+    "lib/AnitaDarin/natives/audio/vehicle.pluto": {
+      "sha256": "e15fa302259187cc6b627597ab22ac7e0505e7f1a5ebfaf814ea1c5304987667",
+      "size": 5307
     },
     "lib/AnitaDarin/natives/camera.pluto": {
-      "sha256": "3e8bf31e3a0b13512f452bead625f4a8322b749cd43330c27559cb910d8e5e53",
-      "size": 1259
+      "sha256": "3cfc9c07e430bc08b786f2ca1b911dac539bcd6fdd1a84c995a3b87673c1fbc8",
+      "size": 21725
+    },
+    "lib/AnitaDarin/natives/camera/cinematic.pluto": {
+      "sha256": "d69142555c91c41869fe12a0ac65a342dd1ba1f8d08544837226a11230a3acc9",
+      "size": 2132
+    },
+    "lib/AnitaDarin/natives/camera/gameplay.pluto": {
+      "sha256": "49f4c7e5c99c13f41fdc6df42572d133e16a27c66ea715d21b9ea5631b63e143",
+      "size": 12713
+    },
+    "lib/AnitaDarin/natives/camera/screen.pluto": {
+      "sha256": "b84dc133f8e4646d89aa0f120b9e3c7a560cba37db73416298e427c3d284bf8c",
+      "size": 860
+    },
+    "lib/AnitaDarin/natives/cutscene.pluto": {
+      "sha256": "81832fb23b2a979a7c3a6d675a75569feb348307a5b33f78de238d79d5b42679",
+      "size": 7983
+    },
+    "lib/AnitaDarin/natives/datafile.pluto": {
+      "sha256": "90e07f29c516d1b25e686993c280301b5a3476e542d03968a7bcef38d53df5d7",
+      "size": 11421
+    },
+    "lib/AnitaDarin/natives/dlc.pluto": {
+      "sha256": "787d1fb3ce7fb5ce35d710e19be247bcedaa37e9e71a66467510881d6264dde4",
+      "size": 1397
     },
     "lib/AnitaDarin/natives/entity.pluto": {
-      "sha256": "572e35d6107c13a61a7c63a6ecbc11de9f7dedc7429b0312c32a4841cd06892b",
-      "size": 4453
+      "sha256": "adf7c94d3c084d7cf1e0ceb30e7b48e3bef0d2f22e1c8bfda855b2c535233424",
+      "size": 37073
+    },
+    "lib/AnitaDarin/natives/entity/decorator.pluto": {
+      "sha256": "3383a1c8cf39aca93d7688bf17b072e4ced5c0ce3beb4e8b8a2226b46da844e7",
+      "size": 1863
     },
     "lib/AnitaDarin/natives/entity/object.pluto": {
-      "sha256": "7b20b313f24c71be2da6c156a1a0e491f86ad8c462a9c4fed967a540add10f7c",
-      "size": 507
+      "sha256": "baf169c0ba82625d4305e1741f3029a9d6e9d74f7520bc164ff59ce9d8de1d20",
+      "size": 14905
+    },
+    "lib/AnitaDarin/natives/entity/object/door.pluto": {
+      "sha256": "bd42dbcb12e49bd0dc344b2d4053822b168825263bb579d35cd699450bc49330",
+      "size": 4459
     },
     "lib/AnitaDarin/natives/entity/ped.pluto": {
-      "sha256": "76d94c84f2b280b9e3ecd6b4bf3a4582277b3b86c269f91bbfea07a38c90b756",
-      "size": 4460
+      "sha256": "978068af463516eefe9aca390a3dd4fdb80987ce3f38a1c2c1f4a112368bcc8e",
+      "size": 57074
+    },
+    "lib/AnitaDarin/natives/entity/ped/appearance.pluto": {
+      "sha256": "68cf71abc19767545dfdcb3c91e4d5f8a7f5b53ae547b7e2ce8086cb8846cedd",
+      "size": 12540
+    },
+    "lib/AnitaDarin/natives/entity/ped/combat.pluto": {
+      "sha256": "8b7d0753af714a589d7d16746422a2fdf0a65611c0970ad9d9b638a79081c785",
+      "size": 4264
     },
     "lib/AnitaDarin/natives/entity/ped/flags.pluto": {
       "sha256": "689b5b33c04d8245336086a2ec96c2a2c60318653b3ef3af750cb501bfe6f857",
       "size": 838
     },
+    "lib/AnitaDarin/natives/entity/ped/group.pluto": {
+      "sha256": "ac66ef1aa9f56c8f286534c6f1726b1dfabc99b6edd356c62bee5427ce1e7bf2",
+      "size": 5127
+    },
     "lib/AnitaDarin/natives/entity/ped/parachute.pluto": {
-      "sha256": "b9c8c28c9ddf22a41fd46f1b6f9afe7900d46e11bb12b993677ae9486dd4a77c",
-      "size": 1173
+      "sha256": "c0df0fc1159890e303bef485fec620de122d86cc6ba08c70376b329fbdf5de5d",
+      "size": 1645
+    },
+    "lib/AnitaDarin/natives/entity/ped/ragdoll.pluto": {
+      "sha256": "d12fdb32b3a48ae247f76513b51c0e412997456eefa2d39e7770839c17e76df7",
+      "size": 2014
+    },
+    "lib/AnitaDarin/natives/entity/ped/relationship.pluto": {
+      "sha256": "6feb85a028bc2c409555209a16a745c9686b9e20ffaf963ef901ffdeb93fe55b",
+      "size": 286
     },
     "lib/AnitaDarin/natives/entity/ped/task.pluto": {
-      "sha256": "c0a27ffacbcd19af6401b7a2cc3743e2eac41495a696f3059008214c2b49a3a1",
-      "size": 717
+      "sha256": "2e94edbb279f20abc99a5b81662f6fea7ba1b42cfbd43e55ad9a698e3530cb69",
+      "size": 66455
     },
     "lib/AnitaDarin/natives/entity/ped/vehicle.pluto": {
-      "sha256": "a9d6ba5e1c0fcd05e0e7096cbd4ca36db85a15f2a9f616ddfdabf2f8671145f5",
-      "size": 463
+      "sha256": "2ed31c3ef81a1168921a3442c268138c76bb5d83c313febfcd086db6ffe3d61d",
+      "size": 6251
     },
     "lib/AnitaDarin/natives/entity/ped/weapon.pluto": {
-      "sha256": "14732911de585b0e2426afc7e78a09f211bfd3f5b90673a2713eebda45bd149c",
-      "size": 1570
+      "sha256": "0d963e75ec382cdfcc36b5cef72c9206b3ab2f3ca86d6a808a8fc4b1e71473b8",
+      "size": 13604
     },
     "lib/AnitaDarin/natives/entity/pickup.pluto": {
-      "sha256": "f1084437a93095aeaf0869c58ba96ea3f5a8cf8925e6d2b68e11450ba9085e3e",
-      "size": 223
+      "sha256": "54cf71eac5d2a0093d311278d573713721e9e3a0073500bbacc307a505ecaf99",
+      "size": 10466
     },
     "lib/AnitaDarin/natives/entity/vehicle.pluto": {
-      "sha256": "ccdccfab9e599c933b7a492dece9fc8f73e4a7cdb22a54e43063152c9bda6005",
-      "size": 7913
+      "sha256": "46192a1d4dbc6f9d4ad27701df5ab7d286fe986300f348f20e42c32bab5b0527",
+      "size": 92397
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/boat.pluto": {
+      "sha256": "8a3a1d01ddc86a265f59ce166668dc8099a5d27a0a18f4c6046e8533f6964017",
+      "size": 2510
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/doors.pluto": {
+      "sha256": "9e67411a9dc7333e60dc47d992bc39e134440aa1aa7a2bd0fb71110391442411",
+      "size": 7238
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/heli.pluto": {
+      "sha256": "6b9cc4ad990d67dc1259434466bbe592b79936b0edc7f01828f599ff00fe902a",
+      "size": 2892
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/mods.pluto": {
+      "sha256": "899f47d2051917348049909c0da3c4206c9474ef30a47653a85bac19feb468ef",
+      "size": 15479
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/plane.pluto": {
+      "sha256": "1ce92fa2c767cad40eacc3691d709a5f2076a5b3d9073ed866b82d8829bea28a",
+      "size": 3360
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/train.pluto": {
+      "sha256": "337abafd763caf44745b3a8944a2a2cf3e9e223ed8efcf3669b5fa4d81d61661",
+      "size": 2629
+    },
+    "lib/AnitaDarin/natives/entity/vehicle/wheels.pluto": {
+      "sha256": "9100ee358599d3b542652a4715e1fa42989e636e1c2c96566331fdd4a2f60227",
+      "size": 4631
+    },
+    "lib/AnitaDarin/natives/files.pluto": {
+      "sha256": "6f1a55e2af564245295b5ad7ba5ef20689ce49d3f37c12a07eaab43f4722b533",
+      "size": 11744
     },
     "lib/AnitaDarin/natives/input.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "333464edb6a07f2377291dcb61cb8f23fc8876df02dbcb4f2e84ae6b9e3cb2e5",
+      "size": 7172
+    },
+    "lib/AnitaDarin/natives/itemset.pluto": {
+      "sha256": "0ca4c115154c9d60d4d553a109e96ed2e1b555a6208d1f344a5f6a608baf9a1a",
+      "size": 985
+    },
+    "lib/AnitaDarin/natives/localization.pluto": {
+      "sha256": "9b6ea9ae536aadade48b2a3557df35183bbffee1e6a138225535001f03b30d06",
+      "size": 477
+    },
+    "lib/AnitaDarin/natives/misc.pluto": {
+      "sha256": "56f33652e5342f90f34bfa1f5efb01ab14c1cd9710a8fde9aea8bc7c42633f7b",
+      "size": 49608
     },
     "lib/AnitaDarin/natives/network.pluto": {
-      "sha256": "109c4f1416160da040299375ff30e67e218f143c600373b9caec4e46b5687cc9",
-      "size": 175
+      "sha256": "c4d2d9ca9381f52ae76c6f3268caea0d8fb47e57f2cc1ff592d6cae7d9ffca39",
+      "size": 80231
+    },
+    "lib/AnitaDarin/natives/network/clan.pluto": {
+      "sha256": "21794616af0c10da6dd66bfd4fa26e9fab92d2939e6a9153093ed819f2ef89e6",
+      "size": 5471
     },
     "lib/AnitaDarin/natives/network/control.pluto": {
-      "sha256": "30bca406c4c2da0fa159d4b4c88ba3e6b420111304b37fd871f403a1939a8aaf",
-      "size": 449
+      "sha256": "fdccdd7dd6d44f64127f8daa20ff2c5963b2b91241c34bd46f4c9bc1ab77194e",
+      "size": 1005
+    },
+    "lib/AnitaDarin/natives/network/entity.pluto": {
+      "sha256": "c04c7d69e03fb8945529b44988248e6d068f605038d7c5d942f0972b6d0f2868",
+      "size": 3403
+    },
+    "lib/AnitaDarin/natives/network/lobby.pluto": {
+      "sha256": "b29e5526c6333e290cdf07b00f6b1f7a94432787b28cc21442e961ee0c9b55fc",
+      "size": 1066
+    },
+    "lib/AnitaDarin/natives/network/money.pluto": {
+      "sha256": "3d35e804dd9347f4b81bf78170bffe89bd0534e804997d5d043b58b85f18f6f7",
+      "size": 51125
+    },
+    "lib/AnitaDarin/natives/network/save_migration.pluto": {
+      "sha256": "1f581570b6bbbf1cee357d2221a55df7249e3b43f6fcf30b0c6dc32e8971dfe4",
+      "size": 922
     },
     "lib/AnitaDarin/natives/network/session.pluto": {
-      "sha256": "904186db0538ccb365f7a65193559722f574eaa7a9d25dcd8b495aa6e0e084d5",
-      "size": 1247
+      "sha256": "7c54fd0c0f82f7583d25c5d5297eef4155c750f4860b38a1c44bca523b6ffd1f",
+      "size": 19866
     },
     "lib/AnitaDarin/natives/network/session/transition.pluto": {
-      "sha256": "9b38595080ad78b159e7fe01c7df9e06aa514f86cd8b1e8e8121bb6582eb10e1",
-      "size": 658
+      "sha256": "8bf2baada7fc7bc2cede0a5a3918bc42d82e22a6777e3ff96bfcd62c5c0bb666",
+      "size": 9621
     },
     "lib/AnitaDarin/natives/network/shopping.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "ab611386e54d78c7822ef435db786d1bcdf3d7a79282f0c362d83836550ee63a",
+      "size": 6334
     },
     "lib/AnitaDarin/natives/network/social_club.pluto": {
-      "sha256": "37b09bb4afbb4dd14a16ae7cea2adc10d7d4b7fcc48cf6ff472eb7dd9c920126",
-      "size": 313
+      "sha256": "bda72ea8113c45b23e67055d6bfe585510d8ca9854fda120d54581dc7ce7f6d2",
+      "size": 18743
+    },
+    "lib/AnitaDarin/natives/network/voice.pluto": {
+      "sha256": "c61563455e2f4eb924345dcf6ee9375bf06ead770ed3a94d5de48814b9c68d44",
+      "size": 4480
+    },
+    "lib/AnitaDarin/natives/phone.pluto": {
+      "sha256": "582a44e4e5b239c7ae6c9bf7f5b5eae04b6b699e1c72f7aab22c1e543440e2e6",
+      "size": 3699
+    },
+    "lib/AnitaDarin/natives/physics.pluto": {
+      "sha256": "9ea84c5e920298d7e4b831974117c2952562174ec4ef44765702016838897f52",
+      "size": 8231
+    },
+    "lib/AnitaDarin/natives/physics/shape_test.pluto": {
+      "sha256": "ecd65b8918f0b0af6dbe917eeccb18c75161bed9526672f1485dc5388c1068a3",
+      "size": 4010
     },
     "lib/AnitaDarin/natives/player.pluto": {
-      "sha256": "8c8dcee464af047cdae8d9b9e8a605e2cb4df12317e6fa9518c88bf3e3849257",
-      "size": 4032
+      "sha256": "2d868dd08253cf623aa56551c66a716a05f056f3fa869dda389a3bf44fe9187d",
+      "size": 22379
     },
     "lib/AnitaDarin/natives/player/camera.pluto": {
-      "sha256": "3798f7e58d024e633932fe9c02286ab050b512c6e264fa037e0cb14bf0554bc2",
-      "size": 273
+      "sha256": "4d69d04049027d26d6509bd53451514ce874e3cd92bff89de1be7530d6867da8",
+      "size": 645
     },
     "lib/AnitaDarin/natives/player/mission.pluto": {
       "sha256": "ebbc0f5c67ef503ec67564dc619a2078a139b2dd58da4e8a13a91011de8cb4bf",
       "size": 177
     },
     "lib/AnitaDarin/natives/player/movement.pluto": {
-      "sha256": "79256891e6a0670270a1e4d14fa659034e520c802fd014231d28c7ea499186e4",
-      "size": 949
+      "sha256": "a5d473980d63c5a8248bde89a8ffaa9420deb9692744d8f1297c7b53bb42c773",
+      "size": 5976
     },
     "lib/AnitaDarin/natives/player/multiplayer.pluto": {
       "sha256": "eb32b2f258526266647de7448cdfd481fad741f5af13c8b14d790df0074085ba",
-      "size": 606
+      "size": 575
     },
     "lib/AnitaDarin/natives/player/singleplayer.pluto": {
       "sha256": "2f01933e852199b7ad704ca2e7c9d59afba2feffad63037538b77b38569a5b65",
-      "size": 82
+      "size": 71
+    },
+    "lib/AnitaDarin/natives/player/special_ability.pluto": {
+      "sha256": "a3c7e515cd5535c5cf1add162548c7457ce4e0e8bd8a2ec21c4a96a0e4de724f",
+      "size": 3294
     },
     "lib/AnitaDarin/natives/player/switch.pluto": {
       "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
@@ -217,48 +377,68 @@
       "size": 340
     },
     "lib/AnitaDarin/natives/player/wanted_level.pluto": {
-      "sha256": "cfbfbd9dadf4a1cf391e6ae8a9578f676565d542eeaffdf8d99890d28da18904",
-      "size": 1292
+      "sha256": "4501ae7964df71c74b3143c53de4b75ff8009266615d6dbc28cdfd5fbadba2f0",
+      "size": 4899
     },
     "lib/AnitaDarin/natives/player/weapon.pluto": {
-      "sha256": "66a007a36ae611ba23894725c7454ac6fd4fa66f2c9f12f466a711454762e4c6",
-      "size": 343
+      "sha256": "a7cc31b571acbcce604683d419e38b607555ad5d3e93221191e8265bb82686cf",
+      "size": 3814
+    },
+    "lib/AnitaDarin/natives/replay.pluto": {
+      "sha256": "cff8863cd1dc82a8ae38366f4cba4ea97b825cbbba051d10fe78cc02e04baa79",
+      "size": 3029
+    },
+    "lib/AnitaDarin/natives/script.pluto": {
+      "sha256": "75e04ab4f1a6efaa4a69a569ed326037832814e13c3bb98a4c613980315953f5",
+      "size": 8105
+    },
+    "lib/AnitaDarin/natives/stats.pluto": {
+      "sha256": "5b9b1a031d67fc19b421c75ef836dfee6003e1e46768c1c662a382e5e704aa43",
+      "size": 49302
     },
     "lib/AnitaDarin/natives/streaming.pluto": {
-      "sha256": "687c5cf4bbb7202e3fb1f8124423df33a452c35ebc9188fc21c54db1a2ade3ff",
-      "size": 2194
+      "sha256": "d169d06122692bf541de56e2ea6e43d8b53b23432e77917679e2b24e990deed2",
+      "size": 12560
     },
     "lib/AnitaDarin/natives/streaming/action_mode.pluto": {
       "sha256": "142cf0de26c7e5607fa1d9b47909eba59393e3d24741688f2fa38650d400c0ba",
       "size": 85
     },
     "lib/AnitaDarin/natives/streaming/action_mode/asset.pluto": {
-      "sha256": "15b7aa626858f0ae96fa993f4f9400f48e7690305ca78043eceac682b76bc825",
-      "size": 564
+      "sha256": "4b41b342a3c6c1c594e08aee8996d835c2288ec041f6354ba59ad7a66cab9f12",
+      "size": 653
+    },
+    "lib/AnitaDarin/natives/streaming/anim.pluto": {
+      "sha256": "eeacc9bd0c726540f8165fc74066c31e4cee3221cd78a319070df4b5643c751b",
+      "size": 1261
+    },
+    "lib/AnitaDarin/natives/streaming/ipl.pluto": {
+      "sha256": "fd8afc2597e71bde15944e76068c5dbd5c09d703cfff07a5f348a3c57947adf9",
+      "size": 891
     },
     "lib/AnitaDarin/natives/streaming/model.pluto": {
-      "sha256": "cbe806ab1318d99b6106aa2a6bd519c30c15959c9a03572ff2f9704791d0d00e",
-      "size": 79
+      "sha256": "d038d85d4f20a172c13d18b1e830fb8706ca58e55edfd2e9002d952c07f48485",
+      "size": 1508
     },
     "lib/AnitaDarin/natives/streaming/model/asset.pluto": {
-      "sha256": "284281bc30db39e063a52f2b39f5434c9936a4b26f3e1c74004567e01d3b2cf6",
-      "size": 1088
+      "sha256": "948d0f8f7178654b9501a420b634b5acd6e55aa302657c862cc00aecc24d824b",
+      "size": 1188
     },
     "lib/AnitaDarin/natives/streaming/ptfx.pluto": {
-      "sha256": "f40034417fedb448fca4b9bf9148448e08219e334a10803caed1932c389042aa",
-      "size": 78
+      "sha256": "9c73650a8860b003afbaf27418729b0754fac30f8a6fb16c5ca546f5d700ff82",
+      "size": 11790
     },
     "lib/AnitaDarin/natives/streaming/ptfx/asset.pluto": {
-      "sha256": "ddae35d8c054f010a2f127e0d1a3c3371d6a4f5fef5b6c7ab35bc26049102a04",
-      "size": 1206
+      "sha256": "032b9733520d3e66f136974145ffa48b5f59291c5a8c999861e721b052721ffe",
+      "size": 1304
     },
     "lib/AnitaDarin/natives/streaming/stealth_mode.pluto": {
       "sha256": "a95f44079ce7ebae96fde258786c947d4931f84479923c41aa90b354bed22c55",
       "size": 86
     },
     "lib/AnitaDarin/natives/streaming/stealth_mode/asset.pluto": {
-      "sha256": "5d503ca8c74a9b2b7e5b1eac04ee0f8cc1b5be6dc3081f784a70b56b28db39d3",
-      "size": 568
+      "sha256": "3fd230707d7eb4735537c825e901b1d0ce66818cac78ea1bdec15cdeeffb3efe",
+      "size": 658
     },
     "lib/AnitaDarin/natives/streaming/texture_dict.pluto": {
       "sha256": "95c615066ab9aebe4b3e1e699f77ae520053e8876564be1c3eac83a83f7a07ac",
@@ -269,104 +449,148 @@
       "size": 1039
     },
     "lib/AnitaDarin/natives/streaming/vehicle.pluto": {
-      "sha256": "5e0d67266e425868b1242f96a9f3b59968fb4d839aa7b86139ba119e97273e09",
-      "size": 167
+      "sha256": "baba44552ffccc992600be855de619c602fdda60e1643f13491482dc60add435",
+      "size": 168
     },
     "lib/AnitaDarin/natives/streaming/vehicle/asset.pluto": {
-      "sha256": "9cabb52ed5b6c4218c6874a2c4d7d8ecb5e9d50581535b71c684b8aaa325e60e",
-      "size": 774
+      "sha256": "93b9f42f19a858eb9b6446e49229d6c42b8e5cdc0ec810b160f244e276825a6d",
+      "size": 876
+    },
+    "lib/AnitaDarin/natives/system.pluto": {
+      "sha256": "3f806172a0d5fbbcff67f06c4299a94a467da6df7cd0cf5fee4bc6c693c6826c",
+      "size": 3323
     },
     "lib/AnitaDarin/natives/visual.pluto": {
       "sha256": "5c7dd5e2d604480c2bba3d4167b507f32a040f63a3abdb65b7fef370bec88653",
       "size": 70
+    },
+    "lib/AnitaDarin/natives/visual/checkpoint.pluto": {
+      "sha256": "6882b6a440967d86cd2ff45b3cda1ad01befd77119396c3a338e343176c6a2f2",
+      "size": 2616
     },
     "lib/AnitaDarin/natives/visual/color.pluto": {
       "sha256": "a2d516a4f28fb6fc34b647ad0b950793e14d30468e21c21763dc267d1c852c45",
       "size": 76
     },
     "lib/AnitaDarin/natives/visual/color/hud.pluto": {
-      "sha256": "fd950c1109b10da5c8fc42e5f3254c54dfef03914c0b6e157374356be9cca017",
-      "size": 17663
+      "sha256": "5bb7fa945856eacf415c03f637d0c8f67350cee7bd29cbd446bd6a8a78badda9",
+      "size": 18316
+    },
+    "lib/AnitaDarin/natives/visual/decal.pluto": {
+      "sha256": "3aac2a1ff8d61083c67dd134dcbe53e1b242bf24ed147afa99cef758778436db",
+      "size": 4106
+    },
+    "lib/AnitaDarin/natives/visual/draw.pluto": {
+      "sha256": "893bdc24b2d027ef10066fd6d3f40c73d53a9a75eb77753b2c71a01713430dc7",
+      "size": 7294
     },
     "lib/AnitaDarin/natives/visual/feed_picture.pluto": {
       "sha256": "acfc7bfa8914bf107486193ae59ada2ae24e03f5ea332e6ed623fcc447f75f7e",
       "size": 5050
     },
     "lib/AnitaDarin/natives/visual/graphics.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "7ae522af3156a7ae786a3b5a49e6cb12bc5c20c6d12392dd7aaccedd2f5ebf2c",
+      "size": 27967
     },
     "lib/AnitaDarin/natives/visual/hud.pluto": {
-      "sha256": "066a78e9720a62630fde0036f1742a6893779eeab2950472962ff5b22465e1c5",
-      "size": 236
+      "sha256": "ae82b583f3f826bab3ff656bdd63e30def2339abb825859fc85f160fd797e545",
+      "size": 24950
     },
     "lib/AnitaDarin/natives/visual/hud/blip.pluto": {
-      "sha256": "7c9bf56c7262fab8a3a63f7d7609a8a8224073ddf2ab62a713bc752d0e3a3a1c",
-      "size": 1598
+      "sha256": "c14f51325856c28b89365183c5d2081b1e5e953275969731a9b022fe85795764",
+      "size": 14325
+    },
+    "lib/AnitaDarin/natives/visual/hud/frontend.pluto": {
+      "sha256": "669bc333fe141ef9e61186308b2d109e1f3524b5686c918d4429da90e56c28f3",
+      "size": 4484
     },
     "lib/AnitaDarin/natives/visual/hud/minimap.pluto": {
-      "sha256": "27fe462e5a0afcc303ea1cd26f7583431c56041ee832dc598e2f4b887ac558e6",
-      "size": 517
+      "sha256": "5a83b223ddd119199ffb6694c5ef609624aa30cbb328975d1670ff6f804bf6e8",
+      "size": 5027
     },
     "lib/AnitaDarin/natives/visual/hud/money.pluto": {
-      "sha256": "9bc6c11e38875fc53282a4fdd0bcb73310428ffe0cef6544efdcda032351fce4",
-      "size": 115
+      "sha256": "dc6bb58bea9ac97220d63b3f9f5a8c1cdc905ce79bf51c88f2becf413668decc",
+      "size": 1181
     },
     "lib/AnitaDarin/natives/visual/hud/text.pluto": {
-      "sha256": "8d4b942f61028dcb5a80c1fde0ab918457e98c5f6814e7c6801f69c5b298301a",
-      "size": 591
+      "sha256": "1fb883b56a53ac75132d973ce9cad428d34f2e83efc6f8df7df4b92eb44dd127",
+      "size": 13578
     },
     "lib/AnitaDarin/natives/visual/hud/thefeed.pluto": {
-      "sha256": "69350d54049d8f1fa25152fdf8a860f7f7cf4bb41624045ebc27bb02777f5307",
-      "size": 8376
+      "sha256": "ba1f4a2c608b46f6d6266593b34e56bbbd5e8a23095f4aed277c3abd8486a518",
+      "size": 16154
     },
     "lib/AnitaDarin/natives/visual/hud/wanted_level.pluto": {
-      "sha256": "5289399ec5b2dfdcad740407214a1c72fd4757ec04ea298f15e13d91a364ba52",
-      "size": 116
+      "sha256": "0f9dcf25ada11bf268e4670eeb8e2c28c1def38aa1ac166e43eb79da98ef3175",
+      "size": 512
     },
     "lib/AnitaDarin/natives/visual/hud/waypoint.pluto": {
-      "sha256": "a2e16a61f7bb6ae74e8cf33a8ee39cccc00dd1dfafeb875a61c6d3bab2109b1e",
-      "size": 327
+      "sha256": "947f4ac2faff8defd075c1eab9f96c6460386d04ef8acb36110c75e7032a6d20",
+      "size": 2727
+    },
+    "lib/AnitaDarin/natives/visual/light.pluto": {
+      "sha256": "11fddcb3070dd9a6105c0ab4eeccf300dede4a7f35de7dcc6498d63bd5e416f2",
+      "size": 5190
+    },
+    "lib/AnitaDarin/natives/visual/marker.pluto": {
+      "sha256": "640dbeaee8edd4c8947ff35ab028a7b712cc77410d695652b6e5854dab2d84cd",
+      "size": 1757
+    },
+    "lib/AnitaDarin/natives/visual/scaleform.pluto": {
+      "sha256": "87f8f24dc06dded2dfbe9d7be6d3f6e22975c3d42e124048116b2845cf2567ae",
+      "size": 10005
+    },
+    "lib/AnitaDarin/natives/visual/timecycle.pluto": {
+      "sha256": "6d57cb3272b4b7a550e1e845a73b5aa0a3459bb30bb63b1543a8eae9bc38505a",
+      "size": 1337
     },
     "lib/AnitaDarin/natives/weapon.pluto": {
-      "sha256": "b05eea3bb51d6aa77dfb1eeab549ab958c3ccebcd7bb5da4050ede4ccb670718",
-      "size": 77
+      "sha256": "8c133587e6862c3902eb323b11573a872350a99887e041e6c7f8b60f384a8a5f",
+      "size": 9820
     },
     "lib/AnitaDarin/natives/world.pluto": {
       "sha256": "d767953f9ee4bc8f68019a2665a79f298d177735692278c71142da167ce8fe2c",
       "size": 700
     },
+    "lib/AnitaDarin/natives/world/event.pluto": {
+      "sha256": "4c33e2e1fd9680a64e5bc49d192e4312c66010aefdcf7f9059913518a5f39e10",
+      "size": 1999
+    },
+    "lib/AnitaDarin/natives/world/explosion.pluto": {
+      "sha256": "316f962a4c0bbb307442994ca2178f6619c5a4185fb0aa8e0079de565c7623cd",
+      "size": 2586
+    },
     "lib/AnitaDarin/natives/world/fire.pluto": {
-      "sha256": "10431dac1f310a6d86f7578cca073477b3d98f463c394da529a71e92573fed70",
-      "size": 537
+      "sha256": "bbe706ca5a2eb993c85cf9f530c0ed849c600521bc677d434047b1235c67e997",
+      "size": 1426
     },
     "lib/AnitaDarin/natives/world/interior.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "e473507c49d7d4c431048088a1568ca8f93b86650ce15968e5ebfb68b04ba62a",
+      "size": 6401
     },
     "lib/AnitaDarin/natives/world/location.pluto": {
-      "sha256": "f7e39281dbae4eed9b0a21b216f2a48e766f0960fa09ef980c2c7e38cd723a94",
-      "size": 40
+      "sha256": "8f386c4b8f863e51b509bb03acb247200b20c4eae693de03be9844a6f32f9b21",
+      "size": 1444
     },
     "lib/AnitaDarin/natives/world/map.pluto": {
       "sha256": "bee5a4fef2782cc87ad7fa3fa5402d187f40d883653fa49d034d6b3f25e987a1",
       "size": 275
     },
     "lib/AnitaDarin/natives/world/path.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "ebbf076b8fc1054abc9b7d724e79c13d3d4dbe6df4ef0533a0b885ddf97c8175",
+      "size": 16129
     },
     "lib/AnitaDarin/natives/world/time.pluto": {
-      "sha256": "22c9ca2c921ea3aadfec91fba9f91e48c8f213236be552f4f224058993bf69c0",
-      "size": 619
+      "sha256": "d29f892ded975e52e6adf658624e65d0c3ab88fce01094d0d8e1daa8b181559d",
+      "size": 3767
     },
     "lib/AnitaDarin/natives/world/water.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "586bf250ab625b841626588de798c4c26c15525bfc82caa93e944f4f9da8f38e",
+      "size": 2592
     },
     "lib/AnitaDarin/natives/world/weather.pluto": {
-      "sha256": "8b95f2a23d3ac189c4d052538cbefc490aea237bfdb24c0dcd22453e4643bd09",
-      "size": 39
+      "sha256": "e414a79010e746a7f9891a2c49aa8e0f4202d98a47a574e6d52b0524777114bc",
+      "size": 4175
     },
     "lib/AnitaDarin/parsers/color.pluto": {
       "sha256": "c853a0a381e0477bd2af234e1bbe8f8b23d98d00bde602cd57e3dae4acbbdfc6",
@@ -385,16 +609,16 @@
       "size": 677
     },
     "lib/AnitaDarin/parsers/proglang/pluto/args.pluto": {
-      "sha256": "3fa1841ae266f7fe529720fb180927d36656ef42b8acd3a86df72ece7e4f186d",
-      "size": 9415
+      "sha256": "27b416229a14ed1da39596044093c7c846eeab6fc634fa0d36d350496134d52c",
+      "size": 13316
     },
     "lib/AnitaDarin/parsers/proglang/pluto/name.pluto": {
       "sha256": "960535c08d0d02c685436378a701347692e279fb9df4906baeeee3faa4136c8f",
       "size": 925
     },
     "lib/AnitaDarin/parsers/proglang/pluto/path.pluto": {
-      "sha256": "4ab716eb064ff1bcd796662b578dba82f37613d9099b444b8e8edf71be86559c",
-      "size": 6680
+      "sha256": "a8189d2200f4d9a9d3b00ac732425997d027380a36ec065d073314c77c06df3a",
+      "size": 11184
     },
     "lib/AnitaDarin/parsers/proglang/pluto/source.pluto": {
       "sha256": "c1f572c7f4214bd722083e12da5142271b9fe7e33d1ed433bee048235d0d6070",
@@ -405,76 +629,112 @@
       "size": 336
     },
     "lib/AnitaDarin/parsers/stand/command_box.pluto": {
-      "sha256": "6b52915f823d83bdaa87418c0ae4dac3dd362d6f21f6bf9aece2962aa1afd4d9",
-      "size": 3380
+      "sha256": "4a6a429cfd2c695bc5bc360f82e96f96b3b4842af3bc4a40be5724c1a6424bf9",
+      "size": 3381
+    },
+    "lib/AnitaDarin/ui/logic/stand/arguments.pluto": {
+      "sha256": "261abc26cf061966fffa593f111f99d9ef99e43698a26a4c68ae7cfad04342ad",
+      "size": 12781
     },
     "lib/AnitaDarin/ui/logic/stand/call_loop.pluto": {
-      "sha256": "36f62a381560d8ac3aa3b6b2fa810dd5019ad940a4a247a30fd0bf9ab84d14a1",
-      "size": 2212
+      "sha256": "d4c0479951344056a831a2c1bdb250d5cff0a9afc3eede3d422385117e253d5b",
+      "size": 3183
     },
     "lib/AnitaDarin/ui/logic/stand/clicks.pluto": {
       "sha256": "fd45bf44e485b7fc219f3b2fffc937e1d791db413f4522c575ae66446bef9530",
       "size": 1096
     },
+    "lib/AnitaDarin/ui/logic/stand/commands.pluto": {
+      "sha256": "1f18c6c614fd287ac323a38eb657d4921075ae90d875a90a716ba645878ebf80",
+      "size": 20943
+    },
+    "lib/AnitaDarin/ui/logic/stand/menu_entries.pluto": {
+      "sha256": "130a000429998c576c8eae87038228bd21fe66b6cb08d87c403f4501a48e395b",
+      "size": 2747
+    },
     "lib/AnitaDarin/ui/logic/stand/menu_loader.pluto": {
-      "sha256": "be25bd147db542c6c68ab0590b055a1c6d042ba5f4cb56b2e79605aea2f2a44a",
-      "size": 10593
+      "sha256": "b70c0880c69aa6eb36b5a2d84a1e672f5a6869610c651e014ec6eb5562316f94",
+      "size": 10594
     },
     "lib/AnitaDarin/ui/logic/stand/menu_packs.pluto": {
       "sha256": "5d9ef8f57d3b79c930ad626ce1b0fe97dfe7e70f2824cb069893cac76abe0bce",
       "size": 9890
     },
+    "lib/AnitaDarin/ui/logic/stand/modules.pluto": {
+      "sha256": "fa72a376c4bb299631d28ecf086fcbe28e5068bb9cec401a61cd8ddbf41bef6f",
+      "size": 26434
+    },
+    "lib/AnitaDarin/ui/logic/stand/results.pluto": {
+      "sha256": "23a1897ca4c86a6e38537119074d69853d8b3ce0d38d2d9289c295a6dbef9f00",
+      "size": 7383
+    },
+    "lib/AnitaDarin/ui/logic/stand/script/call_function.pluto": {
+      "sha256": "c94694fcbfe5f9da2484a6ac1e2da218d0468ce353c025ca875a156c946da619",
+      "size": 19874
+    },
     "lib/AnitaDarin/ui/logic/stand/script/call_function_files.pluto": {
-      "sha256": "e7151d9a2a85a9bc49de9c02949bef227739b70d4e9197270a19dcf083def792",
-      "size": 9897
+      "sha256": "9fd9f5dd22cce66d190618fd1867367ccdeb698083069420f882eeb2c289f080",
+      "size": 14344
     },
     "lib/AnitaDarin/ui/logic/stand/script/call_function_registry.pluto": {
-      "sha256": "f40bb59fa7a07df3a80ee85f8bc9190f95da1f67799db1afd69c49778ff9cebf",
-      "size": 6301
+      "sha256": "b6f7376606c7d0d5694a3dac0a6130428f990053017a63ef0c353335bc4db42b",
+      "size": 9486
     },
     "lib/AnitaDarin/ui/logic/stand/script/command_names.pluto": {
-      "sha256": "7220ff83de4596c1034aad3c408fc49b5958df44f5ed58c3e862f12a7d696513",
-      "size": 3301
+      "sha256": "0c0ea471f11c61e1ed86cd737335e02d814b37c889d47e8928ccd45e72721eed",
+      "size": 3303
     },
     "lib/AnitaDarin/ui/logic/stand/script/delete_script.pluto": {
       "sha256": "63920a5a9fd672693581b56b1df483775d48599b0668f78cd4c05eb3fa941724",
       "size": 3421
     },
     "lib/AnitaDarin/ui/logic/stand/script/profile_actions.pluto": {
-      "sha256": "5042c125aaa672bf4b7536fc698cf955dce8c5f3800cd01a2551169e43380bee",
-      "size": 3085
+      "sha256": "4e8f0c53278e92e27b511eb9f4bccbe599b7fed0fce388ef791ec73c4655f07c",
+      "size": 5153
+    },
+    "lib/AnitaDarin/ui/logic/stand/script/profile_view.pluto": {
+      "sha256": "985893870a9fe6ccc8828c01ccf92dc033697f656c44cfc315dd049d8dda8b69",
+      "size": 14970
+    },
+    "lib/AnitaDarin/ui/logic/stand/script/section_actions.pluto": {
+      "sha256": "9b83698a95d659db1898d9d1fe2f7ed9797b3d661758876958aea8e1027ce9c2",
+      "size": 3219
     },
     "lib/AnitaDarin/ui/logic/stand/script/translation.pluto": {
-      "sha256": "7edad35a86d76bd8428bdc263ca660417f8121bfd11da87fd1579995d831b0df",
-      "size": 1684
+      "sha256": "716fb3f85738405eba8617c76cdfb1138340f2fc6b2f8724747389864000b070",
+      "size": 5618
+    },
+    "lib/AnitaDarin/ui/logic/stand/script/updater_view.pluto": {
+      "sha256": "e30fd5b37c886d7a22dc7e96a249749d7608d8f04d61fd80ee7e170a956c17d4",
+      "size": 3710
     },
     "lib/AnitaDarin/ui/logic/stand/script/user_commands.pluto": {
-      "sha256": "0219aa79872b6d6484246ba7aeee8d32eef3756b19fee09db9a59a532343cc40",
-      "size": 6711
+      "sha256": "52538221ab37bc0071435090c9970b7fd5d81c4f8b1f7649d49e5030300f528e",
+      "size": 9111
     },
     "lib/AnitaDarin/ui/logic/stand/ticks.pluto": {
       "sha256": "0ac09dfe590c784fc87dcc1bbb3d70a038c600e99cf64356ab4342f384a25d2b",
       "size": 7045
     },
     "lib/AnitaDarin/ui/logic/stand/values.pluto": {
-      "sha256": "6fd66d1e293a48552b466c6f50019fa27ed1f32beee934523b9865db5b4671d6",
-      "size": 10032
+      "sha256": "ec139b2b0169b7a566ed8ec4ee32706c411abb4310f13407d7c1bee4e9552722",
+      "size": 11408
     },
     "lib/AnitaDarin/ui/logic/state.pluto": {
       "sha256": "e969fa15e0d28f469cf9b4107b26d798ff53e74cd7c1ca3ae63d7ec300e99a03",
       "size": 378
     },
     "lib/AnitaDarin/ui/stand/core/arguments.pluto": {
-      "sha256": "dc1f0925fe364411766f29b23efa2653d947cd675ea0129eee389308fbe984ce",
-      "size": 12206
+      "sha256": "574c08f753e30bfd4db8b8e934ae43c5cf56945ff8bf8e086b05681aaa07813b",
+      "size": 6783
     },
     "lib/AnitaDarin/ui/stand/core/call_display.pluto": {
-      "sha256": "14fc797301e6ef2f4f4b7627a2326f567ddbdb5cf92d1f0398a3815c5c6d4c16",
-      "size": 1991
+      "sha256": "1ee5d33d221cb85d085b27de6c4e8c90f17124a66ef5d4478ae5029889c08cb2",
+      "size": 2258
     },
-    "lib/AnitaDarin/ui/stand/core/commands.pluto": {
-      "sha256": "987f2ecf943670d1f2afe4ef4d9160e58de89c7656fa3b629b186cb1032ea1e2",
-      "size": 19869
+    "lib/AnitaDarin/ui/stand/core/call_slider.pluto": {
+      "sha256": "72f1f9894fa91e411664f67e49bb7377d567136b4bb97f2bc17e96cb3fa6259d",
+      "size": 2087
     },
     "lib/AnitaDarin/ui/stand/core/confirm.pluto": {
       "sha256": "d91b2284b49f2bb7ed65b7615855dd7286cadb8eebc81c4cc6bb5434f5ba6266",
@@ -485,64 +745,64 @@
       "size": 7357
     },
     "lib/AnitaDarin/ui/stand/core/menu_node.pluto": {
-      "sha256": "b754e7b279c028aaafd7a33f740a5cf9b99437f4076e02f07e357a6ce446ec16",
-      "size": 11246
+      "sha256": "1f6e33a58d47cf77b8a3db0384f6e0f48312f64faa48aa1d5533d0aaf2c1fd31",
+      "size": 11247
     },
     "lib/AnitaDarin/ui/stand/core/settings.pluto": {
       "sha256": "8dbf98ed1a5ec993bc044094f8154aebbbb0cd7c37acb7736ed05236652bd398",
       "size": 3773
     },
     "lib/AnitaDarin/ui/stand/modules/list.pluto": {
-      "sha256": "0e607a095afb8337875ba0ba6f89d4ef823e1d559ba6c51581baf684a66566bb",
-      "size": 41558
+      "sha256": "e828fab3d72e1a96f3e06da919960a9852b042082c9853c1fbe39058adc7a019",
+      "size": 20284
     },
     "lib/AnitaDarin/ui/stand/modules/place.pluto": {
-      "sha256": "491c0f8baf024271c015469b06dcd96742620fee692f3421b2bd63632b619ae5",
-      "size": 2950
+      "sha256": "5cc909b65b6fac1e9ea2f4a773b762cfa72a9a4939bc87afd2bd677e2b9daa65",
+      "size": 3459
     },
     "lib/AnitaDarin/ui/stand/modules/ticks.pluto": {
       "sha256": "71f07d170cbdb26ec7a92425f03e0376d69a08cb20a3e027fc2bf0a6f29a5120",
       "size": 3265
     },
     "lib/AnitaDarin/ui/stand/modules/values.pluto": {
-      "sha256": "a83b593a2bc68fe7266d813edd0d3d76bd28848fb1418b49ca5af35106b49821",
-      "size": 18054
+      "sha256": "a3bb3d21af0b0f490e027f797825d5dcfc6c6544f9626138f04c1a761d45646a",
+      "size": 14455
     },
     "lib/AnitaDarin/ui/stand/root.pluto": {
       "sha256": "e59517ab452d81ec55d1aff0438170d46a9425802b941593c5782fcd7ea70518",
       "size": 2753
     },
     "lib/AnitaDarin/ui/stand/script/call_function.pluto": {
-      "sha256": "2f994e00ebe0e023273d49517f0b9205ce3f3f841497d811a9716d8bf2b25293",
-      "size": 30710
+      "sha256": "99b5f86c749d0181c78f10649538f2517054b0b1af8278097913b4acac9ec1a6",
+      "size": 17804
     },
     "lib/AnitaDarin/ui/stand/script/call_function_editor.pluto": {
-      "sha256": "2496613c26a7d7f0d2794753a7fdcdf38486a679ce92d9716d4fbe6e5c2230f9",
-      "size": 8672
+      "sha256": "a9a5216503007eacc9e27055fecdd2d62dd9166c375034e5441fd0cc5c0d87be",
+      "size": 10066
     },
     "lib/AnitaDarin/ui/stand/script/language.pluto": {
-      "sha256": "6d0e1b68c3f06d5a8fd1ba07d73a4cf9ed76ae008ac8f3d758714482f61a8fec",
-      "size": 8187
+      "sha256": "a37db82b988932f2dca615cdf75d700870de0216322208386c92a20317db2c7f",
+      "size": 5153
     },
     "lib/AnitaDarin/ui/stand/script/menu_picker.pluto": {
-      "sha256": "db504001835da4e99d62e81ca5e108513d14162193099b016604d78cef11a640",
-      "size": 5547
+      "sha256": "33f87e16a859ed320b72e5532ece9b750e298ab051d265095e23e732164dc430",
+      "size": 3300
     },
     "lib/AnitaDarin/ui/stand/script/profile.pluto": {
-      "sha256": "0c3284b53fbee89f9aa4c5cbc701eab333c388a82de4b6de220b89cb6389dac2",
-      "size": 36482
+      "sha256": "c728c657645166e36520d9ae336c694668ee27430551d61afca264f150050669",
+      "size": 19215
     },
     "lib/AnitaDarin/ui/stand/script/section.pluto": {
-      "sha256": "4aebefd7f12ab217ae223743d7a6ba65854d383d8eb075afaf951dc90108f005",
-      "size": 15746
+      "sha256": "89275d892eb8664e62210dc18be5b7ecf6a46a8c49d41fffd8ee03ae5c724351",
+      "size": 14535
     },
     "lib/AnitaDarin/ui/stand/script/updater.pluto": {
-      "sha256": "23c861b18a8f64f32efd404c871aae6d05c39b9cae5bd5e035cddf3ff33fe87a",
-      "size": 7345
+      "sha256": "6a0e9de44a15dffd51e31fbf1f23a1533806c62075b7b2277bbf95ab500e8487",
+      "size": 4801
     },
     "lib/AnitaDarin/ui/stand/script/user_commands.pluto": {
-      "sha256": "a1486ac4827af311a23fa27349310a291689dc48bd3612ed62722c73b1c53da9",
-      "size": 6803
+      "sha256": "abc0a9c61536f9406216550fe34a0d82f2fcc1eea8abefab05b9a06676b0f1f8",
+      "size": 5255
     },
     "lib/AnitaDarin/utils/color.pluto": {
       "sha256": "a9d64fac1f842fbbaa4fd4af035efc9d5e8abe64032aab3884852abffb7ed0f6",
@@ -565,12 +825,12 @@
       "size": 298
     },
     "lib/AnitaDarin/utils/menu.pluto": {
-      "sha256": "b0bce2a62fece8fc6e4652802290dc030ba2823f88c578e582938f2dfc63232d",
-      "size": 1905
+      "sha256": "9dd3fb0694680eb0de485e387631ba092eb00a6c0a33173ee37fcf0d307ef4c7",
+      "size": 4252
     },
     "lib/AnitaDarin/utils/util.pluto": {
-      "sha256": "a49c0c351300a96c4b9662912de8ff9237132514ec9958c7ce24044966fd5545",
-      "size": 7454
+      "sha256": "0d6cb64f93c5f23b0b7d7bd8fdc2c2de3ba11a5590c2be77b6c154b36ae876ec",
+      "size": 7583
     },
     "lib/AnitaDarin/utils/util/game.pluto": {
       "sha256": "bfd3f6fd17ba4d4c2b125f6ef86b0f7c9fd5d6d76d860817ce8833fa3ab44fc7",
@@ -593,8 +853,8 @@
       "size": 38
     },
     "lib/AnitaDarin/utils/util/game/entity/vehicle.pluto": {
-      "sha256": "379597f59ea9f650ab4ff239c2c0332c6c1e577325608a1b19f24d242efd6a2c",
-      "size": 2463
+      "sha256": "d2e6aba107afaaaa6b009279c4654a5812c4d8f18e58327fd859b54c1ed2d9b3",
+      "size": 2479
     },
     "lib/AnitaDarin/utils/util/game/players.pluto": {
       "sha256": "38300d368829cf9c6f82c5068c1018711840b12f0c87b44946d0a1d1b7f50d3c",
@@ -617,20 +877,20 @@
       "size": 25
     },
     "store/AnitaDarin/core/call_function/short_name.json": {
-      "sha256": "5b598a64dfb762354303143169540a228385d3f3b34b13354bb4f2ce66890e37",
-      "size": 739
+      "sha256": "588ebcc44aea4ef873974d88699c7ee66652176649c1146ee49aedc9923dd921",
+      "size": 257
     },
     "store/AnitaDarin/core/call_function/stand_api.json": {
-      "sha256": "4071b71a8138492342f706072594a6d9f99f5401fea2128a12df1586379b5513",
-      "size": 1219
+      "sha256": "0c20199077b3a2bba53d7ba9e936532db21721baf509c89558dbcef6110f7aa0",
+      "size": 2279
     },
     "store/AnitaDarin/core/language/en-us.json": {
-      "sha256": "a99cc795bac9778019f8ea09a431841b96305dd92c36cfcee5800031588554f3",
-      "size": 51959
+      "sha256": "ac67d083f901b5788a6d31e07e9a9d4987d6a5ee2cd416a63d00bb93d466a83b",
+      "size": 54687
     },
     "store/AnitaDarin/core/language/ru-ru.json": {
-      "sha256": "a3a0107e4643535fe2c9181b9befb84bd5ce7a4b83f079fbdd8e6a5187e7ecf9",
-      "size": 72722
+      "sha256": "ce400d1b80f7da2a6b8fe124c5094934e2bb0314623fbd5fb13f9c290277ac34",
+      "size": 76589
     },
     "store/AnitaDarin/menu/AnitaDarin/features/self/godmode.pluto": {
       "sha256": "46b59ac53ddcbc2a07b3b83c6e6657d1485dfad584605fcea76cd713f3aac6bd",
@@ -677,8 +937,8 @@
       "size": 509
     },
     "store/AnitaDarin/menu/AnitaDarin/features/vehicle/explode.pluto": {
-      "sha256": "773264a78a0b9ec58f75a30fb625cf6f8bd712d56ada9731ea8916e65a2381e5",
-      "size": 1151
+      "sha256": "d964bc52d740631f946e8c0357bfefc7d22fc2d096365724ad97dffd8ed2e127",
+      "size": 1139
     },
     "store/AnitaDarin/menu/AnitaDarin/info.json": {
       "sha256": "691b3eed74c46478ae5dff5ef0fb6064ef638e131366eb8f596b0fb35a23f72f",
@@ -705,16 +965,16 @@
       "size": 4228
     },
     "store/AnitaDarin/menu/AnitaDarin/menu/stand/settings.pluto": {
-      "sha256": "4319dfb0dcf36c8c243b5c3f9f14edc1ddac465b9cf91aae588894dffa0b2bb0",
-      "size": 867
+      "sha256": "e8e23c2622ea78a58983ebffbb60f99880704b95b09d97fb3be9f98a1403cb05",
+      "size": 843
     },
     "store/AnitaDarin/menu/AnitaDarin/menu/stand/vehicle.pluto": {
       "sha256": "3d588123b96fe89d074fe1f08c18ea0fc834435356990791083ee3692f5216b0",
       "size": 735
     },
     "store/AnitaDarin/menu/AnitaDarin/profiles/main.json": {
-      "sha256": "52ae50f64801b043fb51885b03c982a262ecdc7ce458ab1becbea4f0cd7471d6",
-      "size": 162
+      "sha256": "1fe4bcdda7668a86916166bb14332b1828eeb5d528a4849adc703a3bc182c7e6",
+      "size": 167
     },
     "store/AnitaDarin/menu/Example/features/example/hello.pluto": {
       "sha256": "bae2320af242f35f409a42367966ae9ce684ed3a62d06cef53d0ec127f3112e1",
@@ -743,5 +1003,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.9"
+  "version": "0.1.10"
 }
