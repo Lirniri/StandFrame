@@ -93,23 +93,35 @@ function module.build(node: table): table
 
     list:divider(label("divider"))
     threaded(list, "install", "updaterinstall", manager.install_and_restart)
-    flag(list, "auto", "auto_update", "updaterauto", false)
     flag(list, "before", "update_check_before", "updaterbefore", true)
 
     -- Applied on a click with the days picked: 0 - never
     list:click_slider(label("check_days.name"), 0, 30, Atdar.profile.get("update_check_days") or 1, 1,
         |days| -> updater.set_check_days(days), { "updaterdays" }, label("check_days.help"))
 
+    flag(list, "auto", "auto_update", "updaterauto", false)
+    
     -- A version typed, or picked from the releases made: that release is installed, an older one too
     local versions = nil
     local first_version = 0
 
     -- Made again at every opening, so the list is what the repo has now; kept: with the versions of the last
     -- opening (Limit Shown To changed: nothing new to ask the network)
+    local latest = 0
+
     local function fill_versions(kept: bool = false): void
+
+        latest += 1
+        local mine = latest
+
         util.create_thread(function()
 
             local rows = updater.version_rows(kept)
+
+            -- A newer making started meanwhile (opened again, the limit changed): it fills the list, not this one
+            if mine ~= latest then
+                return
+            end
 
             -- The list may be gone by now (the section was made again)
             pcall(function()
