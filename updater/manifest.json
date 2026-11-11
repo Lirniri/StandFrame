@@ -65,8 +65,8 @@
       "size": 13172
     },
     "lib/AnitaDarin/core/updater.pluto": {
-      "sha256": "96e1a89ef7e5480f5ba1d58c2929a582c9eee0fc1cea943c1179fe0c1a81032b",
-      "size": 15242
+      "sha256": "3e7effa3612904958bfd59f7436f1745f79836856a5ae01f97879ce1180b30d4",
+      "size": 15814
     },
     "lib/AnitaDarin/features/feature.pluto": {
       "sha256": "7597c2c78dd63bc8f17847cfce0047ea393197f7776eefbaa0aeb64f14c938aa",
@@ -797,8 +797,8 @@
       "size": 14535
     },
     "lib/AnitaDarin/ui/stand/script/updater.pluto": {
-      "sha256": "58b042b8495aa66c364a33842b04bfb9223aad6ce3fcf6124d7734716acc0c0e",
-      "size": 7287
+      "sha256": "3b170b693c4389b52fc087e3e8359b871f144c298aa0d3850c117787a0727d12",
+      "size": 7549
     },
     "lib/AnitaDarin/ui/stand/script/user_commands.pluto": {
       "sha256": "abc0a9c61536f9406216550fe34a0d82f2fcc1eea8abefab05b9a06676b0f1f8",
@@ -1003,5 +1003,5 @@
   },
   "format": 1,
   "project": "AnitaDarin",
-  "version": "0.1.13"
+  "version": "0.1.14"
 }
