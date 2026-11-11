@@ -1348,6 +1348,13 @@ stand.check(entry("main (active)") ~= nil, "and it's listed")
 -- Copy Menu To Core and Command Box work from their new places
 stand.click(stand.find_item(find("Load Menu"), "Copy Menu To Core"), 2)
 stand.equal(profile.get("auto_copy_menu"), "AnitaDarin", "Copy Menu To Core is set from Load Menu")
+-- A pack the profile names that isn't in store: its line says so
+profile.set("auto_copy_menu", "GonePack")
+find("Load Menu").on_click()
+stand.check(stand.find_item(find("Load Menu"), "GonePack (not in store)") ~= nil, "a pack that isn't in store is marked on its line")
+profile.set("auto_copy_menu", "AnitaDarin")
+find("Load Menu").on_click()
+stand.check(stand.find_item(find("Load Menu"), "GonePack (not in store)") == nil, "a pack that is there has none")
 stand.click(stand.find_item(find("Command Box"), "Separator"), 2)
 stand.equal(profile.get("command_box_separator"), "_", "Separator is set from Command Box")
 

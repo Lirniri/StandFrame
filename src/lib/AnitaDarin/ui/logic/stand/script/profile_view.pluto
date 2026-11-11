@@ -322,8 +322,9 @@ end
 
 -- Copy Menu To Core
 
--- @return The pack the profile copies to core at start: its info from store, { folder, name } with only the
--- folder's name when the pack isn't in store now, nil when it's off
+-- @return The pack the profile copies to core at start: its info from store; { folder, name, missing = true }
+-- with only the folder's name when there's no such pack in store now (it was taken out, or the profile is
+-- another one's); nil when it's off
 function module.auto_copy_pack(): ?table
 
     local id = Atdar.profile.get("auto_copy_menu")
@@ -338,7 +339,16 @@ function module.auto_copy_pack(): ?table
         end
     end
 
-    return { folder = id, name = id }
+    return { folder = id, name = id, missing = true }
+end
+
+-- The pack's line under Copy Menu To Core: its name, or the name and that the pack isn't in store
+function module.auto_copy_line(pack: table): string
+    if pack.missing then
+        return i18n.text("menu_loader.auto_copy.missing"):format(pack.name)
+    end
+
+    return pack.name
 end
 
 -- Off, then every pack in store: the options of Copy Menu To Core

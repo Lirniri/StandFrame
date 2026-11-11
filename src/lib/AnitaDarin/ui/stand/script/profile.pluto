@@ -344,7 +344,7 @@ function module.auto_copy_picked(node: table): void
     local pack = view.auto_copy_pack()
 
     if pack ~= nil then
-        node:divider(pack.name)
+        node:divider(view.auto_copy_line(pack))
     end
 end
 
