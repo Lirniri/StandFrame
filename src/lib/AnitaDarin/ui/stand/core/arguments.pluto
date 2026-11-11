@@ -19,7 +19,6 @@
 
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
-local commands = Atdar.loader.load("ui/logic/stand/commands")
 local logic = Atdar.loader.load("ui/logic/stand/arguments")
 
 -- Everything of the logic, and build() below
@@ -74,45 +73,46 @@ function module.build(list: table, spec: table): void
         end
     end
 
-    local function field(node: table, name_label, index, help: string, start: ?string, whole: bool = false)
-        return node:track_named(name_label, menu.text_input(node.handle, name_label, commands.names({ spec.command(index) }),
-            help, function(value, click_type)
-            typed_in(index, value, click_type, whole)
-        end, texts[index] or start or ""))
+    -- A field; its command isn't one of the found commands (not renamed with the prefix settings)
+    -- @return The field's item
+    local function field(node: table, name_label, index, help: string, start: ?string, whole: bool = false): table
+        return node:text_input({
+            name = name_label,
+            help = help,
+            commands = { spec.command(index) },
+            track = false,
+            default = texts[index] or start or "",
+            on_change = |value, click_type| -> typed_in(index, value, click_type, whole),
+        })
     end
 
     -- A parameter whose text is a call: a list named by the expression, with the expression's own field and
     -- the fields of the function called. Typing in one of those writes the expression again
     local function call_list(name_text: string, index, help: string, call: table): void
 
-        local nested = list:list($"{name_text}: {texts[index]}", {}, help)
+        local nested = list:list({ name = $"{name_text}: {texts[index]}", help = help })
         local expression = field(nested, label("call.expression"), index, text("call.expression_help"), nil, true)
         local inner = module.texts_from(call.sig, table.concat(call.pieces, ", "))
-        local fill
+        local fields = nil
 
-        fill = function()
-            module.build(nested, {
+        -- The fields of the function called, under the expression; a call inside this call makes only these again
+        fields = nested:section(function(node)
+            module.build(node, {
                 sig = call.sig,
                 texts = inner,
                 verbatim = true,
                 command = |sub| -> $"{spec.command(index)}_{sub}",
                 on_typed = function()
                     texts[index] = module.compose(call.path, call.sig, inner)
-                    pcall(menu.set_menu_name, nested.handle, $"{name_text}: {texts[index]}")
-                    pcall(menu.set_value, expression, texts[index])
+                    nested:set_name($"{name_text}: {texts[index]}")
+                    expression:set_value(texts[index])
                     if spec.on_typed ~= nil then
                         spec.on_typed()
                     end
                 end,
-                -- A call inside this call: only this list's fields are made again
-                on_reshape = function()
-                    nested:clear_from(2)
-                    fill()
-                end,
+                on_reshape = || -> fields.rebuild(),
             })
-        end
-
-        fill()
+        end)
     end
 
     for i, param in ipairs(sig.params) do
@@ -133,7 +133,7 @@ function module.build(list: table, spec: table): void
         local call = spec.on_reshape ~= nil and module.call_in(texts[i]) or nil
         calls[i] = call and call.path or nil
 
-        list:divider(param.name)
+        list:divider({ name = param.name })
         if call ~= nil then
             call_list(text($"types.{kind}"), i, help, call)
         else
@@ -144,7 +144,7 @@ function module.build(list: table, spec: table): void
     if sig.vararg then
         -- Under the parameters it's the rest of them; alone it's all of them
         if #sig.params > 0 then
-            list:divider("...")
+            list:divider({ name = "..." })
         end
         field(list, label("rest.name"), "rest", text("rest.help"))
     end

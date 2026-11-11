@@ -187,4 +187,68 @@ stand.check(stand.find_item(helpers, "From a table") and stand.find_item(helpers
 stand.check(stand.find_item(helpers, "Inside More") ~= nil, "and a nested list")
 stand.check(not stand.find_log("is not an item") and not stand.find_log("needs '"), "with no warnings")
 
+-- ─── menu/options ────────────────────────────────────────────────────────────
+
+local options_root = new MenuNode(stand.root):list("Menu options")
+run_example("menu/options").build(options_root, {})
+local options = stand.find_item(options_root.handle, "Options")
+stand.clear_logs()
+stand.click(stand.find_item(options, "Say Hello"))
+stand.check(stand.find_log("hello"), "options: a button from a table of options")
+local nickname = stand.find_item(options, "Nickname")
+nickname.on_change("restored", 4)
+stand.check(not stand.find_log("nickname 'restored'"), "user_only: Stand restoring the field doesn't count")
+nickname.on_change("Ann", 0)
+stand.check(stand.find_log("nickname 'Ann'"), "the user's text does")
+stand.click(stand.find_item(options, "Clear Saved"))
+stand.check(stand.find_log("cleared"), "warning: asked first, then cleared")
+
+-- ─── menu/changing ───────────────────────────────────────────────────────────
+
+local changing_root = new MenuNode(stand.root):list("Menu changing")
+run_example("menu/changing").build(changing_root, {})
+local changing = stand.find_item(changing_root.handle, "Changing Items")
+local stop = stand.child(changing, "Stop")
+stand.equal(stop.visible, false, "changing: Stop is hidden while stopped")
+stand.click(stand.child(changing, "Running"))
+stand.equal(stand.child(changing, "Status").value, "Running", "set_value: the status follows")
+stand.equal(stop.visible, true, "shown_when: Stop shows while running")
+stand.click(stop)
+stand.equal(stand.child(changing, "Status").value, "Stopped", "set_value(false, true) runs the toggle's handler")
+stand.click(stand.child(changing, "Click Me"))
+stand.click(stand.child(changing, "Click Me"))
+stand.check(stand.child(changing, "Clicks: 2") ~= nil, "caption: the counter follows")
+
+-- ─── menu/dynamic ────────────────────────────────────────────────────────────
+
+local dynamic_root = new MenuNode(stand.root):list("Menu dynamic")
+run_example("menu/dynamic").build(dynamic_root, {})
+local dynamic = stand.find_item(dynamic_root.handle, "Dynamic")
+local file_list = stand.child(dynamic, "Files")
+stand.equal(#file_list.children, 0, "dynamic: Files is empty until opened")
+stand.click(file_list)
+stand.check(stand.child(file_list, "garage.json") ~= nil, "fill: opened, the files are there")
+stand.back(file_list)
+stand.equal(#file_list.children, 0, "and gone on back")
+local tags = stand.child(dynamic, "Tags")
+stand.click(stand.child(tags, "fast"))
+stand.check(stand.child(tags, "fast") == nil and stand.child(tags, "red") ~= nil, "section: a tag taken off")
+stand.child(tags, "Add Tag").on_change("blue", 0)
+stand.equal(stand.name_of(tags.children[#tags.children - 1]), "blue", "a tag added before the field")
+stand.click(stand.child(dynamic, "Take The Line Out"))
+stand.check(stand.child(dynamic, "A line to take out") == nil, "remove(): the line is out")
+
+-- ─── menu/refs ───────────────────────────────────────────────────────────────
+
+local refs_root = new MenuNode(stand.root):list("Menu refs")
+run_example("menu/refs").build(refs_root, {})
+local ref_tools = stand.find_item(refs_root.handle, "Ref Tools")
+stand.check(ref_tools ~= nil, "refs: a list made in a Stand ref")
+stand.click(stand.child(ref_tools, "Rename Ping"))
+stand.check(stand.child(ref_tools, "Ping (renamed)") ~= nil, "found by its command and renamed")
+stand.triggered = {}
+stand.click(stand.child(ref_tools, "Run Ping"))
+stand.check(#stand.triggered == 1 and stand.triggered[1]:find("refsping", 1, true) ~= nil, "a command run as typed")
+stand.check(stand.child(ref_tools, "Code: ****") ~= nil, "a spoiler in options form")
+
 stand.finish()

@@ -12,7 +12,7 @@ local file = Atdar.loader.load("core/filesystem/file")
 local paths = Atdar.loader.load("core/filesystem/paths")
 
 local log = new Logger("Updater")
-local text = select(2, i18n.scope("updater_menu"))
+local label, text = i18n.scope("updater_menu")
 
 local module = {}
 
@@ -24,6 +24,30 @@ module.BRANCHES = { "main", "all", "experiment" }
 
 function module.installed_text(): string
     return manager.installed_version() or text("info.unknown")
+end
+
+-- "Installed Version", with a ":" added when the version is known
+function module.installed_caption(): string
+
+    local caption = text("info.installed")
+
+    if manager.installed_version() == nil then
+        return caption
+    end
+
+    return $"{caption}:"
+end
+
+-- "Available Version", with a ":" added when a check found one
+function module.available_caption(): string
+
+    local caption = text("info.available")
+
+    if manager.available_version() == nil then
+        return caption
+    end
+
+    return $"{caption}:"
 end
 
 -- The version found by the last check, "not checked" before one, marked when it's the one installed
@@ -42,16 +66,56 @@ function module.available_text(): string
     return version
 end
 
+-- "Last Check", with a ":" added once a check ran
+function module.last_check_caption(): string
+
+    local caption = text("info.last_check")
+
+    if manager.last_check_time() == 0 then
+        return caption
+    end
+
+    return $"{caption}:"
+end
+
 -- "never" when no check ran, else the time of the last one
 function module.last_check_text(): string
 
-    local time = Atdar.profile.get("update_last_check") or 0
+    local time = manager.last_check_time()
 
     if time == 0 then
         return text("info.never")
     end
 
     return os.date("%Y-%m-%d %H:%M", time)
+end
+
+-- The bar of the update's download: "[=====-----] 50%", empty while none runs
+function module.progress_text(): string
+
+    local progress = manager.progress
+
+    if progress == nil or progress.total == 0 then
+        return text("info.no_progress")
+    end
+
+    local width = 10
+    local filled = progress.done * width // progress.total
+    local percent = progress.done * 100 // progress.total
+
+    return $"[{("="):rep(filled)}{("-"):rep(width - filled)}] {percent}%"
+end
+
+-- The progress line's name: "Progress", with a ":" added while an update is downloading
+function module.progress_caption(): string
+
+    local caption = text("info.progress")
+
+    if manager.progress == nil then
+        return caption
+    end
+
+    return $"{caption}:"
 end
 
 -- Branch
@@ -68,12 +132,13 @@ function module.branch_caption(): string
     return text("branch.name"):format(branch)
 end
 
+-- The branches as Stand labels: Stand shows them in the language shown now, the picker needn't be redone
 function module.branch_options(): table
 
     local options = {}
 
     for _, branch in ipairs(module.BRANCHES) do
-        table.insert(options, text($"branch.{branch}"))
+        table.insert(options, label($"branch.{branch}"))
     end
 
     return options
@@ -138,20 +203,26 @@ function module.set_versions_synced(on: bool): bool
     return true
 end
 
--- The version typed in the field. Not Stand putting the text back
-function module.update_to_version(value: string, click_type): void
+-- The version typed in the field, for the menu to warn before installing it
+-- @return The version trimmed, nil if it's empty or Stand put the text back
+function module.typed_version(value: string, click_type): ?string
 
     if not clicks.is_user_action(click_type) then
-        return
+        return nil
     end
 
     local typed = value:match("^%s*(.-)%s*$")
 
     if typed == "" then
-        return
+        return nil
     end
 
-    module.update_to(typed)
+    return typed
+end
+
+-- The text of the warning before installing a version
+function module.update_warning(version: string): string
+    return text("version.warning"):format(version)
 end
 
 -- How many of the newest versions the list shows (Limit Shown To), 7 until it's changed
@@ -184,6 +255,11 @@ function module.version_rows(kept: bool = false): table
 
     local versions = kept and manager.versions_found or nil
     local err = nil
+
+    -- The list opened less than an hour ago (or in an earlier run) is used, the network isn't asked again
+    if versions == nil and not kept then
+        versions = manager.cached_versions()
+    end
 
     if versions == nil then
         versions, err = manager.fetch_versions()
@@ -224,7 +300,8 @@ end
 
 -- Changes
 
--- Saves what the available version changes to a log file in store/<script>/logs and says its name
+-- Saves what the available version changes to store/<script>/updater/changes.txt (made again each time)
+-- and says its path
 function module.save_changes(): void
 
     local lines = manager.changes()
@@ -234,15 +311,14 @@ function module.save_changes(): void
         return
     end
 
-    local date = os.date("%Y-%m-%d")
-    local filename = $"{Atdar.name}_{date}_updater.log"
+    local filename = "updater/changes.txt"
     local parts = {}
 
     for _, line in ipairs(lines) do
         table.insert(parts, text($"changes.{line.kind}"):format(line.path))
     end
 
-    if not file.write($"{paths.store}logs/{filename}", table.concat(parts, "\n")) then
+    if not file.write($"{paths.store}{filename}", table.concat(parts, "\n")) then
         log:notify(text("changes.error"), "stand")
         return
     end

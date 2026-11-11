@@ -18,6 +18,11 @@ function module.is_godmode(player_id: int): bool
     return players.is_godmode(player_id)
 end
 
+-- Whether the player is invincible by the game's own flag (set_invincible), unlike is_godmode which asks Stand
+function module.is_invincible(player_id: int): bool
+    return PLAYER.GET_PLAYER_INVINCIBLE(player_id)
+end
+
 function module.is_dead(player_id: int): bool
     local entity = Atdar.natives.entity
     local ped = module.get_ped_id(player_id)

@@ -1,15 +1,13 @@
 -- Script's own section, shown with any menu (built-in or a pack): at the bottom of the root,
 -- or inside the list a menu set with set_parent
 local Logger = Atdar.loader.load("core/logger")
+
 local log = new Logger("Settings")
 
 local module = {}
 
 -- Builders rather than built items, so the section can be recreated without losing what was added
 local contributors = {}
-
--- The section currently in the menu, renamed in place when the profile's display name changes
-local shown = nil
 
 -- Applied each time the section is built (at start and after every menu load)
 local config = {
@@ -64,20 +62,26 @@ function module.restore(mark: table): void
     config.parent = mark.parent
 end
 
--- @return Section handles, pass them to remove()
+-- @return The section's items, pass them to remove()
 function module.build(root: table): table
 
     local host = config.parent or root
     local section = {}
 
+    -- The display name follows the profile (ui/stand/core/live): renamed in place rather than rebuilt,
+    -- the user may be inside the section when it changes
     if config.divider == module.DISPLAY_NAME then
-        section.divider = host:divider(display_name())
-        section.divider_is_name = true
+        section.divider = host:divider({ caption = display_name })
     elseif config.divider then
-        section.divider = host:divider(config.divider)
+        section.divider = host:divider({ name = config.divider })
     end
 
-    section.node = host:list(config.name or display_name())
+    if config.name == nil then
+        section.node = host:list({ caption = display_name })
+    else
+        section.node = host:list({ name = config.name })
+    end
+
     for _, build_fn in ipairs(contributors) do
         local ok, err = pcall(build_fn, section.node)
         if not ok then
@@ -85,36 +89,16 @@ function module.build(root: table): table
         end
     end
 
-    shown = section
     return section
 end
 
 function module.remove(section: table): void
-    if shown == section then
-        shown = nil
-    end
+
     if section.divider then
-        menu.delete(section.divider)
+        section.divider:remove()
     end
+
     section.node:delete()
-end
-
--- Renamed in place rather than rebuilt: the user may be inside the section when the name changes
-local profile = Atdar.profile
-if profile and profile.on_change then
-    profile.on_change(function(key: string, value)
-        if key ~= "display_name" or not shown then
-            return
-        end
-
-        if config.name == nil then
-            pcall(menu.set_menu_name, shown.node.handle, display_name())
-        end
-        
-        if shown.divider_is_name then
-            pcall(menu.set_menu_name, shown.divider, display_name())
-        end
-    end)
 end
 
 return module

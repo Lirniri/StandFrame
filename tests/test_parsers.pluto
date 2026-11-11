@@ -78,6 +78,9 @@ stand.check(Atdar.loader.load("utils/color").from_hex("FF8000").g == orange.g, "
 stand.equal(parsers.json.decode('{"a": 1}').a, 1, "json.decode: an object")
 stand.equal(parsers.json.decode('[1, 2]')[2], 2, "json.decode: an array")
 stand.equal(parsers.json.decode('{"a": 1, "b":'), nil, "json.decode: cut off is nil, not the part that parsed")
+stand.equal(parsers.json.decode('{"a": {"b": 1}'), nil, "json.decode: cut off right after an inner object is nil too")
+stand.equal(parsers.json.decode('{"a": 1}}'), nil, "json.decode: a bracket too many is nil")
+stand.equal(parsers.json.decode('{"a": "}{\\"]"}').a, '}{"]', "json.decode: brackets and quotes inside strings don't count")
 stand.equal(parsers.json.decode("{bad}"), nil, "json.decode: not JSON is nil")
 stand.equal(next(parsers.json.decode("{}")), nil, "json.decode: {} is an empty table")
 

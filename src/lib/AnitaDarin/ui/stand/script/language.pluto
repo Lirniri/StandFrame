@@ -21,98 +21,83 @@ local module = {}
 -- Strings under "profile"
 local label = i18n.scope("profile")
 
--- The picker made by build, and the code of each of its options
-local view = { language = nil, codes = {} }
-
--- The picker's caption as the profile and the shown language have it now. The picker may belong to a
--- section already removed: a failed update is skipped
-local function show_caption(): void
-    if view.language ~= nil then
-        pcall(menu.set_menu_name, view.language, translation.caption())
-    end
-end
-
--- After a translation was made or read again: the picker lists the languages there are now
-local function refresh_languages(): void
-
-    local names, codes = translation.options()
-
-    view.codes = codes
-    pcall(menu.set_list_action_options, view.language, names)
-    show_caption()
-end
-
 -- Create Translation: the code, the name and the language to start from, then Create
-local function create_translation(list: table): void
+-- @param after What Create does once the files are made (the picker lists the languages there are now)
+local function create_translation(list: table, after: function): void
 
     local draft = translation.new_draft()
     local from_names, from_codes = translation.from_options()
-    local from_ref = nil
+    local from = nil
 
-    local create = list:list(label("translation.create.name"), {}, label("translation.create.help"))
+    local create = list:list({ key = "translation.create" })
 
-    create:text_input(label("translation.code.name"), { "langcode" }, |value| -> translation.set_code(draft, value),
-        label("translation.code.help"), draft.code)
-    create:text_input(label("translation.language_name.name"), { "langname" }, |value| -> translation.set_name(draft, value),
-        label("translation.language_name.help"), "")
+    create:text_input({ key = "translation.code", commands = { "langcode" }, default = draft.code,
+        on_change = |value| -> translation.set_code(draft, value) })
+    create:text_input({ key = "translation.language_name", commands = { "langname" }, default = "",
+        on_change = |value| -> translation.set_name(draft, value) })
 
-    from_ref = create:list_action(translation.from_caption(draft.from), from_names, function(index)
-        draft.from = from_codes[index]
-        pcall(menu.set_menu_name, from_ref, translation.from_caption(draft.from))
-    end, { "langfrom" }, label("translation.from.help"))
+    from = create:list_action({ caption = || -> translation.from_caption(draft.from), help_key = "translation.from",
+        options = from_names, commands = { "langfrom" }, on_select = function(index)
+            draft.from = from_codes[index]
+            from:set_name(translation.from_caption(draft.from))
+        end })
 
-    create:action(label("translation.create_button.name"), || -> translation.create(draft, refresh_languages),
-        { "langcreate" }, label("translation.create_button.help"))
+    create:action({ key = "translation.create_button", commands = { "langcreate" },
+        on_click = || -> translation.create(draft, after) })
 end
 
 -- Show Keys: each string's key instead of its text, to see which key is which while translating. Not with
 -- Stand in English (i18n says so): the switch goes back off. section puts it in Debug > Languages
 function module.show_keys(node: table): void
 
-    local keys_ref
+    local ui = node:scope("profile")
+    local keys = nil
 
-    keys_ref = node:toggle(label("translation.show_keys.name"), function(on)
+    keys = ui:toggle({ key = "translation.show_keys", commands = { "langkeys" }, on_change = function(on)
         if not i18n.set_show_keys(on) then
-            pcall(menu.set_value, keys_ref, false)
+            keys:set_value(false)
         end
-    end, { "langkeys" }, label("translation.show_keys.help"))
+    end })
 
-    node:divider(label("translation.send.divider"))
+    ui:divider({ name = label("translation.send.divider") })
 
     -- The key of the item the cursor is on, in a Stand notification: exact even where items share a text
-    node:toggle(label("translation.send_path.name"), |on| -> i18n.set_send_path(on), { "langpath" },
-        label("translation.send_path.help"))
+    ui:toggle({ key = "translation.send_path", commands = { "langpath" }, on_change = |on| -> i18n.set_send_path(on) })
 
     -- The file that string is in, for opening it to translate
-    node:toggle(label("translation.send_file.name"), |on| -> i18n.set_send_file(on), { "langfile" },
-        label("translation.send_file.help"))
+    ui:toggle({ key = "translation.send_file", commands = { "langfile" }, on_change = |on| -> i18n.set_send_file(on) })
 end
 
--- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is
+-- Auto follows Stand's language; a fixed one shows the script in it whatever Stand's is.
+-- The picker's caption follows the profile (another one loaded, a reset) and the language shown
 function module.build(node: table): void
 
-    local list = node:list(label("language.list.name"), {}, label("language.list.help"))
+    local ui = node:scope("profile")
+    local list = ui:list({ key = "language.list" })
     local names, codes = translation.options()
+    local picker = nil
 
-    view.codes = codes
+    -- After a translation was made or read again: the picker lists the languages there are now
+    local function refresh_languages(): void
 
-    view.language = list:list_action(translation.caption(), names, function(index)
-        translation.pick(view.codes[index])
-        show_caption()
-    end, { "lang" }, label("language.help"))
+        names, codes = translation.options()
 
-    list:divider(label("translation.divider"))
-    create_translation(list)
-    list:action(label("translation.progress.name"), translation.report_progress, { "langprogress" },
-        label("translation.progress.help"))
-    list:action(label("translation.reload.name"), || -> translation.reload(refresh_languages), { "langreload" },
-        label("translation.reload.help"))
-    list:action(label("translation.folder.name"), translation.open_folder, { "langfolder" },
-        label("translation.folder.help"))
+        picker:set_options(names)
+        picker:set_name(translation.caption())
+    end
+
+    picker = list:list_action({ caption = translation.caption, help_key = "language", options = names,
+        commands = { "lang" }, on_select = function(index)
+            translation.pick(codes[index])
+            picker:set_name(translation.caption())
+        end })
+
+    list:divider({ name = label("translation.divider") })
+    create_translation(list, refresh_languages)
+    list:action({ key = "translation.progress", commands = { "langprogress" }, on_click = translation.report_progress })
+    list:action({ key = "translation.reload", commands = { "langreload" },
+        on_click = || -> translation.reload(refresh_languages) })
+    list:action({ key = "translation.folder", commands = { "langfolder" }, on_click = translation.open_folder })
 end
-
--- The picker's caption follows the profile (another one loaded, a reset) and the language shown
-Atdar.profile.on_change(show_caption)
-i18n.on_change(show_caption)
 
 return module

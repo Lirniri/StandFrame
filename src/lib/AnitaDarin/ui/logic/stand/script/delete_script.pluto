@@ -1,4 +1,4 @@
--- lib/AnitaDarin/ui/logic/script/delete_script.pluto
+-- lib/AnitaDarin/ui/logic/stand/script/delete_script.pluto
 -- What Delete Script does; the items themselves are in ui/stand/script/section.
 --
 -- Deleting takes a confirm button and never happens on one click: the first click arms it (the menu

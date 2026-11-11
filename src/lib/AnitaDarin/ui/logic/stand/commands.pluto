@@ -20,6 +20,8 @@ local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 -- What a command name may be, and the files of names read clean
 local command_box = Atdar.loader.load("parsers/stand/command_box")
+-- Stand's refs: whether an item is there, the item behind a command, renaming its commands
+local refs = Atdar.loader.load("ui/stand/core/stand_refs")
 
 local log = new Logger("Commands")
 
@@ -196,21 +198,10 @@ function module.untrack(ref): void
     owner[ref] = nil
 end
 
--- Whether Stand still has the item. Without menu.is_ref_valid (an older Stand) every item counts as
--- there: dropping them all would be worse, and renaming is guarded by pcall anyway
-local function is_valid(ref): bool
-    if type(menu.is_ref_valid) ~= "function" then
-        return true
-    end
-
-    local ok, valid = pcall(menu.is_ref_valid, ref)
-    return ok and valid == true
-end
-
 -- Forgets items Stand doesn't have any more (deleted without untrack)
 local function prune(): void
     for ref in pairs(tracked) do
-        if not is_valid(ref) then
+        if not refs.is_valid(ref) then
             module.untrack(ref)
         end
     end
@@ -393,11 +384,9 @@ local function taken_by_other(ref, name: string): bool
         end
     end
 
-    if type(menu.ref_by_command_name) == "function" then
-        local ok, found = pcall(menu.ref_by_command_name, full)
-        if ok and found ~= nil and found ~= ref and menu.is_ref_valid(found) then
-            return true
-        end
+    local found = refs.by_command(full)
+    if found ~= nil and found ~= ref then
+        return true
     end
 
     return false
@@ -452,7 +441,7 @@ function module.set_custom(ref, name: string): (bool, ?string)
     end
 
     tidy(ref)
-    pcall(menu.set_command_names, ref, module.names_of(ref))
+    refs.set_command_names(ref, module.names_of(ref))
 
     if not save(owner[ref], base) then
         return false, "not_saved"
@@ -490,7 +479,7 @@ function module.add_word(ref, word: string): (bool, ?string)
     end
 
     table.insert(entry_of(ref).words, new_word)
-    pcall(menu.set_command_names, ref, module.names_of(ref))
+    refs.set_command_names(ref, module.names_of(ref))
 
     if not save(owner[ref], clean[1]) then
         return false, "not_saved"
@@ -525,7 +514,7 @@ function module.remove_word(ref, word: string): (bool, ?string)
     end
 
     tidy(ref)
-    pcall(menu.set_command_names, ref, module.names_of(ref))
+    refs.set_command_names(ref, module.names_of(ref))
 
     if not save(owner[ref], clean[1]) then
         return false, "not_saved"
@@ -550,7 +539,7 @@ function module.refresh(): void
     prune()
     for ref in pairs(tracked) do
         -- Still guarded: one item failing mustn't stop the rest from being renamed
-        pcall(menu.set_command_names, ref, module.names_of(ref))
+        refs.set_command_names(ref, module.names_of(ref))
     end
 end
 

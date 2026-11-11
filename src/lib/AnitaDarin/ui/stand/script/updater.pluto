@@ -10,9 +10,11 @@
 --   Check On Start                 (profile: update_check_on_start)
 --   Branch: main                   (profile: update_branch)
 --   ── Update ──
+--   Progress: [=====-----] 50%     (read-only, the download of an update)
 --   Update
 --   Check Before Updating          (profile: update_check_before)
---   Update Automatically          (profile: auto_update)
+--   Progress In Notifications      (profile: update_progress_notify)
+--   Update Automatically         (profile: auto_update)
 --   Check For Updates Every (Days) (profile: update_check_days)
 --   Update To Version              (a list)
 --     Version                      (a version, a tag, a branch or a commit to install, an older one too)
@@ -22,14 +24,15 @@
 --     0.1.10, 0.1.9, ...           (the releases, read when the list is opened; one is installed by a click)
 --
 -- The work is done by core/update_manager (check, install, the automatic check); the menu only starts it
--- in a thread and shows what it found. The texts of the lines and what the other items do are in
--- ui/logic/stand/script/updater_view.
+-- in a thread and shows what it found (the lines follow it and the language). The texts of the lines and
+-- what the other items do are in ui/logic/stand/script/updater_view.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
--- updaterbranch, updaterbefore, updaterchanges, updaterstart, updaterversion, updatersync
+-- updaterbranch, updaterbefore, updaterprogress, updaterchanges, updaterstart, updaterversion, updatersync
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
 local manager = Atdar.loader.load("core/update_manager")
+local live = Atdar.loader.load("ui/stand/core/live")
 local updater = Atdar.loader.load("ui/logic/stand/script/updater_view")
 
 local module = {}
@@ -37,12 +40,13 @@ local module = {}
 -- Strings under "updater_menu"
 local label = i18n.scope("updater_menu")
 
--- The info lines and the branch picker made by build
-local view = { branch = nil, installed = nil, available = nil, last_check = nil }
+-- Whether the manager already refreshes the info lines: build() runs at every rebuild of the settings, and a
+-- listener added each time would be called that many times for every downloaded file
+local listening = false
 
 -- An item running a function of the manager in a thread: the check and the install download, so they yield
 local function threaded(node: table, key: string, command: string, run: function): void
-    node:action(label($"{key}.name"), || -> util.create_thread(run), { command }, label($"{key}.help"))
+    node:action({ key = key, commands = { command }, on_click = || -> util.create_thread(run) })
 end
 
 -- A switch kept in the profile; on unless the profile says off (default_on), or off unless it says on
@@ -55,55 +59,17 @@ local function flag(node: table, key: string, profile_key: string, command: stri
         on = value ~= false
     end
 
-    node:toggle(label($"{key}.name"), |state| -> updater.set_flag(profile_key, state), { command }, label($"{key}.help"), on)
+    node:toggle({ key = key, commands = { command }, default = on,
+        on_change = |state| -> updater.set_flag(profile_key, state) })
 end
 
--- Puts what's known into the info lines. A line of a removed section is skipped
-local function refresh_info(): void
-    if view.installed == nil then
-        return
-    end
+-- Update To Version: a version typed, or picked from the releases listed under the Versions divider
+local function version_list(list: table): void
 
-    pcall(menu.set_value, view.installed, updater.installed_text())
-    pcall(menu.set_value, view.available, updater.available_text())
-    pcall(menu.set_value, view.last_check, updater.last_check_text())
-end
-
-function module.build(node: table): table
-
-    local list = node:list(label("name"), { "updater" }, label("help"))
-
-    view.installed = list:readonly(label("info.installed"), "")
-    view.available = list:readonly(label("info.available"), "")
-    view.last_check = list:readonly(label("info.last_check"), "")
-    refresh_info()
-    manager.on_change(refresh_info)
-    list:action(label("changes.name"), updater.save_changes, { "updaterchanges" }, label("changes.help"))
-
-    list:divider(label("check_divider"))
-    threaded(list, "check", "updatercheck", manager.check)
-
-    -- The branch updates come from, its name in the item: "Branch: main"
-    view.branch = list:list_action(updater.branch_caption(), updater.branch_options(), function(index)
-        updater.set_branch(index)
-        pcall(menu.set_menu_name, view.branch, updater.branch_caption())
-    end, { "updaterbranch" }, label("branch.help"))
-
-    flag(list, "on_start", "update_check_on_start", "updaterstart", true)
-
-    list:divider(label("divider"))
-    threaded(list, "install", "updaterinstall", manager.install_and_restart)
-    flag(list, "before", "update_check_before", "updaterbefore", true)
-
-    -- Applied on a click with the days picked: 0 - never
-    list:click_slider(label("check_days.name"), 0, 30, Atdar.profile.get("update_check_days") or 1, 1,
-        |days| -> updater.set_check_days(days), { "updaterdays" }, label("check_days.help"))
-
-    flag(list, "auto", "auto_update", "updaterauto", false)
-    
-    -- A version typed, or picked from the releases made: that release is installed, an older one too
+    -- The releases the newest fetch found, made into actions by the section below
+    local rows = {}
     local versions = nil
-    local first_version = 0
+    local part = nil
 
     -- Made again at every opening, so the list is what the repo has now; kept: with the versions of the last
     -- opening (Limit Shown To changed: nothing new to ask the network)
@@ -116,55 +82,105 @@ function module.build(node: table): table
 
         util.create_thread(function()
 
-            local rows = updater.version_rows(kept)
+            local found = updater.version_rows(kept)
 
-            -- A newer making started meanwhile (opened again, the limit changed): it fills the list, not this one
-            if mine ~= latest then
+            -- A newer making started meanwhile (opened again, the limit changed): it fills the list, not this
+            -- one. The list may be gone by now too (the section was made again)
+            if mine ~= latest or not versions:valid() then
                 return
             end
 
-            -- The list may be gone by now (the section was made again)
-            pcall(function()
-                versions:clear_from(first_version)
-
-                for _, row in ipairs(rows) do
-                    versions:action(row.caption, || -> updater.update_to(row.version), {}, label("version.item_help"))
-                end
-            end)
+            rows = found
+            part.rebuild()
         end)
     end
 
-    versions = list:list(label("version.name"), { "updaterversions" }, label("version.help"), nil, || -> fill_versions())
-    versions:text_input(label("version.input.name"), { "updaterversion" }, function(value, click_type)
-        updater.update_to_version(value, click_type)
-    end, label("version.input.help"))
-    versions:toggle(label("version.sync.name"), function(on)
-        if updater.set_versions_synced(on) and updater.versions_loaded() then
-            fill_versions()
-        end
-    end, { "updatersync" }, label("version.sync.help"), updater.versions_synced())
+    versions = list:list({ key = "version", commands = { "updaterversions" }, on_open = || -> fill_versions() })
+
+    local input = nil
+    input = versions:text_input({ key = "version.input", commands = { "updaterversion" },
+        on_change = function(value, click_type)
+
+            local typed = updater.typed_version(value, click_type)
+
+            if typed == nil then
+                return
+            end
+
+            input:warn(click_type, updater.update_warning(typed), || -> updater.update_to(typed))
+        end })
+
+    versions:toggle({ key = "version.sync", commands = { "updatersync" }, default = updater.versions_synced(),
+        on_change = function(on)
+            if updater.set_versions_synced(on) and updater.versions_loaded() then
+                fill_versions()
+            end
+        end })
     -- Also Stand's own Reset Settings and Set To Min / Max: the list follows, from the versions it has
-    versions:slider(label("version.limit.name"), 1, 50, updater.versions_shown(), 1, function(count)
-        if updater.set_versions_shown(count) and updater.versions_loaded() then
-            fill_versions(true)
+    versions:slider({ key = "version.limit", commands = { "updaterversionsshown" }, min = 1, max = 50,
+        default = updater.versions_shown(), step = 1, on_change = function(count)
+            if updater.set_versions_shown(count) and updater.versions_loaded() then
+                fill_versions(true)
+            end
+        end })
+    versions:divider({ name = label("version.divider") })
+
+    part = versions:section(function(node)
+        for _, row in ipairs(rows) do
+
+            local item = nil
+
+            item = node:action({ name = row.caption, help = label("version.item_help"),
+                on_click = |click_type| -> item:warn(click_type, updater.update_warning(row.version),
+                    || -> updater.update_to(row.version)) })
         end
-    end, { "updaterversionsshown" }, label("version.limit.help"))
-    versions:divider(label("version.divider"))
-    first_version = #versions.children + 1
+    end)
+end
+
+function module.build(node: table): table
+
+    local ui = node:scope("updater_menu")
+    local list = ui:list({ name = label("name"), help = label("help"), commands = { "updater" } })
+
+    -- The info lines follow the manager: a check, the download of an update
+    list:readonly({ caption = updater.installed_caption, value_from = updater.installed_text })
+    list:readonly({ caption = updater.available_caption, value_from = updater.available_text })
+    list:readonly({ caption = updater.last_check_caption, value_from = updater.last_check_text })
+    if not listening then
+        listening = true
+        manager.on_change(|| -> live.refresh())
+    end
+    list:action({ key = "changes", commands = { "updaterchanges" }, on_click = updater.save_changes })
+
+    list:divider({ name = label("check_divider") })
+    threaded(list, "check", "updatercheck", manager.check)
+
+    -- The branch updates come from, its name in the item: "Branch: main"
+    local branch = nil
+    branch = list:list_action({ caption = updater.branch_caption, help_key = "branch",
+        options = updater.branch_options(), commands = { "updaterbranch" }, on_select = function(index)
+            updater.set_branch(index)
+            branch:set_name(updater.branch_caption())
+        end })
+
+    flag(list, "on_start", "update_check_on_start", "updaterstart", true)
+
+    list:divider({ name = label("divider") })
+    list:readonly({ caption = updater.progress_caption, value_from = updater.progress_text })
+    threaded(list, "install", "updaterinstall", manager.install_and_restart)
+    flag(list, "before", "update_check_before", "updaterbefore", true)
+
+    -- Applied on a click with the days picked: 0 - never
+    list:click_slider({ key = "check_days", commands = { "updaterdays" }, min = 0, max = 30,
+        default = Atdar.profile.get("update_check_days") or 1, step = 1,
+        on_click = |days| -> updater.set_check_days(days) })
+
+    flag(list, "progress_notify", "update_progress_notify", "updaterprogress", true)
+    flag(list, "auto", "auto_update", "updaterauto", false)
+
+    version_list(list)
 
     return list
 end
-
--- The caption and the options are texts in the shown language (or the keys, Show Keys), so they're made
--- again when it changes. The picker may belong to a section already removed: a failed update is skipped
-i18n.on_change(function()
-    if view.branch == nil then
-        return
-    end
-
-    refresh_info()
-    pcall(menu.set_menu_name, view.branch, updater.branch_caption())
-    pcall(menu.set_list_action_options, view.branch, updater.branch_options())
-end)
 
 return module

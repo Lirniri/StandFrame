@@ -49,6 +49,16 @@ local ITEM_TYPES = {
         build = |node, item| -> node:slider(item.slider, item.min, item.max, item.default or item.min,
             item.step or 1, item.on_change, item.commands or {}, item.help or ""),
     },
+    click_slider = {
+        required = { "min", "max", "on_click" },
+        build = |node, item| -> node:click_slider(item.click_slider, item.min, item.max, item.default or item.min,
+            item.step or 1, item.on_click, item.commands or {}, item.help or ""),
+    },
+    color = {
+        required = { "on_change" },
+        build = |node, item| -> node:color(item.color, item.default or {}, item.on_change, item.commands or {},
+            item.help or "", item.transparency == true),
+    },
     textslider = {
         required = { "options", "on_click" },
         build = |node, item| -> node:text_slider(item.textslider, item.options, item.on_click,
@@ -76,6 +86,7 @@ local ITEM_FIELDS = {
     value = true,
     default = true,
     step = true,
+    transparency = true,
 }
 
 -- Sorted type names for messages

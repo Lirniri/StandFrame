@@ -8,6 +8,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local Logger = Atdar.loader.load("core/logger")
+local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
 
 local log = new Logger("Modules")
 
@@ -168,7 +169,7 @@ function module.start(module_name: string, seconds: ?int, with_init: bool): void
 
         -- Stand shows how long it took this frame on screen (info text), under the module's full name
         -- (Debug > Call Function > Settings: Show Call Time)
-        Atdar.loader.load("ui/stand/core/call_display").timed($"{module_name}.on_tick()", tick_once)
+        call_loop.timed($"{module_name}.on_tick()", tick_once)
         if not ok then
             log:error(text("call.failed"):format(tick_name(module_name), tostring(err)))
             end_run(module_name, run, "failed")

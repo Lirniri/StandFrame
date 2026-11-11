@@ -6,6 +6,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/logic/stand/commands")
+local refs = Atdar.loader.load("ui/stand/core/stand_refs")
 
 local log = new Logger("Menu")
 local text = select(2, i18n.scope("script_menu"))
@@ -93,9 +94,9 @@ end
 -- An item's name as text; names may be Stand labels. "" for an item that's gone
 function module.item_name(ref): string
 
-    local ok, name = pcall(menu.get_menu_name, ref)
+    local name = refs.name_of(ref)
 
-    if not ok then
+    if name == nil then
         return ""
     end
 
@@ -108,7 +109,7 @@ end
 
 -- Takes the cursor to the item itself. One hidden for now (debug mode is off) can't be reached
 function module.focus_item(ref): void
-    if not pcall(menu.focus, ref) then
+    if not refs.focus(ref) then
         log:warn(text("found_commands.focus.failed"))
     end
 end

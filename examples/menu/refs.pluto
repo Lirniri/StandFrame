@@ -1,0 +1,46 @@
+-- EXAMPLE: items for code that has only a Stand ref, as a menu file of a pack (menu/stand/refs.pluto).
+-- main.pluto calls it: ctx.load("refs").build(node, ctx)
+--
+--   Atdar.menu.<kind>(parent, { ... })   node:<kind>({ ... }) in parent: a Stand ref or a node.
+--                                        Kinds: list, divider, readonly, readonly_name, hyperlink, action,
+--                                        toggle, list_action, text_input, slider, click_slider, text_slider,
+--                                        add_feature, spoiler, color
+--   Atdar.menu.node(ref)                 the node all of them make their items in for that ref (:clear() them)
+--   Atdar.menu.root()                    the node of the script's own root list
+--   Atdar.menu.item(ref)                 a MenuItem for a ref Stand gave (not made through a node)
+--   Atdar.menu.refs                      Stand's command refs: by_command, is_valid, name_of, trigger, focus
+
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Refs")
+
+return {
+    build = function(node, ctx)
+        -- node.handle stands for a ref from somewhere else
+        local ref = node.handle
+        local tools = Atdar.menu.list(ref, { name = "Ref Tools" })
+
+        Atdar.menu.action(tools, { name = "Ping", commands = { "refsping" }, on_click = function()
+            log:notify("pong")
+        end })
+
+        -- Found by its command, as Stand knows it (with the prefix), and changed through a MenuItem
+        Atdar.menu.action(tools, { name = "Rename Ping", on_click = function()
+            local full = Atdar.menu.commands.names({ "refsping" })[1]
+            local found = Atdar.menu.refs.by_command(full)
+
+            if found == nil then
+                return
+            end
+
+            Atdar.menu.item(found):set_name("Ping (renamed)")
+        end })
+
+        -- Commands run as if typed in the command box
+        Atdar.menu.action(tools, { name = "Run Ping", on_click = function()
+            Atdar.menu.refs.trigger(Atdar.menu.commands.names({ "refsping" })[1])
+        end })
+
+        Atdar.menu.spoiler(tools, { name = "Code", value = "1234", hidden = "****" })
+    end,
+}

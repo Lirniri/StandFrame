@@ -39,7 +39,8 @@ local DEFAULTS = {
     update_versions_shown = 7,  -- how many of the newest versions Update To Version lists
     update_versions_sync = true, -- Update To Version lists the releases of the update branch; off: of every branch, each marked
     update_check_before = true, -- Update checks for a newer version first, and stops if there is none
-    update_last_check = 0,      -- when the last check ran (os.time), 0 = never; set by the updater
+    update_progress_notify = true, -- the download of an update is told in notifications, every 10%
+    update_last_check = 0,     -- when the last check ran (os.time), 0 = never; set by the updater
     update_branch = "main",     -- the repo's branch updates come from: "main" (releases) | "experiment" (newest)
     language = "auto",          -- language file code ("ru-ru") the script shows; "auto" = Stand's language
     notify = "game",           -- where notifications show: "stand" | "game" (the game's feed) | "none" (log only)

@@ -1,14 +1,15 @@
 -- EXAMPLE: ready-made menu helpers, as a menu file of a pack (menu/stand/helpers.pluto).
 -- main.pluto calls it: ctx.load("helpers").build(node, ctx)
 --
---   Atdar.menu.confirm.action      - a button that acts only on a second click
---   Atdar.menu.spoiler             - a line that hides its value until clicked
+--   node:confirm({ ... })          - a button that acts only on a second click
+--   node:spoiler({ ... })          - a line that hides its value until clicked
 --   Atdar.menu.builder.build_items - a submenu described as a table
 --
--- Atdar.menu is where a pack takes the parts of the script's menu from (lib/<script>/utils/menu lists them)
+-- Every item method takes a table of options and gives back a MenuItem (set_name, set_value, remove, ...).
+-- The older forms, Atdar.menu.confirm.action(list, name, again, ...) and Atdar.menu.spoiler(list.handle, ...),
+-- still work. Atdar.menu is where a pack takes the parts of the script's menu from (lib/<script>/utils/menu)
 
 local Logger = Atdar.loader.load("core/logger")
-local confirm = Atdar.menu.confirm
 local builder = Atdar.menu.builder
 
 local log = new Logger("Helpers")
@@ -17,21 +18,22 @@ return {
     build = function(node, ctx)
         -- Leaving the list forgets a first click, so it can't be confirmed by accident later
         local cancel_forget
-        local list = node:list("Helpers", {}, "Ready-made menu helpers", function()
+        local list = node:list({ name = "Helpers", help = "Ready-made menu helpers", on_back = function()
             cancel_forget()
-        end)
+        end })
 
-        -- For what can't be undone: the second click has to come within confirm.WAIT_MS (5 seconds).
+        -- For what can't be undone: the second click has to come within 5 seconds.
         -- While it waits, the button is called by its second name
-        local forget_ref, cancel = confirm.action(list, "Forget Vehicles", "Click Again To Forget", function()
-            log:notify("forgotten")
-        end, function()
-            log:warn("click again to forget every saved vehicle")
-        end, "Asks for a second click")
+        local _, cancel = list:confirm({
+            name = "Forget Vehicles",
+            again = "Click Again To Forget",
+            help = "Asks for a second click",
+            on_confirm = function() log:notify("forgotten") end,
+            on_first = function() log:warn("click again to forget every saved vehicle") end,
+        })
         cancel_forget = cancel
 
-        -- Atdar.menu takes a Stand ref, a MenuNode keeps its own in .handle
-        Atdar.menu.spoiler(list.handle, "Address", "Vinewood 12", "Click To Show", "Hidden until clicked")
+        list:spoiler({ name = "Address", value = "Vinewood 12", hidden = "Click To Show", help = "Hidden until clicked" })
 
         -- The same items as MenuNode's methods, written as data. A mistake in a table (an unknown type,
         -- a missing field) is a warning in the log and that item is skipped.

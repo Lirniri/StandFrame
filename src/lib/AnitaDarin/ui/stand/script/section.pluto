@@ -21,12 +21,12 @@
 -- Strings: core/language "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
-local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local delete_script_logic = Atdar.loader.load("ui/logic/stand/script/delete_script")
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/logic/stand/commands")
 local command_names = Atdar.loader.load("ui/logic/stand/script/command_names")
 local actions = Atdar.loader.load("ui/logic/stand/script/section_actions")
+local live = Atdar.loader.load("ui/stand/core/live")
 local profile_menu = Atdar.loader.load("ui/stand/script/profile")
 local language_menu = Atdar.loader.load("ui/stand/script/language")
 local user_commands = Atdar.loader.load("ui/stand/script/user_commands")
@@ -44,154 +44,142 @@ local label, text = i18n.scope("script_menu")
 
 -- An item that isn't made yet: says so when used. Unused now, kept for the next new item
 local function stub(node: table, key: string): void
-    node:action(label($"{key}.name"), || -> log:notify(text("stub")), {}, label("stub"))
+    node:scope("script_menu"):action({ key = key, help = label("stub"), on_click = || -> log:notify(text("stub")) })
 end
 
 -- Delete Script: a list with its own confirm button; what the clicks do is in
--- ui/logic/script/delete_script. Only the button's name is changed here
+-- ui/logic/stand/script/delete_script. Only the button's name is changed here
 -- @return The list's handle
 local function delete_script(node: table)
-    local confirm_ref
+
+    local ui = node:scope("script_menu")
+    local button = nil
     local controller = delete_script_logic.new({
-        on_armed = || -> pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.again")),
-        on_disarmed = || -> pcall(menu.set_menu_name, confirm_ref, label("delete_script.confirm.name")),
+        on_armed = || -> button:set_name(label("delete_script.confirm.again")),
+        on_disarmed = || -> button:set_name(label("delete_script.confirm.name")),
     })
-    local list = node:list(label("delete_script.name"), {}, label("delete_script.help"), || -> controller.cancel())
-    list:divider(label("delete_script.cannot_undo"))
-    list:toggle(label("delete_script.keep.name"), |on| -> controller.set_keep(on), {},
-        label("delete_script.keep.help"), true)
-    confirm_ref = list:action(label("delete_script.confirm.name"), || -> controller.confirm(), {},
-        label("delete_script.confirm.help"))
+
+    local list = ui:list({ key = "delete_script", on_back = || -> controller.cancel() })
+    list:divider({ name = label("delete_script.cannot_undo") })
+    list:toggle({ key = "delete_script.keep", default = true, on_change = |on| -> controller.set_keep(on) })
+    button = list:action({ key = "delete_script.confirm", on_click = || -> controller.confirm() })
+
     return list.handle
 end
 
--- ─── Found Commands ──────────────────────────────────────────────────────────
-
--- Rows of the latest build: { ref = the item, row = its row (a line or a list), command = the line with
--- the full command inside a list, or nil }
-local found_rows = {}
+-- Found Commands
 
 -- What the lists do with the names (rename, reset, words) is in ui/logic/stand/script/command_names
 local short_names = command_names.short_names
 local full_names = command_names.full_names
 
 -- A command: a list with its full command, its custom name and a reset, then its extra words. They're
--- kept by ui/logic/stand/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
-local function command_entry(list: table, ref): table
-    local entry = list:list(short_names(ref), {}, actions.item_name(ref))
-    local found = { ref = ref, row = entry.handle }
-    found.command = entry:readonly(label("found_commands.command"), full_names(ref))
+-- kept by ui/logic/stand/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/.
+-- The list's name and its full command follow the names (live): a new prefix, separator or custom name
+local function command_entry(list: table, ref): void
+
+    local base = commands.base_of(ref) or ""
+    local entry = list:list({ caption = || -> short_names(ref), help = actions.item_name(ref) })
+    local words = nil
+
+    -- The names changed: the captions, and the word buttons made again
+    local function changed(): void
+        live.refresh()
+        words.rebuild()
+    end
+
+    entry:readonly({ name = label("found_commands.command"), value_from = || -> full_names(ref) })
 
     -- Takes the cursor to the item itself
-    entry:action(label("found_commands.focus.name"), || -> actions.focus_item(ref), {}, label("found_commands.focus.help"))
-
-    local function renamed(): void
-        pcall(menu.set_menu_name, found.row, short_names(ref))
-        pcall(menu.set_value, found.command, full_names(ref))
-    end
+    entry:action({ key = "found_commands.focus", on_click = || -> actions.focus_item(ref) })
 
     -- A text field takes its text through the command box, so it needs a command: cbrename<base> (cb: the
-    -- Command Box section, like its cbprefix and cbseparator).
-    -- Made without commands.track, so it isn't one of the found commands itself.
+    -- Command Box section, like its cbprefix and cbseparator). Not tracked, so it isn't one of the found
+    -- commands itself.
     -- Its default is the custom name now: when Stand puts a field back to its default (restoring its
     -- profile's state), that's no change. Only the user's own entries rename
-    local base = commands.base_of(ref) or ""
-    menu.text_input(entry.handle, label("found_commands.rename.name"), commands.names({ $"cbrename{base}" }),
-        label("found_commands.rename.help"), function(value, click_type)
-        if not clicks.is_user_action(click_type) then
-            return
-        end
-        command_names.rename(ref, value, renamed)
-    end, commands.custom_of(ref))
+    entry:text_input({ key = "found_commands.rename", commands = { $"cbrename{base}" }, track = false,
+        user_only = true, default = commands.custom_of(ref),
+        on_change = |value| -> command_names.rename(ref, value, changed) })
 
-    entry:action(label("found_commands.reset.name"), function()
-        command_names.reset(ref, renamed)
-    end, {}, label("found_commands.reset.help"))
+    entry:action({ key = "found_commands.reset", on_click = || -> command_names.reset(ref, changed) })
 
-    -- Extra words: more commands for the item, the same prefix. Each a button that takes it off;
-    -- made again (at the end of the list) when one is added or taken off
-    entry:divider(label("found_commands.words.divider"))
-    local word_items = {}
-    local function show_words(): void
-        for _, item in ipairs(word_items) do
-            pcall(menu.delete, item)
-        end
-        word_items = {}
+    -- Extra words: more commands for the item, the same prefix. A text field needs a command: cbaddword<base>,
+    -- not tracked like cbrename
+    entry:divider({ name = label("found_commands.words.divider") })
+    entry:text_input({ key = "found_commands.words.add", commands = { $"cbaddword{base}" }, track = false,
+        user_only = true, on_change = function(value)
+            if value == "" then
+                return
+            end
+
+            command_names.add_word(ref, value, changed)
+        end })
+
+    -- Each word a button that takes it off; made again when one is added or taken off
+    words = entry:section(function(part)
         for _, word in ipairs(commands.words_of(ref)) do
-            table.insert(word_items, menu.action(entry.handle, word, {}, label("found_commands.words.remove.help"), function()
-                command_names.remove_word(ref, word, function()
-                    renamed()
-                    show_words()
-                end)
-            end))
+            part:action({ name = word, help = label("found_commands.words.remove.help"),
+                on_click = || -> command_names.remove_word(ref, word, changed) })
         end
-    end
-    -- A text field needs a command: cbaddword<base>, made without commands.track like cbrename
-    menu.text_input(entry.handle, label("found_commands.words.add.name"), commands.names({ $"cbaddword{base}" }),
-        label("found_commands.words.add.help"), function(value, click_type)
-        if not clicks.is_user_action(click_type) or value == "" then
-            return
-        end
-        command_names.add_word(ref, value, function()
-            renamed()
-            show_words()
-        end)
-    end, "")
-    show_words()
-    return found
+    end)
 end
 
 -- One list per item that has commands, named by its commands without the prefix, to rename it:
 -- the script's own in Base Commands, the loaded menu's in Found Commands. Filled at the end of the build,
 -- so the section's own items are in it too (the loaded menu's are made before the section)
 local function fill_command_lists(base: table, found: table): void
-    found_rows = {}
+
     local counts = { script = 0, menu = 0 }
+
     for _, item in ipairs(commands.list()) do
+
         local who = commands.owner_of(item.ref)
+
         -- The user's own commands have their list (User Commands), named there
-        if who ~= "user" then
-            local list = who == "menu" and found or base
-            table.insert(found_rows, command_entry(list, item.ref))
-            counts[who] = (counts[who] or 0) + 1
+        if who == "menu" then
+            command_entry(found, item.ref)
+            counts.menu += 1
+        elseif who ~= "user" then
+            command_entry(base, item.ref)
+            counts.script += 1
         end
     end
+
     if counts.script == 0 then
-        base:readonly_name(label("base_commands.none"))
+        base:readonly_name({ name = label("base_commands.none") })
     end
     if counts.menu == 0 then
-        found:readonly_name(label("found_commands.none"))
+        found:readonly_name({ name = label("found_commands.none") })
     end
 end
 
--- A new prefix, its place or separator renames the commands (ui/logic/stand/commands): the full ones inside the
--- lists follow
-Atdar.profile.on_change(function(key: string)
-    if not commands.is_name_key(key) then
-        return
-    end
-    for _, found in ipairs(found_rows) do
-        if found.command then
-            pcall(menu.set_value, found.command, full_names(found.ref))
-        end
-    end
-end)
-
 -- Opens one of the script's folders in Explorer
 local function open_folder(node: table, key: string, path: string): void
-    node:action(label($"open_folder.{key}.name"), || -> actions.open_folder(path), {}, label($"open_folder.{key}.help"))
+    node:action({ key = $"open_folder.{key}", on_click = || -> actions.open_folder(path) })
 end
 
 -- Clear Current Log File, at once; Clear All Log Files, after a warning
 local function clear_logs(node: table): void
 
-    local ref
+    local ui = node:scope("script_menu")
 
-    node:action(label("clear_log.name"), actions.clear_log, { "clearlog" }, label("clear_log.help"))
+    ui:action({ key = "clear_log", commands = { "clearlog" }, on_click = || -> actions.clear_log() })
+    ui:action({ key = "clear_logs", commands = { "clearlogs" }, warning = || -> actions.clear_logs_warning(),
+        on_click = || -> actions.clear_logs() })
+end
 
-    ref = node:action(label("clear_logs.name"), function(click_type)
-        menu.show_warning(ref, click_type, actions.clear_logs_warning(), actions.clear_logs)
-    end, { "clearlogs" }, label("clear_logs.help"))
+-- Options From Menu: what the loaded menu needs of the script, like Languages
+-- @return The list's handle
+local function options_from_menu(parent: table)
+
+    local from_menu = parent:scope("script_menu"):list({ key = "options_from_menu" })
+    local settings_list = from_menu:list({ key = "settings" })
+    local languages_list = settings_list:list({ key = "settings.languages" })
+
+    language_menu.show_keys(languages_list)
+
+    return from_menu.handle
 end
 
 -- opts.refresh:    rebuilds the section (after a profile is created or deleted)
@@ -199,16 +187,18 @@ end
 -- opts.find_packs: the menu packs in store, looked for again when Load Menu is opened
 -- opts.fill_menus: fill_menus(node) adds the Menus divider and an entry per menu (menu.pluto)
 function module.build(section: table, opts: table): void
+
+    local ui = section:scope("script_menu")
+
     profile_menu.begin(opts.packs)
 
     profile_menu.header(section)
-    
+
     -- Settings
-    local settings = section:list(i18n.label("profile.settings.name"), { "settings" },
-        i18n.label("profile.settings.help"))
+    local settings = section:scope("profile"):list({ key = "settings", commands = { "settings" } })
     profile_menu.appearance(settings)
     language_menu.build(settings)
-    settings:divider(i18n.label("profile.script.divider"))
+    settings:divider({ name = i18n.label("profile.script.divider") })
     profile_menu.rename(settings)
 
     profile_menu.profiles(section, opts.refresh)
@@ -220,47 +210,45 @@ function module.build(section: table, opts: table): void
     -- a restart. What's under Copy Menu To Core is made again then, and when another pack is picked there:
     -- the pack picked on a line of its own, then the menus
     local under_auto_copy = nil
-    local load_menu
 
-    local function fill_load_menu(): void
-        if under_auto_copy == nil then
-            return
-        end
+    local load_menu = section:scope("menu_loader"):list({ key = "load_menu", commands = { "menuloader" },
+        on_open = function()
+            profile_menu.refresh_packs(opts.find_packs())
+            under_auto_copy.rebuild()
+        end })
 
-        load_menu:clear_from(under_auto_copy)
-        profile_menu.auto_copy_picked(load_menu)
-        opts.fill_menus(load_menu)
-    end
+    load_menu:action({ key = "unload", commands = { "menuloaderunload" }, on_click = opts.unload })
+    profile_menu.auto_copy(load_menu, || -> under_auto_copy.rebuild())
 
-    load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
-        i18n.label("menu_loader.load_menu.help"), nil, function()
-        profile_menu.refresh_packs(opts.find_packs())
-        fill_load_menu()
+    under_auto_copy = load_menu:section(function(part)
+        profile_menu.auto_copy_picked(part)
+        opts.fill_menus(part)
     end)
-    load_menu:action(i18n.label("menu_loader.unload.name"), opts.unload, { "menuloaderunload" }, i18n.label("menu_loader.unload.help"))
-    profile_menu.auto_copy(load_menu, fill_load_menu)
-    under_auto_copy = #load_menu.children + 1
-    fill_load_menu()
 
     -- Command Box
-    local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
-    local base_commands = command_box:list(label("base_commands.name"), {}, label("base_commands.help"))
+    local command_box = ui:list({ key = "command_box" })
+    local base_commands = command_box:list({ key = "base_commands" })
     profile_menu.command_box_base_prefix(base_commands)
 
-    local found_commands = command_box:list(label("found_commands.name"), {}, label("found_commands.help"))
+    local found_commands = command_box:list({ key = "found_commands" })
     profile_menu.command_box_found_prefix(found_commands)
 
     user_commands.build(command_box)
+
     -- The folder each list's names and words are kept in; made when it isn't there yet
     for _, part in ipairs({ { list = base_commands, who = "script" }, { list = found_commands, who = "menu" } }) do
-        part.list:action(label("commands_folder.name"), || -> actions.open_commands_folder(part.who), {},
-            label($"commands_folder.{part.who}.help"))
+
+        local who = part.who
+
+        part.list:action({ key = "commands_folder", help = label($"commands_folder.{who}.help"),
+            on_click = || -> actions.open_commands_folder(who) })
+
         -- The folder apart from the commands under it
-        part.list:divider(label("commands.divider"))
+        part.list:divider({ name = label("commands.divider") })
     end
 
     -- Open Folder
-    local folders = section:list(label("open_folder.name"), {}, label("open_folder.help"))
+    local folders = ui:list({ key = "open_folder" })
     local paths = Atdar.filesystem.paths
     open_folder(folders, "lib", paths.lib)
     open_folder(folders, "resources", paths.resources)
@@ -270,11 +258,11 @@ function module.build(section: table, opts: table): void
     updater_menu.build(section)
 
     -- Debug
-    local debug = section:list(label("debug.name"), {}, label("debug.help"))
+    local debug = ui:list({ key = "debug" })
 
     profile_menu.debug(debug)
 
-    local logs = debug:list(label("logs.name"), {}, label("logs.help"))
+    local logs = debug:list({ key = "logs" })
 
     profile_menu.log_name(logs)
     profile_menu.log_keep_days(logs)
@@ -282,25 +270,12 @@ function module.build(section: table, opts: table): void
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
-    -- Options From Menu: what the loaded menu needs of the script, like Languages
-    local function options_from_menu(parent: table)
-
-        local from_menu = parent:list(label("options_from_menu.name"), {}, label("options_from_menu.help"))
-        local settings_list = from_menu:list(label("settings.name"), {}, label("settings.help"))
-        local languages_list = settings_list:list(label("settings.languages.name"), {}, label("settings.languages.help"))
-
-        language_menu.show_keys(languages_list)
-
-        return from_menu.handle
-    end
-
     -- Under the "Debug" divider, shown only in debug mode: Options From Menu, Call Function, Modules; then Delete Script
     modules_place.build(debug, { options_from_menu, call_function.build })
     modules_place.debug_only(delete_script(debug))
 
-    -- Settings
     -- The script's cards and posts in the game's feed, all taken away
-    section:action(label("clear_feed.name"), actions.clear_feed, { "notifyclearfeed" }, label("clear_feed.help"))
+    ui:action({ key = "clear_feed", commands = { "notifyclearfeed" }, on_click = || -> actions.clear_feed() })
 
     -- Last, once every item of the section has its commands
     fill_command_lists(base_commands, found_commands)

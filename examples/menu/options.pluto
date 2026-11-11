@@ -1,0 +1,62 @@
+-- EXAMPLE: items made with a table of options, as a menu file of a pack (menu/stand/options.pluto).
+-- main.pluto calls it: ctx.load("options").build(node, ctx)
+--
+-- Every MenuNode item method takes one table of options and gives back a MenuItem to change the item later
+-- (see changing.pluto). The options any item may have:
+--
+--   name, help      a text or a label from Atdar.lang.translate
+--   key             in place of name and help: the strings "<key>.name" and "<key>.help" from the language
+--                   files; node:scope("menu.example") puts every key of that node under "menu.example."
+--   commands        base command names, the script's prefix is added: { "hello" } -> "atdarhello"
+--   user_only       the handler runs only for the user's own clicks, not when Stand restores a profile
+--   warning         a function giving a text: Stand asks with it before the handler runs; nil - it doesn't ask
+--   on_click, on_change, on_select   the handler, by the kind of item (the same arguments as in Stand)
+
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Options")
+
+return {
+    build = function(node, ctx)
+        local list = node:list({ name = "Options", commands = { "options" }, help = "Items made with a table of options" })
+
+        list:action({ name = "Say Hello", commands = { "optionshello" }, help = "Shows a notification",
+            on_click = function()
+                log:notify("hello")
+            end })
+
+        list:toggle({ name = "A Switch", default = true, on_change = function(on)
+            log:info($"switched {on ? 'on' : 'off'}")
+        end })
+
+        list:slider({ name = "Volume", min = 0, max = 100, default = 50, step = 5, on_change = function(value)
+            log:info($"volume {value}")
+        end })
+
+        list:list_action({ name = "Pick One", options = { "Red", "Green", "Blue" }, on_select = function(index, option_name)
+            log:info($"picked {option_name}")
+        end })
+
+        -- Stand calls a text field's handler by itself too: restoring its profile, stopping the script.
+        -- user_only leaves only what the user typed
+        list:text_input({ name = "Nickname", commands = { "optionsnick" }, user_only = true, on_change = function(value)
+            log:info($"nickname '{value}'")
+        end })
+
+        -- Asks only while there is something to lose
+        local saved = 3
+
+        list:action({ name = "Clear Saved", help = "Asks first while something is saved",
+            warning = function()
+                if saved == 0 then
+                    return nil
+                end
+
+                return $"Clear {saved} saved items?"
+            end,
+            on_click = function()
+                saved = 0
+                log:notify("cleared")
+            end })
+    end,
+}

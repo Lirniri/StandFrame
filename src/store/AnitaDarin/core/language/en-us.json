@@ -37,7 +37,7 @@
         },
         "no_menus": "No menus found",
         "builtin": {
-            "name": "%s (built-in)",
+            "name": "Built-in",
             "help": "The menu that ships with the script",
             "copied": {
                 "help": "Copied from pack '%s'.\nRemove from core: deletes exactly the copied files, unloading the menu first if it's loaded."
@@ -519,6 +519,13 @@
         "no_categories": {
             "name": "Disable Function Categories",
             "help": "The module's functions in one list, without Getters, Setters and the others; the base functions as a section, not a list"
+        },
+        "options": {
+            "divider": "Options"
+        },
+        "function_call": {
+            "name": "Function Call",
+            "help": "Calling the module's functions by hand"
         },
         "functions": {
             "name": "Module Functions",
@@ -1083,6 +1090,8 @@
             "unknown": "unknown",
             "not_checked": "not checked",
             "never": "never",
+            "progress": "Progress",
+            "no_progress": "not updating",
             "up_to_date": "%s (up to date)"
         },
         "changes": {
@@ -1092,8 +1101,8 @@
             "update": "Update: %s",
             "remove": "Remove: %s",
             "more": "...and %d more",
-            "saved": "Log file created: %s",
-            "error": "Couldn't save log file"
+            "saved": "Changes saved: %s",
+            "error": "Couldn't save the changes file"
         },
         "check_divider": "Check",
         "on_start": {
@@ -1112,6 +1121,10 @@
         "before": {
             "name": "Check Before Updating",
             "help": "Update checks for a newer version first, and does nothing if there is none"
+        },
+        "progress_notify": {
+            "name": "Progress In Notifications",
+            "help": "Tells how far the download of an update has come, every 10%"
         },
         "auto": {
             "name": "Update Automatically",
@@ -1140,6 +1153,7 @@
             },
             "divider": "Versions",
             "item_help": "Installs this version, then the script restarts",
+            "warning": "Install version %s? The script's files are replaced and it restarts; profiles and settings stay",
             "installed": "%s (installed)"
         },
         "branch": {
@@ -1158,6 +1172,7 @@
             "up_to_date": "The script is up to date (version %s)",
             "found": "Version %s is out: %d file(s) to change. Press Update to install it",
             "installing": "Updating: downloading %d file(s)",
+            "progress": "Updating: %d%% (%d of %d files)",
             "installed": "Updated to version %s. The script restarts",
             "install_failed": "Couldn't update: %s. Nothing was changed",
             "stale": "The new version is still reaching GitHub's servers, so the downloaded files don't match yet. Nothing was changed. Wait a few minutes, press Check, then Update again",

@@ -18,8 +18,10 @@ script's launchers in Lua Scripts and installs under the name it finds. A rename
 installed a second time. With nothing installed the name is AnitaDarin; with several installs
 --name picks one.
 
-User data in store/<name>/ - config.json, profiles/, logs/, commands/ and user/ - is never overwritten or removed (except
-clean --all): the script writes it while it runs, the copies in src are only defaults for a first install.
+User data in store/<name>/ - config.json, the profiles/, logs/, commands/ and user/ folders (at any depth, a pack's
+included), updater/ (what the updater remembers) and menu packs of one's own that src doesn't have - is never
+overwritten or removed (except clean --all): the script writes it while it runs, the copies in src are only defaults
+for a first install. The same rule as core/updater.pluto's is_user_data.
 """
 
 import argparse
@@ -34,11 +36,15 @@ PROJECT_NAME = "AnitaDarin"
 SRC = pathlib.Path(__file__).resolve().parent / "src"
 # Folders in Lua Scripts that hold a <name>/ folder of the script
 SHARED_DIRS = ("lib", "store", "resources")
-# In store/<name>/: written by the script while it runs, never touched by sync or clean
-# (commands: the names, words and user commands made in the menu)
 # In store/<name>/: packs, left out of a lean install
 PACKS = ("menu",)
-USER_DATA = ("config.json", "profiles", "logs", "commands", "user")
+# In store/<name>/: config.json, and these folders at any depth (a pack's profiles too): written by the script while
+# it runs, never touched by sync or clean (commands: the names, words and user commands made in the menu).
+# Keep it the same as USER_FOLDERS in core/updater.pluto
+USER_FILES = ("config.json",)
+USER_FOLDERS = ("profiles", "logs", "commands", "user")
+# In store/<name>/, only at the top: what the updater remembers (versions, cache); it isn't part of a release
+USER_TOP = ("updater",)
 
 
 class BuildError(Exception):
@@ -77,9 +83,23 @@ def resolve_name(target: pathlib.Path, name: str = None) -> str:
     return names[0] if names else PROJECT_NAME
 
 
+def shipped_menu_names() -> set:
+    """The names in store/<project>/menu/ that src has: the project's own packs"""
+    menu_dir = SRC / "store" / PROJECT_NAME / "menu"
+    return {p.name for p in menu_dir.iterdir()} if menu_dir.is_dir() else set()
+
+
 def is_user_data(relative: pathlib.PurePath) -> bool:
-    """relative: a path inside store/<name>/"""
-    return bool(relative.parts) and relative.parts[0] in USER_DATA
+    """relative: a path inside store/<name>/. The user's: config.json (and its leftovers), the user folders at any
+    depth, updater/, and a pack of one's own (a name in menu/ that src doesn't have)"""
+    parts = relative.parts
+    if not parts:
+        return False
+    if parts[0] in USER_TOP or parts[0].startswith("config.json"):
+        return True
+    if len(parts) > 1 and parts[0] in PACKS and parts[1] not in shipped_menu_names():
+        return True
+    return any(part in USER_FOLDERS for part in parts[:-1]) or (len(parts) == 1 and parts[0] in USER_FILES)
 
 
 def install_plan(target: pathlib.Path, name: str, lean: bool = False) -> list:
@@ -159,7 +179,8 @@ def status(target: pathlib.Path, name: str) -> None:
     print(f"installed as: {', '.join(names) if names else 'not installed'}")
     print(f"syncs as:     {name}")
     store = target / "store" / name
-    data = [p for d in USER_DATA for p in ([store / d] if (store / d).is_file() else sorted((store / d).glob("*")))]
+    names = USER_FILES + USER_FOLDERS + USER_TOP
+    data = [p for d in names for p in ([store / d] if (store / d).is_file() else sorted((store / d).glob("*")))]
     if data:
         print("user data:    " + ", ".join(str(p.relative_to(store)) for p in data))
 

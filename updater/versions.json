@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "0.1.17",
+      "branch": "main"
+    },
+    {
+      "version": "0.1.16",
+      "branch": "experiment"
+    },
+    {
+      "version": "0.1.15",
+      "branch": "experiment"
+    },
+    {
       "version": "0.1.14",
       "branch": "main"
     },

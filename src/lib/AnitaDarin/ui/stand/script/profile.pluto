@@ -13,8 +13,9 @@
 --   log_keep_days, updater_log_both_ways, log_info_at_once - the Logs settings
 --   rename      - Rename Script
 --
--- Only the layout is here. What an item does with the profile - writes its value, follows a profile loaded
--- or reset, makes its caption again - is in ui/logic/stand/script/profile_view; what the buttons do is in
+-- Only the layout is here. An item with `profile = "<key>"` writes that value and follows a profile loaded or
+-- reset (ui/stand/core/profile_items); captions follow the profile and the language (ui/stand/core/live).
+-- The texts are made in ui/logic/stand/script/profile_view, what the buttons do is in
 -- ui/logic/stand/script/profile_actions.
 -- Strings live in core/language under "profile"
 
@@ -25,6 +26,7 @@ local actions = Atdar.loader.load("ui/logic/stand/script/profile_actions")
 local Logger = Atdar.loader.load("core/logger")
 local feed_picture = Atdar.loader.load("natives/visual/feed_picture")
 local confirm = Atdar.loader.load("ui/stand/core/confirm")
+local live = Atdar.loader.load("ui/stand/core/live")
 
 local log = new Logger("Profile")
 
@@ -46,6 +48,9 @@ local SUBJECT_COLORS = { "level", "default", "white", "grey", "dark_grey", "blac
 -- natives/visual/hud/thefeed ICON names
 local FEED_ICONS = { "CHAT_BOX", "EMAIL", "FRIEND_REQUEST", "ARROW", "RP", "MONEY", "NONE" }
 
+-- Copy Menu To Core of the latest build: its options follow the packs in store
+local auto_copy_item = nil
+
 -- The picture, the icon and the subject are the message card's only: hidden while posts are chosen
 local function is_message(): bool
     return Atdar.profile.get("notify_feed_style") == "message"
@@ -60,15 +65,19 @@ end
 -- Header: whose values these are, and the names
 
 function module.header(node: table): void
-    view.caption(node:divider(view.settings_caption()), view.settings_caption)
-    view.input(node, "display_name")
-    view.input(node, "short_name")
+
+    local ui = node:scope("profile")
+
+    ui:divider({ caption = view.settings_caption })
+    ui:text_input({ key = "display_name", profile = "display_name", commands = { "displayname" } })
+    ui:text_input({ key = "short_name", profile = "short_name", commands = { "shortname" } })
 end
 
 -- Name In Logs
 
 function module.log_name(node: table): void
-    view.choice(node, "log_name", { strings = "log_name", values = LOG_NAMES, commands = { "logname" } })
+    node:scope("profile"):list_action({ key = "log_name", profile = "log_name", values = LOG_NAMES,
+        commands = { "logname" } })
 end
 
 -- Appearance
@@ -76,91 +85,103 @@ end
 -- Where notifications show (Stand, the game's feed, log only), emoticons, errors always in Stand, examples
 local function notifications(list: table): void
 
-    view.choice(list, "notify", { strings = "notify.target", values = NOTIFY_TARGETS, fallback = "stand", commands = { "" } })
+    list:list_action({ key = "notify.target", profile = "notify", values = NOTIFY_TARGETS, fallback = "stand",
+        commands = { "" } })
 
     -- Emoticons: on, and the one for each kind of notification
-    local emoticons = list:list(label("notify.emoticons.name"), {}, label("notify.emoticons.help"))
-    view.toggle(emoticons, "notify_emoticons", "notify.emoticons.on")
-    view.input(emoticons, "notify_emoticon_info", true, "notifyemoticoninfo")
-    view.input(emoticons, "notify_emoticon_warn", true, "notifyemoticonwarn")
-    view.input(emoticons, "notify_emoticon_error", true, "notifyemoticonerror")
-    view.input(emoticons, "notify_emoticon_success", true, "notifyemoticonsuccess")
+    local emoticons = list:list({ key = "notify.emoticons" })
+    emoticons:toggle({ key = "notify.emoticons.on", profile = "notify_emoticons" })
 
-    view.toggle(list, "notify_errors_in_stand", "notify.errors")
+    for _, kind in ipairs({ "info", "warn", "error", "success" }) do
+        local key = $"notify_emoticon_{kind}"
+        emoticons:text_input({ key = key, profile = key, allow_empty = true, commands = { $"notifyemoticon{kind}" } })
+    end
+
+    list:toggle({ key = "notify.errors", profile = "notify_errors_in_stand" })
 
     -- An example of each kind, the way it really looks; the ones before are taken away first
-    local examples = list:list(label("notify.examples.name"), {}, label("notify.examples.help"))
+    local examples = list:list({ key = "notify.examples" })
+
     for _, kind in ipairs(actions.EXAMPLE_KINDS) do
-        examples:action(label($"notify.examples.{kind.key}.name"), || -> actions.show_examples({ kind }), {},
-            label("notify.examples.one.help"))
+        examples:action({ key = $"notify.examples.{kind.key}", help = label("notify.examples.one.help"),
+            on_click = || -> actions.show_examples({ kind }) })
     end
-    examples:action(label("notify.examples.all.name"), || -> actions.show_examples(actions.EXAMPLE_KINDS), {},
-        label("notify.examples.all.help"))
+
+    examples:action({ key = "notify.examples.all", on_click = || -> actions.show_examples(actions.EXAMPLE_KINDS) })
 end
 
 -- The Stand divider: how Stand's notifications look
 local function stand_notifications(list: table): void
-    list:divider(label("notify.stand.divider"))
-    view.toggle(list, "notify_stand_newline", "notify.stand.newline")
+    list:divider({ name = label("notify.stand.divider") })
+    list:toggle({ key = "notify.stand.newline", profile = "notify_stand_newline" })
 end
 
 -- The message card's subject colour for "day" or "night"
 local function subject_color(list: table, period: string): void
-    view.shown_when(view.choice(list, $"notify_subject_color_{period}", {
-        strings = $"feed.subject_color_{period}",
+    list:list_action({
+        key = $"feed.subject_color_{period}",
+        profile = $"notify_subject_color_{period}",
         values = SUBJECT_COLORS,
         option = |name| -> $"feed.subject_color.{name}",
         fallback = "default",
         commands = { $"notifyfeedsubject{period}" },
-    }), is_message)
+        shown_when = is_message,
+    })
+end
+
+-- A day and a night colour under a divider: the background, the flash
+local function colors(list: table, divider: string, day: table, night: table): void
+    list:divider({ name = label(divider) })
+    list:color(day)
+    list:color(night)
 end
 
 -- The Game divider and below it how notifications look in the game's feed
 local function feed(list: table): void
 
-    list:divider(label("feed.name"))
+    list:divider({ name = label("feed.name") })
 
-    view.choice(list, "notify_feed_style", {
-        strings = "feed.style",
-        values = FEED_STYLES,
-        fallback = "ticker"
-    })
+    list:list_action({ key = "feed.style", profile = "notify_feed_style", values = FEED_STYLES, fallback = "ticker" })
 
-    local feed_general_list = list:list(label("feed.general.name"), {}, label("feed.general.help"))
+    local general = list:list({ key = "feed.general" })
 
     -- Flashing is the game feed's only (Stand's notifications don't flash), so it's here
-    view.toggle(feed_general_list, "notify_flash", "notify.flash")
-    
-    view.slider(feed_general_list, "notify_day_start", "feed.day_start", 0, 23, { "notifyfeeddaystart" })
-    view.slider(feed_general_list, "notify_night_start", "feed.night_start", 0, 23, { "notifyfeednightstart" })
-    
-    feed_general_list:divider(label("feed.background_color.divider"))
-    
-    view.color(feed_general_list, "notify_background_day", "feed.background_day", { "notifyfeedbgday" })
-    view.color(feed_general_list, "notify_background_night", "feed.background_night", { "notifyfeedbgnight" })
-    
-    feed_general_list:divider(label("feed.flash_color.divider"))
+    general:toggle({ key = "notify.flash", profile = "notify_flash" })
 
-    view.color(feed_general_list, "notify_flash_color_day", "feed.flash_color_day", { "notifyfeedflashday" })
-    view.color(feed_general_list, "notify_flash_color_night", "feed.flash_color_night", { "notifyfeedflashnight" })
+    general:slider({ key = "feed.day_start", profile = "notify_day_start", min = 0, max = 23,
+        commands = { "notifyfeeddaystart" } })
+    general:slider({ key = "feed.night_start", profile = "notify_night_start", min = 0, max = 23,
+        commands = { "notifyfeednightstart" } })
+
+    colors(general, "feed.background_color.divider",
+        { key = "feed.background_day", profile = "notify_background_day", commands = { "notifyfeedbgday" } },
+        { key = "feed.background_night", profile = "notify_background_night", commands = { "notifyfeedbgnight" } })
+
+    colors(general, "feed.flash_color.divider",
+        { key = "feed.flash_color_day", profile = "notify_flash_color_day", commands = { "notifyfeedflashday" } },
+        { key = "feed.flash_color_night", profile = "notify_flash_color_night", commands = { "notifyfeedflashnight" } })
 
     -- Above the options only the Message style has (Picture, Icon, Subject Color); a Post has none, so it's hidden then
-    view.shown_when(list:divider(label("feed.message.divider")), is_message)
-    
-    view.shown_when(view.choice(list, "notify_feed_picture", {
-        strings = "feed.picture",
+    list:divider({ name = label("feed.message.divider"), shown_when = is_message })
+
+    list:list_action({
+        key = "feed.picture",
+        profile = "notify_feed_picture",
         values = feed_picture.list(),
         title = feed_picture.title,
         after = actions.load_feed_picture,
-    }), is_message)
+        shown_when = is_message,
+    })
     actions.load_feed_picture()
 
-    view.shown_when(view.choice(list, "notify_feed_icon", {
-        strings = "feed.icon",
+    list:list_action({
+        key = "feed.icon",
+        profile = "notify_feed_icon",
         values = FEED_ICONS,
         option = |name| -> $"feed.icon.{name:lower()}",
         fallback = "CHAT_BOX",
-    }), is_message)
+        shown_when = is_message,
+    })
 
     subject_color(list, "day")
     subject_color(list, "night")
@@ -168,9 +189,13 @@ end
 
 -- Appearance > Notifications, with the game's feed under the Game divider (utils/util.toast reads what they set)
 function module.appearance(node: table): void
-    local appearance = node:list(label("appearance.name"), { "appearance" }, label("appearance.help"))
+
+    local ui = node:scope("profile")
+    local appearance = ui:list({ key = "appearance", commands = { "appearance" } })
+
     -- Going back out of Notifications takes the example cards away too: they were only there to look at
-    local list = appearance:list(label("notify.name"), { "notify" }, label("notify.help"), actions.remove_examples)
+    local list = appearance:list({ key = "notify", commands = { "notify" }, on_back = actions.remove_examples })
+
     notifications(list)
     stand_notifications(list)
     feed(list)
@@ -186,141 +211,111 @@ local function build_entry(parent: table, name: string, changed: function): void
     -- Going back out of the list cancels a first click on Reset
     local cancel_reset = nil
 
-    local entry = parent:list(view.entry_caption(name), {}, label("entry.help"), function()
+    local entry = parent:list({ caption = || -> view.entry_caption(name), help_key = "entry", on_back = function()
         if cancel_reset then
             cancel_reset()
         end
-    end)
-    view.caption(entry.handle, || -> view.entry_caption(name), $"entry.{name}")
+    end })
 
     -- The profile's values changed (loaded, reset): the section's items take them in place. The entries
     -- stay: making them again would delete the list the user is in
     local function values_changed(): void
-        if not view.update() then
+        if not live.refresh() then
             changed()
         end
     end
 
-    local save_ref
-    save_ref = entry:action(label("save.name"), function(click_type)
-        local function save(): void
-            actions.save(name, view.update_captions)
-        end
-
-        -- Saving into another profile overwrites what it had
+    -- Saving into another profile overwrites what it had
+    entry:action({ key = "save", on_click = || -> actions.save(name, live.refresh), warning = function()
         if name == profile.active_name() then
-            save()
-            return
+            return nil
         end
 
-        menu.show_warning(save_ref, click_type, text("save.overwrite"):format(name, profile.active_name()), save)
-    end, {}, label("save.help"))
+        return text("save.overwrite"):format(name, profile.active_name())
+    end })
 
-    local load_ref
-    load_ref = entry:action(label("load.name"), function(click_type)
-        local function load_profile(): void
-            actions.load(name, values_changed)
-        end
-
+    entry:action({ key = "load", on_click = || -> actions.load(name, values_changed), warning = function()
         if not profile.is_dirty() then
-            load_profile()
-            return
+            return nil
         end
 
-        menu.show_warning(load_ref, click_type, text("load.unsaved"):format(profile.active_name()), load_profile)
-    end, {}, label("load.help"))
+        return text("load.unsaved"):format(profile.active_name())
+    end })
 
-    entry:toggle(label("autosave.name"), function(on)
+    entry:toggle({ key = "autosave", default = profile.is_autosave(name), on_change = function(on)
         profile.set_autosave(name, on)
-        view.update_captions()
-    end, {}, label("autosave.help"), profile.is_autosave(name))
+        live.refresh()
+    end })
 
     -- Every value back to the defaults in core/profile, after a second click
     local _
-    _, cancel_reset = confirm.action(entry, label("reset.name"), label("reset.again"), function()
-        actions.reset(name, values_changed)
-    end, function()
-        log:warn(text("reset.warning"):format(name, confirm.WAIT_MS // 1000))
-    end, label("reset.help"))
+    _, cancel_reset = entry:confirm({
+        key = "reset",
+        on_confirm = || -> actions.reset(name, values_changed),
+        on_first = || -> log:warn(text("reset.warning"):format(name, confirm.WAIT_MS // 1000)),
+    })
 
-    local delete_ref
-    delete_ref = entry:action(label("delete.name"), function(click_type)
-        menu.show_warning(delete_ref, click_type, text("delete.warning"):format(name), function()
-            actions.delete(name, changed)
-        end)
-    end, {}, label("delete.help"))
+    entry:action({
+        key = "delete",
+        warning = || -> text("delete.warning"):format(name),
+        on_click = || -> actions.delete(name, changed),
+    })
 end
 
 -- The Profiles list. Its entries are made again in place when it's opened and after a profile is made,
--- deleted or loaded; the rest of the section follows the active profile's values (view.update). Rebuilding
+-- deleted or loaded; the rest of the section follows the active profile's values (live). Rebuilding
 -- the whole section from inside this list would leave the user in the old, deleted one.
 -- refresh() rebuilds the section: only when the items can't take the values in place
 function module.profiles(node: table, refresh: function): void
 
     local profile = Atdar.profile
-    local list = nil
-    -- Where the entries start, so they're made again without the items above
-    local first = nil
-    local changed
-
-    local function fill_entries(): void
-        if first == nil then
-            return
-        end
-
-        list:clear_from(first)
-
-        local names = profile.list()
-
-        for _, name in ipairs(names) do
-            build_entry(list, name, changed)
-        end
-
-        -- All deleted: the script goes on with the values it has; Create Main Profile or Save brings one back
-        if #names == 0 then
-            list:readonly_name(label("no_profiles"))
-        end
-    end
+    local entries = nil
 
     -- A profile made, deleted or loaded: the entries again, the section's captions and items to its values
-    changed = function()
-        fill_entries()
-        if not view.update() then
+    local function changed(): void
+        entries.rebuild()
+        if not live.refresh() then
             refresh()
         end
     end
 
-    list = node:list(label("name"), { "profiles" }, label("help"), nil, fill_entries)
+    local list = node:scope("profile"):list({ name = label("name"), help = label("help"), commands = { "profiles" },
+        on_open = || -> entries.rebuild() })
 
-    list:text_input(label("create.name"), { "newprofile" }, function(value)
+    list:text_input({ key = "create", commands = { "newprofile" }, on_change = function(value)
         if value ~= "" and profile.create(value) then
             changed()
         end
-    end, label("create.help"))
+    end })
 
     -- The main profile with the defaults; one that's there is made again only after the warning
-    local create_main_ref
-    create_main_ref = list:action(label("create_main.name"), function(click_type)
+    list:action({ key = "create_main", on_click = || -> actions.create_main(changed), warning = function()
         local main = profile.main_name()
-        local function make(): void
-            actions.create_main(changed)
-        end
 
         if not profile.exists(main) then
-            make()
-            return
+            return nil
         end
 
-        menu.show_warning(create_main_ref, click_type, text("create_main.warning"):format(main), make)
-    end, {}, label("create_main.help"))
+        return text("create_main.warning"):format(main)
+    end })
 
-    list:action(label("open_folder.name"), function()
-        util.open_folder(profile.folder())
-    end, {}, label("open_folder.help"))
+    list:action({ key = "open_folder", on_click = || -> util.open_folder(profile.folder()) })
 
-    list:divider(label("list.divider"))
-    first = #list.children + 1
-    fill_entries()
+    list:divider({ name = label("list.divider") })
+
+    entries = list:section(function(part)
+
+        local names = profile.list()
+
+        for _, name in ipairs(names) do
+            build_entry(part, name, changed)
+        end
+
+        -- All deleted: the script goes on with the values it has; Create Main Profile or Save brings one back
+        if #names == 0 then
+            part:readonly_name({ name = label("no_profiles") })
+        end
+    end)
 end
 
 -- Copy Menu To Core
@@ -328,14 +323,16 @@ end
 -- Off, then every pack in store; takes effect at the next start (menu_loader's auto_copy)
 -- @param changed function() another pack was picked: the list makes the line under the item again
 function module.auto_copy(node: table, changed: function): void
-    local ref = node:list_action(view.auto_copy_caption(), view.auto_copy_options(), function(index)
-        view.set_auto_copy(index)
-        changed()
-    end, { "menuloaderautocopy" }, view.auto_copy_help())
-
-    view.caption(ref, view.auto_copy_caption)
-    view.help(ref, view.auto_copy_help)
-    module.auto_copy_ref = ref
+    auto_copy_item = node:list_action({
+        caption = view.auto_copy_caption,
+        help_from = view.auto_copy_help,
+        options = view.auto_copy_options(),
+        commands = { "menuloaderautocopy" },
+        on_select = function(index)
+            view.set_auto_copy(index)
+            changed()
+        end,
+    })
 end
 
 -- The pack picked, on a line of its own right under Copy Menu To Core; nothing while it's off
@@ -344,15 +341,17 @@ function module.auto_copy_picked(node: table): void
     local pack = view.auto_copy_pack()
 
     if pack ~= nil then
-        node:divider(view.auto_copy_line(pack))
+        node:divider({ name = view.auto_copy_line(pack) })
     end
 end
 
 -- The packs in store were read again (Load Menu was opened): Copy Menu To Core offers what's there now
 function module.refresh_packs(packs: table): void
+
     view.set_packs(packs)
-    if module.auto_copy_ref ~= nil then
-        pcall(menu.set_list_action_options, module.auto_copy_ref, view.auto_copy_options())
+
+    if auto_copy_item ~= nil then
+        auto_copy_item:set_options(view.auto_copy_options())
     end
 end
 
@@ -366,10 +365,13 @@ local function prefix_items(node: table, key: string, separator_key: string, str
     separator_command: string
 ): void
     -- body function:
-    view.input(node, key, true, command)
-    view.toggle(node, $"{key}_at_end", "prefix_at_end", { $"{command}atend" })
-    view.choice(node, separator_key, {
-        strings = strings,
+    local ui = node:scope("profile")
+
+    ui:text_input({ key = key, profile = key, allow_empty = true, commands = { command } })
+    ui:toggle({ key = "prefix_at_end", profile = $"{key}_at_end", commands = { $"{command}atend" } })
+    ui:list_action({
+        key = strings,
+        profile = separator_key,
         values = SEPARATORS,
         option = |value| -> SEPARATOR_NAMES[value],
         commands = { separator_command },
@@ -397,54 +399,54 @@ end
 
 function module.debug(node: table): void
 
-    view.toggle(node, "debug", "debug", { "debug" })
+    local ui = node:scope("profile")
+
+    ui:toggle({ key = "debug", profile = "debug", commands = { "debug" } })
 
     -- The script stops by itself when its files change on disk (core/file_watch)
-    view.toggle(node, "stop_on_change", "stop_on_change", { "stoponchange" }, function(on)
-        if on then
-            log:notify(text("stop_on_change.on"))
-        end
-    end)
+    ui:toggle({ key = "stop_on_change", profile = "stop_on_change", commands = { "stoponchange" },
+        after = actions.notice_when_on("stop_on_change") })
 
     -- Works without debug mode too: it only adds lines to the log
-    view.toggle(node, "load_timing", "load_timing", { "loadtiming" }, function(on)
-        if on then
-            log:notify(text("load_timing.on"))
-        end
-    end)
+    ui:toggle({ key = "load_timing", profile = "load_timing", commands = { "loadtiming" },
+        after = actions.notice_when_on("load_timing") })
 
     -- The native wrappers read from disk again, to try a change without restarting the script
-    node:action(label("reload_natives.name"), actions.reload_natives, { "reloadnatives" }, label("reload_natives.help"))
+    ui:action({ key = "reload_natives", commands = { "reloadnatives" }, on_click = actions.reload_natives })
 end
 
 -- Logs
 
 -- Days of log files kept (core/logger). Fewer days apply right away, not only at the next start or day
 function module.log_keep_days(node: table): void
-    view.slider(node, "log_keep_days", "log_keep_days", 0, 365, { "logkeepdays" }, || -> Logger.remove_old())
+    node:scope("profile"):slider({ key = "log_keep_days", profile = "log_keep_days", min = 0, max = 365,
+        commands = { "logkeepdays" }, after = || -> Logger.remove_old() })
 end
 
 -- Write updater changes to both log file and Stand
 function module.updater_log_both_ways(node: table): void
-    view.toggle(node, "updater_log_both_ways", "updater_log_both_ways", { "updaterlogbothways" })
+    node:scope("profile"):toggle({ key = "updater_log_both_ways", profile = "updater_log_both_ways",
+        commands = { "updaterlogbothways" } })
 end
 
 -- Info lines on disk at once too (core/logger): warnings and errors always are, the rest within a second.
 -- What waits goes now: nothing written before stays behind
 function module.log_info_at_once(node: table): void
-    view.toggle(node, "log_info_at_once", "log_info_at_once", { "loginfoatonce" }, || -> Logger.flush())
+    node:scope("profile"):toggle({ key = "log_info_at_once", profile = "log_info_at_once",
+        commands = { "loginfoatonce" }, after = || -> Logger.flush() })
 end
 
 -- Rename Script
 
 function module.rename(node: table): void
 
-    local rename_ref
+    local field = nil
     -- Stand calls the field again while the script stops (after a rename, or any stop);
     -- showing a warning then is an error, so nothing is asked then
     local renaming = false
 
-    rename_ref = node:text_input(label("rename.name"), { "renamescript" }, function(value, click_type)
+    local function rename(value: string, click_type): void
+
         if renaming or clicks.is_stopping() or value == Atdar.name then
             return
         end
@@ -453,8 +455,10 @@ function module.rename(node: table): void
             return
         end
 
+        local warning = text("rename.warning"):format(Atdar.name, value)
+
         -- Still possible if Stand stops the script before our on_stop handler runs
-        local shown = pcall(menu.show_warning, rename_ref, click_type, text("rename.warning"):format(Atdar.name, value), function()
+        local shown = pcall(field.warn, field, click_type, warning, function()
             renaming = true
             if not actions.rename_script(value) then
                 renaming = false
@@ -464,7 +468,10 @@ function module.rename(node: table): void
         if not shown then
             log:debug($"rename to '{value}' not asked: the script is stopping")
         end
-    end, label("rename.help"), Atdar.name)
+    end
+
+    field = node:scope("profile"):text_input({ key = "rename", commands = { "renamescript" }, default = Atdar.name,
+        on_change = rename })
 end
 
 return module

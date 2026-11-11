@@ -3,15 +3,34 @@
 -- Atdar.menu: what a menu file (a pack's or the script's own) builds its menu with, in one place, so a pack
 -- needn't know where each part lives in lib.
 --
---   Items Stand doesn't have ready-made, made in a Stand ref (a MenuNode's is node.handle):
+--   Items are made through a MenuNode (a pack's build(node) gets one). Each item method takes a table of options
+--   and gives back a MenuItem to change it later (set_name, set_help, set_value, set_visible, remove):
+--     local status = node:readonly({ name = "Status", value = "off" })
+--     node:action({ name = "Start", commands = { "start" }, on_click = || -> status:set_value("on") })
+--   The old positional forms, node:action(name, on_click, commands, help), still work.
+--
+--   The same items for code that has only a Stand ref (or a node), each giving back the MenuItem:
+--     local list = Atdar.menu.list(ref, { name = "Tools" })        -- a MenuNode
+--     Atdar.menu.toggle(list, { name = "Fly", on_change = fn })
+--     Atdar.menu.action(Atdar.menu.root(), { name = "Heal", on_click = heal })
+--   All items made in one ref this way are kept by one node: Atdar.menu.node(ref):clear() removes them.
+--   Atdar.menu.item(ref) wraps a ref from Stand itself (menu.ref_by_path) to change it safely.
+--
+--   Items Stand doesn't have ready-made, in the old form giving back the Stand ref:
 --     Atdar.menu.spoiler(ref, "Address", "Vinewood 12")       -- a line that hides its value until clicked
 --     Atdar.menu.color(ref, "Color", { "color" }, "", { r = 1, g = 0, b = 0 }, on_change)
+--   With a table of options, Atdar.menu.spoiler(ref, { ... }) and Atdar.menu.color(ref, { ... }), they give back
+--   the MenuItem like node:spoiler({ ... }) and node:color({ ... }).
 --
 --   The parts of the script's own menu, each loaded the first time it's asked for:
 --     Atdar.menu.Node        MenuNode: new Atdar.menu.Node(ref) wraps a Stand ref (ui/stand/core/menu_node)
+--     Atdar.menu.Item        MenuItem: what an item method gives back (ui/stand/core/menu_item)
+--     Atdar.menu.live        live.refresh(): items bound with caption/help_from/shown_when/value_from set again
+--     Atdar.menu.refs        Stand's command refs for logic: is_valid, by_command, trigger... (ui/stand/core/stand_refs)
 --     Atdar.menu.builder     builder.build_items(node, items): a submenu written as a table (menu_builder)
 --     Atdar.menu.confirm     confirm.action(node, name, again_name, on_confirm): a button that acts on a
---                            second click (ui/stand/core/confirm)
+--                            second click, gives back its MenuItem; node:confirm({ ... }) is the options form
+--                            (ui/stand/core/confirm)
 --     Atdar.menu.settings    the script's own section: set_parent, set_divider, set_name, add (ui/stand/core/settings)
 --     Atdar.menu.commands    command names with the profile's prefix: names, track (ui/logic/stand/commands)
 --     Atdar.menu.arguments   a field for each parameter of a function, by its type (ui/stand/core/arguments)
@@ -23,6 +42,9 @@ local module = {}
 -- Where each part is in lib
 local PARTS = {
     Node = "ui/stand/core/menu_node",
+    Item = "ui/stand/core/menu_item",
+    live = "ui/stand/core/live",
+    refs = "ui/stand/core/stand_refs",
     builder = "ui/stand/core/menu_builder",
     confirm = "ui/stand/core/confirm",
     settings = "ui/stand/core/settings",
@@ -51,46 +73,104 @@ setmetatable(module, {
     end,
 })
 
--- A spoiler: a line that hides its value until clicked; another click hides it again.
+-- Nodes
+
+-- The node made for each Stand ref given to the functions below; weak, so a deleted list's node goes with it
+local nodes = setmetatable({}, { __mode = "k" })
+
+local root_node = nil
+
+-- The node items in parent are made through: parent itself when it's a node, otherwise one node per Stand ref
+function module.node(parent): table
+
+    if type(parent) == "table" and parent.make ~= nil then
+        return parent
+    end
+
+    if nodes[parent] == nil then
+        nodes[parent] = new module.Node(parent)
+    end
+
+    return nodes[parent]
+end
+
+-- The node of the script's own root list in Stand (one for every call)
+function module.root(): table
+
+    if root_node == nil then
+        root_node = module.Node.my_root()
+        nodes[root_node.handle] = root_node
+    end
+
+    return root_node
+end
+
+-- A MenuItem for a ref from Stand itself (not made through a node): its changes are safe on a deleted item
+function module.item(ref): table
+    return new module.Item(ref)
+end
+
+-- Items
+
+-- Atdar.menu.<kind>(parent, opts): node:<kind>(opts) in parent (a Stand ref or a node), gives back the MenuItem
+local KINDS = {
+    "list", "divider", "readonly", "readonly_name", "hyperlink", "action", "toggle", "list_action", "text_input",
+    "slider", "click_slider", "text_slider", "add_feature",
+}
+
+for _, kind in ipairs(KINDS) do
+    module[kind] = function(parent, opts: table): table
+
+        local node = module.node(parent)
+
+        return node[kind](node, opts)
+    end
+end
+
+-- A spoiler: a line that hides its value until clicked; another click hides it again (MenuNode:spoiler).
 --
 --     Atdar.menu.spoiler(root, "AnitaDarin", "Hello!")   -- "AnitaDarin: Hidden", after a click "AnitaDarin: Hello!"
+--     Atdar.menu.spoiler(root, { name = "AnitaDarin", value = "Hello!", hidden = "***" })   -- gives back the MenuItem
 --
 -- @param value What is hidden
 -- @param hidden_text Shown in place of the value while it's hidden
--- @return The command
-function module.spoiler(parent, menu_name: string, value: string = "", hidden_text: string = "Hidden", help_text: string = "")
-    local shown = false
-    local ref
-    ref = menu.action(parent, $"{menu_name}: {hidden_text}", {}, help_text, function()
-        shown = not shown
-        if shown then
-            menu.set_menu_name(ref, $"{menu_name}: {value}")
-            return
-        end
-        menu.set_menu_name(ref, $"{menu_name}: {hidden_text}")
-    end)
-    return ref
+-- @return The command; the MenuItem with a table of options
+function module.spoiler(parent, menu_name: string|table, value: string = "", hidden_text: string = "Hidden",
+    help_text: string = ""
+)
+    -- body function:
+    if type(menu_name) == "table" then
+        return module.node(parent):spoiler(menu_name)
+    end
+
+    local item = module.node(parent):spoiler({ name = menu_name, value = value, hidden = hidden_text, help = help_text })
+    return item.ref
 end
 
 -- A colour picker: the same submenu as Stand's own colours (HSV, RGB, hex code, copy),
--- without the Opacity part unless transparency is on.
+-- without the Opacity part unless transparency is on (MenuNode:color).
 --
 --     Atdar.menu.color(root, "Background Color", { "atdarbg" }, "", { r = 0, g = 0, b = 0 }, function(colour)
 --         -- colour.r, colour.g, colour.b, colour.a: 0.0 - 1.0
 --     end, true)
+--     Atdar.menu.color(root, { name = "Background Color", default = { r = 0, g = 0, b = 0 }, on_change = fn })
 --
+-- In the old form the command names are full ones, as given; with a table of options they get the prefix
 -- @param default { r, g, b, a }, each from 0.0 to 1.0; no a -> opaque
 -- @param on_change Called with the colour ({ r, g, b, a }; without transparency a is always 1.0) and the click type
 -- @param transparency Adds Opacity, as in Stand's own colours
--- @return The command
-function module.color(parent, menu_name: string, command_names: table, help_text: string, default: table, on_change,
-        transparency: bool = false)
-    local alpha = 1.0
-    if transparency and default.a ~= nil then
-        alpha = default.a
+-- @return The command; the MenuItem with a table of options
+function module.color(parent, menu_name: string|table, command_names: table = {}, help_text: string = "",
+    default: table = {}, on_change, transparency: bool = false
+)
+    -- body function:
+    if type(menu_name) == "table" then
+        return module.node(parent):color(menu_name)
     end
-    local colour = { r = default.r, g = default.g, b = default.b, a = alpha }
-    return menu.colour(parent, menu_name, command_names, help_text, colour, transparency, on_change)
+
+    local item = module.node(parent):color({ name = menu_name, commands = command_names, help = help_text,
+        default = default, on_change = on_change, transparency = transparency, full_commands = true })
+    return item.ref
 end
 
 return module

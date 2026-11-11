@@ -1,0 +1,64 @@
+-- EXAMPLE: items made from data that changes, as a menu file of a pack (menu/stand/dynamic.pluto).
+-- main.pluto calls it: ctx.load("dynamic").build(node, ctx)
+--
+--   list({ fill = fn })   a list whose items fn(list) makes each time it's opened; they're removed on back
+--                         (keep = true leaves them until the next open)
+--   section(fn)           the end of a list made by fn(node) now and again by part.rebuild()
+--   item:remove()         one item out of the menu and out of its node
+--
+-- Toggles of features in a removed part are switched off first, and their commands are forgotten.
+
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Dynamic")
+
+return {
+    build = function(node, ctx)
+        local list = node:list({ name = "Dynamic" })
+
+        -- What's in it is read when it's opened: a folder's files, the players in the session
+        local files = { "garage.json", "outfits.json" }
+
+        list:list({ name = "Files", fill = function(files_list)
+            for _, file in ipairs(files) do
+                files_list:action({ name = file, on_click = function()
+                    log:info($"open {file}")
+                end })
+            end
+        end })
+
+        -- Tags: a button for each, which takes it off, and a field after them to add one
+        local tags = { "fast", "red" }
+        local tags_list = list:list({ name = "Tags" })
+        local part = nil
+
+        tags_list:divider({ name = "Click one to take it off" })
+
+        part = tags_list:section(function(section_node)
+            for i, tag in ipairs(tags) do
+                section_node:action({ name = tag, on_click = function()
+                    table.remove(tags, i)
+                    part.rebuild()
+                end })
+            end
+
+            -- A field needs a command; track = false keeps it out of the prefix settings' list
+            section_node:text_input({ name = "Add Tag", commands = { "dynamicaddtag" }, track = false, user_only = true,
+                on_change = function(value)
+                    if value == "" then
+                        return
+                    end
+
+                    table.insert(tags, value)
+                    part.rebuild()
+                end })
+        end)
+
+        -- One item taken out
+        local note = list:readonly_name({ name = "A line to take out" })
+
+        list:action({ name = "Take The Line Out", on_click = function()
+            note:remove()
+        end })
+    end,
+}

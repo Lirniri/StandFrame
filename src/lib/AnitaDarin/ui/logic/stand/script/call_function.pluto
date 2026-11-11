@@ -155,7 +155,14 @@ function module.call(spec: table): void
         return
     end
 
-    local found, value, owner = spec.target()
+    -- Looking the name up walks tables and may run into a broken one: an error is a failed call, not a dead script
+    local looked, found, value, owner = pcall(spec.target)
+
+    if not looked then
+        log:error(text("failed"):format(name, tostring(found)))
+        return
+    end
+
     if not found then
         log:warn(text("not_found"):format(name))
         return
@@ -166,7 +173,13 @@ function module.call(spec: table): void
         return
     end
 
-    local args, count, err = read_args(spec, typed)
+    local read, args, count, err = pcall(read_args, spec, typed)
+
+    if not read then
+        log:error(text("bad_args"):format(name, tostring(args)))
+        return
+    end
+
     if err ~= nil then
         log:error(text("bad_args"):format(name, err))
         return

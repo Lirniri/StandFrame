@@ -23,6 +23,14 @@ function module.has(id: string): bool
     return features[id] ~= nil
 end
 
+-- A stopped script leaves no effect behind: every feature still on is switched off (its on_disable undoes it).
+-- Registered once, the registry is loaded once
+util.on_stop(function()
+    for _, feature in pairs(features) do
+        pcall(feature.disable, feature)
+    end
+end)
+
 -- Disables the feature first, so unloading never leaves an effect running
 function module.remove(id: string): void
     local feature = module.get(id)

@@ -1,7 +1,7 @@
 -- lib/AnitaDarin/ui/logic/stand/script/profile_actions.pluto
 -- What the profile's buttons do: Save, Load, Reset, Delete of a profile, Create Main Profile, Rename Script,
--- the notification examples, Reload Natives. The items and the warnings before them are in
--- ui/stand/script/profile; what keeps the items in step with the profile is profile_view.
+-- the notification examples, Reload Natives, the notices of debug switches. The items and the warnings before
+-- them are in ui/stand/script/profile; the texts they show are in profile_view.
 -- Each takes after(): what the menu does once the change is made (captions, fields, the entries again).
 -- Strings: core/language "profile"
 
@@ -66,6 +66,16 @@ function module.load_feed_picture(): void
 end
 
 -- Debug
+
+-- What a switch of key says when it's turned on: "<key>.on" (Stop After Changes, Load Timing)
+-- @return after(on) for the switch
+function module.notice_when_on(key: string)
+    return function(on: bool)
+        if on then
+            log:notify(text($"{key}.on"))
+        end
+    end
+end
 
 -- The native wrappers read from disk again, to try a change without restarting the script
 function module.reload_natives(): void

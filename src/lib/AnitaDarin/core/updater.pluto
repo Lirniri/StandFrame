@@ -37,6 +37,9 @@ module.DEFAULTS = {
     timeout = 15000,
 }
 
+-- The manifest format this updater reads (FORMAT in updater/manifest.py)
+module.FORMAT = 1
+
 -- The folders of Lua Scripts that hold a <name> folder of the script
 local ROOTS = { "lib", "store", "resources" }
 
@@ -167,50 +170,76 @@ end
 -- Whether a request is running: Stand's async_http holds one at a time, and a second init made while it
 -- runs crashes Stand (the versions list asked twice at once, a check during a list)
 local fetching = false
+-- When the running request started, and which one it is: an answer that comes after its caller gave up
+-- (or after a newer request took over) is told apart by its number and only frees the slot
+local fetching_since = 0
+local request_id = 0
+
+-- How long a request may hold the slot before it's taken for lost (its answer never came), ms
+local STUCK_MS = 60000
 
 -- GETs https://<host><path> and waits for the answer, one request at a time: another thread's request
--- is waited for first. Yields: call it from a thread
+-- is waited for first. A request that timed out keeps the slot until its answer comes (or STUCK_MS passes),
+-- as Stand can't cancel it and a new one started on top of it crashes Stand. Yields: call it from a thread
 -- @return The body, or nil and why not
 function module.fetch(host: string, path: string, timeout: int = 15000)
 
     local waiting_since = util.current_time_millis()
 
     while fetching do
-        if util.current_time_millis() - waiting_since > timeout then
+        local now = util.current_time_millis()
+
+        -- Its answer never came: the slot is taken back, and the old request's number no longer matches
+        if now - fetching_since > STUCK_MS then
+            break
+        end
+        if now - waiting_since > timeout then
             return nil, "timed out"
         end
         util.yield()
     end
 
+    request_id += 1
     fetching = true
+    fetching_since = util.current_time_millis()
 
-    local done, body, err = false, nil, nil
-    
+    local mine = request_id
+    local done, abandoned, body, err = false, false, nil, nil
+
+    -- Frees the slot when this request is still the current one; the caller only hears of it if it still waits
+    local function finish(result: ?string, reason: ?string): void
+        if mine == request_id then
+            fetching = false
+        end
+        if abandoned then
+            return
+        end
+        body, err, done = result, reason, true
+    end
+
     async_http.init(host, path, function(result, headers, status)
         if status ~= nil and status ~= 200 then
-            err = $"HTTP {status}"
+            finish(nil, $"HTTP {status}")
         else
-            body = result
+            finish(result, nil)
         end
-        done = true
     end, function(reason)
-        err = reason or "failed"
-        done = true
+        finish(nil, reason or "failed")
     end)
-    
+
     async_http.dispatch()
-    
+
     local started = util.current_time_millis()
-    
+
     while not done do
         if util.current_time_millis() - started > timeout then
-            fetching = false
+            -- The slot stays taken: the request is still running in Stand
+            abandoned = true
             return nil, "timed out"
         end
         util.yield()
     end
 
-    fetching = false
     return body, err
 end
 
@@ -311,6 +340,17 @@ function module.check(opts: ?table)
         return nil, $"manifest: it's for '{tostring(manifest.project)}', not '{o.project}'"
     end
 
+    if manifest.format ~= nil and manifest.format ~= module.FORMAT then
+        return nil, $"manifest: format {tostring(manifest.format)} isn't supported, update the script by hand"
+    end
+
+    -- Every file needs its hash: one without it would fail the whole plan later
+    for path, entry in pairs(manifest.files) do
+        if type(path) ~= "string" or type(entry) ~= "table" or type(entry.sha256) ~= "string" then
+            return nil, $"manifest: bad entry '{tostring(path)}'"
+        end
+    end
+
     return module.plan(manifest, o), nil
 end
 
@@ -368,6 +408,42 @@ function module.remember(plan: table): void
     installed_file(plan.opts):write({ version = plan.version, files = plan.manifest.files })
 end
 
+-- Clears what a cut-off update left next to a file: .update (written, not put in place) is removed; .old (the
+-- file set aside) is put back when the file itself is missing, else removed
+function module.clean_leftovers(target: string): void
+
+    os.remove($"{target}.update")
+
+    if not filesystem.exists($"{target}.old") then
+        return
+    end
+
+    if filesystem.exists(target) then
+        os.remove($"{target}.old")
+        return
+    end
+
+    os.rename($"{target}.old", target)
+end
+
+-- Undoes the swaps made so far: the old files come back, the new ones and the .update files go
+-- @param swapped { target, had_old } of each file already replaced
+-- @param written The .update paths written
+function module.roll_back(swapped: table, written: table): void
+
+    for _, item in ipairs(swapped) do
+        os.remove(item.target)
+
+        if item.had_old then
+            os.rename($"{item.target}.old", item.target)
+        end
+    end
+
+    for _, temp in ipairs(written) do
+        os.remove(temp)
+    end
+end
+
 -- Carries the plan out: downloads its files and checks each against the manifest; only when all came
 -- right writes them (first next to their places, then over them) and removes the old ones, then
 -- remembers the release as installed. Yields: call it from a thread. Restart the script after it
@@ -397,6 +473,11 @@ function module.apply(plan: table, on_progress: ?function)
         end
     end
 
+    -- Leftovers of an update that was cut off (a crash) are cleared first
+    for _, path in ipairs(plan.download) do
+        module.clean_leftovers(module.target_of(path, o))
+    end
+
     -- Written next to their places first: a failure leaves the script as it was
     local written = {}
     for _, path in ipairs(plan.download) do
@@ -413,11 +494,37 @@ function module.apply(plan: table, on_progress: ?function)
         
         table.insert(written, temp)
     end
+
+    -- Each old file is set aside as .old and the new one put in its place; if any step fails, everything
+    -- done goes back and the script stays as it was
+    local swapped = {}
+
     for _, path in ipairs(plan.download) do
+
         local target = module.target_of(path, o)
-        os.remove(target)
-        os.rename($"{target}.update", target)
+        local had_old = filesystem.exists(target)
+
+        if had_old and not os.rename(target, $"{target}.old") then
+            module.roll_back(swapped, written)
+            return false, $"{path}: couldn't replace the file (is it in use?). Nothing was changed"
+        end
+
+        if not os.rename($"{target}.update", target) then
+            if had_old then
+                os.rename($"{target}.old", target)
+            end
+            module.roll_back(swapped, written)
+            return false, $"{path}: couldn't put the new file in place. Nothing was changed"
+        end
+
+        table.insert(swapped, { target = target, had_old = had_old })
     end
+
+    -- All in place: the old copies aren't needed
+    for _, item in ipairs(swapped) do
+        os.remove($"{item.target}.old")
+    end
+
     for _, path in ipairs(plan.remove) do
         os.remove(module.target_of(path, o))
     end

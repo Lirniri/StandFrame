@@ -2,12 +2,16 @@
 -- found, runs check and install one at a time and tells the user what happened.
 -- Settings are in the profile: update_branch, update_check_before, auto_update, update_check_days,
 -- update_last_check. Update To Version installs the release of a version typed (install_version).
+-- What the last check found and the list of versions are kept in store/<script>/updater/cache.json, so the menu
+-- shows them after a restart without asking the network again.
 -- Strings: core/language "updater_menu" > "msg"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local updater = Atdar.loader.load("core/updater")
 local installer = Atdar.loader.load("core/installer")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local paths = Atdar.loader.load("core/filesystem/paths")
 
 local log = new Logger("Updater")
 
@@ -20,6 +24,12 @@ module.plan = nil
 
 -- Whether a check or an install is running
 module.busy = false
+
+-- How far the download of an update has come: { done, total }, nil when none is running
+module.progress = nil
+
+-- Percent steps between two progress notifications
+local NOTIFY_STEP = 10
 
 -- Seconds in a day
 local DAY = 86400
@@ -56,6 +66,85 @@ local function options(): table
     return { name = Atdar.name, branch = branch }
 end
 
+-- ─── The cache ───────────────────────────────────────────────────────────────
+
+-- How long a kept list of versions is used without asking the network again, seconds
+local VERSIONS_MAX_AGE = 3600
+
+-- The most files of a check kept in the cache
+local MAX_CACHED_CHANGES = 1000
+
+local cache_state = nil
+
+-- store/<script>/updater/cache.json: { version, branch, checked_at, up_to_date, changes = { { kind, path } },
+-- versions = { { version, branch } }, versions_for, versions_at }
+local function cache_file(): table
+    return new JsonFile($"{paths.store}updater\\cache.json")
+end
+
+-- What the cache holds, read once
+local function cache(): table
+    if cache_state == nil then
+        cache_state = cache_file():read() or {}
+    end
+    return cache_state
+end
+
+local function save_cache(): void
+    cache_file():write(cache())
+end
+
+-- The branch the cache was made for must be the one updates come from now
+local function cache_is_current(): bool
+    return cache().version ~= nil and cache().branch == options().branch
+end
+
+-- Which list of versions it is: the branch, and whether the lists are synced with it
+local function versions_key(): string
+    return $"{Atdar.profile.get("update_branch") or "main"}|{tostring(Atdar.profile.get("update_versions_sync") ~= false)}"
+end
+
+-- Keeps what a check found
+local function remember_check(plan: table): void
+
+    local lines = {}
+
+    for _, path in ipairs(plan.download) do
+        table.insert(lines, { kind = "update", path = path })
+    end
+
+    for _, path in ipairs(plan.remove) do
+        table.insert(lines, { kind = "remove", path = path })
+    end
+
+    local kept = cache()
+
+    kept.version = plan.version
+    kept.branch = plan.opts.branch
+    kept.checked_at = os.time()
+    kept.up_to_date = updater.is_up_to_date(plan)
+    kept.changes = {}
+
+    for i = 1, math.min(#lines, MAX_CACHED_CHANGES) do
+        kept.changes[i] = lines[i]
+    end
+
+    save_cache()
+end
+
+-- The files changed: what was kept of the last check is no longer true
+local function forget_check(): void
+
+    local kept = cache()
+
+    kept.version = nil
+    kept.branch = nil
+    kept.checked_at = nil
+    kept.up_to_date = nil
+    kept.changes = nil
+    save_cache()
+end
+
 -- The version of the release the last update installed, nil if the script wasn't installed by an update
 function module.installed_version(): ?string
     local data = updater.installed(options())
@@ -67,18 +156,33 @@ function module.installed_version(): ?string
     return data.version
 end
 
--- The version the last check found, nil before one
+-- The version the last check found (this run's, else the one kept from an earlier run), nil before one
 function module.available_version(): ?string
-    if module.plan == nil then
-        return nil
+
+    if module.plan ~= nil then
+        return module.plan.version
     end
 
-    return module.plan.version
+    if cache_is_current() then
+        return cache().version
+    end
+
+    return nil
 end
 
 -- Whether the last check found nothing to update
 function module.is_up_to_date(): bool
-    return module.plan ~= nil and updater.is_up_to_date(module.plan)
+
+    if module.plan ~= nil then
+        return updater.is_up_to_date(module.plan)
+    end
+
+    return cache_is_current() and cache().up_to_date == true
+end
+
+-- When the last check was, os.time(); 0 before one
+function module.last_check_time(): int
+    return cache().checked_at or Atdar.profile.get("update_last_check") or 0
 end
 
 -- What the available version changes, nothing before a check
@@ -87,7 +191,12 @@ function module.changes(): table
 
     local lines = {}
 
+    -- Not checked in this run: what the last run found
     if module.plan == nil then
+        if cache_is_current() then
+            return cache().changes or lines
+        end
+
         return lines
     end
 
@@ -118,7 +227,7 @@ end
 -- Downloads the manifest and compares it with the installed files, remembering the result.
 -- Yields: call it from a thread
 -- @return The plan, or nil and why not
-local function run_check()
+local function run_check_unguarded()
 
     -- Checked here too, for the reason to be shown in the user's language
     if not updater.has_access() then
@@ -133,8 +242,24 @@ local function run_check()
 
     module.plan = plan
     updater.remember(plan)
+    remember_check(plan)
     Atdar.profile.set("update_last_check", os.time())
     return plan, nil
+end
+
+-- run_check that never throws: a broken manifest or a failing write is a failed check, not a thread that dies
+-- with busy left on
+-- @return The plan, or nil and why not
+local function run_check()
+
+    local ok, plan, err = pcall(run_check_unguarded)
+
+    if not ok then
+        log:info($"check failed: {plan}")
+        return nil, tostring(plan)
+    end
+
+    return plan, err
 end
 
 -- Checks and tells what was found. Yields: call it from a thread
@@ -179,8 +304,35 @@ local function apply_plan(plan: table): string
 
     log:notify(text("msg.installing"):format(#plan.download))
 
-    local ok, apply_err, reason = updater.apply(plan)
+    local notified = 0
+
+    module.progress = { done = 0, total = #plan.download }
+    changed()
+
+    local called, ok, apply_err, reason = pcall(updater.apply, plan, function(done: int, total: int)
+
+        module.progress = { done = done, total = total }
+        changed()
+
+        local percent = done * 100 // total
+
+        -- Not every file: an update is many of them, it would flood the notifications
+        if Atdar.profile.get("update_progress_notify") ~= false and (percent - notified >= NOTIFY_STEP or done == total) then
+            notified = percent
+            log:notify(text("msg.progress"):format(percent, done, total))
+        end
+    end)
     module.busy = false
+
+    -- An error thrown inside the update is a failed update; nothing was put in place before the swap
+    if not called then
+        ok, apply_err, reason = false, tostring(ok), nil
+    end
+
+    if not ok then
+        module.progress = nil
+        changed()
+    end
 
     if not ok and reason == "stale" then
         log:error(text("msg.stale"))
@@ -193,8 +345,9 @@ local function apply_plan(plan: table): string
     end
 
     module.plan = nil
+    forget_check()
     changed()
-    log:success(text("msg.installed"):format(tostring(plan.version)))
+    log:success(text("msg.installed"):format(tostring(plan.version)), "stand")
     return "installed"
 end
 
@@ -281,7 +434,7 @@ function module.fetch_versions()
             end
         end
 
-        module.versions_found = entries
+        module.keep_versions(entries)
         return entries, nil
     end
 
@@ -321,8 +474,40 @@ function module.fetch_versions()
     end
 
     table.sort(entries, |a, b| -> is_newer(a.version, b.version))
-    module.versions_found = entries
+    module.keep_versions(entries)
     return entries, nil
+end
+
+-- Keeps the list of versions in the cache, for the next opening of the list and the next run
+function module.keep_versions(entries: table): void
+
+    module.versions_found = entries
+
+    local kept = cache()
+
+    kept.versions = entries
+    kept.versions_for = versions_key()
+    kept.versions_at = os.time()
+    save_cache()
+end
+
+-- The list of versions of an earlier fetch, while it's less than an hour old and for the same branch and sync:
+-- the list opens without asking the network
+-- @return The entries, or nil when there's none to use
+function module.cached_versions(): ?table
+
+    local kept = cache()
+
+    if kept.versions == nil or kept.versions_for ~= versions_key() then
+        return nil
+    end
+
+    if os.time() - (kept.versions_at or 0) > VERSIONS_MAX_AGE then
+        return nil
+    end
+
+    module.versions_found = kept.versions
+    return kept.versions
 end
 
 -- The refs of the repo a typed version can mean: "0.1.8" is the release tagged v0.1.8 (or 0.1.8); anything
@@ -360,7 +545,15 @@ function module.install_version(typed: string): string
     local err = nil
 
     for _, ref in ipairs(refs_of(typed)) do
-        plan, err = updater.check({ name = Atdar.name, branch = ref })
+
+        local ok, found, why = pcall(updater.check, { name = Atdar.name, branch = ref })
+
+        if ok then
+            plan, err = found, why
+        else
+            plan, err = nil, tostring(found)
+        end
+
         if plan ~= nil then
             break
         end

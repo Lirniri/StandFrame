@@ -81,7 +81,7 @@ local one = modules_menu.module_in(elsewhere, "b")
 stand.equal(stand.name_of(one.handle), "2: b: running", "module_in: the module's list, named like in Modules")
 stand.click(one.handle)
 stand.check(stand.child(one.handle, "Status: running") ~= nil and stand.child(one.handle, "Stop") ~= nil
-    and stand.child(one.handle, "Module Functions") ~= nil, "with its status, actions and functions")
+    and stand.child(stand.child(one.handle, "Function Call"), "Module Functions") ~= nil, "with its status, actions and functions")
 stand.back(one.handle)
 stand.equal(#one.handle.children, 0, "gone again after going back")
 stand.equal(modules_menu.module_in(elsewhere, "missing"), nil, "no such module: nil")
@@ -103,12 +103,14 @@ local function names_in(node)
     return table.concat(names, " | ")
 end
 stand.equal(entry_b.kind, "list", "a module is a list")
-stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories"
-    .. " | Module Functions | Base Functions", "actions, Disable Function Categories, Module Functions, Base Functions")
-stand.equal(stand.child(entry_b, "Base Functions").kind, "list", "Base Functions is a list, like a category")
-stand.equal(names_in(stand.child(entry_b, "Base Functions")), "on_start(): void | on_tick(): void | on_stop(): void",
+stand.equal(names_in(entry_b), "Status: running | Start | Restart | Stop | Reload | Options | Function Call",
+    "actions, the Options divider, then the Function Call list")
+stand.equal(names_in(stand.child(entry_b, "Function Call")), "Disable Function Categories | Module Functions | Base Functions",
+    "Function Call: Disable Function Categories, Module Functions, Base Functions")
+stand.equal(stand.child(stand.child(entry_b, "Function Call"), "Base Functions").kind, "list", "Base Functions is a list, like a category")
+stand.equal(names_in(stand.child(stand.child(entry_b, "Function Call"), "Base Functions")), "on_start(): void | on_tick(): void | on_stop(): void",
     "with the hooks")
-stand.equal(names_in(stand.child(entry_b, "Module Functions")), "Variables | Functions | No functions",
+stand.equal(names_in(stand.child(stand.child(entry_b, "Function Call"), "Module Functions")), "Variables | Functions | No functions",
     "in it the Variables list; one made without a class has no functions")
 
 local entry_a = stand.find_item(list, "1: a: ")
@@ -123,7 +125,7 @@ stand.equal(stand.name_of(entry_a), "1: a: running", "Start on b starts its dep 
 -- ─── Functions: the module's own, a button without parameters, a text field with ─────────────
 
 local entry_counter = stand.find_item(list, "3: counter: ")
-local counter_functions = stand.child(entry_counter, "Module Functions")
+local counter_functions = stand.child(stand.child(entry_counter, "Function Call"), "Module Functions")
 stand.equal(counter_functions.kind, "list", "Module Functions is a list")
 stand.equal(names_in(counter_functions), "Variables | Functions | Add | broken() | reset()"
     .. " | Internal Functions | _hidden()",
@@ -323,13 +325,13 @@ counter.count = 0
 
 -- The hooks by hand: on_stop runs, the status stays
 stops = 0
-stand.click(stand.child(stand.child(entry_b, "Base Functions"), "on_stop(): void"))
+stand.click(stand.child(stand.child(stand.child(entry_b, "Function Call"), "Base Functions"), "on_stop(): void"))
 stand.equal(stops, 1, "on_stop() calls the module's hook")
 stand.equal(stand.name_of(entry_b), "2: b: running", "without changing its status")
 -- on_tick by hand: a list with Start, Start For A While, Stop; works on a stopped module too
 local entry_ticker = stand.find_item(list, "4: ticker: ")
 stand.click(stand.child(entry_ticker, "Stop"))
-local tick_node = stand.child(stand.child(entry_ticker, "Base Functions"), "on_tick(): void")
+local tick_node = stand.child(stand.child(stand.child(entry_ticker, "Function Call"), "Base Functions"), "on_tick(): void")
 stand.equal(names_in(tick_node), "Start With Init | Start Loop Only | Start Loop For A While | Stop | Status: stopped",
     "on_tick() is a list of Start With Init, Start Loop Only, Start For A While, Stop, then its Status")
 local tick_status = stand.child(tick_node, "Status: stopped")
@@ -751,14 +753,14 @@ stand.check(not stand.find_log("Modules from new files"), "nothing new: it stays
 
 -- Reload: the code is read again, its functions in the menu are made again
 local entry_reloader = stand.find_item(list, "5: reloader: ")
-local function reloader_fns() return stand.child(entry_reloader, "Module Functions") end
+local function reloader_fns() return stand.child(stand.child(entry_reloader, "Function Call"), "Module Functions") end
 stand.check(stand.child(reloader_fns(), "one()") ~= nil and stand.child(reloader_fns(), "old_field(x)") ~= nil,
     "a module from a file: its functions one() and old_field(x)")
 stand.write_file($"{reload_dir}reloader.pluto",
     reloader_file("    function two() return 2 end\n    function three(x) return x end"))
 stand.click(stand.child(entry_reloader, "Reload"))
-stand.equal(names_in(entry_reloader), "Status: running | Start | Restart | Stop | Reload | Functions | Disable Function Categories"
-    .. " | Module Functions | Base Functions", "after Reload the list is made again, once")
+stand.equal(names_in(stand.child(entry_reloader, "Function Call")), "Disable Function Categories | Module Functions | Base Functions",
+    "after Reload the list is made again, once")
 stand.equal(names_in(reloader_fns()), "Variables | Functions | three(x) | two()",
     "with the new code's functions: one() and the field old_field(x) gone, nothing twice")
 stand.clear_logs()
@@ -785,8 +787,8 @@ stand.click(stand.child(entry_reloader, "Reload"))
 stand.check(stand.child(reloader_fns(), "two(): string") ~= nil, "the lines moved: the new type, from the new lines")
 stand.write_file($"{reload_dir}reloader.pluto",
     reloader_file("    function two(): bool return true end"))
-stand.click(stand.child(entry_reloader, "Disable Function Categories"))
-stand.click(stand.child(entry_reloader, "Disable Function Categories"))
+stand.click(stand.child(stand.child(entry_reloader, "Function Call"), "Disable Function Categories"))
+stand.click(stand.child(stand.child(entry_reloader, "Function Call"), "Disable Function Categories"))
 stand.check(stand.child(reloader_fns(), "two(): string") ~= nil, "edited but not reloaded: the type of the code that runs")
 stand.click(stand.child(entry_reloader, "Reload"))
 
@@ -876,7 +878,7 @@ modules_menu.add_category("checks", { "has" })
 stand.back(list)
 stand.click(list)
 local garage_entry = stand.find_item(list, "garage: ")
-local garage_fns = stand.child(garage_entry, "Module Functions")
+local garage_fns = stand.child(stand.child(garage_entry, "Function Call"), "Module Functions")
 stand.equal(names_in(garage_fns), "Variables | Getting | count(): int | _peek(): int | Functions"
     .. " | Getters | Setters | Checks | Loading | Saving | Remove | Delete | Shop | budget(): int | park(handle): int | sell(): void"
     .. " | Internal Functions | _tidy(): void | Private Functions | __audit(): int",
@@ -951,19 +953,19 @@ stand.equal(sold, 0, "a function that isn't a getter or a check isn't called by 
 stand.back(sell_node)
 
 -- Disable Function Categories: this module's functions in one list, its hooks as a section again
-local no_categories_toggle = stand.child(garage_entry, "Disable Function Categories")
+local no_categories_toggle = stand.child(stand.child(garage_entry, "Function Call"), "Disable Function Categories")
 stand.equal(no_categories_toggle.kind, "toggle", "a toggle under Reload")
 stand.click(no_categories_toggle)
-garage_fns = stand.child(garage_entry, "Module Functions")
+garage_fns = stand.child(stand.child(garage_entry, "Function Call"), "Module Functions")
 stand.check(stand.child(garage_fns, "Getters") == nil and stand.child(garage_fns, "get_cars(): int") ~= nil,
     "on: no category lists, the functions in the one list")
-stand.check(stand.child(garage_entry, "on_start(): void") ~= nil and stand.child(garage_entry, "Base Functions").kind == "divider",
+stand.check(stand.child(stand.child(garage_entry, "Function Call"), "on_start(): void") ~= nil and stand.child(stand.child(garage_entry, "Function Call"), "Base Functions").kind == "divider",
     "and the base functions as a section under their divider")
-stand.check(stand.child(stand.child(entry_counter, "Module Functions"), "Add") ~= nil, "other modules keep their categories")
+stand.check(stand.child(stand.child(stand.child(entry_counter, "Function Call"), "Module Functions"), "Add") ~= nil, "other modules keep their categories")
 stand.click(stand.child(garage_entry, "Reload"))
-stand.equal(stand.child(garage_entry, "Disable Function Categories").value, true, "kept through Reload")
-stand.click(stand.child(garage_entry, "Disable Function Categories"))
-stand.check(stand.child(stand.child(garage_entry, "Module Functions"), "Getters") ~= nil, "off again: the categories are back")
+stand.equal(stand.child(stand.child(garage_entry, "Function Call"), "Disable Function Categories").value, true, "kept through Reload")
+stand.click(stand.child(stand.child(garage_entry, "Function Call"), "Disable Function Categories"))
+stand.check(stand.child(stand.child(stand.child(garage_entry, "Function Call"), "Module Functions"), "Getters") ~= nil, "off again: the categories are back")
 
 -- ─── A module's own translations: language/ in its folder, its keys its own ──────
 
@@ -1008,7 +1010,7 @@ _G.v3 = { new = |x, y, z| -> { x = x, y = y, z = z } }
 stand.back(list)
 stand.click(list)
 local typed_entry = stand.find_item(list, "typed: ")
-local mix_node = stand.find_item(stand.child(typed_entry, "Module Functions"), "mix(")
+local mix_node = stand.find_item(stand.child(stand.child(typed_entry, "Function Call"), "Module Functions"), "mix(")
 stand.equal(names_in(stand.child(mix_node, "Arguments")),
     "whole | Number | ratio | Float Number | label | Text | flag | Boolean | pos | 3D Vector | items | Table | handler | Function"
     .. " | thing | Userdata | free | Argument * | extra | Argument * | ... | Arguments",
@@ -1084,7 +1086,7 @@ for _, case in {
     menu.set_value(mix_fields[name], before)
 end
 -- A default written in the code is what the field starts with, whatever the type would give
-local pace_node = stand.find_item(stand.child(typed_entry, "Module Functions"), "pace(")
+local pace_node = stand.find_item(stand.child(stand.child(typed_entry, "Function Call"), "Module Functions"), "pace(")
 local speed_field = field_under(pace_node, "speed")
 local loud_field = field_under(pace_node, "loud")
 local name_field = field_under(pace_node, "name")
