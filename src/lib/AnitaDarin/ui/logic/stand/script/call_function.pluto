@@ -74,6 +74,12 @@ function module.in_stand(): bool
     return module.settings.stand
 end
 
+-- The name for notices and the screen: what's typed without its brackets (get_movement() is get_movement:
+-- the brackets are how the arguments are given, and a notice adds its own)
+local function shown_name(typed: string): string
+    return (path_parser().split(typed))
+end
+
 -- Calling
 
 -- The arguments to call with: from the fields of the parameters when the panel has them (spec.sig), else
@@ -112,7 +118,7 @@ local function deliver(spec: table, given: table, was_call: bool): void
 
     results().show(spec.key, given)
 
-    local name = spec.name()
+    local name = shown_name(spec.name())
     local message = text("done"):format(name)
 
     if given.n > 1 then
@@ -140,10 +146,11 @@ end
 -- (a table, a variable) is read. Either way the value is what comes out
 function module.call(spec: table): void
 
-    local name = spec.name()
+    local typed = spec.name()
+    local name = shown_name(typed)
 
     -- No name: nothing to show, what was there is taken away (the Variable line, the Value list, Table Depth...)
-    if name == "" then
+    if typed == "" then
         results().clear(spec.key)
         return
     end
@@ -159,7 +166,7 @@ function module.call(spec: table): void
         return
     end
 
-    local args, count, err = read_args(spec, name)
+    local args, count, err = read_args(spec, typed)
     if err ~= nil then
         log:error(text("bad_args"):format(name, err))
         return
@@ -181,7 +188,7 @@ function module.call_after(spec: table, ms: int): void
 
     local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 
-    log:notify(mtext("loop.call_scheduled"):format(spec.name(), ms))
+    log:notify(mtext("loop.call_scheduled"):format(shown_name(spec.name()), ms))
 
     util.create_thread(function()
         util.yield(ms)
@@ -232,9 +239,10 @@ end
 function module.start_loop(spec: table, every: ?int): void
 
     local state = spec.state
-    local name = spec.name()
+    local typed = spec.name()
+    local name = shown_name(typed)
 
-    if name == "" then
+    if typed == "" then
         log:warn(text("no_name"))
         show_loop(state, module.loop_status(state))
         return
@@ -268,7 +276,7 @@ function module.start_loop(spec: table, every: ?int): void
             return true
         end
 
-        local args, count, err = read_args(spec, name)
+        local args, count, err = read_args(spec, typed)
         if err ~= nil then
             end_loop(state, loop_run, "failed")
             log:error(text("bad_args"):format(name, err))
@@ -300,12 +308,12 @@ function module.stop_loop(spec: table): void
     local state = spec.state
 
     if state.loop == nil then
-        log:notify(mtext("loop.not_running"):format(spec.name()))
+        log:notify(mtext("loop.not_running"):format(shown_name(spec.name())))
         return
     end
 
     end_loop(state, state.loop)
-    log:notify(mtext("loop.stopped"):format(spec.name()))
+    log:notify(mtext("loop.stopped"):format(shown_name(spec.name())))
 end
 
 -- The Loop switch was set by the user: starts a loop that isn't running, stops one that is
