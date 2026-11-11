@@ -2,16 +2,6 @@
 
 local module = {}
 
--- Get
-
-function module.get_hours(): int
-    return CLOCK.GET_CLOCK_HOURS()
-end
-
-function module.get_minutes(): int
-    return CLOCK.GET_CLOCK_MINUTES()
-end
-
 -- State
 
 -- Whether the game's hour is from `from` up to, not including, `to` (7, 19 -> 7:00 - 18:59).
@@ -22,6 +12,98 @@ function module.is_between(from: int, to: int): bool
         return hour >= from and hour < to
     end
     return hour >= from or hour < to
+end
+
+-- Get
+
+function module.get_hours(): int
+    return CLOCK.GET_CLOCK_HOURS()
+end
+
+function module.get_minutes(): int
+    return CLOCK.GET_CLOCK_MINUTES()
+end
+
+function module.get_seconds(): int
+    return CLOCK.GET_CLOCK_SECONDS()
+end
+
+-- Gets the current day of the week
+function module.get_day_of_week(): int
+    return CLOCK.GET_CLOCK_DAY_OF_WEEK()
+end
+
+function module.get_day_of_month(): int
+    return CLOCK.GET_CLOCK_DAY_OF_MONTH()
+end
+
+function module.get_month(): int
+    return CLOCK.GET_CLOCK_MONTH()
+end
+
+function module.get_year(): int
+    return CLOCK.GET_CLOCK_YEAR()
+end
+
+function module.get_milliseconds_per_game_minute(): int
+    return CLOCK.GET_MILLISECONDS_PER_GAME_MINUTE()
+end
+
+-- Gets system time as year, month, day, hour, minute and second
+-- @param year Pointer: pass memory.alloc(size) and read the result back
+-- @param month Pointer: pass memory.alloc(size) and read the result back
+-- @param day Pointer: pass memory.alloc(size) and read the result back
+-- @param hour Pointer: pass memory.alloc(size) and read the result back
+-- @param minute Pointer: pass memory.alloc(size) and read the result back
+-- @param second Pointer: pass memory.alloc(size) and read the result back
+function module.get_posix_time(year: int, month: int, day: int, hour: int, minute: int, second: int): void
+    CLOCK.GET_POSIX_TIME(year, month, day, hour, minute, second)
+end
+
+-- Gets current UTC time
+-- @param year Pointer: pass memory.alloc(size) and read the result back
+-- @param month Pointer: pass memory.alloc(size) and read the result back
+-- @param day Pointer: pass memory.alloc(size) and read the result back
+-- @param hour Pointer: pass memory.alloc(size) and read the result back
+-- @param minute Pointer: pass memory.alloc(size) and read the result back
+-- @param second Pointer: pass memory.alloc(size) and read the result back
+function module.get_utc_time(year: int, month: int, day: int, hour: int, minute: int, second: int): void
+    CLOCK.GET_UTC_TIME(year, month, day, hour, minute, second)
+end
+
+-- Gets local system time as year, month, day, hour, minute and second
+-- @param year Pointer: pass memory.alloc(size) and read the result back
+-- @param month Pointer: pass memory.alloc(size) and read the result back
+-- @param day Pointer: pass memory.alloc(size) and read the result back
+-- @param hour Pointer: pass memory.alloc(size) and read the result back
+-- @param minute Pointer: pass memory.alloc(size) and read the result back
+-- @param second Pointer: pass memory.alloc(size) and read the result back
+function module.get_local_time(year: int, month: int, day: int, hour: int, minute: int, second: int): void
+    CLOCK.GET_LOCAL_TIME(year, month, day, hour, minute, second)
+end
+
+-- Set
+
+function module.set_time(hour: int, minute: int, second: int): void
+    CLOCK.SET_CLOCK_TIME(hour, minute, second)
+end
+
+function module.set_date(day: int, month: int, year: int): void
+    CLOCK.SET_CLOCK_DATE(day, month, year)
+end
+
+-- Actions
+
+function module.pause(toggle: bool): void
+    CLOCK.PAUSE_CLOCK(toggle)
+end
+
+function module.advance_time(hour: int, minute: int, second: int): void
+    CLOCK.ADVANCE_CLOCK_TIME_TO(hour, minute, second)
+end
+
+function module.add_to_time(hours: int, minutes: int, seconds: int): void
+    CLOCK.ADD_TO_CLOCK_TIME(hours, minutes, seconds)
 end
 
 return module

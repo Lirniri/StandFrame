@@ -20,4 +20,8 @@ function module.request(model: int|string, asset: int, timeout: int = 2000): boo
     return Atdar.natives.streaming.wait_loaded($"vehicle asset {asset} of '{model}'", || -> module.is_loaded(asset), timeout)
 end
 
+function module.remove(vehicle_asset: int): void
+    VEHICLE.REMOVE_VEHICLE_ASSET(vehicle_asset)
+end
+
 return module

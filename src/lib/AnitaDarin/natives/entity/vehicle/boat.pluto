@@ -1,0 +1,92 @@
+-- Boats
+
+local module = {}
+
+-- State
+
+function module.can_anchor_here(vehicle: int): bool
+    return VEHICLE.CAN_ANCHOR_BOAT_HERE(vehicle)
+end
+
+function module.can_anchor_here_ignore_players(vehicle: int): bool
+    return VEHICLE.CAN_ANCHOR_BOAT_HERE_IGNORE_PLAYERS(vehicle)
+end
+
+function module.is_anchored(vehicle: int): bool
+    return VEHICLE.IS_BOAT_ANCHORED(vehicle)
+end
+
+-- Get
+
+function module.get_model_agility(model_hash: int): float
+    return VEHICLE.GET_BOAT_VEHICLE_MODEL_AGILITY(model_hash)
+end
+
+function module.get_boom_position_ratio(vehicle: int): float
+    return VEHICLE.GET_BOAT_BOOM_POSITION_RATIO(vehicle)
+end
+
+function module.get_is_capsized(vehicle: int): bool
+    return VEHICLE.GET_IS_BOAT_CAPSIZED(vehicle)
+end
+
+-- Set
+
+function module.set_ignore_land_probes(p0: any, p1: any): void
+    VEHICLE.SET_BOAT_IGNORE_LAND_PROBES(p0, p1)
+end
+
+function module.set_anchor(vehicle: int, toggle: bool): void
+    VEHICLE.SET_BOAT_ANCHOR(vehicle, toggle)
+end
+
+function module.set_remains_anchored_while_player_is_driver(vehicle: int, toggle: bool): void
+    VEHICLE.SET_BOAT_REMAINS_ANCHORED_WHILE_PLAYER_IS_DRIVER(vehicle, toggle)
+end
+
+-- No observed effect
+function module.set_force_low_lod_anchor_mode(vehicle: int, p1: bool): void
+    VEHICLE.SET_FORCE_LOW_LOD_ANCHOR_MODE(vehicle, p1)
+end
+
+function module.set_low_lod_anchor_distance(vehicle: int, value: float): void
+    VEHICLE.SET_BOAT_LOW_LOD_ANCHOR_DISTANCE(vehicle, value)
+end
+
+function module.set_sinks_when_wrecked(vehicle: int, toggle: bool): void
+    VEHICLE.SET_BOAT_SINKS_WHEN_WRECKED(vehicle, toggle)
+end
+
+function module.set_wrecked(vehicle: int): void
+    VEHICLE.SET_BOAT_WRECKED(vehicle)
+end
+
+function module.set_disable_avoidance(vehicle: int, p1: bool): void
+    VEHICLE.SET_BOAT_DISABLE_AVOIDANCE(vehicle, p1)
+end
+
+function module.set_random_boats(toggle: bool): void
+    VEHICLE.SET_RANDOM_BOATS(toggle)
+end
+
+function module.set_random_boats_mp(toggle: bool): void
+    VEHICLE.SET_RANDOM_BOATS_MP(toggle)
+end
+
+-- Actions
+
+-- Sets the boat boom position for the `TR3` trailer
+function module.swing_boom_to_ratio(vehicle: int, ratio: float): void
+    VEHICLE.SWING_BOAT_BOOM_TO_RATIO(vehicle, ratio)
+end
+
+-- Same call as ALLOW_BOAT_BOOM_TO_ANIMATE
+function module.swing_boom_freely(vehicle: int, toggle: bool): void
+    VEHICLE.SWING_BOAT_BOOM_FREELY(vehicle, toggle)
+end
+
+function module.allow_boom_to_animate(vehicle: int, toggle: bool): void
+    VEHICLE.ALLOW_BOAT_BOOM_TO_ANIMATE(vehicle, toggle)
+end
+
+return module

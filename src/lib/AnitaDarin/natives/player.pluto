@@ -32,6 +32,100 @@ function module.can_ragdoll(ped: int): bool
     return PED.CAN_PED_RAGDOLL(ped)
 end
 
+function module.is_player_dead(player_id: int): bool
+    return PLAYER.IS_PLAYER_DEAD(player_id)
+end
+
+function module.is_pressing_horn(player_id: int): bool
+    return PLAYER.IS_PLAYER_PRESSING_HORN(player_id)
+end
+
+-- Checks whether the specified player has a Ped, the Ped is not dead, is not injured and is not arrested
+function module.is_playing(player_id: int): bool
+    return PLAYER.IS_PLAYER_PLAYING(player_id)
+end
+
+function module.is_ready_for_cutscene(player_id: int): bool
+    return PLAYER.IS_PLAYER_READY_FOR_CUTSCENE(player_id)
+end
+
+-- Can the player control himself, used to disable controls for player for things like a cutscene
+function module.is_control_on(player_id: int): bool
+    return PLAYER.IS_PLAYER_CONTROL_ON(player_id)
+end
+
+function module.is_script_control_on(player_id: int): bool
+    return PLAYER.IS_PLAYER_SCRIPT_CONTROL_ON(player_id)
+end
+
+function module.is_being_arrested(player_id: int, at_arresting: bool): bool
+    return PLAYER.IS_PLAYER_BEING_ARRESTED(player_id, at_arresting)
+end
+
+function module.is_free_for_ambient_task(player_id: int): bool
+    return PLAYER.IS_PLAYER_FREE_FOR_AMBIENT_TASK(player_id)
+end
+
+function module.has_force_cleanup_occurred(cleanup_flags: int): bool
+    return PLAYER.HAS_FORCE_CLEANUP_OCCURRED(cleanup_flags)
+end
+
+function module.has_achievement_been_passed(achievement_id: int): bool
+    return PLAYER.HAS_ACHIEVEMENT_BEEN_PASSED(achievement_id)
+end
+
+function module.is_online(): bool
+    return PLAYER.IS_PLAYER_ONLINE()
+end
+
+function module.is_logging_in_np(): bool
+    return PLAYER.IS_PLAYER_LOGGING_IN_NP()
+end
+
+function module.is_system_ui_being_displayed(): bool
+    return PLAYER.IS_SYSTEM_UI_BEING_DISPLAYED()
+end
+
+function module.has_damaged_at_least_one_ped(player_id: int): bool
+    return PLAYER.HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(player_id)
+end
+
+function module.has_damaged_at_least_one_non_animal_ped(player_id: int): bool
+    return PLAYER.HAS_PLAYER_DAMAGED_AT_LEAST_ONE_NON_ANIMAL_PED(player_id)
+end
+
+function module.is_teleport_active(): bool
+    return PLAYER.IS_PLAYER_TELEPORT_ACTIVE()
+end
+
+function module.can_ped_hear(player_id: int, ped: int): bool
+    return PLAYER.CAN_PED_HEAR_PLAYER(player_id, ped)
+end
+
+function module.is_remote_in_non_cloned_vehicle(player_id: int): bool
+    return PLAYER.IS_REMOTE_PLAYER_IN_NON_CLONED_VEHICLE(player_id)
+end
+
+function module.has_been_spotted_in_stolen_vehicle(player_id: int): bool
+    return PLAYER.HAS_PLAYER_BEEN_SPOTTED_IN_STOLEN_VEHICLE(player_id)
+end
+
+function module.is_battle_aware(player_id: int): bool
+    return PLAYER.IS_PLAYER_BATTLE_AWARE(player_id)
+end
+
+function module.is_riding_train(player_id: int): bool
+    return PLAYER.IS_PLAYER_RIDING_TRAIN(player_id)
+end
+
+function module.has_left_the_world(player_id: int): bool
+    return PLAYER.HAS_PLAYER_LEFT_THE_WORLD(player_id)
+end
+
+function module.is_bluetooth_enable(player_id: int): bool
+    return PLAYER.IS_PLAYER_BLUETOOTH_ENABLE(player_id)
+end
+
 -- Get
 
 function module.get_id(): int
@@ -116,6 +210,123 @@ function module.from_ped_to_id(ped: ?int = nil): int
     return PLAYER.PLAYER_ID()
 end
 
+-- Gets the ped for a specified player index
+function module.get_ped(player_id: int): int
+    return PLAYER.GET_PLAYER_PED(player_id)
+end
+
+-- @param r Pointer: pass memory.alloc(size) and read the result back
+-- @param g Pointer: pass memory.alloc(size) and read the result back
+-- @param b Pointer: pass memory.alloc(size) and read the result back
+function module.get_rgb_colour(player_id: int, r: int, g: int, b: int): void
+    PLAYER.GET_PLAYER_RGB_COLOUR(player_id, r, g, b)
+end
+
+-- Gets the number of players in the current session
+function module.get_number_of_players(): int
+    return PLAYER.GET_NUMBER_OF_PLAYERS()
+end
+
+-- Gets the player's team
+function module.get_team(player_id: int): int
+    return PLAYER.GET_PLAYER_TEAM(player_id)
+end
+
+function module.get_number_of_players_in_team(team: int): int
+    return PLAYER.GET_NUMBER_OF_PLAYERS_IN_TEAM(team)
+end
+
+function module.get_player_name(player_id: int): string
+    return PLAYER.GET_PLAYER_NAME(player_id)
+end
+
+-- @param entity Pointer: pass memory.alloc(size) and read the result back
+function module.get_entity_is_free_aiming(player_id: int, entity: int): bool
+    return PLAYER.GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(player_id, entity)
+end
+
+function module.get_underwater_time_remaining(player_id: int): float
+    return PLAYER.GET_PLAYER_UNDERWATER_TIME_REMAINING(player_id)
+end
+
+-- Returns the group ID the player is member of
+function module.get_group(player_id: int): int
+    return PLAYER.GET_PLAYER_GROUP(player_id)
+end
+
+function module.get_players_last_vehicle(): int
+    return PLAYER.GET_PLAYERS_LAST_VEHICLE()
+end
+
+-- Returns the same as PLAYER_ID and NETWORK_PLAYER_ID_TO_INT
+function module.get_index(): int
+    return PLAYER.GET_PLAYER_INDEX()
+end
+
+function module.get_time_since_hit_vehicle(player_id: int): int
+    return PLAYER.GET_TIME_SINCE_PLAYER_HIT_VEHICLE(player_id)
+end
+
+function module.get_time_since_hit_ped(player_id: int): int
+    return PLAYER.GET_TIME_SINCE_PLAYER_HIT_PED(player_id)
+end
+
+function module.get_time_since_drove_on_pavement(player_id: int): int
+    return PLAYER.GET_TIME_SINCE_PLAYER_DROVE_ON_PAVEMENT(player_id)
+end
+
+function module.get_time_since_drove_against_traffic(player_id: int): int
+    return PLAYER.GET_TIME_SINCE_PLAYER_DROVE_AGAINST_TRAFFIC(player_id)
+end
+
+function module.get_cause_of_most_recent_force_cleanup(): int
+    return PLAYER.GET_CAUSE_OF_MOST_RECENT_FORCE_CLEANUP()
+end
+
+function module.get_achievement_progress(achievement_id: int): int
+    return PLAYER.GET_ACHIEVEMENT_PROGRESS(achievement_id)
+end
+
+function module.get_debug_invincible(player_id: int): bool
+    return PLAYER.GET_PLAYER_DEBUG_INVINCIBLE(player_id)
+end
+
+-- Returns profile setting 237
+function module.get_is_using_fps_third_person_cover(): bool
+    return PLAYER.GET_IS_USING_FPS_THIRD_PERSON_COVER()
+end
+
+-- Returns the time since the character was arrested in (ms) milliseconds
+function module.get_time_since_last_arrest(): int
+    return PLAYER.GET_TIME_SINCE_LAST_ARREST()
+end
+
+-- Returns the time since the character died in (ms) milliseconds
+function module.get_time_since_last_death(): int
+    return PLAYER.GET_TIME_SINCE_LAST_DEATH()
+end
+
+-- Appears once in "re_dealgonewrong"
+function module.get_is_driving_on_highway(player_id: int): bool
+    return PLAYER.GET_IS_PLAYER_DRIVING_ON_HIGHWAY(player_id)
+end
+
+function module.get_is_driving_wreckless(player_id: int, p1: int): bool
+    return PLAYER.GET_IS_PLAYER_DRIVING_WRECKLESS(player_id, p1)
+end
+
+function module.get_is_mopping_area_free_in_front(player_id: int, p1: float): bool
+    return PLAYER.GET_IS_MOPPING_AREA_FREE_IN_FRONT_OF_PLAYER(player_id, p1)
+end
+
+function module.get_health_recharge_max_percent(player_id: int): float
+    return PLAYER.GET_PLAYER_HEALTH_RECHARGE_MAX_PERCENT(player_id)
+end
+
+function module.get_received_battle_event_recently(player_id: int, p1: int, p2: bool): bool
+    return PLAYER.GET_PLAYER_RECEIVED_BATTLE_EVENT_RECENTLY(player_id, p1, p2)
+end
+
 -- Set
 
 function module.set_invincible(player_id: int, toggle: bool): void
@@ -130,6 +341,189 @@ function module.set_max_armor(player_id: int, value: int): int
     return PLAYER.SET_PLAYER_MAX_ARMOUR(player_id, value)
 end
 
+function module.set_model(player_id: int, model: int): void
+    PLAYER.SET_PLAYER_MODEL(player_id, model)
+end
+
+-- Set player team on deathmatch and last team standing
+function module.set_team(player_id: int, team: int): void
+    PLAYER.SET_PLAYER_TEAM(player_id, team)
+end
+
+function module.set_control(player_id: int, b_has_control: bool, flags: int): void
+    PLAYER.SET_PLAYER_CONTROL(player_id, b_has_control, flags)
+end
+
+function module.set_everyone_ignore(player_id: int, toggle: bool): void
+    PLAYER.SET_EVERYONE_IGNORE_PLAYER(player_id, toggle)
+end
+
+function module.set_all_random_peds_flee(player_id: int, toggle: bool): void
+    PLAYER.SET_ALL_RANDOM_PEDS_FLEE(player_id, toggle)
+end
+
+function module.set_all_random_peds_flee_this_frame(player_id: int): void
+    PLAYER.SET_ALL_RANDOM_PEDS_FLEE_THIS_FRAME(player_id)
+end
+
+function module.set_all_neutral_random_peds_flee(player_id: int, toggle: bool): void
+    PLAYER.SET_ALL_NEUTRAL_RANDOM_PEDS_FLEE(player_id, toggle)
+end
+
+function module.set_all_neutral_random_peds_flee_this_frame(player_id: int): void
+    PLAYER.SET_ALL_NEUTRAL_RANDOM_PEDS_FLEE_THIS_FRAME(player_id)
+end
+
+function module.set_ignore_low_priority_shocking_events(player_id: int, toggle: bool): void
+    PLAYER.SET_IGNORE_LOW_PRIORITY_SHOCKING_EVENTS(player_id, toggle)
+end
+
+function module.set_law_response_delay_override(p0: float): void
+    PLAYER.SET_LAW_RESPONSE_DELAY_OVERRIDE(p0)
+end
+
+-- Set whether this player should be able to do drive-bys
+function module.set_can_do_drive(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_CAN_DO_DRIVE_BY(player_id, toggle)
+end
+
+-- Sets whether this player can be hassled by gangs
+function module.set_can_be_hassled_by_gangs(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_CAN_BE_HASSLED_BY_GANGS(player_id, toggle)
+end
+
+-- Sets whether this player can take cover
+function module.set_can_use_cover(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_CAN_USE_COVER(player_id, toggle)
+end
+
+function module.set_underwater_breath_percent_remaining(player_id: int, time: float): float
+    return PLAYER.SET_PLAYER_UNDERWATER_BREATH_PERCENT_REMAINING(player_id, time)
+end
+
+function module.set_may_only_enter_this_vehicle(player_id: int, vehicle: int): void
+    PLAYER.SET_PLAYER_MAY_ONLY_ENTER_THIS_VEHICLE(player_id, vehicle)
+end
+
+function module.set_may_not_enter_any_vehicle(player_id: int): void
+    PLAYER.SET_PLAYER_MAY_NOT_ENTER_ANY_VEHICLE(player_id)
+end
+
+function module.set_achievement_progress(achievement_id: int, progress: int): bool
+    return PLAYER.SET_ACHIEVEMENT_PROGRESS(achievement_id, progress)
+end
+
+function module.set_can_collect_dropped_money(player_id: int, p1: bool): void
+    PLAYER.SET_PLAYER_CAN_COLLECT_DROPPED_MONEY(player_id, p1)
+end
+
+-- This can be between 1.0f - 14.9f
+function module.set_air_drag_multiplier_for_players_vehicle(player_id: int, multiplier: float): void
+    PLAYER.SET_AIR_DRAG_MULTIPLIER_FOR_PLAYERS_VEHICLE(player_id, multiplier)
+end
+
+function module.set_forced_aim(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_FORCED_AIM(player_id, toggle)
+end
+
+function module.set_forced_zoom(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_FORCED_ZOOM(player_id, toggle)
+end
+
+function module.set_force_skip_aim_intro(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_FORCE_SKIP_AIM_INTRO(player_id, toggle)
+end
+
+function module.set_health_recharge_multiplier(player_id: int, regen_rate: float): void
+    PLAYER.SET_PLAYER_HEALTH_RECHARGE_MULTIPLIER(player_id, regen_rate)
+end
+
+function module.set_health_recharge_max_percent(player_id: int, limit: float): void
+    PLAYER.SET_PLAYER_HEALTH_RECHARGE_MAX_PERCENT(player_id, limit)
+end
+
+function module.set_fall_distance_to_trigger_ragdoll_override(player_id: int, p1: float): void
+    PLAYER.SET_PLAYER_FALL_DISTANCE_TO_TRIGGER_RAGDOLL_OVERRIDE(player_id, p1)
+end
+
+function module.set_vehicle_damage_modifier(player_id: int, modifier: float): void
+    PLAYER.SET_PLAYER_VEHICLE_DAMAGE_MODIFIER(player_id, modifier)
+end
+
+function module.set_vehicle_defense_modifier(player_id: int, modifier: float): void
+    PLAYER.SET_PLAYER_VEHICLE_DEFENSE_MODIFIER(player_id, modifier)
+end
+
+function module.set_max_explosive_damage(player_id: int, p1: float): void
+    PLAYER.SET_PLAYER_MAX_EXPLOSIVE_DAMAGE(player_id, p1)
+end
+
+function module.set_explosive_damage_modifier(player_id: int, p1: any): void
+    PLAYER.SET_PLAYER_EXPLOSIVE_DAMAGE_MODIFIER(player_id, p1)
+end
+
+function module.set_phone_palette_idx(player_id: int, flags: int): void
+    PLAYER.SET_PLAYER_PHONE_PALETTE_IDX(player_id, flags)
+end
+
+function module.set_noise_multiplier(player_id: int, multiplier: float): void
+    PLAYER.SET_PLAYER_NOISE_MULTIPLIER(player_id, multiplier)
+end
+
+-- Values around 1.0f to 2.0f used in game scripts
+function module.set_sneaking_noise_multiplier(player_id: int, multiplier: float): void
+    PLAYER.SET_PLAYER_SNEAKING_NOISE_MULTIPLIER(player_id, multiplier)
+end
+
+function module.set_auto_give_scuba_gear_when_exit_vehicle(player_id: int, toggle: bool): void
+    PLAYER.SET_AUTO_GIVE_SCUBA_GEAR_WHEN_EXIT_VEHICLE(player_id, toggle)
+end
+
+function module.set_simulate_aiming(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_SIMULATE_AIMING(player_id, toggle)
+end
+
+function module.set_cloth_pin_frames(player_id: int, p1: int): void
+    PLAYER.SET_PLAYER_CLOTH_PIN_FRAMES(player_id, p1)
+end
+
+-- Every occurrence was either 0 or 2
+function module.set_cloth_package_index(index: int): void
+    PLAYER.SET_PLAYER_CLOTH_PACKAGE_INDEX(index)
+end
+
+function module.set_cloth_lock_counter(value: int): void
+    PLAYER.SET_PLAYER_CLOTH_LOCK_COUNTER(value)
+end
+
+function module.set_leave_ped_behind(player_id: int, toggle: bool): void
+    PLAYER.SET_PLAYER_LEAVE_PED_BEHIND(player_id, toggle)
+end
+
+function module.set_spectated_vehicle_radio_override(p0: bool): void
+    PLAYER.SET_PLAYER_SPECTATED_VEHICLE_RADIO_OVERRIDE(p0)
+end
+
+function module.set_bluetooth_state(player_id: int, state: bool): void
+    PLAYER.SET_PLAYER_BLUETOOTH_STATE(player_id, state)
+end
+
+function module.set_can_damage(player1: int, player2: int, toggle: bool): void
+    PLAYER.SET_PLAYER_CAN_DAMAGE_PLAYER(player1, player2, toggle)
+end
+
+function module.set_apply_waypoint(player_id: int, hud_color: int): void
+    PLAYER.SET_APPLY_WAYPOINT_OF_PLAYER(player_id, hud_color)
+end
+
+function module.set_previous_variation_data(player_id: int, p1: int, p2: int, p3: any, p4: any, p5: any): void
+    PLAYER.SET_PLAYER_PREVIOUS_VARIATION_DATA(player_id, p1, p2, p3, p4, p5)
+end
+
+function module.set_script_fire_position(coord_x: float, coord_y: float, coord_z: float): void
+    PLAYER.SET_SCRIPT_FIRE_POSITION(coord_x, coord_y, coord_z)
+end
+
 -- Actions
 
 function module.give_ragdoll_control(player_id: int, toggle: bool): void
@@ -138,6 +532,147 @@ end
 
 function module.remove_helmet(player_id: int, p2: bool)
     PLAYER.REMOVE_PLAYER_HELMET(player_id, p2)
+end
+
+function module.change_ped(player_id: int, ped: int, p2: bool, reset_damage: bool): void
+    PLAYER.CHANGE_PLAYER_PED(player_id, ped, p2, reset_damage)
+end
+
+function module.report_crime(player_id: int, crime_type: int, wanted_lvl_thresh: int): void
+    PLAYER.REPORT_CRIME(player_id, crime_type, wanted_lvl_thresh)
+end
+
+function module.suppress_crime_this_frame(player_id: int, crime_type: int): void
+    PLAYER.SUPPRESS_CRIME_THIS_FRAME(player_id, crime_type)
+end
+
+function module.allow_evasion_hud_if_disabling_hidden_evasion_this_frame(player_id: int, p1: any): void
+    PLAYER.ALLOW_EVASION_HUD_IF_DISABLING_HIDDEN_EVASION_THIS_FRAME(player_id, p1)
+end
+
+-- This has been found in use in the decompiled files
+function module.force_start_hidden_evasion(player_id: int): void
+    PLAYER.FORCE_START_HIDDEN_EVASION(player_id)
+end
+
+function module.reset_law_response_delay_override(): void
+    PLAYER.RESET_LAW_RESPONSE_DELAY_OVERRIDE()
+end
+
+function module.reset_arrest_state(player_id: int): void
+    PLAYER.RESET_PLAYER_ARREST_STATE(player_id)
+end
+
+-- Simply returns whatever is passed to it (Regardless of whether the handle is valid or not)
+function module.int_to_playerindex(value: int): int
+    return PLAYER.INT_TO_PLAYERINDEX(value)
+end
+
+-- Simply returns whatever is passed to it (Regardless of whether the handle is valid or not)
+function module.int_to_participantindex(value: int): int
+    return PLAYER.INT_TO_PARTICIPANTINDEX(value)
+end
+
+-- Does exactly the same thing as PLAYER_ID()
+function module.network_id_to_int(): int
+    return PLAYER.NETWORK_PLAYER_ID_TO_INT()
+end
+
+function module.force_cleanup(cleanup_flags: int): void
+    PLAYER.FORCE_CLEANUP(cleanup_flags)
+end
+
+function module.force_cleanup_for_all_threads_this_name(name: string, cleanup_flags: int): void
+    PLAYER.FORCE_CLEANUP_FOR_ALL_THREADS_WITH_THIS_NAME(name, cleanup_flags)
+end
+
+function module.force_cleanup_for_thread_this_id(id: int, cleanup_flags: int): void
+    PLAYER.FORCE_CLEANUP_FOR_THREAD_WITH_THIS_ID(id, cleanup_flags)
+end
+
+function module.give_achievement(achievement_id: int): bool
+    return PLAYER.GIVE_ACHIEVEMENT_TO_PLAYER(achievement_id)
+end
+
+function module.display_system_signin_ui(p0: bool): void
+    PLAYER.DISPLAY_SYSTEM_SIGNIN_UI(p0)
+end
+
+function module.clear_has_damaged_at_least_one_ped(player_id: int): void
+    PLAYER.CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(player_id)
+end
+
+function module.clear_has_damaged_at_least_one_non_animal_ped(player_id: int): void
+    PLAYER.CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_NON_ANIMAL_PED(player_id)
+end
+
+-- Used only once in R* scripts (freemode.ysc)
+function module.disable_throw_grenade_while_using_gun(): void
+    PLAYER.DISABLE_PLAYER_THROW_GRENADE_WHILE_USING_GUN()
+end
+
+function module.start_teleport(
+    player_id: int, x: float, y: float, z: float, heading: float, p5: bool,
+    find_collision_land: bool, p7: bool
+): void
+    -- body function:
+    PLAYER.START_PLAYER_TELEPORT(player_id, x, y, z, heading, p5, find_collision_land, p7)
+end
+
+function module.update_teleport(player_id: int): bool
+    return PLAYER.UPDATE_PLAYER_TELEPORT(player_id)
+end
+
+-- Disables the player's teleportation
+function module.stop_teleport(): void
+    PLAYER.STOP_PLAYER_TELEPORT()
+end
+
+-- Needs to be called every frame
+function module.disable_health_recharge(player_id: int): void
+    PLAYER.DISABLE_PLAYER_HEALTH_RECHARGE(player_id)
+end
+
+-- This is to make the player walk without accepting input from INPUT
+function module.simulate_input_gait(
+    player_id: int, amount: float, gait_type: int, speed: float, p4: bool, p5: bool, p6: any
+): void
+    -- body function:
+    PLAYER.SIMULATE_PLAYER_INPUT_GAIT(player_id, amount, gait_type, speed, p4, p5, p6)
+end
+
+function module.reset_input_gait(player_id: int): void
+    PLAYER.RESET_PLAYER_INPUT_GAIT(player_id)
+end
+
+-- Only 1 match. ob_sofa_michael
+function module.attach_virtual_bound(
+    p0: float, p1: float, p2: float, p3: float, p4: float, p5: float, p6: float, p7: float
+): void
+    -- body function:
+    PLAYER.PLAYER_ATTACH_VIRTUAL_BOUND(p0, p1, p2, p3, p4, p5, p6, p7)
+end
+
+function module.detach_virtual_bound(): void
+    PLAYER.PLAYER_DETACH_VIRTUAL_BOUND()
+end
+
+-- Appears only 3 times in the scripts, more specifically in michael1.ysc
+function module.extend_world_boundary(x: float, y: float, z: float): void
+    PLAYER.EXTEND_WORLD_BOUNDARY_FOR_PLAYER(x, y, z)
+end
+
+function module.reset_world_boundary(): void
+    PLAYER.RESET_WORLD_BOUNDARY_FOR_PLAYER()
+end
+
+function module.disable_vehicle_rewards(player_id: int): void
+    PLAYER.DISABLE_PLAYER_VEHICLE_REWARDS(player_id)
+end
+
+-- Resets values set by SET_SCRIPT_FIRE_POSITION
+function module.remove_script_fire_position(): void
+    PLAYER.REMOVE_SCRIPT_FIRE_POSITION()
 end
 
 return Atdar.loader.auto(module, "natives/player")

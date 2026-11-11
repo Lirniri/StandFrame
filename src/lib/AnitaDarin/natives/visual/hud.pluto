@@ -6,4 +6,744 @@ end
 
 -- HUD colours (indexes, defaults, the current colour of a slot): natives/visual/color/hud
 
+-- State
+
+function module.is_mouse_rolled_over_instructional_buttons(): bool
+    return HUD.IS_MOUSE_ROLLED_OVER_INSTRUCTIONAL_BUTTONS()
+end
+
+function module.is_message_being_displayed(): bool
+    return HUD.IS_MESSAGE_BEING_DISPLAYED()
+end
+
+function module.is_preference_switched_on(): bool
+    return HUD.IS_HUD_PREFERENCE_SWITCHED_ON()
+end
+
+function module.is_named_rendertarget_registered(name: string): bool
+    return HUD.IS_NAMED_RENDERTARGET_REGISTERED(name)
+end
+
+function module.is_named_rendertarget_linked(model_hash: int): bool
+    return HUD.IS_NAMED_RENDERTARGET_LINKED(model_hash)
+end
+
+function module.is_pausemap_in_interior_mode(): bool
+    return HUD.IS_PAUSEMAP_IN_INTERIOR_MODE()
+end
+
+function module.is_ime_in_progress(): bool
+    return HUD.IS_IME_IN_PROGRESS()
+end
+
+-- Full list of components below
+function module.is_component_active(id: int): bool
+    return HUD.IS_HUD_COMPONENT_ACTIVE(id)
+end
+
+function module.is_scripted_component_active(id: int): bool
+    return HUD.IS_SCRIPTED_HUD_COMPONENT_ACTIVE(id)
+end
+
+function module.is_scripted_component_hidden_this_frame(id: int): bool
+    return HUD.IS_SCRIPTED_HUD_COMPONENT_HIDDEN_THIS_FRAME(id)
+end
+
+function module.is_reportugc_menu_open(): bool
+    return HUD.IS_REPORTUGC_MENU_OPEN()
+end
+
+function module.is_mp_gamer_tag_movie_active(): bool
+    return HUD.IS_MP_GAMER_TAG_MOVIE_ACTIVE()
+end
+
+function module.is_mp_gamer_tag_active(gamer_tag_id: int): bool
+    return HUD.IS_MP_GAMER_TAG_ACTIVE(gamer_tag_id)
+end
+
+function module.is_mp_gamer_tag_free(gamer_tag_id: int): bool
+    return HUD.IS_MP_GAMER_TAG_FREE(gamer_tag_id)
+end
+
+function module.is_updating_mp_gamer_tag_name_and_crew_details(gamer_tag_id: int): bool
+    return HUD.IS_UPDATING_MP_GAMER_TAG_NAME_AND_CREW_DETAILS(gamer_tag_id)
+end
+
+function module.is_warning_message_ready_for_control(): bool
+    return HUD.IS_WARNING_MESSAGE_READY_FOR_CONTROL()
+end
+
+function module.is_warning_message_active(): bool
+    return HUD.IS_WARNING_MESSAGE_ACTIVE()
+end
+
+function module.is_store_pending_network_shutdown_to_open(): bool
+    return HUD.IS_STORE_PENDING_NETWORK_SHUTDOWN_TO_OPEN()
+end
+
+function module.is_navigating_menu_content(): bool
+    return HUD.IS_NAVIGATING_MENU_CONTENT()
+end
+
+function module.has_menu_trigger_event_occurred(): bool
+    return HUD.HAS_MENU_TRIGGER_EVENT_OCCURRED()
+end
+
+function module.has_menu_layout_changed_event_occurred(): bool
+    return HUD.HAS_MENU_LAYOUT_CHANGED_EVENT_OCCURRED()
+end
+
+function module.are_online_policies_up_to_date(): bool
+    return HUD.ARE_ONLINE_POLICIES_UP_TO_DATE()
+end
+
+-- Returns the same as IS_SOCIAL_CLUB_ACTIVE
+function module.is_online_policies_menu_active(): bool
+    return HUD.IS_ONLINE_POLICIES_MENU_ACTIVE()
+end
+
+function module.is_social_club_active(): bool
+    return HUD.IS_SOCIAL_CLUB_ACTIVE()
+end
+
+function module.has_director_mode_been_launched_by_code(): bool
+    return HUD.HAS_DIRECTOR_MODE_BEEN_LAUNCHED_BY_CODE()
+end
+
+-- Get
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+-- @param p3 Pointer: pass memory.alloc(size) and read the result back
+function module.get_mouse_event(scaleform_handle: int, p1: int, p2: int, p3: int): bool
+    return HUD.GET_MOUSE_EVENT(scaleform_handle, p1, p2, p3)
+end
+
+-- Returns a substring of a specified length starting at a specified position
+function module.get_character_from_audio_conversation_filename(
+    text: string, position: int, length: int
+): string
+    -- body function:
+    return HUD.GET_CHARACTER_FROM_AUDIO_CONVERSATION_FILENAME(text, position, length)
+end
+
+function module.get_character_from_audio_conversation_filename_with_byte_limit(
+    text: string, position: int, length: int, max_length: int
+): string
+    -- body function:
+    return HUD.GET_CHARACTER_FROM_AUDIO_CONVERSATION_FILENAME_WITH_BYTE_LIMIT(text, position, length, max_length)
+end
+
+function module.get_character_from_audio_conversation_filename_bytes(
+    text: string, start_position: int, end_position: int
+): string
+    -- body function:
+    return HUD.GET_CHARACTER_FROM_AUDIO_CONVERSATION_FILENAME_BYTES(text, start_position, end_position)
+end
+
+function module.get_filename_for_audio_conversation(label_name: string): string
+    return HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(label_name)
+end
+
+-- This functions converts the hash of a street name into a readable string
+function module.get_street_name_from_hash_key(hash: int): string
+    return HUD.GET_STREET_NAME_FROM_HASH_KEY(hash)
+end
+
+-- Getter for SET_FAKE_SPECTATOR_MODE
+function module.get_fake_spectator_mode(): bool
+    return HUD.GET_FAKE_SPECTATOR_MODE()
+end
+
+function module.get_rendered_character_height(size: float, font: int): float
+    return HUD.GET_RENDERED_CHARACTER_HEIGHT(size, font)
+end
+
+function module.get_default_script_rendertarget_render_id(): int
+    return HUD.GET_DEFAULT_SCRIPT_RENDERTARGET_RENDER_ID()
+end
+
+function module.get_named_rendertarget_render_id(name: string): int
+    return HUD.GET_NAMED_RENDERTARGET_RENDER_ID(name)
+end
+
+-- Returns the weapon hash to the selected/highlighted weapon in the wheel
+function module.get_weapon_wheel_currently_highlighted(): int
+    return HUD.HUD_GET_WEAPON_WHEEL_CURRENTLY_HIGHLIGHTED()
+end
+
+-- Returns the weapon hash active in a specific weapon wheel slotList
+function module.get_weapon_wheel_top_slot(weapon_type_index: int): int
+    return HUD.HUD_GET_WEAPON_WHEEL_TOP_SLOT(weapon_type_index)
+end
+
+function module.get_component_position(id: int): vector3
+    return HUD.GET_HUD_COMPONENT_POSITION(id)
+end
+
+-- @param screen_x Pointer: pass memory.alloc(size) and read the result back
+-- @param screen_y Pointer: pass memory.alloc(size) and read the result back
+function module.get_screen_position_from_world_position(
+    world_x: float, world_y: float, world_z: float, screen_x: int, screen_y: int
+): int
+    -- body function:
+    return HUD.GET_HUD_SCREEN_POSITION_FROM_WORLD_POSITION(world_x, world_y, world_z, screen_x, screen_y)
+end
+
+function module.get_current_webpage_id(): int
+    return HUD.GET_CURRENT_WEBPAGE_ID()
+end
+
+function module.get_current_website_id(): int
+    return HUD.GET_CURRENT_WEBSITE_ID()
+end
+
+-- Returns the ActionScript flagValue
+function module.get_global_actionscript_flag(flag_index: int): int
+    return HUD.GET_GLOBAL_ACTIONSCRIPT_FLAG(flag_index)
+end
+
+-- Has to do with the confirmation overlay (E.g. confirm exit)
+function module.get_warning_screen_message_hash(): int
+    return HUD.GET_WARNING_SCREEN_MESSAGE_HASH()
+end
+
+function module.get_north_blid_index(): int
+    return HUD.GET_NORTH_BLID_INDEX()
+end
+
+function module.get_screen_code_wants_script_to_control(): int
+    return HUD.GET_SCREEN_CODE_WANTS_SCRIPT_TO_CONTROL()
+end
+
+-- @param last_item_menu_id Pointer: pass memory.alloc(size) and read the result back
+-- @param selected_item_unique_id Pointer: pass memory.alloc(size) and read the result back
+function module.get_menu_trigger_event_details(last_item_menu_id: int, selected_item_unique_id: int): void
+    HUD.GET_MENU_TRIGGER_EVENT_DETAILS(last_item_menu_id, selected_item_unique_id)
+end
+
+-- @param last_item_menu_id Pointer: pass memory.alloc(size) and read the result back
+-- @param selected_item_menu_id Pointer: pass memory.alloc(size) and read the result back
+-- @param selected_item_unique_id Pointer: pass memory.alloc(size) and read the result back
+function module.get_menu_layout_changed_event_details(
+    last_item_menu_id: int, selected_item_menu_id: int, selected_item_unique_id: int
+): void
+    -- body function:
+    HUD.GET_MENU_LAYOUT_CHANGED_EVENT_DETAILS(last_item_menu_id, selected_item_menu_id, selected_item_unique_id)
+end
+
+-- @param r Pointer: pass memory.alloc(size) and read the result back
+-- @param g Pointer: pass memory.alloc(size) and read the result back
+-- @param b Pointer: pass memory.alloc(size) and read the result back
+function module.get_pm_player_crew_color(r: int, g: int, b: int): bool
+    return HUD.GET_PM_PLAYER_CREW_COLOR(r, g, b)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_menu_ped_int_stat(p0: any, p1: int): bool
+    return HUD.GET_MENU_PED_INT_STAT(p0, p1)
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_character_menu_ped_int_stat(p0: any, p1: int, p2: any): bool
+    return HUD.GET_CHARACTER_MENU_PED_INT_STAT(p0, p1, p2)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_menu_ped_masked_int_stat(stat_hash: int, out_value: int, mask: int, p3: bool): bool
+    return HUD.GET_MENU_PED_MASKED_INT_STAT(stat_hash, out_value, mask, p3)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_character_menu_ped_masked_int_stat(
+    stat_hash: int, out_value: int, p2: int, mask: int, p4: bool
+): bool
+    -- body function:
+    return HUD.GET_CHARACTER_MENU_PED_MASKED_INT_STAT(stat_hash, out_value, p2, mask, p4)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_menu_ped_float_stat(stat_hash: int, out_value: int): bool
+    return HUD.GET_MENU_PED_FLOAT_STAT(stat_hash, out_value)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_character_menu_ped_float_stat(stat_hash: float, out_value: int, p2: bool): bool
+    return HUD.GET_CHARACTER_MENU_PED_FLOAT_STAT(stat_hash, out_value, p2)
+end
+
+-- @param out_value Pointer: pass memory.alloc(size) and read the result back
+function module.get_menu_ped_bool_stat(stat_hash: int, out_value: int): bool
+    return HUD.GET_MENU_PED_BOOL_STAT(stat_hash, out_value)
+end
+
+-- Set
+
+-- Shows the cursor on screen for one frame
+function module.set_mouse_cursor_this_frame(): void
+    HUD.SET_MOUSE_CURSOR_THIS_FRAME()
+end
+
+-- Changes the mouse cursor's sprite
+function module.set_mouse_cursor_style(sprite_id: int): void
+    HUD.SET_MOUSE_CURSOR_STYLE(sprite_id)
+end
+
+-- Shows/hides the frontend cursor on the pause menu or similar menus
+function module.set_mouse_cursor_visible(toggle: bool): void
+    HUD.SET_MOUSE_CURSOR_VISIBLE(toggle)
+end
+
+-- Setter for GET_FAKE_SPECTATOR_MODE
+function module.set_fake_spectator_mode(toggle: bool): void
+    HUD.SET_FAKE_SPECTATOR_MODE(toggle)
+end
+
+function module.set_use_set_destination_in_pause_map(toggle: bool): void
+    HUD.SET_USE_SET_DESTINATION_IN_PAUSE_MAP(toggle)
+end
+
+function module.set_ability_bar_visibility(visible: bool): void
+    HUD.SET_ABILITY_BAR_VISIBILITY(visible)
+end
+
+function module.set_allow_ability_bar(toggle: bool): void
+    HUD.SET_ALLOW_ABILITY_BAR(toggle)
+end
+
+function module.set_ability_bar_value(p0: float, p1: float): void
+    HUD.SET_ABILITY_BAR_VALUE(p0, p1)
+end
+
+function module.set_pm_warningscreen_active(p0: bool): void
+    HUD.SET_PM_WARNINGSCREEN_ACTIVE(p0)
+end
+
+function module.set_inside_very_small_interior(toggle: bool): void
+    HUD.SET_INSIDE_VERY_SMALL_INTERIOR(toggle)
+end
+
+function module.set_inside_very_large_interior(toggle: bool): void
+    HUD.SET_INSIDE_VERY_LARGE_INTERIOR(toggle)
+end
+
+-- Sets the position of the arrow icon representing the player on both the minimap and world map
+function module.set_fake_pausemap_player_position_this_frame(x: float, y: float): void
+    HUD.SET_FAKE_PAUSEMAP_PLAYER_POSITION_THIS_FRAME(x, y)
+end
+
+-- Toggles the Cayo Perico map
+function module.set_use_island_map(toggle: bool): void
+    HUD.SET_USE_ISLAND_MAP(toggle)
+end
+
+function module.set_pause_exterior_rendering_while_in_interior(): void
+    HUD._SET_PAUSE_EXTERIOR_RENDERING_WHILE_IN_INTERIOR()
+end
+
+function module.set_widescreen_format(p0: any): void
+    HUD.SET_WIDESCREEN_FORMAT(p0)
+end
+
+-- Set the active slotIndex in the wheel weapon to the slot associated with the provided Weapon hash
+function module.set_weapon_wheel_top_slot(weapon_hash: int): void
+    HUD.HUD_SET_WEAPON_WHEEL_TOP_SLOT(weapon_hash)
+end
+
+function module.set_race_track_render(toggle: bool): void
+    HUD.SET_RACE_TRACK_RENDER(toggle)
+end
+
+function module.set_player_icon_colour(color: int): void
+    HUD.SET_PLAYER_ICON_COLOUR(color)
+end
+
+function module.set_mission_name(p0: bool, name: string): void
+    HUD.SET_MISSION_NAME(p0, name)
+end
+
+function module.set_mission_name_for_ugc_mission(p0: bool, name: string): void
+    HUD.SET_MISSION_NAME_FOR_UGC_MISSION(p0, name)
+end
+
+function module.set_health_display_values(health: int, capacity: int, was_added: bool): void
+    HUD.SET_HEALTH_HUD_DISPLAY_VALUES(health, capacity, was_added)
+end
+
+function module.set_max_health_display(maximum_value: int): void
+    HUD.SET_MAX_HEALTH_HUD_DISPLAY(maximum_value)
+end
+
+function module.set_max_armour_display(maximum_value: int): void
+    HUD.SET_MAX_ARMOUR_HUD_DISPLAY(maximum_value)
+end
+
+function module.set_component_position(id: int, x: float, y: float): void
+    HUD.SET_HUD_COMPONENT_POSITION(id, x, y)
+end
+
+function module.set_mp_gamer_tag_visibility(gamer_tag_id: int, component: int, toggle: bool, p3: any): void
+    HUD.SET_MP_GAMER_TAG_VISIBILITY(gamer_tag_id, component, toggle, p3)
+end
+
+function module.set_all_mp_gamer_tags_visibility(gamer_tag_id: int, toggle: bool): void
+    HUD.SET_ALL_MP_GAMER_TAGS_VISIBILITY(gamer_tag_id, toggle)
+end
+
+-- Displays a bunch of icons above the players name, and level, and their name twice
+function module.set_mp_gamer_tags_should_use_vehicle_health(gamer_tag_id: int, toggle: bool): void
+    HUD.SET_MP_GAMER_TAGS_SHOULD_USE_VEHICLE_HEALTH(gamer_tag_id, toggle)
+end
+
+function module.set_mp_gamer_tags_should_use_points_health(gamer_tag_id: int, toggle: bool): void
+    HUD.SET_MP_GAMER_TAGS_SHOULD_USE_POINTS_HEALTH(gamer_tag_id, toggle)
+end
+
+function module.set_mp_gamer_tags_point_health(gamer_tag_id: int, value: int, maximum_value: int): void
+    HUD.SET_MP_GAMER_TAGS_POINT_HEALTH(gamer_tag_id, value, maximum_value)
+end
+
+-- Sets a gamer tag's component colour
+function module.set_mp_gamer_tag_colour(gamer_tag_id: int, component: int, hud_color_index: int): void
+    HUD.SET_MP_GAMER_TAG_COLOUR(gamer_tag_id, component, hud_color_index)
+end
+
+-- Ranges from 0 to 255. 0 is grey health bar, ~50 yellow, 200 purple
+function module.set_mp_gamer_tag_health_bar_colour(gamer_tag_id: int, hud_color_index: int): void
+    HUD.SET_MP_GAMER_TAG_HEALTH_BAR_COLOUR(gamer_tag_id, hud_color_index)
+end
+
+-- Sets flag's sprite transparency. 0-255
+function module.set_mp_gamer_tag_alpha(gamer_tag_id: int, component: int, alpha: int): void
+    HUD.SET_MP_GAMER_TAG_ALPHA(gamer_tag_id, component, alpha)
+end
+
+function module.set_mp_gamer_tag_num_packages(gamer_tag_id: int, p1: int): void
+    HUD.SET_MP_GAMER_TAG_NUM_PACKAGES(gamer_tag_id, p1)
+end
+
+function module.set_mp_gamer_tag_name(gamer_tag_id: int, string: string): void
+    HUD.SET_MP_GAMER_TAG_NAME(gamer_tag_id, string)
+end
+
+-- You can only use text entries. No custom text
+function module.set_warning_message(
+    title_msg: string, flags: int, prompt_msg: string, p3: bool, p4: int, p5: string, p6: string,
+    show_background: bool, error_code: int
+): void
+    -- body function:
+    HUD.SET_WARNING_MESSAGE(title_msg, flags, prompt_msg, p3, p4, p5, p6, show_background, error_code)
+end
+
+-- Shows a warning message on screen with a header
+-- @param show_background Pointer: pass memory.alloc(size) and read the result back
+-- @param p7 Pointer: pass memory.alloc(size) and read the result back
+function module.set_warning_message_with_header(
+    entry_header: string, entry_line1: string, instructional_key: int, entry_line2: string,
+    p4: bool, p5: any, show_background: int, p7: int, p8: bool, p9: any
+): void
+    -- body function:
+    HUD.SET_WARNING_MESSAGE_WITH_HEADER(entry_header, entry_line1, instructional_key, entry_line2, p4, p5, show_background, p7, p8, p9)
+end
+
+-- @param p6 Pointer: pass memory.alloc(size) and read the result back
+-- @param p7 Pointer: pass memory.alloc(size) and read the result back
+function module.set_warning_message_with_header_extended(
+    entry_header: string, entry_line1: string, flags: int, entry_line2: string, p4: bool, p5: any,
+    p6: int, p7: int, show_bg: bool, p9: any, p10: any
+): void
+    -- body function:
+    HUD.SET_WARNING_MESSAGE_WITH_HEADER_EXTENDED(entry_header, entry_line1, flags, entry_line2, p4, p5, p6, p7, show_bg, p9, p10)
+end
+
+-- Some sort of list displayed in a warning message. Yet unknown how to prevent repeating
+function module.set_warning_message_option_items(
+    index: int, name: string, cash: int, rp: int, lvl: int, colour: int
+): bool
+    -- body function:
+    return HUD.SET_WARNING_MESSAGE_OPTION_ITEMS(index, name, cash, rp, lvl, colour)
+end
+
+function module.set_warning_message_option_highlight(p0: any): bool
+    return HUD.SET_WARNING_MESSAGE_OPTION_HIGHLIGHT(p0)
+end
+
+function module.set_savegame_list_unique_id(p0: any): void
+    HUD.SET_SAVEGAME_LIST_UNIQUE_ID(p0)
+end
+
+function module.set_social_club_tour(name: string): void
+    HUD.SET_SOCIAL_CLUB_TOUR(name)
+end
+
+function module.set_director_mode_launched_by_script(): void
+    HUD.SET_DIRECTOR_MODE_LAUNCHED_BY_SCRIPT()
+end
+
+-- If toggle is true, hides special ability bar / character name in the pause menu
+function module.set_player_is_in_director_mode(toggle: bool): void
+    HUD.SET_PLAYER_IS_IN_DIRECTOR_MODE(toggle)
+end
+
+function module.set_director_mode_available(toggle: bool): void
+    HUD.SET_DIRECTOR_MODE_AVAILABLE(toggle)
+end
+
+-- Actions
+
+-- Removes the loading prompt at the bottom right of the screen
+function module.busyspinner_off(): void
+    HUD.BUSYSPINNER_OFF()
+end
+
+function module.preload_busyspinner(): void
+    HUD.PRELOAD_BUSYSPINNER()
+end
+
+function module.busyspinner_is_on(): bool
+    return HUD.BUSYSPINNER_IS_ON()
+end
+
+function module.busyspinner_is_displaying(): bool
+    return HUD.BUSYSPINNER_IS_DISPLAYING()
+end
+
+function module.clear_brief(): void
+    HUD.CLEAR_BRIEF()
+end
+
+-- If Hud should be displayed
+function module.display(toggle: bool): void
+    HUD.DISPLAY_HUD(toggle)
+end
+
+-- Enables drawing some hud components, such as help labels, this frame, when the player is dead
+function module.display_when_not_in_state_of_play_this_frame(): void
+    HUD.DISPLAY_HUD_WHEN_NOT_IN_STATE_OF_PLAY_THIS_FRAME()
+end
+
+function module.display_when_paused_this_frame(): void
+    HUD.DISPLAY_HUD_WHEN_PAUSED_THIS_FRAME()
+end
+
+function module.use_vehicle_targeting_reticule(p0: any): void
+    HUD.USE_VEHICLE_TARGETING_RETICULE(p0)
+end
+
+function module.use_vehicle_targeting_reticule_on_vehicles(enable: bool): void
+    HUD._USE_VEHICLE_TARGETING_RETICULE_ON_VEHICLES(enable)
+end
+
+function module.add_valid_vehicle_hit_hash(p0: any): void
+    HUD.ADD_VALID_VEHICLE_HIT_HASH(p0)
+end
+
+function module.clear_valid_vehicle_hit_hashes(): void
+    HUD.CLEAR_VALID_VEHICLE_HIT_HASHES()
+end
+
+function module.add_next_message_to_previous_briefs(p0: bool): void
+    HUD.ADD_NEXT_MESSAGE_TO_PREVIOUS_BRIEFS(p0)
+end
+
+function module.force_next_message_to_previous_briefs_list(p0: int): void
+    HUD.FORCE_NEXT_MESSAGE_TO_PREVIOUS_BRIEFS_LIST(p0)
+end
+
+function module.register_named_rendertarget(name: string, p1: bool): bool
+    return HUD.REGISTER_NAMED_RENDERTARGET(name, p1)
+end
+
+function module.release_named_rendertarget(name: string): bool
+    return HUD.RELEASE_NAMED_RENDERTARGET(name)
+end
+
+function module.link_named_rendertarget(model_hash: int): void
+    HUD.LINK_NAMED_RENDERTARGET(model_hash)
+end
+
+function module.clear_help(toggle: bool): void
+    HUD.CLEAR_HELP(toggle)
+end
+
+function module.show_start_mission_instructional_button(toggle: bool): void
+    HUD.SHOW_START_MISSION_INSTRUCTIONAL_BUTTON(toggle)
+end
+
+function module.show_contact_instructional_button(toggle: bool): void
+    HUD.SHOW_CONTACT_INSTRUCTIONAL_BUTTON(toggle)
+end
+
+function module.show_purchase_instructional_button(toggle: bool): void
+    HUD._SHOW_PURCHASE_INSTRUCTIONAL_BUTTON(toggle)
+end
+
+function module.reload_map_menu(): void
+    HUD.RELOAD_MAP_MENU()
+end
+
+function module.setup_fake_cone_data(
+    blip: int, p1: float, p2: float, p3: float, p4: float, p5: float, p6: float, p7: any, p8: int
+): void
+    -- body function:
+    HUD.SETUP_FAKE_CONE_DATA(blip, p1, p2, p3, p4, p5, p6, p7, p8)
+end
+
+function module.remove_fake_cone_data(blip: int): void
+    HUD.REMOVE_FAKE_CONE_DATA(blip)
+end
+
+function module.clear_fake_cone_array(): void
+    HUD.CLEAR_FAKE_CONE_ARRAY()
+end
+
+function module.show_account_picker(): void
+    HUD.SHOW_ACCOUNT_PICKER()
+end
+
+function module.hide_loading_on_fade_this_frame(): void
+    HUD.HIDE_LOADING_ON_FADE_THIS_FRAME()
+end
+
+function module.display_area_name(toggle: bool): void
+    HUD.DISPLAY_AREA_NAME(toggle)
+end
+
+function module.display_ammo_this_frame(display: bool): void
+    HUD.DISPLAY_AMMO_THIS_FRAME(display)
+end
+
+-- Displays the crosshair for this frame
+function module.display_sniper_scope_this_frame(): void
+    HUD.DISPLAY_SNIPER_SCOPE_THIS_FRAME()
+end
+
+-- Forces the weapon wheel to show/hide
+function module.force_weapon_wheel(show: bool): void
+    HUD.HUD_FORCE_WEAPON_WHEEL(show)
+end
+
+function module.force_special_vehicle_weapon_wheel(): void
+    HUD.HUD_FORCE_SPECIAL_VEHICLE_WEAPON_WHEEL()
+end
+
+-- Calling this each frame, stops the player from receiving a weapon via the weapon wheel
+function module.suppress_weapon_wheel_results_this_frame(): void
+    HUD.HUD_SUPPRESS_WEAPON_WHEEL_RESULTS_THIS_FRAME()
+end
+
+function module.showing_character_switch_selection(toggle: bool): void
+    HUD.HUD_SHOWING_CHARACTER_SWITCH_SELECTION(toggle)
+end
+
+function module.hide_scripted_component_this_frame(id: int): void
+    HUD.HIDE_SCRIPTED_HUD_COMPONENT_THIS_FRAME(id)
+end
+
+function module.show_scripted_component_this_frame(id: int): void
+    HUD.SHOW_SCRIPTED_HUD_COMPONENT_THIS_FRAME(id)
+end
+
+-- This function hides various HUD (Heads-up Display) components
+function module.hide_component_this_frame(id: int): void
+    HUD.HIDE_HUD_COMPONENT_THIS_FRAME(id)
+end
+
+-- This function hides various HUD (Heads-up Display) components
+function module.show_component_this_frame(id: int): void
+    HUD.SHOW_HUD_COMPONENT_THIS_FRAME(id)
+end
+
+-- Hides area and vehicle name HUD components for one frame
+function module.hide_street_and_car_names_this_frame(): void
+    HUD.HIDE_STREET_AND_CAR_NAMES_THIS_FRAME()
+end
+
+function module.reset_reticule_values(): void
+    HUD.RESET_RETICULE_VALUES()
+end
+
+function module.reset_component_values(id: int): void
+    HUD.RESET_HUD_COMPONENT_VALUES(id)
+end
+
+function module.clear_reminder_message(): void
+    HUD.CLEAR_REMINDER_MESSAGE()
+end
+
+-- Shows a menu for reporting UGC content
+function module.open_reportugc_menu(): void
+    HUD.OPEN_REPORTUGC_MENU()
+end
+
+function module.force_close_reportugc_menu(): void
+    HUD.FORCE_CLOSE_REPORTUGC_MENU()
+end
+
+function module.clear_floating_help(hud_index: int, p1: bool): void
+    HUD.CLEAR_FLOATING_HELP(hud_index, p1)
+end
+
+function module.create_mp_gamer_tag_with_crew_color(
+    player_id: int, username: string, pointed_clan_tag: bool, is_rockstar_clan: bool,
+    clan_tag: string, clan_flag: int, r: int, g: int, b: int
+): void
+    -- body function:
+    HUD.CREATE_MP_GAMER_TAG_WITH_CREW_COLOR(player_id, username, pointed_clan_tag, is_rockstar_clan, clan_tag, clan_flag, r, g, b)
+end
+
+function module.create_fake_mp_gamer_tag(
+    ped: int, username: string, pointed_clan_tag: bool, is_rockstar_clan: bool, clan_tag: string,
+    clan_flag: int
+): int
+    -- body function:
+    return HUD.CREATE_FAKE_MP_GAMER_TAG(ped, username, pointed_clan_tag, is_rockstar_clan, clan_tag, clan_flag)
+end
+
+function module.remove_mp_gamer_tag(gamer_tag_id: int): void
+    HUD.REMOVE_MP_GAMER_TAG(gamer_tag_id)
+end
+
+function module.reset_global_actionscript_flag(flag_index: int): void
+    HUD.RESET_GLOBAL_ACTIONSCRIPT_FLAG(flag_index)
+end
+
+function module.remove_warning_message_option_items(): void
+    HUD.REMOVE_WARNING_MESSAGE_OPTION_ITEMS()
+end
+
+function module.draw_over_fade_this_frame(): void
+    HUD.DRAW_HUD_OVER_FADE_THIS_FRAME()
+end
+
+-- Allows opening the pause menu this frame, when the player is dead
+function module.allow_pause_when_not_in_state_of_play_this_frame(): void
+    HUD.ALLOW_PAUSE_WHEN_NOT_IN_STATE_OF_PLAY_THIS_FRAME()
+end
+
+function module.pause_toggle_fullscreen_map(p0: any): void
+    HUD.PAUSE_TOGGLE_FULLSCREEN_MAP(p0)
+end
+
+function module.code_wants_script_to_take_control(): bool
+    return HUD.CODE_WANTS_SCRIPT_TO_TAKE_CONTROL()
+end
+
+function module.open_online_policies_menu(): void
+    HUD.OPEN_ONLINE_POLICIES_MENU()
+end
+
+-- Uses the `SOCIAL_CLUB2` scaleform
+function module.open_social_club_menu(menu: int): void
+    HUD.OPEN_SOCIAL_CLUB_MENU(menu)
+end
+
+function module.close_social_club_menu(): void
+    HUD.CLOSE_SOCIAL_CLUB_MENU()
+end
+
+function module.hide_hudmarkers_this_frame(): void
+    HUD.HIDE_HUDMARKERS_THIS_FRAME()
+end
+
 return Atdar.loader.auto(module, "natives/visual/hud")

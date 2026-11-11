@@ -6,6 +6,23 @@ function module.is_entity_on(entity: int): bool
     return FIRE.IS_ENTITY_ON_FIRE(entity)
 end
 
+-- Get
+
+function module.get_number_of_fires_in_range(x: float, y: float, z: float, radius: float): int
+    return FIRE.GET_NUMBER_OF_FIRES_IN_RANGE(x, y, z, radius)
+end
+
+-- @param out_position Pointer: pass memory.alloc(size) and read the result back
+function module.get_closest_pos(out_position: int, x: float, y: float, z: float): bool
+    return FIRE.GET_CLOSEST_FIRE_POS(out_position, x, y, z)
+end
+
+-- Set
+
+function module.set_flammability_multiplier(p0: float): void
+    FIRE.SET_FLAMMABILITY_MULTIPLIER(p0)
+end
+
 -- Actions
 
 -- Puts out the fire on the entity itself (not the fires on the ground around it)
@@ -16,6 +33,18 @@ end
 -- Puts out every fire within radius metres of x, y, z (burning fuel on the ground too)
 function module.stop_in_range(x: float, y: float, z: float, radius: float): void
     FIRE.STOP_FIRE_IN_RANGE(x, y, z, radius)
+end
+
+function module.start_script(x: float, y: float, z: float, max_children: int, is_gas_fire: bool): int
+    return FIRE.START_SCRIPT_FIRE(x, y, z, max_children, is_gas_fire)
+end
+
+function module.remove_script(fire_handle: int): void
+    FIRE.REMOVE_SCRIPT_FIRE(fire_handle)
+end
+
+function module.start_entity(entity: int): int
+    return FIRE.START_ENTITY_FIRE(entity)
 end
 
 return module

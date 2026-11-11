@@ -1,0 +1,137 @@
+-- Sounds and audio streams by id
+
+local module = {}
+
+-- State
+
+function module.has_finished(sound_id: int): bool
+    return AUDIO.HAS_SOUND_FINISHED(sound_id)
+end
+
+function module.is_stream_playing(): bool
+    return AUDIO.IS_STREAM_PLAYING()
+end
+
+-- Get
+
+function module.get_id(): int
+    return AUDIO.GET_SOUND_ID()
+end
+
+-- Could this be used alongside either,
+function module.get_network_id_from_id(sound_id: int): int
+    return AUDIO.GET_NETWORK_ID_FROM_SOUND_ID(sound_id)
+end
+
+function module.get_id_from_network_id(net_id: int): int
+    return AUDIO.GET_SOUND_ID_FROM_NETWORK_ID(net_id)
+end
+
+function module.get_current_track_name(radio_station_name: string): int
+    return AUDIO.GET_CURRENT_TRACK_SOUND_NAME(radio_station_name)
+end
+
+function module.get_stream_play_time(): int
+    return AUDIO.GET_STREAM_PLAY_TIME()
+end
+
+-- Set
+
+function module.set_variable_on(sound_id: int, variable: string, p2: float): void
+    AUDIO.SET_VARIABLE_ON_SOUND(sound_id, variable, p2)
+end
+
+function module.set_variable_on_stream(variable: string, p1: float): void
+    AUDIO.SET_VARIABLE_ON_STREAM(variable, p1)
+end
+
+function module.set_variable_on_under_water_stream(variable_name: string, value: float): void
+    AUDIO.SET_VARIABLE_ON_UNDER_WATER_STREAM(variable_name, value)
+end
+
+-- Actions
+
+function module.release_id(sound_id: int): void
+    AUDIO.RELEASE_SOUND_ID(sound_id)
+end
+
+function module.play(sound_id: int, audio_name: string, audio_ref: string, p3: bool, p4: any, p5: bool): void
+    AUDIO.PLAY_SOUND(sound_id, audio_name, audio_ref, p3, p4, p5)
+end
+
+function module.play_frontend(sound_id: int, audio_name: string, audio_ref: string, p3: bool): void
+    AUDIO.PLAY_SOUND_FRONTEND(sound_id, audio_name, audio_ref, p3)
+end
+
+function module.play_deferred_frontend(sound_name: string, soundset_name: string): void
+    AUDIO.PLAY_DEFERRED_SOUND_FRONTEND(sound_name, soundset_name)
+end
+
+function module.play_from_entity(
+    sound_id: int, audio_name: string, entity: int, audio_ref: string, is_network: bool, p5: any
+): void
+    -- body function:
+    AUDIO.PLAY_SOUND_FROM_ENTITY(sound_id, audio_name, entity, audio_ref, is_network, p5)
+end
+
+-- Only used with "formation_flying_blips_soundset" and "biker_formation_blips_soundset"
+function module.play_from_entity_hash(
+    sound_id: int, model: int, entity: int, sound_set_hash: int, p4: any, p5: any
+): void
+    -- body function:
+    AUDIO.PLAY_SOUND_FROM_ENTITY_HASH(sound_id, model, entity, sound_set_hash, p4, p5)
+end
+
+function module.play_from_coord(
+    sound_id: int, audio_name: string, x: float, y: float, z: float, audio_ref: string,
+    is_network: bool, range: int, p8: bool
+): void
+    -- body function:
+    AUDIO.PLAY_SOUND_FROM_COORD(sound_id, audio_name, x, y, z, audio_ref, is_network, range, p8)
+end
+
+function module.update_coord(sound_id: int, x: float, y: float, z: float): void
+    AUDIO.UPDATE_SOUND_COORD(sound_id, x, y, z)
+end
+
+function module.stop(sound_id: int): void
+    AUDIO.STOP_SOUND(sound_id)
+end
+
+function module.override_underwater_stream(p0: string, p1: bool): void
+    AUDIO.OVERRIDE_UNDERWATER_STREAM(p0, p1)
+end
+
+function module.load_stream(stream_name: string, sound_set: string): bool
+    return AUDIO.LOAD_STREAM(stream_name, sound_set)
+end
+
+function module.load_stream_with_start_offset(stream_name: string, start_offset: int, sound_set: string): bool
+    return AUDIO.LOAD_STREAM_WITH_START_OFFSET(stream_name, start_offset, sound_set)
+end
+
+function module.play_stream_from_ped(ped: int): void
+    AUDIO.PLAY_STREAM_FROM_PED(ped)
+end
+
+function module.play_stream_from_object(object: int): void
+    AUDIO.PLAY_STREAM_FROM_OBJECT(object)
+end
+
+function module.play_stream_frontend(): void
+    AUDIO.PLAY_STREAM_FRONTEND()
+end
+
+function module.play_stream_from_position(x: float, y: float, z: float): void
+    AUDIO.PLAY_STREAM_FROM_POSITION(x, y, z)
+end
+
+function module.stop_stream(): void
+    AUDIO.STOP_STREAM()
+end
+
+function module.stop_smoke_grenade_explosion_sounds(): void
+    AUDIO.STOP_SMOKE_GRENADE_EXPLOSION_SOUNDS()
+end
+
+return module

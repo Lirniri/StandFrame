@@ -17,4 +17,404 @@ function module.from_net_id(net_id): ?int
     return NETWORK.NET_TO_OBJ(net_id)
 end
 
-return module
+-- State
+
+function module.has_been_broken(object: int, p1: any): bool
+    return OBJECT.HAS_OBJECT_BEEN_BROKEN(object, p1)
+end
+
+function module.has_closest_type_been_broken(
+    p0: float, p1: float, p2: float, p3: float, model_hash: int, p5: any
+): bool
+    -- body function:
+    return OBJECT.HAS_CLOSEST_OBJECT_OF_TYPE_BEEN_BROKEN(p0, p1, p2, p3, model_hash, p5)
+end
+
+function module.has_closest_type_been_completely_destroyed(
+    x: float, y: float, z: float, radius: float, model_hash: int, p5: bool
+): bool
+    -- body function:
+    return OBJECT.HAS_CLOSEST_OBJECT_OF_TYPE_BEEN_COMPLETELY_DESTROYED(x, y, z, radius, model_hash, p5)
+end
+
+function module.is_garage_empty(garage_hash: int, p1: bool, p2: int): bool
+    return OBJECT.IS_GARAGE_EMPTY(garage_hash, p1, p2)
+end
+
+function module.is_player_entirely_inside_garage(garage_hash: int, player_id: int, p2: float, p3: int): bool
+    return OBJECT.IS_PLAYER_ENTIRELY_INSIDE_GARAGE(garage_hash, player_id, p2, p3)
+end
+
+function module.is_player_partially_inside_garage(garage_hash: int, player_id: int, p2: int): bool
+    return OBJECT.IS_PLAYER_PARTIALLY_INSIDE_GARAGE(garage_hash, player_id, p2)
+end
+
+function module.are_entities_entirely_inside_garage(
+    garage_hash: int, p1: bool, p2: bool, p3: bool, p4: any
+): bool
+    -- body function:
+    return OBJECT.ARE_ENTITIES_ENTIRELY_INSIDE_GARAGE(garage_hash, p1, p2, p3, p4)
+end
+
+function module.is_any_entity_entirely_inside_garage(
+    garage_hash: int, p1: bool, p2: bool, p3: bool, p4: any
+): bool
+    -- body function:
+    return OBJECT.IS_ANY_ENTITY_ENTIRELY_INSIDE_GARAGE(garage_hash, p1, p2, p3, p4)
+end
+
+-- Despite the name, it does work for any entity type
+function module.is_entirely_inside_garage(garage_hash: int, entity: int, p2: float, p3: int): bool
+    return OBJECT.IS_OBJECT_ENTIRELY_INSIDE_GARAGE(garage_hash, entity, p2, p3)
+end
+
+-- Despite the name, it does work for any entity type
+function module.is_partially_inside_garage(garage_hash: int, entity: int, p2: int): bool
+    return OBJECT.IS_OBJECT_PARTIALLY_INSIDE_GARAGE(garage_hash, entity, p2)
+end
+
+function module.does_type_exist_at_coords(
+    x: float, y: float, z: float, radius: float, hash: int, p5: bool
+): bool
+    -- body function:
+    return OBJECT.DOES_OBJECT_OF_TYPE_EXIST_AT_COORDS(x, y, z, radius, hash, p5)
+end
+
+function module.is_point_in_angled_area(
+    x_pos: float, y_pos: float, z_pos: float, x1: float, y1: float, z1: float, x2: float, y2: float,
+    z2: float, width: float, debug: bool, include_z: bool
+): bool
+    -- body function:
+    return OBJECT.IS_POINT_IN_ANGLED_AREA(x_pos, y_pos, z_pos, x1, y1, z1, x2, y2, z2, width, debug, include_z)
+end
+
+function module.is_any_near_point(x: float, y: float, z: float, range: float, p4: bool): bool
+    return OBJECT.IS_ANY_OBJECT_NEAR_POINT(x, y, z, range, p4)
+end
+
+function module.is_near_point(object_hash: int, x: float, y: float, z: float, range: float): bool
+    return OBJECT.IS_OBJECT_NEAR_POINT(object_hash, x, y, z, range)
+end
+
+function module.is_visible(object: int): bool
+    return OBJECT.IS_OBJECT_VISIBLE(object)
+end
+
+function module.does_rayfire_map_exist(object: int): bool
+    return OBJECT.DOES_RAYFIRE_MAP_OBJECT_EXIST(object)
+end
+
+function module.is_prop_light_overriden(object: int): bool
+    return OBJECT.IS_PROP_LIGHT_OVERRIDEN(object)
+end
+
+-- Get
+
+-- Has 8 params in the latest patches
+function module.get_closest_type(
+    x: float, y: float, z: float, radius: float, model_hash: int, is_mission: bool, p6: bool,
+    p7: bool
+): int
+    -- body function:
+    return OBJECT.GET_CLOSEST_OBJECT_OF_TYPE(x, y, z, radius, model_hash, is_mission, p6, p7)
+end
+
+function module.get_has_been_completely_destroyed(p0: any): bool
+    return OBJECT.GET_HAS_OBJECT_BEEN_COMPLETELY_DESTROYED(p0)
+end
+
+function module.get_offset_from_coord_and_heading_in_world_coords(
+    x_pos: float, y_pos: float, z_pos: float, heading: float, x_offset: float, y_offset: float,
+    z_offset: float
+): vector3
+    -- body function:
+    return OBJECT.GET_OFFSET_FROM_COORD_AND_HEADING_IN_WORLD_COORDS(x_pos, y_pos, z_pos, heading, x_offset, y_offset, z_offset)
+end
+
+-- @param out_position Pointer: pass memory.alloc(size) and read the result back
+-- @param out_rotation Pointer: pass memory.alloc(size) and read the result back
+function module.get_coords_and_rotation_of_closest_type(
+    x: float, y: float, z: float, radius: float, model_hash: int, out_position: int,
+    out_rotation: int, rotation_order: int
+): bool
+    -- body function:
+    return OBJECT.GET_COORDS_AND_ROTATION_OF_CLOSEST_OBJECT_OF_TYPE(x, y, z, radius, model_hash, out_position, out_rotation, rotation_order)
+end
+
+function module.get_fragment_damage_health(p0: any, p1: bool): float
+    return OBJECT.GET_OBJECT_FRAGMENT_DAMAGE_HEALTH(p0, p1)
+end
+
+function module.get_rayfire_map(x: float, y: float, z: float, radius: float, name: string): int
+    return OBJECT.GET_RAYFIRE_MAP_OBJECT(x, y, z, radius, name)
+end
+
+-- Get a destructible object's state
+function module.get_state_of_rayfire_map(object: int): int
+    return OBJECT.GET_STATE_OF_RAYFIRE_MAP_OBJECT(object)
+end
+
+function module.get_rayfire_map_anim_phase(object: int): float
+    return OBJECT.GET_RAYFIRE_MAP_OBJECT_ANIM_PHASE(object)
+end
+
+function module.get_tint_index(object: int): int
+    return OBJECT.GET_OBJECT_TINT_INDEX(object)
+end
+
+function module.get_is_articulated_joint_at_min_angle(object: int, p1: any): bool
+    return OBJECT.GET_IS_ARTICULATED_JOINT_AT_MIN_ANGLE(object, p1)
+end
+
+function module.get_is_articulated_joint_at_max_angle(p0: any, p1: any): bool
+    return OBJECT.GET_IS_ARTICULATED_JOINT_AT_MAX_ANGLE(p0, p1)
+end
+
+-- Set
+
+-- This is an alias of SET_ENTITY_AS_NO_LONGER_NEEDED
+-- @param object Pointer: pass memory.alloc(size) and read the result back
+function module.set_as_no_longer_needed(object: int): void
+    ENTITY.SET_OBJECT_AS_NO_LONGER_NEEDED(object)
+end
+
+function module.set_targettable(object: int, targettable: bool, p2: any): void
+    OBJECT.SET_OBJECT_TARGETTABLE(object, targettable, p2)
+end
+
+-- Sets the 34th and 35th object flags related to player peds
+function module.set_targettable_by_player(object: int, set_flag34: bool, set_flag35: bool): void
+    OBJECT._SET_OBJECT_TARGETTABLE_BY_PLAYER(object, set_flag34, set_flag35)
+end
+
+function module.set_force_vehicles_to_avoid(object: int, toggle: bool): void
+    OBJECT.SET_OBJECT_FORCE_VEHICLES_TO_AVOID(object, toggle)
+end
+
+-- Overrides the climbing/blocking flags of the object, used in the native scripts mostly for "prop_dock_bouy_*"
+function module.set_allow_low_lod_buoyancy(object: int, toggle: bool): void
+    OBJECT.SET_OBJECT_ALLOW_LOW_LOD_BUOYANCY(object, toggle)
+end
+
+-- Adjust the physics parameters of a prop, or otherwise known as "object". This is useful for simulated gravity
+function module.set_physics_params(
+    object: int, weight: float, p2: float, p3: float, p4: float, p5: float, gravity: float,
+    p7: float, p8: float, p9: float, p10: float, buoyancy: float
+): void
+    -- body function:
+    OBJECT.SET_OBJECT_PHYSICS_PARAMS(object, weight, p2, p3, p4, p5, gravity, p7, p8, p9, p10, buoyancy)
+end
+
+function module.set_activate_physics_as_soon_as_it_is_unfrozen(object: int, toggle: bool): void
+    OBJECT.SET_ACTIVATE_OBJECT_PHYSICS_AS_SOON_AS_IT_IS_UNFROZEN(object, toggle)
+end
+
+function module.set_is_special_golfball(object: int, toggle: bool): void
+    OBJECT.SET_OBJECT_IS_SPECIAL_GOLFBALL(object, toggle)
+end
+
+function module.set_takes_damage_from_colliding_with_buildings(p0: any, p1: bool): void
+    OBJECT.SET_OBJECT_TAKES_DAMAGE_FROM_COLLIDING_WITH_BUILDINGS(p0, p1)
+end
+
+-- Requires a component_at_*_flsh to be attached to the weapon object
+function module.set_cutscenes_weapon_flashlight_on_this_frame(object: int, toggle: bool): void
+    OBJECT.SET_CUTSCENES_WEAPON_FLASHLIGHT_ON_THIS_FRAME(object, toggle)
+end
+
+-- Defines the state of a destructible object
+function module.set_state_of_rayfire_map(object: int, state: int): void
+    OBJECT.SET_STATE_OF_RAYFIRE_MAP_OBJECT(object, state)
+end
+
+function module.set_glow_in_same_team(pickup: int): void
+    OBJECT.SET_OBJECT_GLOW_IN_SAME_TEAM(pickup)
+end
+
+function module.set_only_allow_ammo_collection_when_low(p0: bool): void
+    OBJECT.SET_ONLY_ALLOW_AMMO_COLLECTION_WHEN_LOW(p0)
+end
+
+function module.set_entity_flag_suppress_shadow(entity: int, toggle: bool): void
+    OBJECT.SET_ENTITY_FLAG_SUPPRESS_SHADOW(entity, toggle)
+end
+
+function module.set_entity_flag_render_small_shadow(object: int, toggle: bool): void
+    OBJECT.SET_ENTITY_FLAG_RENDER_SMALL_SHADOW(object, toggle)
+end
+
+function module.set_tint_index(object: int, texture_variation: int): void
+    OBJECT.SET_OBJECT_TINT_INDEX(object, texture_variation)
+end
+
+function module.set_tint_index_closest_building_of_type(
+    x: float, y: float, z: float, radius: float, model_hash: int, texture_variation: int
+): bool
+    -- body function:
+    return OBJECT.SET_TINT_INDEX_CLOSEST_BUILDING_OF_TYPE(x, y, z, radius, model_hash, texture_variation)
+end
+
+function module.set_prop_tint_index(p0: any, p1: any): void
+    OBJECT.SET_PROP_TINT_INDEX(p0, p1)
+end
+
+function module.set_prop_light_color(object: int, p1: bool, r: int, g: int, b: int): bool
+    return OBJECT.SET_PROP_LIGHT_COLOR(object, p1, r, g, b)
+end
+
+function module.set_is_visible_in_mirrors(object: int, toggle: bool): void
+    OBJECT.SET_OBJECT_IS_VISIBLE_IN_MIRRORS(object, toggle)
+end
+
+function module.set_speed_boost_amount(object: int, p1: any): void
+    OBJECT.SET_OBJECT_SPEED_BOOST_AMOUNT(object, p1)
+end
+
+function module.set_speed_boost_duration(object: int, duration: float): void
+    OBJECT.SET_OBJECT_SPEED_BOOST_DURATION(object, duration)
+end
+
+function module.set_force_frame(x: float, y: float, z: float, p3: float): void
+    OBJECT.SET_FORCE_OBJECT_THIS_FRAME(x, y, z, p3)
+end
+
+function module.set_disable_collisions_between_cars_and_car_parachute(p0: any): void
+    OBJECT.SET_DISABLE_COLLISIONS_BETWEEN_CARS_AND_CAR_PARACHUTE(p0)
+end
+
+function module.set_projectiles_should_explode_on_contact(entity: int, p1: any): void
+    OBJECT.SET_PROJECTILES_SHOULD_EXPLODE_ON_CONTACT(entity, p1)
+end
+
+function module.set_drive_articulated_joint(object: int, toggle: bool, p2: int): void
+    OBJECT.SET_DRIVE_ARTICULATED_JOINT(object, toggle, p2)
+end
+
+function module.set_drive_articulated_joint_with_inflictor(object: int, toggle: bool, p2: int, ped: int): void
+    OBJECT.SET_DRIVE_ARTICULATED_JOINT_WITH_INFLICTOR(object, toggle, p2, ped)
+end
+
+function module.set_is_a_pressure_plate(object: int, toggle: bool): void
+    OBJECT.SET_OBJECT_IS_A_PRESSURE_PLATE(object, toggle)
+end
+
+function module.set_weapon_impacts_apply_greater_force(object: int, p1: bool): void
+    OBJECT.SET_WEAPON_IMPACTS_APPLY_GREATER_FORCE(object, p1)
+end
+
+function module.set_is_articulated(object: int, toggle: bool): void
+    OBJECT.SET_IS_OBJECT_ARTICULATED(object, toggle)
+end
+
+function module.set_is_ball(object: int, toggle: bool): void
+    OBJECT.SET_IS_OBJECT_BALL(object, toggle)
+end
+
+-- Actions
+
+function module.create(
+    model_hash: int, x: float, y: float, z: float, is_network: bool, b_script_host_obj: bool,
+    dynamic: bool
+): int
+    -- body function:
+    return OBJECT.CREATE_OBJECT(model_hash, x, y, z, is_network, b_script_host_obj, dynamic)
+end
+
+function module.create_no_offset(
+    model_hash: int, x: float, y: float, z: float, is_network: bool, b_script_host_obj: bool,
+    dynamic: bool, p7: any
+): int
+    -- body function:
+    return OBJECT.CREATE_OBJECT_NO_OFFSET(model_hash, x, y, z, is_network, b_script_host_obj, dynamic, p7)
+end
+
+-- Deletes the specified object, then sets the handle pointed to by the pointer to NULL
+-- @param object Pointer: pass memory.alloc(size) and read the result back
+function module.delete(object: int): void
+    OBJECT.DELETE_OBJECT(object)
+end
+
+function module.place_on_ground_properly(object: int): bool
+    return OBJECT.PLACE_OBJECT_ON_GROUND_PROPERLY(object)
+end
+
+function module.place_object_on_ground_or_object_properly(object: int): bool
+    return OBJECT.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY(object)
+end
+
+function module.rotate(object: int, p1: float, p2: float, p3: bool): bool
+    return OBJECT.ROTATE_OBJECT(object, p1, p2, p3)
+end
+
+function module.slide(
+    object: int, to_x: float, to_y: float, to_z: float, speed_x: float, speed_y: float,
+    speed_z: float, collision: bool
+): bool
+    -- body function:
+    return OBJECT.SLIDE_OBJECT(object, to_x, to_y, to_z, speed_x, speed_y, speed_z, collision)
+end
+
+function module.play_auto_start_anim(p0: any): void
+    OBJECT.PLAY_OBJECT_AUTO_START_ANIM(p0)
+end
+
+function module.open_all_barriers_for_race(p0: bool): void
+    OBJECT.OPEN_ALL_BARRIERS_FOR_RACE(p0)
+end
+
+function module.close_all_barriers_for_race(): void
+    OBJECT.CLOSE_ALL_BARRIERS_FOR_RACE()
+end
+
+function module.clear_garage(garage_hash: int, is_network: bool): void
+    OBJECT.CLEAR_GARAGE(garage_hash, is_network)
+end
+
+function module.clear_objects_inside_garage(
+    garage_hash: int, vehicles: bool, peds: bool, objects: bool, is_network: bool
+): void
+    -- body function:
+    OBJECT.CLEAR_OBJECTS_INSIDE_GARAGE(garage_hash, vehicles, peds, objects, is_network)
+end
+
+function module.disable_tidying_up_in_garage(id: int, toggle: bool): void
+    OBJECT.DISABLE_TIDYING_UP_IN_GARAGE(id, toggle)
+end
+
+function module.enable_saving_in_garage(garage_hash: int, toggle: bool): void
+    OBJECT.ENABLE_SAVING_IN_GARAGE(garage_hash, toggle)
+end
+
+function module.close_safehouse_garages(): void
+    OBJECT.CLOSE_SAFEHOUSE_GARAGES()
+end
+
+function module.remove_high_detail_model(object: int): void
+    OBJECT.REMOVE_OBJECT_HIGH_DETAIL_MODEL(object)
+end
+
+function module.break_fragment_child(p0: int, p1: any, p2: bool): void
+    OBJECT.BREAK_OBJECT_FRAGMENT_CHILD(p0, p1, p2)
+end
+
+function module.damage_fragment_child(p0: any, p1: any, p2: any): void
+    OBJECT.DAMAGE_OBJECT_FRAGMENT_CHILD(p0, p1, p2)
+end
+
+function module.fix_fragment(object: int): void
+    OBJECT.FIX_OBJECT_FRAGMENT(object)
+end
+
+function module.track_visibility(object: int): void
+    OBJECT.TRACK_OBJECT_VISIBILITY(object)
+end
+
+function module.allow_damage_events_for_non_networked_objects(value: bool): void
+    OBJECT.ALLOW_DAMAGE_EVENTS_FOR_NON_NETWORKED_OBJECTS(value)
+end
+
+function module.only_clean_up_when_out_of_range(object: int): void
+    OBJECT.ONLY_CLEAN_UP_OBJECT_WHEN_OUT_OF_RANGE(object)
+end
+
+return Atdar.loader.auto(module, "natives/entity/object")

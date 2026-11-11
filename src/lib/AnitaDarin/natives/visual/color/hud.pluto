@@ -12,7 +12,6 @@
 
 local module = {}
 
-
 -- { index, name without HUD_COLOUR_, r, g, b, a }, a - 255 opaque
 local COLORS = {
     {   0, "PURE_WHITE",                   255, 255, 255, 255 },
@@ -292,6 +291,27 @@ function module.list(): table
         table.insert(list, { index = entry[1], name = entry[2], r = entry[3], g = entry[4], b = entry[5], a = entry[6] })
     end
     return list
+end
+
+-- Set
+
+-- Sets the color of HUD_COLOUR_SCRIPT_VARIABLE_2
+function module.set_second_script_variable_colour(r: int, g: int, b: int, a: int): void
+    HUD.SET_SECOND_SCRIPT_VARIABLE_HUD_COLOUR(r, g, b, a)
+end
+
+function module.set_custom_mp_color(hud_color_id: int): void
+    HUD.SET_CUSTOM_MP_HUD_COLOR(hud_color_id)
+end
+
+-- Actions
+
+function module.replace_colour(hud_color_index: int, hud_color_index2: int): void
+    HUD.REPLACE_HUD_COLOUR(hud_color_index, hud_color_index2)
+end
+
+function module.replace_colour_with_rgba(hud_color_index: int, r: int, g: int, b: int, a: int): void
+    HUD.REPLACE_HUD_COLOUR_WITH_RGBA(hud_color_index, r, g, b, a)
 end
 
 return module

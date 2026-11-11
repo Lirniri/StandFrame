@@ -1,3 +1,56 @@
 local module = {}
 
+-- State
+
+-- Check if model is in cdimage(rpf)
+function module.is_in_cdimage(model: int): bool
+    return STREAMING.IS_MODEL_IN_CDIMAGE(model)
+end
+
+-- Returns whether the specified model exists in the game
+function module.is_valid(model: int): bool
+    return STREAMING.IS_MODEL_VALID(model)
+end
+
+function module.is_ped(model: int): bool
+    return STREAMING.IS_MODEL_A_PED(model)
+end
+
+function module.has_collision_for_loaded(model: int): bool
+    return STREAMING.HAS_COLLISION_FOR_MODEL_LOADED(model)
+end
+
+-- Set
+
+function module.set_reduce_ped_budget(toggle: bool): void
+    STREAMING.SET_REDUCE_PED_MODEL_BUDGET(toggle)
+end
+
+function module.set_reduce_vehicle_budget(toggle: bool): void
+    STREAMING.SET_REDUCE_VEHICLE_MODEL_BUDGET(toggle)
+end
+
+-- This is a NOP function. It does nothing at all
+function module.set_ditch_police_models(toggle: bool): void
+    STREAMING.SET_DITCH_POLICE_MODELS(toggle)
+end
+
+-- Actions
+
+function module.request_models_in_room(interior: int, room_name: string): void
+    STREAMING.REQUEST_MODELS_IN_ROOM(interior, room_name)
+end
+
+function module.request_collision(model: int): void
+    STREAMING.REQUEST_COLLISION_FOR_MODEL(model)
+end
+
+function module.add_to_creator_budget(model_hash: int): bool
+    return STREAMING.ADD_MODEL_TO_CREATOR_BUDGET(model_hash)
+end
+
+function module.remove_from_creator_budget(model_hash: int): void
+    STREAMING.REMOVE_MODEL_FROM_CREATOR_BUDGET(model_hash)
+end
+
 return Atdar.loader.auto(module, "natives/streaming/model")

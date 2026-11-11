@@ -1,0 +1,141 @@
+-- Combat attributes and targets of peds
+
+local module = {}
+
+-- State
+
+function module.is_in_melee(ped: int): bool
+    return PED.IS_PED_IN_MELEE_COMBAT(ped)
+end
+
+function module.is_in(ped: int, target: int): bool
+    return PED.IS_PED_IN_COMBAT(ped, target)
+end
+
+function module.can_in_see_target(ped: int, target: int): bool
+    return PED.CAN_PED_IN_COMBAT_SEE_TARGET(ped, target)
+end
+
+function module.is_target_in_perception_area(
+    ped: int, target_ped: int, p2: float, p3: float, p4: float, p5: float
+): bool
+    -- body function:
+    return PED.IS_TARGET_PED_IN_PERCEPTION_AREA(ped, target_ped, p2, p3, p4, p5)
+end
+
+-- Get
+
+function module.get_target(ped: int, p1: any): int
+    return PED.GET_PED_TARGET_FROM_COMBAT_PED(ped, p1)
+end
+
+function module.get_jack_target(ped: int): int
+    return PED.GET_JACK_TARGET(ped)
+end
+
+function module.get_float(ped: int, p1: int): float
+    return PED.GET_COMBAT_FLOAT(ped, p1)
+end
+
+function module.get_movement(ped: int): int
+    return PED.GET_PED_COMBAT_MOVEMENT(ped)
+end
+
+function module.get_range(ped: int): int
+    return PED.GET_PED_COMBAT_RANGE(ped)
+end
+
+function module.get_melee_target(ped: int): int
+    return PED.GET_MELEE_TARGET_FOR_PED(ped)
+end
+
+-- Set
+
+function module.set_allow_hurt_for_all_mission_peds(toggle: bool): void
+    PED.SET_PED_ALLOW_HURT_COMBAT_FOR_ALL_MISSION_PEDS(toggle)
+end
+
+function module.set_can_be_targetted(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_TARGETTED(ped, toggle)
+end
+
+function module.set_can_be_targetted_by_team(ped: int, team: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_TARGETTED_BY_TEAM(ped, team, toggle)
+end
+
+function module.set_can_be_targetted_by_player(ped: int, player_id: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_TARGETTED_BY_PLAYER(ped, player_id, toggle)
+end
+
+function module.set_can_be_targeted_without_los(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_TARGETED_WITHOUT_LOS(ped, toggle)
+end
+
+function module.set_float(ped: int, combat_type: int, p2: float): void
+    PED.SET_COMBAT_FLOAT(ped, combat_type, p2)
+end
+
+function module.set_can_be_targeted_when_injured(ped: int, toggle: bool): void
+    PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(ped, toggle)
+end
+
+function module.set_movement(ped: int, combat_movement: int): void
+    PED.SET_PED_COMBAT_MOVEMENT(ped, combat_movement)
+end
+
+function module.set_ability(ped: int, ability_level: int): void
+    PED.SET_PED_COMBAT_ABILITY(ped, ability_level)
+end
+
+function module.set_range(ped: int, combat_range: int): void
+    PED.SET_PED_COMBAT_RANGE(ped, combat_range)
+end
+
+function module.set_attributes(ped: int, attribute_id: int, enabled: bool): void
+    PED.SET_PED_COMBAT_ATTRIBUTES(ped, attribute_id, enabled)
+end
+
+function module.set_target_loss_response(ped: int, response_type: int): void
+    PED.SET_PED_TARGET_LOSS_RESPONSE(ped, response_type)
+end
+
+function module.set_ik_target(
+    ped: int, ik_index: int, entity_look_at: int, bone_look_at: int, offset_x: float,
+    offset_y: float, offset_z: float, p7: any, blend_in_duration: int, blend_out_duration: int
+): void
+    -- body function:
+    PED.SET_IK_TARGET(ped, ik_index, entity_look_at, bone_look_at, offset_x, offset_y, offset_z, p7, blend_in_duration, blend_out_duration)
+end
+
+-- Actions
+
+-- Copies ped's components and props to targetPed
+function module.clone_to_target(ped: int, target_ped: int): void
+    PED.CLONE_PED_TO_TARGET(ped, target_ped)
+end
+
+function module.clone_to_target_alt(ped: int, target_ped: int, p2: bool): void
+    PED.CLONE_PED_TO_TARGET_ALT(ped, target_ped, p2)
+end
+
+function module.count_peds_in_with_target(ped: int): int
+    return PED.COUNT_PEDS_IN_COMBAT_WITH_TARGET(ped)
+end
+
+function module.count_peds_in_with_target_within_radius(
+    ped: int, x: float, y: float, z: float, radius: float
+): int
+    -- body function:
+    return PED.COUNT_PEDS_IN_COMBAT_WITH_TARGET_WITHIN_RADIUS(ped, x, y, z, radius)
+end
+
+function module.register_target(ped: int, target: int): void
+    PED.REGISTER_TARGET(ped, target)
+end
+
+-- Based on TASK_COMBAT_HATED_TARGETS_AROUND_PED, the parameters are likely similar (PedHandle, and area to attack in)
+function module.register_hated_targets_around(ped: int, radius: float): void
+    PED.REGISTER_HATED_TARGETS_AROUND_PED(ped, radius)
+end
+
+return module

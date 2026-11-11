@@ -69,6 +69,12 @@ function module.is_paused(): bool
     return HUD.THEFEED_IS_PAUSED()
 end
 
+-- Get
+
+function module.get_last_shown_phone_activatable_feed_id(): int
+    return HUD.THEFEED_GET_LAST_SHOWN_PHONE_ACTIVATABLE_FEED_ID()
+end
+
 -- Set
 
 -- The look set for the next post: the game applies it to one post only, so it's set again for each
@@ -81,7 +87,6 @@ function module.set_next_background(hud_color: int): void
     next_look.color = nil
     HUD.THEFEED_SET_BACKGROUND_COLOR_FOR_NEXT_POST(hud_color)
 end
-
 
 -- The background of the next post in any colour (0 - 255). The background takes only a HUD colour
 -- index, so the script slot is filled with this colour and its index is used
@@ -111,6 +116,22 @@ local function apply_look(look: table): void
     if look.flash ~= nil then
         HUD.THEFEED_SET_RGBA_PARAMETER_FOR_NEXT_MESSAGE(table.unpack(look.flash))
     end
+end
+
+function module.set_scripted_menu_height(pos: float): void
+    HUD.THEFEED_SET_SCRIPTED_MENU_HEIGHT(pos)
+end
+
+function module.set_flash_duration_parameter_for_next_message(count: int): void
+    HUD.THEFEED_SET_FLASH_DURATION_PARAMETER_FOR_NEXT_MESSAGE(count)
+end
+
+function module.set_vibrate_parameter_for_next_message(toggle: bool): void
+    HUD.THEFEED_SET_VIBRATE_PARAMETER_FOR_NEXT_MESSAGE(toggle)
+end
+
+function module.set_snap_feed_item_positions(p0: bool): void
+    HUD.THEFEED_SET_SNAP_FEED_ITEM_POSITIONS(p0)
 end
 
 -- Actions
@@ -227,6 +248,186 @@ function module.post_message(text: string, opts: table = {}): int
     local picture = opts.picture or "CHAR_SOCIAL_CLUB"
     return post_parts(text, || -> HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT(picture, picture,
         opts.important == true, opts.icon or module.ICON.CHAT_BOX, opts.sender or "", opts.subject or ""))
+end
+
+function module.only_show_tooltips(toggle: bool): void
+    HUD.THEFEED_ONLY_SHOW_TOOLTIPS(toggle)
+end
+
+-- Stops loading screen tips shown by invoking `THEFEED_SHOW`
+function module.hide(): void
+    HUD.THEFEED_HIDE()
+end
+
+-- Once called each frame hides all above radar notifications
+function module.hide_this_frame(): void
+    HUD.THEFEED_HIDE_THIS_FRAME()
+end
+
+-- Displays loading screen tips, requires `THEFEED_AUTO_POST_GAMETIPS_ON` to be called beforehand
+function module.show(): void
+    HUD.THEFEED_SHOW()
+end
+
+function module.flush_queue(): void
+    HUD.THEFEED_FLUSH_QUEUE()
+end
+
+function module.force_render_on(): void
+    HUD.THEFEED_FORCE_RENDER_ON()
+end
+
+function module.force_render_off(): void
+    HUD.THEFEED_FORCE_RENDER_OFF()
+end
+
+function module.report_logo_on(): void
+    HUD.THEFEED_REPORT_LOGO_ON()
+end
+
+function module.report_logo_off(): void
+    HUD.THEFEED_REPORT_LOGO_OFF()
+end
+
+function module.auto_post_gametips_on(): void
+    HUD.THEFEED_AUTO_POST_GAMETIPS_ON()
+end
+
+function module.auto_post_gametips_off(): void
+    HUD.THEFEED_AUTO_POST_GAMETIPS_OFF()
+end
+
+function module.reset_all_parameters(): void
+    HUD.THEFEED_RESET_ALL_PARAMETERS()
+end
+
+function module.clear_frozen_post(): void
+    HUD.THEFEED_CLEAR_FROZEN_POST()
+end
+
+-- Used in the native scripts to reference "GET_PEDHEADSHOT_TXD_STRING" and "CHAR_DEFAULT"
+function module.update_item_texture(
+    txd_string1: string, txn_string1: string, txd_string2: string, txn_string2: string
+): void
+    -- body function:
+    HUD.THEFEED_UPDATE_ITEM_TEXTURE(txd_string1, txn_string1, txd_string2, txn_string2)
+end
+
+function module.end_text_command_post_stats(
+    stat_title: string, icon_enum: int, step_val: bool, bar_value: int, is_important: bool,
+    picture_texture_dict: string, picture_texture_name: string
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_STATS(stat_title, icon_enum, step_val, bar_value, is_important, picture_texture_dict, picture_texture_name)
+end
+
+-- This function can show pictures of every texture that can be requested by REQUEST_STREAMED_TEXTURE_DICT
+function module.end_text_command_post_messagetext_subtitle_label(
+    txd_name: string, texture_name: string, flash: bool, icon_type: int, sender: string,
+    subject: string
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT_SUBTITLE_LABEL(txd_name, texture_name, flash, icon_type, sender, subject)
+end
+
+-- This function can show pictures of every texture that can be requested by REQUEST_STREAMED_TEXTURE_DICT
+function module.end_text_command_post_messagetext_tu(
+    txd_name: string, texture_name: string, flash: bool, icon_type: int, sender: string,
+    subject: string, duration: float
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT_TU(txd_name, texture_name, flash, icon_type, sender, subject, duration)
+end
+
+-- This function can show pictures of every texture that can be requested by REQUEST_STREAMED_TEXTURE_DICT
+function module.end_text_command_post_messagetext_with_crew_tag(
+    txd_name: string, texture_name: string, flash: bool, icon_type: int, sender: string,
+    subject: string, duration: float, clan_tag: string
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT_WITH_CREW_TAG(txd_name, texture_name, flash, icon_type, sender, subject, duration, clan_tag)
+end
+
+-- This function can show pictures of every texture that can be requested by REQUEST_STREAMED_TEXTURE_DICT
+function module.end_text_command_post_messagetext_with_crew_tag_and_additional_icon(
+    txd_name: string, texture_name: string, flash: bool, icon_type1: int, sender: string,
+    subject: string, duration: float, clan_tag: string, icon_type2: int, p9: int
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_MESSAGETEXT_WITH_CREW_TAG_AND_ADDITIONAL_ICON(txd_name, texture_name, flash, icon_type1, sender, subject, duration, clan_tag, icon_type2, p9)
+end
+
+function module.end_text_command_post_ticker_forced(blink: bool, p1: bool): int
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER_FORCED(blink, p1)
+end
+
+function module.end_text_command_post_ticker_with_tokens(blink: bool, p1: bool): int
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER_WITH_TOKENS(blink, p1)
+end
+
+function module.end_text_command_post_award(
+    texture_dict: string, texture_name: string, rp_bonus: int, color_overlay: int,
+    title_label: string
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_AWARD(texture_dict, texture_name, rp_bonus, color_overlay, title_label)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.end_text_command_post_crewtag(
+    p0: bool, p1: bool, p2: int, p3: int, is_leader: bool, unk0: bool, clan_desc: int, r: int,
+    g: int, b: int
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_CREWTAG(p0, p1, p2, p3, is_leader, unk0, clan_desc, r, g, b)
+end
+
+-- @param p2 Pointer: pass memory.alloc(size) and read the result back
+function module.end_text_command_post_crewtag_with_game_name(
+    p0: bool, p1: bool, p2: int, p3: int, is_leader: bool, unk0: bool, clan_desc: int,
+    player_name: string, r: int, g: int, b: int
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_CREWTAG_WITH_GAME_NAME(p0, p1, p2, p3, is_leader, unk0, clan_desc, player_name, r, g, b)
+end
+
+function module.end_text_command_post_unlock(gxt_label1: string, p1: int, gxt_label2: string): int
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_UNLOCK(gxt_label1, p1, gxt_label2)
+end
+
+function module.end_text_command_post_unlock_tu(gxt_label1: string, p1: int, gxt_label2: string, p3: int): int
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_UNLOCK_TU(gxt_label1, p1, gxt_label2, p3)
+end
+
+function module.end_text_command_post_unlock_tu_with_color(
+    p0: any, p1: any, p2: any, p3: any, p4: any, p5: any
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_UNLOCK_TU_WITH_COLOR(p0, p1, p2, p3, p4, p5)
+end
+
+function module.end_text_command_post_crew_rankup_with_literal_flag(
+    p0: string, p1: string, p2: string, p3: bool, p4: bool
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_CREW_RANKUP_WITH_LITERAL_FLAG(p0, p1, p2, p3, p4)
+end
+
+-- This function can show pictures of every texture that can be requested by REQUEST_STREAMED_TEXTURE_DICT
+function module.end_text_command_post_versus_tu(
+    txd_name1: string, texture_name1: string, count1: int, txd_name2: string, texture_name2: string,
+    count2: int, hud_color1: int, hud_color2: int
+): int
+    -- body function:
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_VERSUS_TU(txd_name1, texture_name1, count1, txd_name2, texture_name2, count2, hud_color1, hud_color2)
+end
+
+function module.end_text_command_post_replay(type: int, image: int, text: string): int
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_REPLAY(type, image, text)
+end
+
+function module.end_text_command_post_replay_input(type: int, button: string, text: string): int
+    return HUD.END_TEXT_COMMAND_THEFEED_POST_REPLAY_INPUT(type, button, text)
 end
 
 return module
