@@ -246,10 +246,14 @@ find("Load Menu").on_click()
 stand.equal(names_in(find("Load Menu")), "Unload | Copy Menu To Core: Off | Menus", "Load Menu: opened, the menus made again")
 local update_list = find("Update")
 stand.equal(names_in(update_list), "Installed Version | Available Version | Last Check | Changes | Check | Check For Updates"
-    .. " | Update Branch: main | Check On Start | Update | Update | Check Before Updating | Update Automatically"
-    .. " | Check For Updates Every (Days)",
+    .. " | Update Branch: main | Check On Start | Update | Update | Update Automatically | Check Before Updating"
+    .. " | Check For Updates Every (Days) | Update To Version",
     "Update: the version lines, Changes, Check For Updates and its branch, then the Update divider with Update and its settings")
 stand.equal(update_list.children[9].kind, "divider", "the Update divider under the branch")
+local version_list = stand.child(update_list, "Update To Version")
+stand.equal(version_list.kind, "list", "Update To Version is a list")
+stand.equal(names_in(version_list), "Version | Versions", "the field, then the Versions divider (the releases are read when it's opened)")
+stand.equal(version_list.children[1].kind, "text_input", "the version is typed in a text field")
 stand.equal(update_list.children[2].value, "not checked", "the available version isn't known before a check")
 stand.equal(update_list.children[3].value, "never", "and no check ran")
 stand.toasts = {}
@@ -1441,13 +1445,13 @@ local start_was = profile.get("update_check_on_start")
 stand.click(on_start)
 stand.equal(profile.get("update_check_on_start"), not start_was, "and switching it saves it")
 stand.click(on_start)
-local check_before = update_list.children[11]
+local check_before = update_list.children[12]
 stand.equal(check_before.value, profile.get("update_check_before") ~= false, "Check Before Updating shows the profile's value")
 local before_was = profile.get("update_check_before")
 stand.click(check_before)
 stand.equal(profile.get("update_check_before"), not before_was, "and switching it saves it")
 stand.click(check_before)
-local auto_update = update_list.children[12]
+local auto_update = update_list.children[11]
 stand.equal(auto_update.value, profile.get("auto_update") == true, "Update Automatically shows the profile's value")
 local auto_before = profile.get("auto_update")
 stand.click(auto_update)

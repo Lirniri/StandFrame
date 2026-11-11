@@ -7,6 +7,7 @@
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local manager = Atdar.loader.load("core/update_manager")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local file = Atdar.loader.load("core/filesystem/file")
 local paths = Atdar.loader.load("core/filesystem/paths")
 
@@ -102,6 +103,57 @@ function module.set_check_days(days: int): void
     end
 
     log:notify(text("check_days.set"):format(days))
+end
+
+-- Update To Version
+
+-- Installs the release of a version ("0.1.8", or a tag, a branch or a commit), an older one too, then restarts
+-- the script
+function module.update_to(version: string): void
+    util.create_thread(|| -> manager.install_version_and_restart(version))
+end
+
+-- The version typed in the field. Not Stand putting the text back
+function module.update_to_version(value: string, click_type): void
+
+    if not clicks.is_user_action(click_type) then
+        return
+    end
+
+    local typed = value:match("^%s*(.-)%s*$")
+
+    if typed == "" then
+        return
+    end
+
+    module.update_to(typed)
+end
+
+-- The released versions for the list under the field: { version, caption } newest first, the installed one
+-- marked. Yields: call it from a thread. Empty (and told) when they can't be loaded
+function module.version_rows(): table
+
+    local versions, err = manager.fetch_versions()
+
+    if versions == nil then
+        log:warn(text("msg.versions_failed"):format(tostring(err)))
+        return {}
+    end
+
+    local installed = manager.installed_version()
+    local rows = {}
+
+    for _, version in ipairs(versions) do
+        local caption = version
+
+        if version == installed then
+            caption = text("version.installed"):format(version)
+        end
+
+        table.insert(rows, { version = version, caption = caption })
+    end
+
+    return rows
 end
 
 -- Changes

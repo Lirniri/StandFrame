@@ -179,4 +179,41 @@ _G.async_http.dispatch = function() end
 local body, fetch_err = updater.fetch("raw.githubusercontent.com", "/x", 1000)
 stand.check(body == nil and fetch_err == "timed out", "no answer in time: timed out")
 
+-- The releases made: updater/versions.json, newest first
+_G.async_http.dispatch = function() async_http.pending() end
+served[$"{BASE}updater/versions.json"] = json.encode({ versions = { "0.1.2", "0.1.1", 7 } })
+local listed, versions_err = updater.versions(opts)
+stand.check(listed ~= nil and #listed == 2 and listed[1] == "0.1.2" and listed[2] == "0.1.1", "versions: the file's, newest first, only texts")
+served[$"{BASE}updater/versions.json"] = "nope"
+listed, versions_err = updater.versions(opts)
+stand.check(listed == nil and versions_err:find("not a list of versions", 1, true), "versions: a broken file says so")
+served[$"{BASE}updater/versions.json"] = nil
+listed, versions_err = updater.versions(opts)
+stand.check(listed == nil and versions_err:find("no answer", 1, true), "versions: no file - why")
+access = false
+listed, versions_err = updater.versions(opts)
+stand.check(listed == nil and versions_err:find("Disable Internet Access", 1, true), "versions: no internet access - says where to allow it")
+access = true
+
+-- Update To Version (core/update_manager.install_version): the refs a typed version can mean. Nothing is
+-- served for them here, so nothing gets installed (the real scripts folder is not touched)
+_G.async_http.dispatch = function() async_http.pending() end
+-- What the manager needs around it: the script's strings, a profile that holds nothing
+for _, name in { "util", "filesystem", "lang" } do
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
+end
+Atdar.profile = { get = || -> nil, set = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
+local manager = Atdar.loader.load("core/update_manager")
+requests = {}
+stand.clear_logs()
+stand.equal(manager.install_version("9.9.9"), "failed", "a version with no release: fails")
+stand.equal(requests[1], "raw.githubusercontent.com/Lirniri/Stand-AnitaDarin/v9.9.9/updater/manifest.json", "0.1.8 is the tag v0.1.8 first")
+stand.equal(requests[2], "raw.githubusercontent.com/Lirniri/Stand-AnitaDarin/9.9.9/updater/manifest.json", "then the bare number")
+stand.check(stand.find_log("No release found for '9.9.9'"), "and says there is none")
+stand.equal(manager.busy, false, "the manager is free again")
+requests = {}
+manager.install_version("some-branch")
+stand.equal(#requests, 1, "anything else is a ref as typed, once")
+stand.check(requests[1]:find("/some-branch/updater/manifest.json", 1, true) ~= nil, "a branch, a tag or a commit")
+
 stand.finish()

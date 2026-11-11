@@ -1123,6 +1123,17 @@
             "set": "Updates will be checked every %d days",
             "never": "Updates won't be checked"
         },
+        "version": {
+            "name": "Update To Version",
+            "help": "Installs a version, an older one too: type it, or pick one of the releases below. The script restarts; profiles and settings stay",
+            "input": {
+                "name": "Version",
+                "help": "A version (0.1.8: the release tagged v0.1.8), or a tag, a branch or a commit of the repo. Installed when typed"
+            },
+            "divider": "Versions",
+            "item_help": "Installs this version, then the script restarts",
+            "installed": "%s (installed)"
+        },
         "branch": {
             "name": "Update Branch: %s",
             "help": "Where updates come from: main - tried versions, experiment - the newest, less tried",
@@ -1139,7 +1150,9 @@
             "installing": "Updating: downloading %d file(s)",
             "installed": "Updated to version %s. The script restarts",
             "install_failed": "Couldn't update: %s. Nothing was changed",
-            "stale": "The new version is still reaching GitHub's servers, so the downloaded files don't match yet. Nothing was changed. Wait a few minutes, press Check, then Update again"
+            "stale": "The new version is still reaching GitHub's servers, so the downloaded files don't match yet. Nothing was changed. Wait a few minutes, press Check, then Update again",
+            "version_not_found": "No release found for '%s': %s",
+            "versions_failed": "Couldn't load the versions: %s"
         }
     }
 }

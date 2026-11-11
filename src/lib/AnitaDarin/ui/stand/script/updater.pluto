@@ -14,12 +14,16 @@
 --   Check Before Updating          (profile: update_check_before)
 --   Update Automatically          (profile: auto_update)
 --   Check For Updates Every (Days) (profile: update_check_days)
+--   Update To Version              (a list)
+--     Version                      (a version, a tag, a branch or a commit to install, an older one too)
+--     ── Versions ──
+--     0.1.10, 0.1.9, ...           (the releases, read when the list is opened; one is installed by a click)
 --
 -- The work is done by core/update_manager (check, install, the automatic check); the menu only starts it
 -- in a thread and shows what it found. The texts of the lines and what the other items do are in
 -- ui/logic/stand/script/updater_view.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
--- updaterbranch, updaterbefore, updaterchanges, updaterstart
+-- updaterbranch, updaterbefore, updaterchanges, updaterstart, updaterversion
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -87,12 +91,40 @@ function module.build(node: table): table
 
     list:divider(label("divider"))
     threaded(list, "install", "updaterinstall", manager.install_and_restart)
-    flag(list, "before", "update_check_before", "updaterbefore", true)
     flag(list, "auto", "auto_update", "updaterauto", false)
+    flag(list, "before", "update_check_before", "updaterbefore", true)
 
     -- Applied on a click with the days picked: 0 - never
     list:click_slider(label("check_days.name"), 0, 30, Atdar.profile.get("update_check_days") or 1, 1,
         |days| -> updater.set_check_days(days), { "updaterdays" }, label("check_days.help"))
+
+    -- A version typed, or picked from the releases made: that release is installed, an older one too
+    local versions = nil
+    local first_version = 0
+
+    -- Made again at every opening, so the list is what the repo has now
+    local function fill_versions(): void
+        util.create_thread(function()
+
+            local rows = updater.version_rows()
+
+            -- The list may be gone by now (the section was made again)
+            pcall(function()
+                versions:clear_from(first_version)
+
+                for _, row in ipairs(rows) do
+                    versions:action(row.caption, || -> updater.update_to(row.version), {}, label("version.item_help"))
+                end
+            end)
+        end)
+    end
+
+    versions = list:list(label("version.name"), { "updaterversions" }, label("version.help"), nil, fill_versions)
+    versions:text_input(label("version.input.name"), { "updaterversion" }, function(value, click_type)
+        updater.update_to_version(value, click_type)
+    end, label("version.input.help"))
+    versions:divider(label("version.divider"))
+    first_version = #versions.children + 1
 
     return list
 end

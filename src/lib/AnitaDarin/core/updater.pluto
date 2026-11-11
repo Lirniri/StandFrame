@@ -27,6 +27,8 @@ module.DEFAULTS = {
     branch = "main",
     -- The manifest's place in the repo
     manifest = "updater/manifest.json",
+    -- The releases made, newest first: { "versions": [ "0.1.10", ... ] }
+    versions = "updater/versions.json",
     -- The repo's folder the manifest's paths are under
     src = "src",
     -- The name in the repo's paths: src/AnitaDarin.pluto, src/lib/AnitaDarin/...
@@ -292,6 +294,40 @@ function module.check(opts: ?table)
     end
 
     return module.plan(manifest, o), nil
+end
+
+-- The versions released, from the repo's updater/versions.json. Yields: call it from a thread
+-- @param opts As in check
+-- @return The versions, newest first, or nil and why not
+function module.versions(opts: ?table)
+
+    local o = options(opts)
+
+    if not module.has_access() then
+        return nil, $"the script has no internet access (turn off Disable Internet Access in Stand > Lua Scripts > {o.name})"
+    end
+
+    local body, err = module.fetch(o.host, raw_path(o, o.versions), o.timeout)
+
+    if body == nil then
+        return nil, $"versions: {err}"
+    end
+
+    local data = json_parser.decode(body)
+
+    if type(data) ~= "table" or type(data.versions) ~= "table" then
+        return nil, "versions: not a list of versions"
+    end
+
+    local list = {}
+
+    for _, version in ipairs(data.versions) do
+        if type(version) == "string" then
+            table.insert(list, version)
+        end
+    end
+
+    return list, nil
 end
 
 -- Remembers the release as installed when the plan has nothing to do: the files already match it (an install
