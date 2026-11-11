@@ -1146,6 +1146,8 @@
             "name": "Branch: %s",
             "help": "Where updates come from: main - tried versions, experiment - the newest, less tried",
             "main": "main (tried)",
+            "all": "all (every branch)",
+            "all_name": "all",
             "experiment": "experiment (newest)",
             "set": "Updates will come from the %s branch"
         },

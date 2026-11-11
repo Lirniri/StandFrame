@@ -16,8 +16,9 @@ local text = select(2, i18n.scope("updater_menu"))
 
 local module = {}
 
--- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried
-module.BRANCHES = { "main", "experiment" }
+-- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried;
+-- all - the versions of every branch are listed (each marked with its branch), updates come from main
+module.BRANCHES = { "main", "all", "experiment" }
 
 -- Info lines
 
@@ -57,7 +58,14 @@ end
 
 -- "Branch: main"
 function module.branch_caption(): string
-    return text("branch.name"):format(Atdar.profile.get("update_branch") or "main")
+
+    local branch = Atdar.profile.get("update_branch") or "main"
+
+    if branch == "all" then
+        branch = text("branch.all_name")
+    end
+
+    return text("branch.name"):format(branch)
 end
 
 function module.branch_options(): table
@@ -189,7 +197,7 @@ function module.version_rows(kept: bool = false): table
     local installed = manager.installed_version()
     local rows = {}
 
-    local with_branch = not module.versions_synced()
+    local with_branch = not module.versions_synced() or Atdar.profile.get("update_branch") == "all"
 
     for index, entry in ipairs(versions) do
 

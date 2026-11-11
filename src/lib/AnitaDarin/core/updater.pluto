@@ -298,7 +298,8 @@ end
 
 -- The versions released, from the repo's updater/versions.json. Yields: call it from a thread
 -- @param opts As in check
--- @return The versions, newest first, or nil and why not
+-- @return Entries { version, branch }, newest first (branch: where it was released, nil in an older file), or nil
+-- and why not
 function module.versions(opts: ?table)
 
     local o = options(opts)
@@ -321,9 +322,11 @@ function module.versions(opts: ?table)
 
     local list = {}
 
-    for _, version in ipairs(data.versions) do
-        if type(version) == "string" then
-            table.insert(list, version)
+    for _, entry in ipairs(data.versions) do
+        if type(entry) == "string" then
+            table.insert(list, { version = entry })
+        elseif type(entry) == "table" and type(entry.version) == "string" then
+            table.insert(list, { version = entry.version, branch = entry.branch })
         end
     end
 

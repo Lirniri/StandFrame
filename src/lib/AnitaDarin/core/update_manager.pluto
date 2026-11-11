@@ -45,7 +45,15 @@ local function changed(): void
 end
 
 local function options(): table
-    return { name = Atdar.name, branch = Atdar.profile.get("update_branch") or "main" }
+
+    local branch = Atdar.profile.get("update_branch") or "main"
+
+    -- "all" lists the versions of every branch; what's installed comes from main then
+    if branch == "all" then
+        branch = "main"
+    end
+
+    return { name = Atdar.name, branch = branch }
 end
 
 -- The version of the release the last update installed, nil if the script wasn't installed by an update
@@ -248,15 +256,17 @@ local function is_newer(a: string, b: string): bool
 end
 
 -- The versions released, newest first, each with the branch it was released to: { version, branch }.
--- With Sync With Branch on (the default) it's the update branch's list. Off: the lists of every branch together;
--- a version main has is "main", one only experiment has is "experiment". Yields: call it from a thread
+-- With Sync With Branch on (the default) it's the update branch's: main's own releases, or all of them for
+-- experiment. Off, or with the branch "all": every branch's together, each under the branch that released it.
+-- A file that doesn't say (an older one) is read as: main's list is main's, the rest are experiment's.
+-- Yields: call it from a thread
 -- @return The entries, or nil and why not
 function module.fetch_versions()
 
     local o = options()
     local entries = {}
 
-    if Atdar.profile.get("update_versions_sync") ~= false then
+    if Atdar.profile.get("update_versions_sync") ~= false and Atdar.profile.get("update_branch") ~= "all" then
 
         local versions, err = updater.versions(o)
 
@@ -264,16 +274,21 @@ function module.fetch_versions()
             return nil, err
         end
 
-        for _, version in ipairs(versions) do
-            table.insert(entries, { version = version, branch = o.branch })
+        for _, entry in ipairs(versions) do
+            -- main takes the versions made for main only
+            if not (o.branch == "main" and entry.branch == "experiment") then
+                table.insert(entries, { version = entry.version, branch = entry.branch or o.branch })
+            end
         end
 
         module.versions_found = entries
         return entries, nil
     end
 
-    -- Each version once, under the first branch that has it; a branch that can't be read is skipped
-    local seen = {}
+    -- Each version once: the branch its file entry says, else the first list that has it; a list that can't be
+    -- read is skipped
+    local found = {}
+    local order = {}
     local last_err = nil
 
     for _, branch in ipairs(RELEASE_BRANCHES) do
@@ -284,17 +299,25 @@ function module.fetch_versions()
         if versions == nil then
             last_err = err
         else
-            for _, version in ipairs(versions) do
-                if not seen[version] then
-                    seen[version] = true
-                    table.insert(entries, { version = version, branch = branch })
+            for _, entry in ipairs(versions) do
+                local record = found[entry.version]
+                if record == nil then
+                    record = { version = entry.version, branch = entry.branch, listed_in = branch }
+                    found[entry.version] = record
+                    table.insert(order, record)
+                elseif record.branch == nil then
+                    record.branch = entry.branch
                 end
             end
         end
     end
 
-    if #entries == 0 then
+    if #order == 0 then
         return nil, last_err
+    end
+
+    for _, record in ipairs(order) do
+        table.insert(entries, { version = record.version, branch = record.branch or record.listed_in })
     end
 
     table.sort(entries, |a, b| -> is_newer(a.version, b.version))

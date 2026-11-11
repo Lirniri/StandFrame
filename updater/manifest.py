@@ -6,7 +6,9 @@ the auto-updater (updater/updater.pluto). Make it before pushing a release to ma
     python updater/manifest.py --check            exit 1 if it isn't up to date with src
 
 updater/versions.json lists the releases (newest first) for Update > Update To Version: --version adds its
-version to it. Tag each release v<version> (git tag v0.1.10 <commit>), the tag is what the menu installs.
+version to it, with the branch it's released to: the branch you're on (main, else experiment), or --branch.
+A version made on experiment and merged into main later becomes main's when manifest.py runs there.
+Tag each release v<version> (git tag v0.1.10 <commit>), the tag is what the menu installs.
 
 Hashes are of text without \\r (a Windows copy has \\r\\n), like updater.pluto counts them.
 Left out: store/<project>/logs/ - what the script writes there is never part of a release.
@@ -77,20 +79,38 @@ def build(version: str, src: pathlib.Path = SRC, project: str = PROJECT) -> dict
     return {"format": FORMAT, "project": project, "version": version, "files": collect(src, project)}
 
 
-def add_version(versions_file: pathlib.Path, version: str) -> bool:
-    """Puts version first in versions.json unless it's there; "dev" isn't a release. Returns whether it changed"""
+def current_branch() -> str:
+    """main when the checkout is on main, else experiment (where releases are made first)"""
+    try:
+        name = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ROOT, capture_output=True,
+                              check=True).stdout.decode("utf-8").strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "experiment"
+    return "main" if name == "main" else "experiment"
+
+
+def add_version(versions_file: pathlib.Path, version: str, branch: str = "experiment") -> bool:
+    """Puts version first in versions.json with its branch, or sets the branch of the one that's there;
+    "dev" isn't a release. Entries written as plain texts become { "version": text }. Returns whether it changed"""
     if version == "dev":
         return False
-    listed = read(versions_file).get("versions", [])
-    if version in listed:
-        return False
-    versions_file.write_text(json.dumps({"versions": [version] + listed}, indent=2) + "\n", encoding="utf-8", newline="\n")
+    listed = [e if isinstance(e, dict) else {"version": e} for e in read(versions_file).get("versions", [])]
+    for entry in listed:
+        if entry.get("version") == version:
+            if entry.get("branch") == branch:
+                return False
+            entry["branch"] = branch
+            break
+    else:
+        listed.insert(0, {"version": version, "branch": branch})
+    versions_file.write_text(json.dumps({"versions": listed}, indent=2) + "\n", encoding="utf-8", newline="\n")
     return True
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Makes updater/manifest.json for the auto-updater")
     parser.add_argument("--version", help="the release's version (default: the one the manifest has)")
+    parser.add_argument("--branch", choices=("main", "experiment"), help="the branch the version is released to (default: the one you're on)")
     parser.add_argument("--check", action="store_true", help="exit 1 if the manifest isn't up to date with src")
     parser.add_argument("--out", default=str(MANIFEST), help="where to write it")
     args = parser.parse_args(argv)
@@ -114,8 +134,9 @@ def main(argv=None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"{out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}: {len(manifest['files'])} files, version {version}")
-    if add_version(out.parent / "versions.json", version):
-        print(f"versions.json: {version} added")
+    branch = args.branch or current_branch()
+    if add_version(out.parent / "versions.json", version, branch):
+        print(f"versions.json: {version} - {branch}")
     return 0
 
 
