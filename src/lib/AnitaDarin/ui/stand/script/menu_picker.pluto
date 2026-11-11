@@ -1,63 +1,18 @@
 -- lib/AnitaDarin/ui/stand/script/menu_picker.pluto
 -- The entries of Load Menu: the built-in menu (if any) and every pack in store, with their state.
--- What they do is in ui/logic/stand/menu_loader.
+-- What they say and do is in ui/logic/stand/menu_entries; loading and copying in ui/logic/stand/menu_loader.
 -- Strings: core/language "menu_loader"
 
 local i18n = Atdar.loader.load("core/i18n")
 local menu_loader = Atdar.loader.load("ui/logic/stand/menu_loader")
+local entries = Atdar.loader.load("ui/logic/stand/menu_entries")
 
 local module = {}
 
--- Strings of the independent menu live in store/AnitaDarin/core/language/ under "menu_loader".
--- label(): Stand label for item names and help, shown in Stand's language;
--- text(): ready string in Stand's current language, for strings filled with format()
-local label, text = i18n.scope("menu_loader")
+-- Strings under "menu_loader"
+local label = i18n.scope("menu_loader")
 
--- Opens the pack's folder in Windows Explorer
-local function open_menu_folder(info: table): void
-    util.open_folder(info.dir.. "menu")
-end
-
-local function open_features_folder(info: table): void
-    util.open_folder(info.dir.. "features")
-end
-
-local function pack_options(): table
-    return { label("options.load"), label("options.copy_to_core"), label("options.open_menu_folder"), label("options.open_features_folder") }
-end
-
-local function copied_builtin_options(): table
-    return { label("options.load"), label("options.remove_from_core") }
-end
-
--- "AnitaDarin: loaded, in core" - a menu's name with its state, or just the name
-local function with_state(name: string, loaded: bool, in_core: bool): string
-
-    local states = {}
-
-    if loaded then
-        table.insert(states, text("state.loaded"))
-    end
-
-    if in_core then
-        table.insert(states, text("state.in_core"))
-    end
-
-    if #states == 0 then
-        return name
-    end
-
-    return text("state.name"):format(name, table.concat(states, ", "))
-end
-
--- A pack's command: menuloader and its folder, lower case, letters and digits only
--- ("Example Pack" -> "menuloaderexamplepack")
-local function pack_command(info: table): string
-    local word = info.folder:lower():gsub("[^%w]", "")
-    return $"menuloader{word}"
-end
-
--- { ref, caption(), help() } of the entries fill made
+-- { ref, caption(), help() } of the entries fill made: their texts are made again when the shown language changes
 local picker_rows = {}
 
 -- Adds an entry per available menu to the node. The section is rebuilt after every load and unload,
@@ -75,73 +30,51 @@ function module.fill(node: table, loader: table): void
         divider_key = "no_menus"
     end
 
-    -- The entries' captions are made with text(), so they're made again when the shown language changes
     picker_rows = {}
+
     -- A copied built-in menu sits above the divider, apart from the menus it can be replaced with
     if not manifest then
         node:divider(label(divider_key))
     end
 
     if builtin then
-        local loaded_builtin = loader.is_loaded("builtin")
-        local function builtin_caption(): string
-            return with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name),
-                loaded_builtin, false)
-        end
-        local name = builtin_caption()
+
+        local loaded = loader.is_loaded("builtin")
+        local caption = || -> entries.builtin_caption(loaded)
+
         if manifest then
-            local ref = node:list_action(name, copied_builtin_options(), function(index)
-                if index == 1 then
-                    loader.load_builtin()
-                else
-                    loader.remove_builtin()
-                end
-            end, { "menuloaderbuiltin" }, text("builtin.copied.help"):format(manifest.pack))
-            table.insert(picker_rows, { ref = ref, caption = builtin_caption,
-                help = || -> text("builtin.copied.help"):format(manifest.pack) })
+            local help = || -> entries.copied_help(manifest)
+            local ref = node:list_action(caption(), { label("options.load"), label("options.remove_from_core") },
+                |index| -> entries.copied_option(loader, index), { "menuloaderbuiltin" }, help())
+
+            table.insert(picker_rows, { ref = ref, caption = caption, help = help })
             node:divider(label(divider_key))
         else
-            local ref = node:action(name, loader.load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
-            table.insert(picker_rows, { ref = ref, caption = builtin_caption })
+            local ref = node:action(caption(), loader.load_builtin, { "menuloaderbuiltin" }, label("builtin.help"))
+
+            table.insert(picker_rows, { ref = ref, caption = caption })
         end
     end
 
     for _, info in ipairs(packs) do
 
-        local version = info.version or text("pack.unknown_version")
-        local author = info.author or text("pack.unknown_author")
-
-        local function pack_help(): string
-            return text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
-        end
-
-        local help = pack_help()
         local loaded = loader.is_loaded("pack", info.folder)
         local in_core = manifest and manifest.pack == info.name
+        local caption = || -> entries.with_state(info.name, loaded, in_core)
+        local help = || -> entries.pack_help(info)
 
-        local ref = node:list_action(
-            with_state(info.name, loaded, in_core),
-            pack_options(),
-        function(index)
-            -- body function
-            if index == 1 then
-                loader.load_pack(info)
-            elseif index == 2 then
-                loader.copy_pack(info)
-            elseif index == 3 then
-                open_menu_folder(info)
-            elseif index == 4 then
-                open_features_folder(info)
-            end
-        end, { pack_command(info) }, help)
+        local ref = node:list_action(caption(),
+            { label("options.load"), label("options.copy_to_core"), label("options.open_menu_folder"),
+                label("options.open_features_folder") },
+            |index| -> entries.pack_option(loader, info, index), { entries.pack_command(info) }, help())
 
-        table.insert(picker_rows, { ref = ref, caption = || -> with_state(info.name, loaded, in_core), help = pack_help })
+        table.insert(picker_rows, { ref = ref, caption = caption, help = help })
     end
 end
 
 i18n.on_change(function()
     for _, row in ipairs(picker_rows) do
-        
+
         -- The refs may belong to a section that was already removed
         pcall(menu.set_menu_name, row.ref, row.caption())
         if row.help then

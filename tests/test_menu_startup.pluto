@@ -37,7 +37,7 @@ stand.write_file($"{lib}language\\en-us.json", "{}")
 stand.write_file($"{lib}ui\\stand\\menu_from_store\\.copied.json", '{"pack": "AnitaDarin", "files": ["ui\\\\stand\\\\menu_from_store\\\\old.pluto", "language\\\\en-us.json"]}')
 
 -- bootstrap.pluto, from the utilities on
-for _, name in { "util", "filesystem", "lang" } do
+for _, name in { "util", "filesystem", "lang", "menu" } do
     Atdar[name] = Atdar.loader.load($"utils/{name}")
 end
 Atdar.profile = Atdar.loader.load("core/profile")
@@ -158,12 +158,35 @@ end
 stand.equal(sprint_lines, 2, "Disable Sprint logs only its two changes in 10 frames")
 Atdar.debug = false
 
+-- Atdar.menu: the parts of the script's menu a pack takes (the pack's Settings above came through it)
+stand.check(rawequal(Atdar.menu.settings, Atdar.loader.load("ui/stand/core/settings")), "Atdar.menu.settings is the script's settings section")
+stand.check(type(Atdar.menu.modules.list_in) == "function" and type(Atdar.menu.modules.module_in) == "function",
+    "Atdar.menu.modules: list_in and module_in")
+
 -- The setting itself, in Settings
 local item = stand.find_item(stand.root, "Copy Menu To Core")
-stand.equal(item and stand.name_of(item), "Copy Menu To Core", "Settings show the copied pack")
+stand.equal(item and stand.name_of(item), "Copy Menu To Core", "Settings: Copy Menu To Core, a pack is picked")
+-- The pack picked is on a line of its own, right under the item
+local function under_auto_copy()
+    local siblings = stand.find_item(stand.root, "Load Menu").children
+    for i, child in siblings do
+        if child == item then
+            return siblings[i + 1]
+        end
+    end
+    return nil
+end
+stand.check(under_auto_copy().kind == "divider" and stand.name_of(under_auto_copy()) == "AnitaDarin",
+    "the pack picked is named on a divider under it")
 stand.click(item, 1)
 stand.equal(Atdar.profile.get("auto_copy_menu"), "", "picking Off clears it")
-stand.equal(stand.name_of(item), "Copy Menu To Core", "and the caption stays the same")
+stand.equal(stand.name_of(item), "Copy Menu To Core: Off", "and the caption says it's off")
+stand.check(under_auto_copy().kind ~= "divider" or stand.name_of(under_auto_copy()) ~= "AnitaDarin", "the pack's line is gone")
+stand.click(item, 2)
+stand.equal(Atdar.profile.get("auto_copy_menu"), "AnitaDarin", "picking a pack sets it")
+stand.equal(stand.name_of(item), "Copy Menu To Core", "the caption is the name alone again")
+stand.equal(stand.name_of(under_auto_copy()), "AnitaDarin", "and the pack's line is back")
+stand.click(item, 1)
 
 -- The user's steps: the copied built-in menu is loaded, then removed from core.
 -- No menu is left, so the root shows the same notice as a start without a built-in menu
@@ -184,9 +207,10 @@ stand.check(stand.find_log("the menu comes back at the next start"), "it says au
 -- ─── Load Menu: a pack's state, Unload ───────────────────────────────────────
 
 local function load_menu() return stand.find_item(stand.root, "Load Menu") end
+-- A menu's entry by its name; not the divider naming the pack copied to core, which may be called the same
 local function entry(name)
     for _, child in load_menu().children do
-        if stand.name_of(child) == name then
+        if stand.name_of(child) == name and child.kind ~= "divider" then
             return child
         end
     end

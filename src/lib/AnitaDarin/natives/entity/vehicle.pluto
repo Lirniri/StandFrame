@@ -34,8 +34,24 @@ function module.is_vehicle(entity: int): bool
     return ENTITY.IS_ENTITY_A_VEHICLE(entity)
 end
 
-function module.is_model(hash: int): bool
+function module.is_model(hash: int|string): bool
     return Atdar.natives.streaming.vehicle.is_model(hash)
+end
+
+function module.is_a_blimp(model: int|string)
+    return util.is_this_model_a_blimp(model)
+end
+
+function module.is_a_submarine(model: int|string)
+    return util.is_this_model_a_submarine(model)
+end
+
+function module.is_a_submarine_car(model: int|string)
+    return util.is_this_model_a_submarine_car(model)
+end
+
+function module.is_a_trailer(model: int|string)
+    return util.is_this_model_a_trailer(model)
 end
 
 -- Whether it can be driven (set_undriveable). Right after a repair it may still say false for a moment

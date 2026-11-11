@@ -1,35 +1,54 @@
 {
     "entities.get_user_vehicle_as_handle": {
         "params": [
-            { "name": "include_last_vehicle", "type": "bool", "default": "false" }
+            {
+                "name": "include_last_vehicle",
+                "type": "bool",
+                "default": "false"
+            }
         ],
         "returns": "int"
     },
-
-
+    "menu.trigger_commands": {
+        "params": [
+            {
+                "name": "text",
+                "type": "string"
+            }
+        ],
+        "returns": "void"
+    },
+    "players.user": {
+        "params": [],
+        "returns": "int"
+    },
     "players.user_ped": {
         "params": [],
         "returns": "int"
     },
-
-
-    "menu.trigger_commands": {
+    "profiling.once": {
         "params": [
-            { "name": "text", "type": "string" }
+            {
+                "name": "name",
+                "type": "string"
+            },
+            {
+                "name": "func",
+                "type": "function"
+            }
         ],
         "returns": "void"
     },
-
-    "util.toast": {
+    "profiling.tick": {
         "params": [
-            { "name": "text", "type": "string" },
-            { "name": "bitflags", "type": "?int" }
-        ],
-        "returns": "void"
-    },
-    "util.yield": {
-        "params": [
-            { "name": "ms", "type": "int", "default": "0" }
+            {
+                "name": "name",
+                "type": "string"
+            },
+            {
+                "name": "func",
+                "type": "function"
+            }
         ],
         "returns": "void"
     },
@@ -37,18 +56,26 @@
         "params": [],
         "returns": "int"
     },
-
-    "profiling.once": {
+    "util.toast": {
         "params": [
-            { "name": "name", "type": "string" },
-            { "name": "func", "type": "function" }
+            {
+                "name": "text",
+                "type": "string"
+            },
+            {
+                "name": "bitflags",
+                "type": "?int"
+            }
         ],
         "returns": "void"
     },
-    "profiling.tick": {
+    "util.yield": {
         "params": [
-            { "name": "name", "type": "string" },
-            { "name": "func", "type": "function" }
+            {
+                "name": "ms",
+                "type": "int",
+                "default": "0"
+            }
         ],
         "returns": "void"
     }

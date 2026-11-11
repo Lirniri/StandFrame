@@ -13,7 +13,7 @@ return Atdar.features.add(new Feature({
         local n_vehicle = Atdar.natives.entity.vehicle
         local handle = Atdar.natives.player.user.get_vehicle()
         if handle == -1 then
-            log:notify($"{self.id}: handle of vehicle is -1 :(")
+            log:notify($"{self.id}: handle of vehicle is -1")
             return
         end
 
@@ -21,19 +21,19 @@ return Atdar.features.add(new Feature({
         if is_online then
             local netID = n_vehicle.get_net_id(handle)
             if netID == 0 then
-                log:notify($"{self.id}: net_id is 0 :(")
+                log:notify($"{self.id}: net_id is 0")
                 return
             end
             n_vehicle.explode({
                 vehicle = handle,
                 net_id = netID
             })
-            log:debug($"{self.id}: vehicle: {handle} exploded with net_id: {netID} :)")
+            log:debug($"{self.id}: vehicle: {handle} exploded with net_id: {netID}")
         else
             n_vehicle.explode({
                 vehicle = handle
             })
-            log:debug($"{self.id}: vehicle: {handle} exploded :)")
+            log:debug($"{self.id}: vehicle: {handle} exploded")
         end
     end
 }))

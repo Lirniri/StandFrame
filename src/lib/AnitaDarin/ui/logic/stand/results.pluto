@@ -1,0 +1,231 @@
+-- lib/AnitaDarin/ui/logic/stand/results.pluto
+-- What calls gave, remembered by key ("<module>.<function>", "debug.call_function.3"): the text for the Variable
+-- line, the type, the table or the userdata's value, and how the table is shown (how deep, whether its
+-- functions can be called and its values changed). Anything that calls a function gives its results here
+-- (show); the lists that show them (ui/stand/modules/values) are told when a key's result changed (on_change).
+-- Kept while the script runs, so a list made again shows what its function gave last.
+-- Strings: core/language "modules"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
+local values = Atdar.loader.load("ui/logic/stand/values")
+
+local log = new Logger("Modules")
+local text = select(2, i18n.scope("modules"))
+
+local module = {}
+
+-- Longer results are cut in the Variable line (the notice and the debug text show them whole)
+local MAX_RESULT_CHARS = 60
+
+-- key -> what it gave last: { text = "147462" or nil for nothing, types = "integer, string",
+-- tbl = the table when it gave one table, detail = a userdata's value when it gave one userdata }
+local last = {}
+
+-- key -> how its table is shown: { depth, call, edit }
+local shown = {}
+
+-- Called with the key whose result changed
+local listeners = {}
+
+-- What a call gave
+
+-- fn(key) runs when what the key gave changed
+function module.on_change(fn: function): void
+    table.insert(listeners, fn)
+end
+
+-- Remembers what a call gave; the lists are told only when it changed (loops call this every frame)
+-- @param results The call's results packed, pcall's true first: table.pack(pcall(fn))
+function module.show(key: string, results: table): void
+
+    local value = results.n > 1 and values.results_text(results) or nil
+    local entry = last[key]
+
+    if entry ~= nil and entry.text == value then
+        return
+    end
+
+    -- Each value's type, as many as it gave ("integer, string")
+    local types = {}
+    for i = 2, results.n do
+        table.insert(types, values.type_text(results[i]))
+    end
+
+    entry = { text = value, types = table.concat(types, ", ") }
+
+    if results.n == 2 and type(results[2]) == "table" then
+        entry.tbl = results[2]
+    end
+
+    if results.n == 2 then
+        entry.detail = select(2, values.userdata_parts(results[2]))
+    end
+
+    last[key] = entry
+
+    for _, fn in ipairs(listeners) do
+        fn(key)
+    end
+end
+
+-- Nothing: what was there is taken away (a call that gave nothing shows the same)
+function module.clear(key: string): void
+    module.show(key, table.pack(true))
+end
+
+-- @return The table the key gave last, nil when it gave something else
+function module.table_of(key: string): ?table
+    local entry = last[key]
+    return entry and entry.tbl or nil
+end
+
+-- @return The value of the userdata the key gave last (a vector's coordinates), nil when it gave something else
+function module.detail_of(key: string): ?string
+    local entry = last[key]
+    return entry and entry.detail or nil
+end
+
+-- "Variable: 147462", "Variable: table of integers" for a table (what it holds is in the Value list right
+-- under), "Variable: Vector3" for a userdata (its value is on the line right under), "Variable: -" before a
+-- call or when it gave nothing
+function module.line(key: string): string
+
+    local entry = last[key]
+
+    if entry == nil or entry.text == nil then
+        return text("loop.result_line"):format(text("loop.no_result"))
+    end
+
+    if entry.tbl ~= nil or entry.detail ~= nil then
+        return text("loop.result_line"):format(entry.types)
+    end
+
+    local value = entry.text
+
+    if #value > MAX_RESULT_CHARS then
+        value = value:sub(1, MAX_RESULT_CHARS) .. "..."
+    end
+
+    return text("loop.result_line"):format(value)
+end
+
+-- How a table is shown
+
+local function shown_of(key: string): table
+    shown[key] ??= {}
+    return shown[key]
+end
+
+-- @return How deep tables inside the key's table open as lists
+function module.depth(key: string): int
+    return shown_of(key).depth or values.MAX_VARIABLE_DEPTH
+end
+
+function module.set_depth(key: string, depth: int): void
+    shown_of(key).depth = depth
+end
+
+-- @return Whether the functions in the key's table are lists to call (Call Functions In Tables)
+function module.call_in_tables(key: string): bool
+    return shown_of(key).call == true
+end
+
+function module.set_call_in_tables(key: string, on: bool): void
+    shown_of(key).call = on
+end
+
+-- @return Whether the other values in the key's table are fields to change them in (Change Variable Values)
+function module.edit_in_tables(key: string): bool
+    return shown_of(key).edit == true
+end
+
+function module.set_edit_in_tables(key: string, on: bool): void
+    shown_of(key).edit = on
+end
+
+-- The key's table as items to show, in menu order (values.collect_variable): its entries down to the depth
+-- set for it, a note for an empty one and for what's past MAX_TABLE_ENTRIES
+-- @return The items and how many entries the table has; nil when the key gave no table
+function module.items(key: string)
+
+    local tbl = module.table_of(key)
+
+    if tbl == nil then
+        return nil
+    end
+
+    local entries = values.table_entries(tbl)
+    local items = {}
+
+    if #entries == 0 then
+        table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
+    end
+
+    for i, entry in ipairs(entries) do
+        if i > values.MAX_TABLE_ENTRIES then
+            table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
+            break
+        end
+        values.collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, shown_of(key).depth, tbl,
+            entry.raw_key)
+    end
+
+    return items, #entries
+end
+
+-- Functions and values inside a table
+
+-- What is typed for the functions in the Value lists, by "<key><path>": the panel's state (arguments, toggles,
+-- its loop). Kept, so it stays when the list is made again
+local fn_states = {}
+
+function module.fn_state(id: string): table
+    fn_states[id] ??= {}
+    return fn_states[id]
+end
+
+-- key -> a number for the commands of its lists' fields ("tablefnargs3_1"): unique across lists
+local scope_numbers = {}
+local scope_count = 0
+
+function module.scope_number(key: string): int
+    if scope_numbers[key] == nil then
+        scope_count += 1
+        scope_numbers[key] = scope_count
+    end
+
+    return scope_numbers[key]
+end
+
+-- Puts a value typed as an expression (5, true, "text", v3.new(1, 2, 3), nil) in place of a table's entry
+-- @param item The entry's item (values.collect_variable): its holder and key
+-- @return Whether it was put there; what was wrong is told
+function module.edit(item: table, typed: string): bool
+
+    local args, count, err = args_parser.parse(typed)
+
+    if err ~= nil then
+        log:error(text("edit.bad_value"):format(item.name, err))
+        return false
+    end
+
+    if count ~= 1 then
+        log:error(text("edit.one_value"):format(item.name))
+        return false
+    end
+
+    local ok, why = pcall(function() item.holder[item.raw_key] = args[1] end)
+
+    if not ok then
+        log:error(text("edit.failed"):format(item.name, tostring(why)))
+        return false
+    end
+
+    log:notify(text("edit.done"):format(item.name, values.describe_item(args[1])))
+
+    return true
+end
+
+return module

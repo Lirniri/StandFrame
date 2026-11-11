@@ -3,7 +3,7 @@
 -- In the script's settings it shows in Debug Mode only; put into a menu like this it always shows.
 -- Its items are made only while it's open, so it costs nothing in the menu otherwise
 
-local modules_menu = Atdar.loader.load("ui/stand/modules/list")
+local modules_menu = Atdar.menu.modules
 
 return {
     build = function(node, ctx)

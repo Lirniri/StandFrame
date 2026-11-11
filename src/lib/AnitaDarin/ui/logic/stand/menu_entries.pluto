@@ -1,0 +1,95 @@
+-- lib/AnitaDarin/ui/logic/stand/menu_entries.pluto
+-- What the entries of Load Menu say and do: a menu's name with its state, a pack's help and command, what
+-- each option of an entry does. The entries themselves are in ui/stand/script/menu_picker; loading and
+-- copying is ui/logic/stand/menu_loader.
+-- Strings: core/language "menu_loader"
+
+local i18n = Atdar.loader.load("core/i18n")
+
+local module = {}
+
+local text = select(2, i18n.scope("menu_loader"))
+
+-- "AnitaDarin: loaded, in core" - a menu's name with its state, or just the name
+function module.with_state(name: string, loaded: bool, in_core: bool): string
+
+    local states = {}
+
+    if loaded then
+        table.insert(states, text("state.loaded"))
+    end
+
+    if in_core then
+        table.insert(states, text("state.in_core"))
+    end
+
+    if #states == 0 then
+        return name
+    end
+
+    return text("state.name"):format(name, table.concat(states, ", "))
+end
+
+-- The built-in menu's entry: "<script> (built-in)", with its state
+function module.builtin_caption(loaded: bool): string
+    return module.with_state(text("builtin.name"):format(Atdar.profile.get("display_name") or Atdar.name), loaded, false)
+end
+
+-- The help of a built-in menu that is a copy of a pack
+function module.copied_help(manifest: table): string
+    return text("builtin.copied.help"):format(manifest.pack)
+end
+
+-- A pack's help: its version and author, then what its options do
+function module.pack_help(info: table): string
+
+    local version = info.version or text("pack.unknown_version")
+    local author = info.author or text("pack.unknown_author")
+
+    return text("pack.help"):format(version, author) .. "\n" .. text("pack.options.help")
+end
+
+-- A pack's command: menuloader and its folder, lower case, letters and digits only
+-- ("Example Pack" -> "menuloaderexamplepack")
+function module.pack_command(info: table): string
+
+    local word = info.folder:lower():gsub("[^%w]", "")
+
+    return $"menuloader{word}"
+end
+
+-- What a pack's options do, in the menu's order: Load, Copy To Core, Open Menu Folder, Open Features Folder
+function module.pack_option(loader: table, info: table, index: int): void
+
+    if index == 1 then
+        loader.load_pack(info)
+        return
+    end
+
+    if index == 2 then
+        loader.copy_pack(info)
+        return
+    end
+
+    if index == 3 then
+        util.open_folder($"{info.dir}menu")
+        return
+    end
+
+    if index == 4 then
+        util.open_folder($"{info.dir}features")
+    end
+end
+
+-- What the options of a copied built-in menu do: Load, Remove From Core
+function module.copied_option(loader: table, index: int): void
+
+    if index == 1 then
+        loader.load_builtin()
+        return
+    end
+
+    loader.remove_builtin()
+end
+
+return module

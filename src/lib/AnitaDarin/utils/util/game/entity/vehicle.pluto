@@ -41,8 +41,10 @@ function module.repair(vehicle: int,
 
     -- Burning after an explosion or a fire: on it and the fuel it spilled around
     local fire = Atdar.natives.world.fire
+
     fire.stop_entity(vehicle)
-    local coords = ENTITY.GET_ENTITY_COORDS(vehicle, true)
+    local coords = Atdar.natives.entity.get_coords(vehicle, true, 1.3)
+
     fire.stop_in_range(coords.x, coords.y, coords.z, FIRE_RADIUS)
 
     if start_engine then

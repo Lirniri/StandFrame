@@ -56,7 +56,24 @@ return {
 | Спойлер | `Atdar.menu.spoiler(node.handle, name, value, hidden_text, help)` | Значение скрыто до нажатия |
 | Подменю из таблицы | `builder.build_items(node, items, where)` | Те же пункты, записанные данными. Ошибка в таблице — предупреждение в логе, пункт пропускается |
 
-`confirm` — это `ui/stand/core/confirm`, `builder` — `ui/stand/core/menu_builder`, оба берутся через `Atdar.loader.load`.
+`confirm` — это `Atdar.menu.confirm`, `builder` — `Atdar.menu.builder`.
+
+## `Atdar.menu`: всё для меню в одном месте
+
+Пакету не нужно знать, где в `lib` лежит каждая часть меню скрипта: они берутся из `Atdar.menu` и загружаются
+при первом обращении.
+
+| Что | Для чего |
+|---|---|
+| `Atdar.menu.Node` | `MenuNode`: `new Atdar.menu.Node(ref)` оборачивает ссылку Stand |
+| `Atdar.menu.builder` | `builder.build_items(node, items)` — подменю из таблицы |
+| `Atdar.menu.confirm` | `confirm.action(...)` — кнопка с подтверждением |
+| `Atdar.menu.settings` | Раздел настроек скрипта: `set_parent`, `set_divider`, `set_name`, `add` |
+| `Atdar.menu.commands` | Имена команд с префиксом профиля: `names`, `track` |
+| `Atdar.menu.arguments` | Поля для аргументов функции по их типам |
+| `Atdar.menu.modules` | `list_in(node)`, `module_in(node, name)` — список модулей в своём меню |
+| `Atdar.menu.clicks` | `is_user_action(click_type)` — нажал пользователь или Stand сам вызвал обработчик |
+| `Atdar.menu.spoiler`, `Atdar.menu.color` | Пункты, которых нет в Stand готовыми |
 
 **Команды.** `commands` — базовые имена команд без префикса: `{ "heal" }` станет `atdarheal`.
 Пользователь может переименовать их в «Настройки > Командная строка».

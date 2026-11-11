@@ -53,6 +53,13 @@ function module.list_in(node: table): table
     return list
 end
 
+-- Puts one module's list into node: its status, Start / Restart / Stop / Reload and its functions, made only
+-- while it's open (ui/stand/modules/list, which loads now)
+-- @return The list (a MenuNode), nil if there's no such module
+function module.module_in(node: table, name: string): ?table
+    return modules_menu().module_in(node, name)
+end
+
 -- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode).
 -- before_list: an optional function(parent) that makes an item right under the divider, above Modules;
 -- it returns the item's handle, which is shown in debug mode too

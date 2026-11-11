@@ -1,13 +1,19 @@
 -- lib/AnitaDarin/ui/logic/stand/script/call_function_registry.pluto
--- The files Call Function reads: the user's short names, the registry of short names with signatures, the
--- Stand API file, and the file the added functions are saved in. The lists that use them are in
--- ui/stand/script/call_function; the editor of the files is call_function_files.
+-- The files Call Function reads, and what they say of a name: the user's short names, the registry of short
+-- names, the signatures of Stand's API, and the file the added functions are saved in. The lists that use
+-- them are in ui/stand/script/call_function; the editor of the files is call_function_files.
+--
+--     registry.expand("user_ped", true)              -- "players.user_ped", 1: a short name's full path
+--     registry.value_of("user_ped")                  -- the function itself, for an argument typed as user_ped()
+--     registry.registered_signature("util.toast")    -- { sig, returns } of a function that says nothing itself
+--
 -- Strings: core/language "script_menu.call_function"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local arguments = Atdar.loader.load("ui/stand/core/arguments")
+local paths = Atdar.loader.load("parsers/proglang/pluto/path")
 
 local log = new Logger("CallFunction")
 local text = select(2, i18n.scope("script_menu.call_function"))
@@ -15,37 +21,67 @@ local text = select(2, i18n.scope("script_menu.call_function"))
 local module = {}
 
 -- The user's own short names: store/<script>/user/call_function/short_names.json,
--- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }; read when a name is looked for, so the
--- file can be edited while the script runs
+-- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }
 local SHORT_NAMES_FILE = "user/call_function/short_names.json"
 
 -- The registry of short names, written by hand and shipped with the script: store/<script>/core/call_function/short_name.json,
---     { "user_vehicle": { "path": "entities.get_user_vehicle_as_handle",
---                         "params": [ { "name": "include_last_vehicle", "type": "bool", "default": "false" } ],
---                         "returns": "int" } }
--- The name is what can be typed (with Use Short Names on) for the path. params and returns are for a function that
--- says nothing of its own parameters (Stand's are C functions): they give its argument fields (name, type, an
--- optional default as the code would write it) and its return type. params [] is a function that takes none.
+--     { "user_vehicle": { "path": "entities.get_user_vehicle_as_handle" } }
+-- The name is what can be typed (with Use Short Names on) for the path. An entry may say the function's
+-- signature itself (params, returns, as in STAND_API_FILE); without them the signature is looked for by the path.
 -- An entry without a path is left out
 local REGISTRY_FILE = "core/call_function/short_name.json"
 
 -- The signatures of Stand's own API (util, entities, menu, ...), written by hand and shipped with the script:
--- store/<script>/core/call_function/stand_api.json. Stand's functions are C functions and say nothing of their
--- parameters, so this file is where they'd be told. Only the place is registered so far: what's in the file and how
--- it is used for the argument fields is up to the one who fills it
+-- store/<script>/core/call_function/stand_api.json,
+--     { "util.toast": { "params": [ { "name": "text", "type": "string" }, { "name": "bitflags", "type": "?int" } ],
+--                       "returns": "void" } }
+-- Stand's functions are C functions and say nothing of their parameters: this gives their argument fields (name,
+-- type, an optional default as the code would write it) and return type. params [] is a function that takes none
 local STAND_API_FILE = "core/call_function/stand_api.json"
 
--- @return The file's short names, name -> path; empty when there's no file or it isn't an object of texts
-function module.short_names(): table
-    local file = new JsonFile($"{Atdar.filesystem.paths.store}{SHORT_NAMES_FILE}")
-    local names = {}
+-- Files
+
+-- A file is read again at most once in this many ms: a name is looked for at every call, and a loop calls
+-- every frame. An edit made by hand while the script runs still shows within the second
+local REREAD_MS = 1000
+
+-- The path from store -> { data = the file's table or nil, at = when it was read }
+local cache = {}
+
+-- @param relative The file's path from the script's store
+-- @return The file's table; nil when there's no file or it's damaged
+local function read_file(relative: string): ?table
+
+    local now = util.current_time_millis()
+    local entry = cache[relative]
+
+    if entry ~= nil and now - entry.at < REREAD_MS then
+        return entry.data
+    end
+
+    local file = new JsonFile($"{Atdar.filesystem.paths.store}{relative}")
     local data = file:exists() and file:read() or nil
 
     if type(data) ~= "table" then
-        return names
+        data = nil
     end
 
-    for name, path in pairs(data) do
+    cache[relative] = { data = data, at = now }
+
+    return data
+end
+
+-- The files are read from disk at the next use: called by what writes them (the Files Editor)
+function module.forget(): void
+    cache = {}
+end
+
+-- @return The user's short names, name -> path; empty when there's no file or it isn't an object of texts
+function module.short_names(): table
+
+    local names = {}
+
+    for name, path in pairs(read_file(SHORT_NAMES_FILE) or {}) do
         if type(name) == "string" and type(path) == "string" then
             names[name] = path
         end
@@ -54,18 +90,13 @@ function module.short_names(): table
     return names
 end
 
--- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or it's
--- damaged, and without the entries that have no path
+-- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or
+-- it's damaged, and without the entries that have no path
 function module.registry(): table
-    local file = new JsonFile($"{Atdar.filesystem.paths.store}{REGISTRY_FILE}")
-    local data = file:exists() and file:read() or nil
+
     local entries = {}
 
-    if type(data) ~= "table" then
-        return entries
-    end
-
-    for name, entry in pairs(data) do
+    for name, entry in pairs(read_file(REGISTRY_FILE) or {}) do
         if type(name) == "string" and type(entry) == "table" and type(entry.path) == "string" then
             entries[name] = entry
         end
@@ -74,36 +105,132 @@ function module.registry(): table
     return entries
 end
 
--- The signature the registry gives a function: its fields and return type, in place of what the code says
+-- @return The Stand API file (STAND_API_FILE): path -> { params, returns }; empty when there's no file or it's damaged
+function module.stand_api(): table
+    return read_file(STAND_API_FILE) or {}
+end
+
+-- Signatures
+
+-- The params of a file's entry as a signature
+-- @param owner The entry's name, for the warning
+-- @return The signature, nil when a parameter is badly written (it's told)
+local function signature_from(params: table, owner: string): ?table
+
+    local names, types, defaults = {}, {}, {}
+
+    for index, param in ipairs(params) do
+        if type(param) ~= "table" or type(param.name) ~= "string" then
+            log:warn(text("registry.bad_param"):format(owner, index))
+            return nil
+        end
+
+        table.insert(names, param.name)
+        types[param.name] = type(param.type) == "string" and param.type or nil
+        defaults[param.name] = type(param.default) == "string" and param.default or nil
+    end
+
+    return arguments.signature(names, types, false, defaults)
+end
+
+-- The signature the files give a function, in place of what the code says: an entry of the registry with
+-- this path and its own params first, then the Stand API file by the path
 -- @param path The function's full path
--- @return { sig, returns } for a path with params in the registry, nil when it has none (or one is badly written)
+-- @return { sig, returns }, nil when no file has its params (or they're badly written)
 function module.registered_signature(path: string): ?table
+
     for name, entry in pairs(module.registry()) do
         if entry.path == path and type(entry.params) == "table" then
-            local names, types, defaults = {}, {}, {}
-            local valid = true
-
-                        -- @return
-            for index, param in ipairs(entry.params) do
-                if type(param) ~= "table" or type(param.name) ~= "string" then
-                    log:warn(text("registry.bad_param"):format(name, index))
-                    valid = false
-                    break
-                end
-
-                table.insert(names, param.name)
-                types[param.name] = type(param.type) == "string" and param.type or nil
-                defaults[param.name] = type(param.default) == "string" and param.default or nil
-            end
-
-            if valid then
-                return { sig = arguments.signature(names, types, false, defaults), returns = entry.returns }
+            local sig = signature_from(entry.params, name)
+            if sig ~= nil then
+                return { sig = sig, returns = entry.returns }
             end
         end
     end
 
-    return nil
+    local api = module.stand_api()[path]
+
+    if type(api) ~= "table" or type(api.params) ~= "table" then
+        return nil
+    end
+
+    local sig = signature_from(api.params, path)
+
+    if sig == nil then
+        return nil
+    end
+
+    return { sig = sig, returns = api.returns }
 end
+
+-- Names
+
+-- What a typed name means: a path that's there is itself; a short name (use_short) is the path the user's
+-- short_names.json gives it, then the registry's, else the first function of that name in Atdar or the
+-- globals (path.find)
+-- @param typed The text typed; brackets at its end aren't part of the name
+-- @param use_short Whether short names are looked for (Use Short Names)
+-- @return The full path, and how many functions have the name (1 for a path that's there or in a file, 0 for none)
+function module.expand(typed: string, use_short: bool = true)
+
+    local path = paths.split(typed:match("^%s*(.-)%s*$"))
+
+    if path == "" then
+        return path, 0
+    end
+
+    if paths.resolve(path) then
+        return path, 1
+    end
+
+    if not use_short then
+        return path, 0
+    end
+
+    local own = module.short_names()[path]
+    if own ~= nil and paths.resolve(own) then
+        return (paths.split(own)), 1
+    end
+
+    local registered = module.registry()[path]
+    if registered ~= nil and paths.resolve(registered.path) then
+        return (paths.split(registered.path)), 1
+    end
+
+    local found = paths.find(path)
+    if #found == 0 then
+        return path, 0
+    end
+
+    return found[1], #found
+end
+
+-- What a short name is, for an argument typed with one (user_ped() for players.user_ped()): the files only,
+-- not a search through every table - an argument is worked out at every call
+-- @return The value at the name's path; nil when no file has the name
+function module.value_of(name: string)
+
+    local path = module.short_names()[name]
+
+    if path == nil then
+        local registered = module.registry()[name]
+        path = registered and registered.path or nil
+    end
+
+    if path == nil then
+        return nil
+    end
+
+    local found, value = paths.resolve(path)
+
+    if not found then
+        return nil
+    end
+
+    return value
+end
+
+-- Saved functions
 
 -- The file the functions are saved in while Save Functions is on: store/<script>/user/call_function/saved_functions.json,
 -- { "save": true, "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the
@@ -119,12 +246,13 @@ function module.read_saved(): table
 end
 
 -- Writes the paths of the added functions, with Save Functions on
-function module.write_saved(paths: table): void
-    saved_file():write({ save = true, functions = paths })
+function module.write_saved(paths_list: table): void
+    saved_file():write({ save = true, functions = paths_list })
 end
 
 -- Marks the file as not saving, keeping its functions
 function module.switch_off_saved(): void
+
     local file = saved_file()
     local data = file:read()
 
@@ -132,18 +260,6 @@ function module.switch_off_saved(): void
         data.save = false
         file:write(data)
     end
-end
-
--- @return The table of the Stand API file (STAND_API_FILE) as it is written; empty when there's no file or it's damaged
-function module.stand_api(): table
-    local file = new JsonFile($"{Atdar.filesystem.paths.store}{STAND_API_FILE}")
-    local data = file:exists() and file:read() or nil
-
-    if type(data) ~= "table" then
-        return {}
-    end
-
-    return data
 end
 
 return module

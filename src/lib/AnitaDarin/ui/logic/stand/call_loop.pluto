@@ -4,10 +4,27 @@
 -- (ui/stand/modules/list); each says what a call is (step) and when the loop is no longer wanted (is_current).
 -- What the last call gave is drawn on the screen every frame (ui/stand/core/call_display).
 
+local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local display = Atdar.loader.load("ui/stand/core/call_display")
 
 local module = {}
+
+-- Strings under "modules" ("loop.*")
+local text = select(2, i18n.scope("modules"))
+
+-- "Loop Status: running" / "every 500 ms" / "stopped" / "failed": what a loop's status line says
+-- @param kind "running", "every" (with every, ms), "stopped" or "failed"
+function module.status_line(kind: string, every: ?int): string
+
+    local value = text($"loop.state.{kind}")
+
+    if every ~= nil then
+        value = value:format(every)
+    end
+
+    return text("loop.status_line"):format(value)
+end
 
 -- Starts the loop in a tick handler
 -- @param loop_run The loop's state: every (ms, nil for every frame), next (ms of the next call), result (the

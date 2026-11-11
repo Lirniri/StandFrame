@@ -1,92 +1,66 @@
 -- lib/AnitaDarin/ui/stand/modules/values.pluto
 --
--- What the Modules list (ui/stand/modules/list) shows of values: what a call gave - the notice's text,
--- a function's Variable line and, for a table, the Value list under it - and a module's Variables list,
--- its fields kept up to date while it's open. Loaded with modules_menu, when the list is first opened.
+-- The items that show values: what a call gave - a function's Variable line, the line with a userdata's value
+-- and, for a table, the Value list under it with its table settings - and a module's Variables list, its
+-- fields kept up to date while it's open. Used by the Modules list (ui/stand/modules/list) and by
+-- Debug > Call Function.
+--
+-- Only the items are here. What a call gave is kept by ui/logic/stand/results (this file follows its changes);
+-- what a value looks like as text and a table as items is ui/logic/stand/values.
 -- Strings: core/language "modules"
 
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local Logger = Atdar.loader.load("core/logger")
-local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
-local log = new Logger("Modules")
 local logic = Atdar.loader.load("ui/logic/stand/values")
--- What a value looks like as text, and a module's variables as items: ui/logic/stand/values
-local results_text = logic.results_text
-local type_text = logic.type_text
-local table_entries = logic.table_entries
-local collect_variable = logic.collect_variable
-local collect_variables = logic.collect_variables
-local shape_of = logic.shape_of
-local MAX_VARIABLE_DEPTH = logic.MAX_VARIABLE_DEPTH
-local MAX_TABLE_ENTRIES = logic.MAX_TABLE_ENTRIES
+local results = Atdar.loader.load("ui/logic/stand/results")
+
+local log = new Logger("Modules")
 
 local module = {}
 
+-- For the callers that have this file at hand: the same as the logic's
 module.describe = logic.describe
+module.results_text = logic.results_text
+module.show_result = results.show
+module.result_depth = results.depth
+module.call_in_tables = results.call_in_tables
+module.edit_in_tables = results.edit_in_tables
 
 -- Strings under "modules"
 local label, text = i18n.scope("modules")
 
+-- What a call gave
 
--- ─── What a call gave ────────────────────────────────────────────────────────
-
-
--- "<module>.<function>" -> what it gave last ("147462", "{1, 2}"); the line showing it in its list
-local last_results = {}
+-- The items of each key ("<module>.<function>") in the list open now:
+--   result_lines   the Variable line
+--   detail_lines   the line under it with a userdata's value, hidden while the result isn't one
+--   result_tables  the Value list: { list, shape, texts, lines, named }
+--   depth_items    Table Depth, Call Functions In Tables, Change Variable Values: { build = function() -> remove,
+--                  remove = function or nil }. Made while the result is a table and taken away when it isn't.
+--                  Made at the end of the list, so they're right under the Value list: Stand puts an item
+--                  that is shown again at the end of its list, wherever it was made
 local result_lines = {}
--- Longer results are cut in the Variable line (the notice and the debug text show them whole)
-local MAX_RESULT_CHARS = 60
-
--- The same key -> the type(s) of what it gave last: "integer", "table of integers", "integer, string"
-local last_types = {}
--- The same key -> the table it gave last (when it gave one table), for the Value list under Variable
-local last_tables = {}
-
--- "Variable: 147462", "Variable: table of integers" for a table (what it holds is in the Value list right
--- under), "Variable: -" before a call or when it gave nothing
-local function result_line(key: string): string
-
-    local value = last_results[key]
-
-    if value == nil then
-        return text("loop.result_line"):format(text("loop.no_result"))
-    end
-
-    if last_tables[key] ~= nil then
-        return text("loop.result_line"):format(last_types[key] or "")
-    end
-
-    if #value > MAX_RESULT_CHARS then
-        value = value:sub(1, MAX_RESULT_CHARS) .. "..."
-    end
-
-    return text("loop.result_line"):format(value)
-end
-
--- Remembers what a call gave and shows it, only when it changed (loops call this every frame)
--- The same key -> the Value list in the function's list: { list, shape, texts, lines }
+local detail_lines = {}
 local result_tables = {}
-
--- Makes the Value list show last_tables[key]; set below, with the Variables list it builds like
-local update_result_list
-
--- The same key -> how deep its Value list opens tables (none - MAX_VARIABLE_DEPTH); set_result_depth changes it
-local result_depths = {}
-
--- The same key -> the Table Depth, Call Functions In Tables and Change Variable Values items of its list:
--- { build = function() -> remove, remove = function or nil }. They're made while the function's last result
--- is a table and taken away when it isn't. Made at the end of the list, so they're right under the Value
--- list: Stand puts an item that is shown again at the end of its list, wherever it was made
 local depth_items = {}
 
+-- The keys whose lines belong to a list outside Modules (Debug > Call Function): forget_lines leaves them
+local kept_keys = {}
+
+-- Makes the Value list show the key's table; set below, with the Variables list it builds like
+local update_result_list
+
 local function show_depth_items(key: string): void
+
     local entry = depth_items[key]
+
     if entry == nil then
         return
     end
 
-    local on = last_tables[key] ~= nil
+    local on = results.table_of(key) ~= nil
+
     if on and entry.remove == nil then
         entry.remove = entry.build()
         return
@@ -98,81 +72,72 @@ local function show_depth_items(key: string): void
     end
 end
 
--- The same key -> true when the functions in its Value list are buttons that call them
-local call_in_tables = {}
+-- The line under Variable with a userdata's value: there while the last result is one
+local function show_detail(key: string): void
 
--- The same key -> true when the other values in its Value list are fields to change them in
-local edit_in_tables = {}
+    local ref = detail_lines[key]
+    local detail = results.detail_of(key)
 
--- What is typed for the functions in the Value lists, by "<key><path>": the panel's state (Arguments, toggles,
--- its loop; see call_function.panel). Kept, so it stays when the list is made again
-local table_fn_states = {}
-
--- The same key -> a number for the commands of its function lists ("tablefnargs3_1"): unique across lists
-local scope_numbers = {}
-
-local function scope_number(key: string): int
-    if scope_numbers[key] == nil then
-        local count = 0
-        for _ in pairs(scope_numbers) do
-            count += 1
-        end
-        scope_numbers[key] = count + 1
-    end
-    return scope_numbers[key]
-end
-
-local function show_result(key: string, results: table): void
-    local value = results.n > 1 and results_text(results) or nil
-    if value == last_results[key] then
+    if ref == nil then
         return
     end
-    last_results[key] = value
 
-    -- Each value's type, as many as it gave ("integer, string")
-    local types = {}
-    for i = 2, results.n do
-        table.insert(types, type_text(results[i]))
+    if detail ~= nil then
+        pcall(menu.set_menu_name, ref, detail)
     end
 
-    last_types[key] = table.concat(types, ", ")
-    last_tables[key] = (results.n == 2 and type(results[2]) == "table") and results[2] or nil
+    pcall(menu.set_visible, ref, detail ~= nil)
+end
+
+-- What a key gave changed: its items follow
+results.on_change(function(key: string)
 
     update_result_list(key)
     show_depth_items(key)
+    show_detail(key)
 
     local ref = result_lines[key]
-    if ref ~= nil then
-        local ok, err = pcall(menu.set_menu_name, ref, result_line(key))
-        if not ok then
-            log:debug($"{key}: Variable line not updated: {tostring(err)}")
-        end
+
+    if ref == nil then
+        return
     end
-end
 
+    local ok, err = pcall(menu.set_menu_name, ref, results.line(key))
+    if not ok then
+        log:debug($"{key}: Variable line not updated: {tostring(err)}")
+    end
+end)
 
--- A call's results for the notice
-module.results_text = logic.results_text
-
--- What a call gave, remembered and shown where its function's list shows it (when it changed)
-function module.show_result(key: string, results: table): void
-    show_result(key, results)
-end
-
--- A function's Variable line and its Value list, made in its list (node) for key ("<module>.<function>")
--- How deep tables inside tables open as lists in the Value list of key; the list is made again.
--- Kept by key, so it stays when the Modules list is made again
--- quiet: only remembered, the list isn't made again (Stand puts a saved state back while the script starts,
--- where items can't be made); it's made again with the next result
-function module.set_result_depth(key: string, depth: int, quiet: ?bool): void
-    result_depths[key] = depth
+-- The Value list made again for a table setting changed by the user. Not for a saved state Stand puts back
+-- while the script starts (quiet): items can't be made there, the list is made again with the next result.
+-- In a thread of its own: items can't be made inside the callback of a setting either
+local function setting_changed(key: string, quiet: ?bool): void
     if quiet then
         return
     end
-    -- In a thread of its own: items can't be made inside the callback of a setting Stand puts back
+
     util.create_thread(function()
         update_result_list(key)
     end)
+end
+
+-- How deep tables inside tables open as lists in the Value list of key
+function module.set_result_depth(key: string, depth: int, quiet: ?bool): void
+    results.set_depth(key, depth)
+    setting_changed(key, quiet)
+end
+
+-- Call Functions In Tables for key's Value list: the functions in it become lists to open, with their
+-- arguments and Call
+function module.set_call_in_tables(key: string, on: bool, quiet: ?bool): void
+    results.set_call_in_tables(key, on)
+    setting_changed(key, quiet)
+end
+
+-- Change Variable Values for key's Value list: the values in it become fields to type a new value in
+function module.set_edit_in_tables(key: string, on: bool, quiet: ?bool): void
+    results.set_edit_in_tables(key, on)
+    setting_changed(key, quiet)
 end
 
 -- The items of the table settings of key's list: build() makes them at the end of the list and returns a
@@ -182,55 +147,19 @@ function module.bind_depth_items(key: string, build): void
     show_depth_items(key)
 end
 
--- Call Functions In Tables for key's Value list: the functions in it become lists to open, with Arguments
--- and Call. Kept by key, like the depth
--- quiet: as in set_result_depth
-function module.set_call_in_tables(key: string, on: bool, quiet: ?bool): void
-    call_in_tables[key] = on or nil
-    if quiet then
-        return
-    end
-    util.create_thread(function()
-        update_result_list(key)
-    end)
-end
-
--- Change Variables In Tables for key's Value list: the values in it become fields to type a new value in
--- quiet: as in set_result_depth
-function module.set_edit_in_tables(key: string, on: bool, quiet: ?bool): void
-    edit_in_tables[key] = on or nil
-    if quiet then
-        return
-    end
-    util.create_thread(function()
-        update_result_list(key)
-    end)
-end
-
--- @return Whether Change Variables In Tables is on for key
-function module.edit_in_tables(key: string): bool
-    return edit_in_tables[key] == true
-end
-
--- @return Whether Call Functions In Tables is on for key
-function module.call_in_tables(key: string): bool
-    return call_in_tables[key] == true
-end
-
--- @return The depth set for key (the default one when none is)
-function module.result_depth(key: string): int
-    return result_depths[key] or MAX_VARIABLE_DEPTH
-end
-
--- kept: the lines belong to a list outside Modules (Debug > Call Function), so forget_lines leaves them
-local kept_keys = {}
-
+-- A function's Variable line, the line of a userdata's value and its Value list, made in its list (node)
+-- @param kept The lines belong to a list outside Modules (Debug > Call Function), so forget_lines leaves them
 function module.add_result_lines(node: table, key: string, kept: ?bool): void
 
-    result_lines[key] = node:divider(result_line(key))
+    result_lines[key] = node:divider(results.line(key))
+
+    -- A userdata it gave: its value on a line of its own (hidden while it gave none)
+    detail_lines[key] = node:divider(results.detail_of(key) or "-")
+    show_detail(key)
 
     -- A table it gave: its entries in a list right under (hidden while it gave none)
     result_tables[key] = { list = node:list(text("loop.result_list"):format(0)), shape = nil, texts = {}, lines = {} }
+
     if kept then
         kept_keys[key] = true
     end
@@ -241,21 +170,22 @@ end
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
 
-    local lines, tables, depth = {}, {}, {}
+    local lines, details, tables, depth = {}, {}, {}, {}
 
     for key in pairs(kept_keys) do
         lines[key] = result_lines[key]
+        details[key] = detail_lines[key]
         tables[key] = result_tables[key]
         depth[key] = depth_items[key]
     end
 
     result_lines = lines
+    detail_lines = details
     result_tables = tables
     depth_items = depth
 end
 
--- ─── Variables: the module's fields and their values now ─────────────────────
-
+-- Variables: a table's entries and a module's fields
 
 -- How often an open Variables list looks at the values again, ms
 local VARIABLES_REFRESH_MS = 250
@@ -263,14 +193,14 @@ local VARIABLES_REFRESH_MS = 250
 -- Makes the items in list
 -- scope: the key of the Value list the items are for (nil - the module's Variables: all lines are read only)
 -- call_on: Call Functions In Tables - the functions are lists to call
--- edit_on: Change Variables In Tables - the other values are fields to type a new value in
+-- edit_on: Change Variable Values - the other values are fields to type a new value in
 -- @return path -> the ref of each line, to change its value later; and the set of paths whose name carries
 --         the value ("name: value"), which is changed with it
 local function build_variables(list: table, items: table, scope: ?string, call_on: ?bool, edit_on: ?bool): table
-    
+
     local lines = {}
     local named = {}
-    
+
     if #items == 0 then
         list:readonly_name(label("no_variables"))
         return lines, named
@@ -280,7 +210,9 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
     local number = 0
 
     for _, item in ipairs(items) do
+
         local parent = nodes[item.parent]
+
         if item.kind == "list" then
             nodes[item.path] = parent:list(item.name)
         elseif item.kind == "line" and item.holder ~= nil and not item.is_function and edit_on then
@@ -289,37 +221,23 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
             number += 1
             named[item.path] = true
             lines[item.path] = parent:text_input($"{item.name}: {item.text}",
-                { $"tablevaredit{scope_number(scope)}_{number}" }, function(value, click_type)
+                { $"tablevaredit{results.scope_number(scope)}_{number}" }, function(value, click_type)
                 if not clicks.is_user_action(click_type) then
                     return
                 end
-                local args, count, err = args_parser.parse(value)
-                if err ~= nil then
-                    log:error(text("edit.bad_value"):format(item.name, err))
-                    return
-                end
-                if count ~= 1 then
-                    log:error(text("edit.one_value"):format(item.name))
-                    return
-                end
-                local ok, why = pcall(function() item.holder[item.raw_key] = args[1] end)
-                if not ok then
-                    log:error(text("edit.failed"):format(item.name, tostring(why)))
-                    return
-                end
 
-                log:notify(text("edit.done"):format(item.name, describe_item(args[1], 0, {})))
-                update_result_list(scope)
+                if results.edit(item, value) then
+                    update_result_list(scope)
+                end
             end, label("edit.help"), item.text)
         elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on then
 
-            named[item.path] = true
-
-            -- A function: a list with the panel of Debug > Call Function (Argument, Call, Call After, Loop, ...),
+            -- A function: a list with the panel of Debug > Call Function (arguments, Call, Call After, Loop, ...),
             -- without the name and the notice in Stand
             number += 1
+            named[item.path] = true
+
             local id = $"{scope}{item.path}"
-            table_fn_states[id] ??= {}
             local panel = nil
             local entry = parent:list($"{item.name}: {item.text}", {}, label("loop.help"), nil, function()
                 if panel ~= nil then
@@ -331,7 +249,7 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
 
             panel = Atdar.loader.load("ui/stand/script/call_function").panel(entry, {
                 key = id,
-                state = table_fn_states[id],
+                state = results.fn_state(id),
                 name = || -> item.name,
                 -- The function as it is in its table now; a plain call, without self
                 target = function()
@@ -341,7 +259,7 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
                     end
                     return true, fn
                 end,
-                args_command = $"tablefnargs{scope_number(scope)}_{number}",
+                args_command = $"tablefnargs{results.scope_number(scope)}_{number}",
             })
         elseif item.kind == "line" then
             lines[item.path] = parent:readonly(item.name, item.text)
@@ -349,6 +267,7 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
             parent:readonly_name(item.name)
         end
     end
+
     return lines, named
 end
 
@@ -356,40 +275,27 @@ end
 -- like Variables. Hidden when it gave no table; changed values change in place, entries that came or
 -- went make the list again
 update_result_list = function(key)
+
     local ui = result_tables[key]
+
     if ui == nil then
         return
     end
 
-    local tbl = last_tables[key]
-    if tbl == nil then
+    local items, count = results.items(key)
+
+    if items == nil then
         pcall(menu.set_visible, ui.list.handle, false)
         return
     end
 
-    local entries = table_entries(tbl)
-
-    local items = {}
-    if #entries == 0 then
-        table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
-    end
-
-    for i, entry in ipairs(entries) do
-        if i > MAX_TABLE_ENTRIES then
-            table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
-            break
-        end
-        collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, result_depths[key], tbl, entry.raw_key)
-    end
-
     pcall(menu.set_visible, ui.list.handle, true)
-    pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(#entries))
+    pcall(menu.set_menu_name, ui.list.handle, text("loop.result_list"):format(count))
 
-    -- With Call Functions In Tables / Change Variables In Tables on, the lines are lists or fields: the
-    -- other shape
-    local call_on = call_in_tables[key] == true
-    local edit_on = edit_in_tables[key] == true
-    local shape = shape_of(items)
+    -- With Call Functions In Tables / Change Variable Values on, the lines are lists or fields: another shape
+    local call_on = results.call_in_tables(key)
+    local edit_on = results.edit_in_tables(key)
+    local shape = logic.shape_of(items)
 
     if call_on then
         shape = shape .. "\ncall"
@@ -441,8 +347,8 @@ function module.variables_list(node: table, module_name: string, hidden_of): voi
         opened = this
         list:clear()
 
-        local items = collect_variables(module_name, hidden_of) or {}
-        local shape = shape_of(items)
+        local items = logic.collect_variables(module_name, hidden_of) or {}
+        local shape = logic.shape_of(items)
         local texts = {}
 
         for _, item in ipairs(items) do
@@ -463,12 +369,13 @@ function module.variables_list(node: table, module_name: string, hidden_of): voi
             end
 
             next_look = now + VARIABLES_REFRESH_MS
-            local fresh = collect_variables(module_name, hidden_of)
+
+            local fresh = logic.collect_variables(module_name, hidden_of)
             if fresh == nil then
                 return false
             end
 
-            local fresh_shape = shape_of(fresh)
+            local fresh_shape = logic.shape_of(fresh)
             if fresh_shape ~= shape then
                 -- Something came or went: made again
                 list:clear()
@@ -487,7 +394,7 @@ function module.variables_list(node: table, module_name: string, hidden_of): voi
                     pcall(menu.set_value, lines[item.path], item.text)
                 end
             end
-            
+
             return true
         end)
     end)

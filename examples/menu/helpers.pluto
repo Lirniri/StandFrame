@@ -1,13 +1,15 @@
 -- EXAMPLE: ready-made menu helpers, as a menu file of a pack (menu/stand/helpers.pluto).
 -- main.pluto calls it: ctx.load("helpers").build(node, ctx)
 --
---   confirm.action      - a button that acts only on a second click
---   Atdar.menu.spoiler  - a line that hides its value until clicked
---   builder.build_items - a submenu described as a table
+--   Atdar.menu.confirm.action      - a button that acts only on a second click
+--   Atdar.menu.spoiler             - a line that hides its value until clicked
+--   Atdar.menu.builder.build_items - a submenu described as a table
+--
+-- Atdar.menu is where a pack takes the parts of the script's menu from (lib/<script>/utils/menu lists them)
 
 local Logger = Atdar.loader.load("core/logger")
-local confirm = Atdar.loader.load("ui/stand/core/confirm")
-local builder = Atdar.loader.load("ui/stand/core/menu_builder")
+local confirm = Atdar.menu.confirm
+local builder = Atdar.menu.builder
 
 local log = new Logger("Helpers")
 

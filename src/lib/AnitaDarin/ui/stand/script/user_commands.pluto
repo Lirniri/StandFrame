@@ -15,144 +15,110 @@
 -- Strings: core/language "script_menu.user_commands"
 
 local i18n = Atdar.loader.load("core/i18n")
-local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/core/commands")
-local command_box = Atdar.loader.load("parsers/stand/command_box")
 local profile_menu = Atdar.loader.load("ui/stand/script/profile")
 local user_commands = Atdar.loader.load("ui/logic/stand/script/user_commands")
-
-local log = new Logger("Commands")
 
 local module = {}
 
 -- Strings under "script_menu.user_commands"
-local label, text = i18n.scope("script_menu.user_commands")
+local label = i18n.scope("script_menu.user_commands")
 
--- The list made by build: { node, first, entries, remove_ref }
+-- The list made by build: { node, first, entries, names, runs, remove_ref }
 local view = {}
-
-local refresh
 
 -- One command's list: Run (the command itself), Commands, Description
 local function entry_list(node: table, name: string, entry: table): void
-    local function run_help(): string
-        local help = entry.help ~= "" and entry.help or text("run.help")
-        local runs = text("runs"):format(table.concat(entry.commands, "; "))
-        return $"{help}\n{runs}"
-    end
+
     -- Run is named after what it runs: the items its commands are ("atdar_settings" -> "Settings"), so
     -- the command box and Stand's lists say what it does; with the cursor on it, it reads "Run", a button.
     -- Its name comes back when the cursor leaves or the list is gone back out of
     local run_ref = nil
+
     local function show_command(): void
         pcall(menu.set_menu_name, run_ref, user_commands.caption(name, entry))
     end
+
     local list = node:list(name, {}, entry.help, show_command)
+
     commands.begin_user()
-    run_ref = list:action(user_commands.caption(name, entry), || -> user_commands.run(name, entry), { name }, run_help())
+
+    run_ref = list:action(user_commands.caption(name, entry), || -> user_commands.run(name, entry), { name },
+        user_commands.run_help(entry))
     view.runs[name] = run_ref
     pcall(menu.on_focus, run_ref, || -> pcall(menu.set_menu_name, run_ref, label("run.name")))
     pcall(menu.on_blur, run_ref, show_command)
+
     list:text_input(label("commands.name"), { $"cbuser{name}" }, function(value)
-        entry.commands = user_commands.split(value)
-        user_commands.save(name, entry)
-        pcall(menu.set_help_text, run_ref, run_help())
+        user_commands.set_commands(name, entry, value)
+        pcall(menu.set_help_text, run_ref, user_commands.run_help(entry))
         -- Named after what it runs now
         show_command()
     end, label("commands.help"), table.concat(entry.commands, "; "))
+
     list:text_input(label("description.name"), { $"cbuser{name}help" }, function(value)
-        entry.help = value
-        user_commands.save(name, entry)
-        pcall(menu.set_help_text, run_ref, run_help())
+        user_commands.set_help(name, entry, value)
+        pcall(menu.set_help_text, run_ref, user_commands.run_help(entry))
         pcall(menu.set_help_text, list.handle, value)
     end, label("description.help"), entry.help)
+
     commands.end_user()
 end
 
--- The Remove picker's options: the commands by name, or a line saying there are none
-local function remove_options(names: table): table
-    if #names == 0 then
-        return { text("none") }
-    end
-    return names
-end
-
 -- The commands under the divider made again, from the files
-refresh = function()
+local function refresh(): void
+
     local node = view.node
+
     node:clear_from(view.first)
     view.entries = user_commands.read()
+    view.names = user_commands.names_of(view.entries)
     view.runs = {}
-    local names = {}
-    for name in pairs(view.entries) do
-        table.insert(names, name)
-    end
-    table.sort(names)
-    view.names = names
-    for _, name in ipairs(names) do
+
+    for _, name in ipairs(view.names) do
         entry_list(node, name, view.entries[name])
     end
-    if #names == 0 then
+
+    if #view.names == 0 then
         node:readonly_name(label("none"))
     end
-    pcall(menu.set_list_action_options, view.remove_ref, remove_options(names))
+
+    pcall(menu.set_list_action_options, view.remove_ref, user_commands.remove_options(view.names))
 end
 
 -- User Commands, in node (Command Box's Commands part)
 function module.build(node: table): table
+
     local list = node:list(label("name"), {}, label("help"))
+    local remove_ref = nil
+
     profile_menu.user_command_box(list)
 
-    list:text_input(label("create.name"), { "cbusercreate" }, function(value)
-        local name = command_box.sanitize(value)
-        if name == "" then
-            if value ~= "" then
-                log:warn(text("invalid"):format(value))
-            end
-            return
-        end
-        if view.entries[name] ~= nil or user_commands.command_taken(user_commands.full_name(name)) then
-            log:warn(text("exists"):format(user_commands.full_name(name)))
-            return
-        end
-        if not user_commands.save(name, { commands = {}, help = "" }) then
-            return
-        end
-        refresh()
-        log:success(text("created"):format(user_commands.full_name(name)))
-    end, label("create.help"), "")
+    list:text_input(label("create.name"), { "cbusercreate" }, |value| -> user_commands.create(value, view.entries, refresh),
+        label("create.help"), "")
 
-    local remove_ref = nil
-    remove_ref = list:list_action(label("remove.name"), remove_options({}), function(index, _, click_type)
+    remove_ref = list:list_action(label("remove.name"), user_commands.remove_options({}), function(index, _, click_type)
         local name = (view.names or {})[index]
         if name == nil then
             return
         end
-        menu.show_warning(remove_ref, click_type, text("remove.warning"):format(user_commands.full_name(name)), function()
-            user_commands.remove(name)
-            refresh()
-            log:success(text("removed"):format(user_commands.full_name(name)))
-        end)
+
+        menu.show_warning(remove_ref, click_type, user_commands.remove_warning(name), || -> user_commands.delete(name, refresh))
     end, { "cbuserremove" }, label("remove.help"))
 
     list:divider(i18n.label("script_menu.commands.divider"))
     view = { node = list, first = #list.children + 1, entries = {}, remove_ref = remove_ref }
     user_commands.make_example()
     refresh()
+
     return list
 end
 
--- Every command's prefix and separator: a change renames the commands Run is named after (or, with
--- nothing to run, its own). Any of them, not only the user's: a profile reset or loaded gives them all
+-- Every command's prefix, its place and separator: a change renames the commands Run is named after (or,
+-- with nothing to run, its own). Any of them, not only the user's: a profile reset or loaded gives them all
 -- at once, in no set order, and the last one must find every command under its new name
-local NAME_KEYS = {
-    command_box_prefix = true, command_box_separator = true,
-    command_box_found_prefix = true, command_box_found_separator = true,
-    command_box_user_prefix = true, command_box_user_separator = true,
-}
-
 Atdar.profile.on_change(function(key: string)
-    if not NAME_KEYS[key] then
+    if not commands.is_name_key(key) then
         return
     end
     for name, ref in pairs(view.runs or {}) do

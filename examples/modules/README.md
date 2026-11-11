@@ -119,7 +119,7 @@ Your own words and lists:
 -- For one module: the debug.categories option (see above)
 
 -- For all modules: in any file that loads before the menu is opened
-local modules_menu = Atdar.loader.load("ui/stand/modules/list")
+local modules_menu = Atdar.menu.modules
 modules_menu.add_category("getters", { "find", "fetch" })        -- more words for "Getters"
 modules_menu.add_category("checks", { "has", "can" })            -- and for "Checks"
 modules_menu.add_category("shop", { "buy", "sell" }, "Shop")     -- a new list at the end

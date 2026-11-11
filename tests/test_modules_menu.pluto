@@ -452,6 +452,33 @@ menu.set_value(add_note, "FAKE.handle()")
 stand.click(stand.child(add_node, "Call"))
 stand.equal(counter.count, 2, "a call in a field reaches the function")
 stand.check(stand.find_item(add_node, "Variable: 2, 501") ~= nil, "each field is one argument")
+-- A call of a function with known parameters: the field becomes a list with that function's fields, here too
+-- (FAKE.add(1, 1) above made it one already: FAKE.add's parameters are known)
+local function amount_item() return field_under(add_node, "amount") end
+local function type_amount(value: string): void
+    local item = amount_item()
+    if item.kind == "list" then
+        item = item.children[1]
+    end
+    item.on_change(value, 0)
+end
+local amount_name = stand.name_of(add_args)
+stand.check(amount_item().kind == "list" and stand.name_of(amount_item()) == $"{amount_name}: FAKE.add(1, 1)",
+    "a call typed in a module function's field: the field is a list, named by the kind and the expression")
+stand.equal(names_in(amount_item()), "Expression | a | Argument * | b | Argument *", "with the called function's parameters")
+Atdar.test_inner = function(entity: int, alive: bool = false): int return entity * 2 end
+type_amount("test_inner(4)")
+stand.equal(names_in(amount_item()), "Expression | entity | Number | alive | Boolean", "another function typed: its parameters")
+amount_item().children[3].on_change("6", 0)
+counter.count = 0
+stand.click(stand.child(add_node, "Call"))
+stand.equal(counter.count, 12, "typing in its fields writes the expression the call takes")
+type_amount("1")
+stand.check(amount_item().kind == "text_input" and amount_item().value == "1", "a plain value typed: one field again")
+add_args = amount_item()
+add_note = field_under(add_node, "note")
+counter.count = 2
+Atdar.test_inner = nil
 -- A field with two values isn't one argument
 menu.set_value(add_args, "1, 2")
 stand.clear_logs()
@@ -516,6 +543,20 @@ local function tail_of(node, count: int): string
 end
 stand.equal(tail_of(add_node, 4), "Value (3) | Table Depth | Call Functions In Tables | Change Variable Values",
     "a table result: Table Depth, Call Functions In Tables and Change Variable Values are right under the Value list, the last items")
+-- Change Variable Values: the values in the table are fields; a value typed is put into the table and told
+local edited = { 1, "a" }
+counter.add = function() return edited end
+stand.frame()
+stand.click(stand.child(add_node, "Change Variable Values"))
+local edit_field = stand.find_item(stand.find_item(add_node, "Value (2)"), '[2]: "a"')
+stand.check(edit_field ~= nil and edit_field.kind ~= "readonly", "Change Variable Values: a value is a field")
+stand.clear_logs()
+edit_field.on_change('"b"', 0)
+stand.equal(edited[2], "b", "a value typed in it goes into the table")
+stand.check(stand.find_log('[2]') and stand.find_log('"b"') and not stand.find_log("ERROR"), "and the change is told, the new value in quotes")
+stand.click(stand.child(add_node, "Change Variable Values"))
+counter.add = function() return { 1, "a", { x = 2 } } end
+stand.frame()
 -- Types in words: a table by what it holds
 counter.add = function() return { 1, 2, 3 } end
 stand.frame()
@@ -535,6 +576,22 @@ stand.frame()
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "a plain value: the value, no type")
 stand.equal(stand.child(add_node, "Table Depth"), nil, "no table any more: the table settings are gone")
 stand.equal(stand.name_of(add_node.children[#add_node.children]), "Value (0)", "and the Value list is the last item")
+-- A userdata it gave (Stand's vectors): its name on the Variable line, its value on a line right under.
+-- Stand's v3 isn't in the test: an open file with a vector's fields and name does
+local fake_vector = io.open(stand.tmpdir("modules_menu_userdata") .. "vector.txt", "w")
+debug.setmetatable(fake_vector, { __index = { x = 1.5, y = -2, z = 3.25 }, __tostring = || -> "Vector3: 00000201FD08E0C8" })
+counter.add = function() return fake_vector end
+stand.frame()
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: Vector3", "a userdata: its name on the Variable line")
+local vector_line = stand.find_item(add_node, "1.500, -2.000, 3.250")
+stand.check(vector_line ~= nil and vector_line.kind == "divider" and vector_line.visible ~= false,
+    "and a vector's coordinates on a divider under it")
+stand.equal(stand.debug_texts[#stand.debug_texts], "counter.add(amount, note) -> Vector3(1.500, -2.000, 3.250)",
+    "the same in what's drawn on screen")
+counter.add = function() return 2.5 end
+stand.frame()
+stand.check(vector_line.visible == false, "a value of another kind: the line is hidden")
+stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "and Variable shows the value again")
 counter.add = real_add
 counter.count = 5
 stand.click(stand.child(add_node, "Loop"))

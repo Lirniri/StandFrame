@@ -13,13 +13,16 @@ local DEFAULTS = {
     display_name = Atdar.name,  -- shown to the user: settings section, built-in menu entry
     short_name = "AniDar",
     command_box_prefix = "atdar",
+    command_box_prefix_at_end = false, -- the prefix after the name: godmode.atdar instead of atdar.godmode
     command_box_separator = ".",     -- "" -> atdargodmode, "_" -> atdar_godmode, "." -> atdar.godmode
     -- The same for the loaded menu's commands (Found Commands), so they can't clash with the script's own
     command_box_found_prefix = "atdar",
+    command_box_found_prefix_at_end = false,
     command_box_found_separator = "",
     -- The same for the user's own commands (User Commands: a name running other commands). None: a command
     -- is called exactly what the user named it ("settingsatdar")
     command_box_user_prefix = "",
+    command_box_user_prefix_at_end = false,
     command_box_user_separator = "",
     log_name = "short",         -- name in log and toast lines: "short" | "display"
     debug = false,              -- show debug-level log lines
@@ -324,7 +327,6 @@ function module.create(name: string): ?string
     return clean
 end
 
--- Deletes a profile; the main one stays, and deleting the active one switches to main
 -- Deletes a profile, main and the last one too (like Stand; create_main makes main again). Deleting the
 -- active one loads another; with none left the script goes on with the values it has, unsaved (Save
 -- writes them back), and the next start makes the profile it was on again with the defaults

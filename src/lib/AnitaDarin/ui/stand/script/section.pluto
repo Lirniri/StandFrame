@@ -5,8 +5,10 @@
 --   Display Name, Short Name
 --   Settings >      Language, Name In Logs, Notifications, Rename Script
 --   Profiles >      Create Profile, Open Folder, one list per profile
---   Load Menu >     Unload, Copy Menu To Core, ── Menus ──, the menus with their state
---   Command Box >   Command Prefix, Separator, Found Commands
+--   Load Menu >     Unload, Copy Menu To Core (and the pack picked, on a line under it), ── Menus ──, the menus
+--                   with their state
+--   Command Box >   Base Commands, Found Commands (each: Prefix, Prefix At The End, Separator, the folder, the
+--                   commands), User Commands
 --   Open Folder >   Lib, Resources, Store
 --   Update >        Check For Updates, Update (updater_menu, a stub for now)
 --   Debug >         Debug Mode, Load Timing, Reload Natives, ── Logs ──, Logs > (Name In Logs, Keep Logs,
@@ -15,6 +17,7 @@
 --                   ── Debug ──, Call Function, Modules, Delete Script (asks first)
 --
 -- Stand adds every item at the end of its list, so the order of the calls below is the order in the menu.
+-- What the plain buttons do (folders, logs, the feed) is in ui/logic/stand/script/section_actions.
 -- Strings: core/language "script_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -23,6 +26,7 @@ local delete_script_logic = Atdar.loader.load("ui/logic/stand/script/delete_scri
 local Logger = Atdar.loader.load("core/logger")
 local commands = Atdar.loader.load("ui/stand/core/commands")
 local command_names = Atdar.loader.load("ui/logic/stand/script/command_names")
+local actions = Atdar.loader.load("ui/logic/stand/script/section_actions")
 local profile_menu = Atdar.loader.load("ui/stand/script/profile")
 local language_menu = Atdar.loader.load("ui/stand/script/language")
 local user_commands = Atdar.loader.load("ui/stand/script/user_commands")
@@ -67,18 +71,6 @@ end
 -- the full command inside a list, or nil }
 local found_rows = {}
 
--- An item's name for its row; names may be Stand labels
-local function item_name(ref): string
-    local ok, name = pcall(menu.get_menu_name, ref)
-    if not ok then
-        return ""
-    end
-    if type(name) == "number" then
-        return lang.get_localised(name)
-    end
-    return tostring(name)
-end
-
 -- What the lists do with the names (rename, reset, words) is in ui/logic/stand/script/command_names
 local short_names = command_names.short_names
 local full_names = command_names.full_names
@@ -86,16 +78,12 @@ local full_names = command_names.full_names
 -- A command: a list with its full command, its custom name and a reset, then its extra words. They're
 -- kept by ui/stand/core/commands: commands/<base>.json in the menu's folder, or store/<script>/commands/
 local function command_entry(list: table, ref): table
-    local entry = list:list(short_names(ref), {}, item_name(ref))
+    local entry = list:list(short_names(ref), {}, actions.item_name(ref))
     local found = { ref = ref, row = entry.handle }
     found.command = entry:readonly(label("found_commands.command"), full_names(ref))
 
-    -- Takes the cursor to the item itself. One hidden for now (debug mode is off) can't be reached
-    entry:action(label("found_commands.focus.name"), function()
-        if not pcall(menu.focus, ref) then
-            log:warn(text("found_commands.focus.failed"))
-        end
-    end, {}, label("found_commands.focus.help"))
+    -- Takes the cursor to the item itself
+    entry:action(label("found_commands.focus.name"), || -> actions.focus_item(ref), {}, label("found_commands.focus.help"))
 
     local function renamed(): void
         pcall(menu.set_menu_name, found.row, short_names(ref))
@@ -176,10 +164,10 @@ local function fill_command_lists(base: table, found: table): void
     end
 end
 
--- A new prefix or separator renames the commands (ui/stand/core/commands): the full ones inside the lists follow
+-- A new prefix, its place or separator renames the commands (ui/stand/core/commands): the full ones inside the
+-- lists follow
 Atdar.profile.on_change(function(key: string)
-    if key ~= "command_box_prefix" and key ~= "command_box_separator" and key ~= "command_box_found_prefix"
-        and key ~= "command_box_found_separator" then
+    if not commands.is_name_key(key) then
         return
     end
     for _, found in ipairs(found_rows) do
@@ -189,42 +177,20 @@ Atdar.profile.on_change(function(key: string)
     end
 end)
 
--- Opens one of the script's folders in Explorer; one that doesn't exist yet (resources) is made first,
--- since Explorer can't open a missing folder
+-- Opens one of the script's folders in Explorer
 local function open_folder(node: table, key: string, path: string): void
-    node:action(label($"open_folder.{key}.name"), function()
-        if not filesystem.exists(path) then
-            filesystem.mkdirs(path)
-        end
-        util.open_folder(path)
-    end, {}, label($"open_folder.{key}.help"))
+    node:action(label($"open_folder.{key}.name"), || -> actions.open_folder(path), {}, label($"open_folder.{key}.help"))
 end
 
--- A path from Lua Scripts on: "store\AnitaDarin\logs\" - short enough for a warning
-local function from_scripts_dir(path: string): string
-    local root = filesystem.scripts_dir()
-    if path:sub(1, #root) == root then
-        return path:sub(#root + 1)
-    end
-    return path
-end
-
--- Removes every log file, after a warning
+-- Clear Current Log File, at once; Clear All Log Files, after a warning
 local function clear_logs(node: table): void
-    -- Today's file only, at once: the lines from before a test, without losing the other days
-    node:action(label("clear_log.name"), function()
-        if Logger.clear_today() then
-            log:notify(text("clear_log.done"))
-            return
-        end
-        log:notify(text("clear_log.none"))
-    end, { "clearlog" }, label("clear_log.help"))
 
     local ref
+
+    node:action(label("clear_log.name"), actions.clear_log, { "clearlog" }, label("clear_log.help"))
+
     ref = node:action(label("clear_logs.name"), function(click_type)
-        menu.show_warning(ref, click_type, text("clear_logs.warning"):format(from_scripts_dir(Logger.folder())), function()
-            log:notify(text("clear_logs.done"):format(Logger.clear()))
-        end)
+        menu.show_warning(ref, click_type, actions.clear_logs_warning(), actions.clear_logs)
     end, { "clearlogs" }, label("clear_logs.help"))
 end
 
@@ -251,22 +217,30 @@ function module.build(section: table, opts: table): void
     -- Its commands all start with menuloader: menuloader, menuloaderunload, menuloaderautocopy,
     -- menuloaderbuiltin, menuloader<pack folder>
     -- The menus are looked for again each time the list is opened, so a pack put into store shows without
-    -- a restart; the entries start where the first_menu says
-    local first_menu = nil
+    -- a restart. What's under Copy Menu To Core is made again then, and when another pack is picked there:
+    -- the pack picked on a line of its own, then the menus
+    local under_auto_copy = nil
     local load_menu
-    load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
-        i18n.label("menu_loader.load_menu.help"), nil, function()
-        if first_menu == nil then
+
+    local function fill_load_menu(): void
+        if under_auto_copy == nil then
             return
         end
-        profile_menu.refresh_packs(opts.find_packs())
-        load_menu:clear_from(first_menu)
+
+        load_menu:clear_from(under_auto_copy)
+        profile_menu.auto_copy_picked(load_menu)
         opts.fill_menus(load_menu)
+    end
+
+    load_menu = section:list(i18n.label("menu_loader.load_menu.name"), { "menuloader" },
+        i18n.label("menu_loader.load_menu.help"), nil, function()
+        profile_menu.refresh_packs(opts.find_packs())
+        fill_load_menu()
     end)
     load_menu:action(i18n.label("menu_loader.unload.name"), opts.unload, { "menuloaderunload" }, i18n.label("menu_loader.unload.help"))
-    profile_menu.auto_copy(load_menu)
-    first_menu = #load_menu.children + 1
-    opts.fill_menus(load_menu)
+    profile_menu.auto_copy(load_menu, fill_load_menu)
+    under_auto_copy = #load_menu.children + 1
+    fill_load_menu()
 
     -- Command Box
     local command_box = section:list(label("command_box.name"), {}, label("command_box.help"))
@@ -279,17 +253,8 @@ function module.build(section: table, opts: table): void
     user_commands.build(command_box)
     -- The folder each list's names and words are kept in; made when it isn't there yet
     for _, part in ipairs({ { list = base_commands, who = "script" }, { list = found_commands, who = "menu" } }) do
-        part.list:action(label("commands_folder.name"), function()
-            local dir = commands.folder_of(part.who)
-            if dir == nil then
-                log:warn(text("commands_folder.no_menu"))
-                return
-            end
-            if not filesystem.exists(dir) then
-                filesystem.mkdirs(dir)
-            end
-            util.open_folder(dir)
-        end, {}, label($"commands_folder.{part.who}.help"))
+        part.list:action(label("commands_folder.name"), || -> actions.open_commands_folder(part.who), {},
+            label($"commands_folder.{part.who}.help"))
         -- The folder apart from the commands under it
         part.list:divider(label("commands.divider"))
     end
@@ -306,34 +271,30 @@ function module.build(section: table, opts: table): void
 
     -- Debug
     local debug = section:list(label("debug.name"), {}, label("debug.help"))
+
     profile_menu.debug(debug)
+
     local logs = debug:list(label("logs.name"), {}, label("logs.help"))
-    debug:divider(label("options_from_other_menu.divider"))
+
     profile_menu.log_name(logs)
     profile_menu.log_keep_days(logs)
     profile_menu.updater_log_both_ways(logs)
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
-    local from_other_menu__settings = debug:list(label("settings.name"), {}, label("settings.help"))
-    local from_other_menu__languages = from_other_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))
-    language_menu.show_keys(from_other_menu__languages)
+    local from_menu = debug:list("Options From Menu", {}, "")
+
+    local from_menu__settings = from_menu:list(label("settings.name"), {}, label("settings.help"))
+    local from_menu__languages = from_menu__settings:list(label("settings.languages.name"), {}, label("settings.languages.help"))
+    language_menu.show_keys(from_menu__languages)
+
     -- At the bottom, shown only in debug mode: the "Debug" divider with Modules, then Delete Script
     modules_place.build(debug, call_function.build)
     modules_place.debug_only(delete_script(debug))
 
-
     -- Settings
-    -- The script's cards and posts in the game's feed, all taken away (other scripts' and the game's stay).
-    -- Told in Stand: a notice in the feed would be one more to take away
-    section:action(label("clear_feed.name"), function()
-        local removed = Atdar.natives.visual.hud.thefeed.remove_all()
-        if removed == 0 then
-            log:notify(text("clear_feed.none"), "stand")
-            return
-        end
-        log:success(text("clear_feed.done"):format(removed), "stand")
-    end, { "notifyclearfeed" }, label("clear_feed.help"))
+    -- The script's cards and posts in the game's feed, all taken away
+    section:action(label("clear_feed.name"), actions.clear_feed, { "notifyclearfeed" }, label("clear_feed.help"))
 
     -- Last, once every item of the section has its commands
     fill_command_lists(base_commands, found_commands)

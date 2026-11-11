@@ -1,17 +1,77 @@
 -- lib/AnitaDarin/ui/logic/stand/script/profile_actions.pluto
--- What the profile items do besides showing: Save, Load, Reset, Delete of a profile, Create Main Profile and
--- Rename Script. The items, their captions and the warnings before them are in ui/stand/script/profile.
+-- What the profile's buttons do: Save, Load, Reset, Delete of a profile, Create Main Profile, Rename Script,
+-- the notification examples, Reload Natives. The items and the warnings before them are in
+-- ui/stand/script/profile; what keeps the items in step with the profile is profile_view.
 -- Each takes after(): what the menu does once the change is made (captions, fields, the entries again).
 -- Strings: core/language "profile"
 
 local i18n = Atdar.loader.load("core/i18n")
 local installer = Atdar.loader.load("core/installer")
 local Logger = Atdar.loader.load("core/logger")
+local texture_dict = Atdar.loader.load("natives/streaming/texture_dict/asset")
+local thefeed = Atdar.loader.load("natives/visual/hud/thefeed")
 
 local log = new Logger("Profile")
 local text = select(2, i18n.scope("profile"))
 
 local module = {}
+
+-- Notifications
+
+-- The kinds of notification an example shows, in order: the logger's method and the strings' key
+module.EXAMPLE_KINDS = {
+    { method = "notify", key = "info" },
+    { method = "warn", key = "warn" },
+    { method = "error", key = "error" },
+    { method = "success", key = "success" },
+}
+
+-- The cards the examples put in the game's feed, taken away again (going back out of Notifications, or
+-- before new ones): Stand's own notifications can't be taken away
+local example_posts = {}
+
+function module.remove_examples(): void
+    for _, id in ipairs(example_posts) do
+        pcall(thefeed.remove, id)
+    end
+
+    example_posts = {}
+end
+
+-- Shows an example of each kind given, the way it really looks (where it shows, subject, colours,
+-- emoticon); the examples before are taken away first, so clicking again doesn't pile them up
+-- @param kinds Entries of EXAMPLE_KINDS
+function module.show_examples(kinds: table): void
+
+    module.remove_examples()
+
+    for _, kind in ipairs(kinds) do
+        local id = log[kind.method](log, text($"notify.examples.{kind.key}.text"))
+        if id ~= nil then
+            table.insert(example_posts, id)
+        end
+    end
+end
+
+-- Asks the game to load the profile's picture now, without waiting, so message cards show it
+function module.load_feed_picture(): void
+
+    local name = Atdar.profile.get("notify_feed_picture")
+
+    if type(name) ~= "string" or name == "" then
+        return
+    end
+
+    pcall(texture_dict.request, name, false)
+end
+
+-- Debug
+
+-- The native wrappers read from disk again, to try a change without restarting the script
+function module.reload_natives(): void
+    local count = Atdar.loader.reload(Atdar.natives, "natives")
+    log:success(text("reload_natives.done"):format(count))
+end
 
 -- Profiles
 

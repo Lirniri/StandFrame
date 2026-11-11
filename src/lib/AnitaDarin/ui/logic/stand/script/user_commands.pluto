@@ -96,6 +96,94 @@ function module.make_example(): void
     module.save(EXAMPLE, { commands = { settings }, help = text("example") })
 end
 
+-- Making and changing
+
+-- Makes a command, empty, by the name typed
+-- @param entries The commands there are ({ [name] = entry })
+-- @param after What the menu does once it's made (the commands made again)
+function module.create(typed: string, entries: table, after: function): void
+
+    local name = command_box.sanitize(typed)
+
+    if name == "" then
+        if typed ~= "" then
+            log:warn(text("invalid"):format(typed))
+        end
+        return
+    end
+
+    local full = module.full_name(name)
+
+    if entries[name] ~= nil or module.command_taken(full) then
+        log:warn(text("exists"):format(full))
+        return
+    end
+
+    if not module.save(name, { commands = {}, help = "" }) then
+        return
+    end
+
+    after()
+    log:success(text("created"):format(full))
+end
+
+-- Takes a command away, with its file
+-- @param after What the menu does then (the commands made again)
+function module.delete(name: string, after: function): void
+    module.remove(name)
+    after()
+    log:success(text("removed"):format(module.full_name(name)))
+end
+
+-- What the warning before Remove says
+function module.remove_warning(name: string): string
+    return text("remove.warning"):format(module.full_name(name))
+end
+
+-- What a command runs, as typed ("godmode on; tpwaypoint"): kept in its file
+function module.set_commands(name: string, entry: table, typed: string): void
+    entry.commands = module.split(typed)
+    module.save(name, entry)
+end
+
+-- What Run's help says of the command: kept in its file
+function module.set_help(name: string, entry: table, typed: string): void
+    entry.help = typed
+    module.save(name, entry)
+end
+
+-- Run's help: the command's description (or what Run does), then what it runs
+function module.run_help(entry: table): string
+
+    local help = entry.help ~= "" and entry.help or text("run.help")
+    local runs = text("runs"):format(table.concat(entry.commands, "; "))
+
+    return $"{help}\n{runs}"
+end
+
+-- The commands' names, sorted
+function module.names_of(entries: table): table
+
+    local names = {}
+
+    for name in pairs(entries) do
+        table.insert(names, name)
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+-- The Remove picker's options: the commands by name, or a line saying there are none
+function module.remove_options(names: table): table
+    if #names == 0 then
+        return { text("none") }
+    end
+
+    return names
+end
+
 -- Running
 
 -- Commands running now: one that runs itself, straight or through others, is stopped there

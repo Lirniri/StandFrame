@@ -365,6 +365,7 @@ local class VehicleManager extends Module
     -- @return Whether it was exploded (one already gone or already dead is left alone)
     function explode(handle: ?int): bool
 
+        local n_ped_vehicle = Atdar.natives.entity.ped.vehicle
         local n_vehicle = Atdar.natives.entity.vehicle
 
         if math.type(handle) ~= "integer" then
@@ -376,6 +377,10 @@ local class VehicleManager extends Module
         end
 
         if n_vehicle.is_destroyed(handle) then
+            return false
+        end
+
+        if n_ped_vehicle.is_in_this(self:get_ped_id(), handle, true) then
             return false
         end
 
@@ -462,9 +467,14 @@ local class VehicleManager extends Module
     -- @return Whether it was deleted (one already gone is only forgotten)
     function delete(handle: ?int): bool
 
+        local n_ped_vehicle = Atdar.natives.entity.ped.vehicle
         local n_vehicle = Atdar.natives.entity.vehicle
 
         if math.type(handle) ~= "integer" then
+            return false
+        end
+
+        if n_ped_vehicle.is_in_this(self:get_ped_id(), handle, true) then
             return false
         end
 

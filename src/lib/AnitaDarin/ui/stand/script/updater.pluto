@@ -16,70 +16,40 @@
 --   Check For Updates Every (Days) (profile: update_check_days)
 --
 -- The work is done by core/update_manager (check, install, the automatic check); the menu only starts it
--- in a thread and shows what it found.
+-- in a thread and shows what it found. The texts of the lines and what the other items do are in
+-- ui/logic/stand/script/updater_view.
 -- Commands start with updater: updater, updatercheck, updaterinstall, updaterauto, updaterdays,
 -- updaterbranch, updaterbefore, updaterchanges, updaterstart
 -- Strings: core/language "updater_menu"
 
 local i18n = Atdar.loader.load("core/i18n")
-local Logger = Atdar.loader.load("core/logger")
 local manager = Atdar.loader.load("core/update_manager")
-local file = Atdar.loader.load("core/filesystem/file")
-local paths = Atdar.loader.load("core/filesystem/paths")
-
-local log = new Logger("Updater")
+local updater = Atdar.loader.load("ui/logic/stand/script/updater_view")
 
 local module = {}
 
 -- Strings under "updater_menu"
-local label, text = i18n.scope("updater_menu")
+local label = i18n.scope("updater_menu")
+
+-- The info lines and the branch picker made by build
+local view = { branch = nil, installed = nil, available = nil, last_check = nil }
 
 -- An item running a function of the manager in a thread: the check and the install download, so they yield
 local function threaded(node: table, key: string, command: string, run: function): void
     node:action(label($"{key}.name"), || -> util.create_thread(run), { command }, label($"{key}.help"))
 end
 
--- The repo's branches updates can come from: main - the releases, experiment - the newest, less tried
-local BRANCHES = { "main", "experiment" }
+-- A switch kept in the profile; on unless the profile says off (default_on), or off unless it says on
+local function flag(node: table, key: string, profile_key: string, command: string, default_on: bool): void
 
-local function branch_caption(): string
-    return text("branch.name"):format(Atdar.profile.get("update_branch") or "main")
-end
+    local value = Atdar.profile.get(profile_key)
+    local on = value == true
 
-local function branch_options(): table
-    local options = {}
-    for _, branch in ipairs(BRANCHES) do
-        table.insert(options, text($"branch.{branch}"))
-    end
-    return options
-end
-
--- The info lines and the branch picker made by build
-local view = { branch = nil, installed = nil, available = nil, last_check = nil }
-
--- "never" when no check ran, else the time of the last one
-local function last_check_text(): string
-    local time = Atdar.profile.get("update_last_check") or 0
-
-    if time == 0 then
-        return text("info.never")
+    if default_on then
+        on = value ~= false
     end
 
-    return os.date("%Y-%m-%d %H:%M", time)
-end
-
-local function available_text(): string
-    local version = manager.available_version()
-
-    if version == nil then
-        return text("info.not_checked")
-    end
-
-    if manager.is_up_to_date() then
-        return text("info.up_to_date"):format(version)
-    end
-
-    return version
+    node:toggle(label($"{key}.name"), |state| -> updater.set_flag(profile_key, state), { command }, label($"{key}.help"), on)
 end
 
 -- Puts what's known into the info lines. A line of a removed section is skipped
@@ -88,98 +58,41 @@ local function refresh_info(): void
         return
     end
 
-    pcall(menu.set_value, view.installed, manager.installed_version() or text("info.unknown"))
-    pcall(menu.set_value, view.available, available_text())
-    pcall(menu.set_value, view.last_check, last_check_text())
-end
-
--- Saves what the available version changes to a log file in store/AnitaDarin/logs
-local function show_changes(): void
-    local lines = manager.changes()
-
-    if #lines == 0 then
-        log:notify(text("changes.none"), "stand")
-        return
-    end
-
-    local date = os.date("%Y-%m-%d")
-    local filename = $"{Atdar.name}_{date}_updater.log"
-    local logpath = $"{paths.store}logs/{filename}"
-
-    local parts = {}
-
-    for _, line in ipairs(lines) do
-        table.insert(parts, text($"changes.{line.kind}"):format(line.path))
-    end
-
-    local content = table.concat(parts, "\n")
-    local ok = file.write(logpath, content)
-
-    if ok then
-        log:notify(text("changes.saved"):format(filename), "stand")
-    else
-        log:notify(text("changes.error"), "stand")
-    end
+    pcall(menu.set_value, view.installed, updater.installed_text())
+    pcall(menu.set_value, view.available, updater.available_text())
+    pcall(menu.set_value, view.last_check, updater.last_check_text())
 end
 
 function module.build(node: table): table
 
-    local profile = Atdar.profile
     local list = node:list(label("name"), { "updater" }, label("help"))
+
     view.installed = list:readonly(label("info.installed"), "")
     view.available = list:readonly(label("info.available"), "")
     view.last_check = list:readonly(label("info.last_check"), "")
-
     refresh_info()
     manager.on_change(refresh_info)
-    list:action(label("changes.name"), show_changes, { "updaterchanges" }, label("changes.help"))
-    
+    list:action(label("changes.name"), updater.save_changes, { "updaterchanges" }, label("changes.help"))
+
     list:divider(label("check_divider"))
     threaded(list, "check", "updatercheck", manager.check)
 
     -- The branch updates come from, its name in the item: "Update Branch: main"
-    view.branch = list:list_action(branch_caption(), branch_options(), function(index)
-        local branch = BRANCHES[index]
-        profile.set("update_branch", branch)
-        pcall(menu.set_menu_name, view.branch, branch_caption())
-        log:notify(text("branch.set"):format(branch))
+    view.branch = list:list_action(updater.branch_caption(), updater.branch_options(), function(index)
+        updater.set_branch(index)
+        pcall(menu.set_menu_name, view.branch, updater.branch_caption())
     end, { "updaterbranch" }, label("branch.help"))
-    
-    list:toggle(label("on_start.name"), function(on)
-        -- Stand also calls it at every start: only a real change is saved
-        if profile.get("update_check_on_start") == on then
-            return
-        end
-        profile.set("update_check_on_start", on)
-    end, { "updaterstart" }, label("on_start.help"), profile.get("update_check_on_start") ~= false)
+
+    flag(list, "on_start", "update_check_on_start", "updaterstart", true)
 
     list:divider(label("divider"))
     threaded(list, "install", "updaterinstall", manager.install_and_restart)
-    list:toggle(label("before.name"), function(on)
-        -- Stand also calls it at every start: only a real change is saved
-        if profile.get("update_check_before") == on then
-            return
-        end
-        profile.set("update_check_before", on)
-    end, { "updaterbefore" }, label("before.help"), profile.get("update_check_before") ~= false)
-    
-    list:toggle(label("auto.name"), function(on)
-        -- Stand also calls it at every start, restoring the state it keeps: only a real change is saved
-        if profile.get("auto_update") == on then
-            return
-        end
-        profile.set("auto_update", on)
-    end, { "updaterauto" }, label("auto.help"), profile.get("auto_update") == true)
-    
+    flag(list, "before", "update_check_before", "updaterbefore", true)
+    flag(list, "auto", "auto_update", "updaterauto", false)
+
     -- Applied on a click with the days picked: 0 - never
-    list:click_slider(label("check_days.name"), 0, 30, profile.get("update_check_days") or 1, 1, function(days)
-        profile.set("update_check_days", days)
-        if days == 0 then
-            log:notify(text("check_days.never"))
-            return
-        end
-        log:notify(text("check_days.set"):format(days))
-    end, { "updaterdays" }, label("check_days.help"))
+    list:click_slider(label("check_days.name"), 0, 30, Atdar.profile.get("update_check_days") or 1, 1,
+        |days| -> updater.set_check_days(days), { "updaterdays" }, label("check_days.help"))
 
     return list
 end
@@ -190,9 +103,10 @@ i18n.on_change(function()
     if view.branch == nil then
         return
     end
+
     refresh_info()
-    pcall(menu.set_menu_name, view.branch, branch_caption())
-    pcall(menu.set_list_action_options, view.branch, branch_options())
+    pcall(menu.set_menu_name, view.branch, updater.branch_caption())
+    pcall(menu.set_list_action_options, view.branch, updater.branch_options())
 end)
 
 return module

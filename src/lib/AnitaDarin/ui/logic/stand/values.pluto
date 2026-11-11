@@ -58,6 +58,32 @@ local function describe_item(value, depth: int, seen: table): string
     return describe(value, depth, seen)
 end
 
+-- A userdata as Stand names it ("Vector3: 00000201FD08E0C8") in two parts: what it is, and its value - a
+-- vector's coordinates ("12.500, -3.000, 71.250"), for anything else what Stand gives after the name
+-- @return The name and the value; nil for what isn't a userdata
+function module.userdata_parts(value)
+
+    if type(value) ~= "userdata" then
+        return nil
+    end
+
+    local shown = tostring(value)
+    local name, rest = shown:match("^(.-):%s*(.+)$")
+
+    if name == nil then
+        name, rest = "userdata", shown
+    end
+
+    -- A vector: x, y and z are numbers. Read guarded: another userdata may not let its fields be read
+    local ok, x, y, z = pcall(function() return value.x, value.y, value.z end)
+
+    if ok and type(x) == "number" and type(y) == "number" and type(z) == "number" then
+        return name, string.format("%.3f, %.3f, %.3f", x, y, z)
+    end
+
+    return name, rest
+end
+
 -- A value as text: a table unpacked ({1, 2}, {"a", "b"}, {name = "x", [5] = true}), a function as its
 -- signature, the rest by tostring. seen: the tables being shown, so one inside itself is "{...}"
 describe = function(value, depth, seen)
@@ -66,6 +92,10 @@ describe = function(value, depth, seen)
 
     if kind == "function" then
         return function_text(value)
+    end
+    if kind == "userdata" then
+        local name, parts = module.userdata_parts(value)
+        return $"{name}({parts})"
     end
     if kind ~= "table" then
         return tostring(value)
@@ -111,6 +141,11 @@ function module.describe(value): string
     return describe(value, 0, {})
 end
 
+-- A value as it's written inside a table or typed in a field: like describe, a text in quotes
+function module.describe_item(value): string
+    return describe_item(value, 0, {})
+end
+
 -- A call's results for the notice: "5, x, {1, 2}, function(a): bool"
 function module.results_text(results: table): string
     local parts = {}
@@ -134,6 +169,10 @@ end
 -- "empty table". Cheap: one look at each entry, only when the value changed
 function module.type_text(value): string
     local kind = kind_of(value)
+    -- A userdata by its own name (Vector3), when Stand gives it one
+    if kind == "userdata" then
+        return (module.userdata_parts(value))
+    end
     if kind ~= "table" then
         return text($"types.{kind}")
     end

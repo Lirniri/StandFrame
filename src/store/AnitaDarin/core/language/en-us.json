@@ -24,6 +24,7 @@
         },
         "auto_copy": {
             "name": "Copy Menu To Core",
+            "name_off": "Copy Menu To Core: Off",
             "help": "At every start this menu from store is copied into lib %s and loaded as its built-in menu, so Stand's profile restores the states of its items (a menu loaded by hand doesn't get them). Takes effect at the next start; save the profile to keep it",
             "off": "Off",
             "missing": "%s (not in store)",
@@ -269,6 +270,18 @@
                 "purple": "Purple",
                 "pink": "Pink"
             },
+            "subject_color_day": {
+                "name": "Day Subject Color: %s",
+                "help": "The color of the notification type (Information, Warning, Error) on message cards during the day. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
+            },
+            "subject_color_night": {
+                "name": "Night Subject Color: %s",
+                "help": "The color of the notification type (Information, Warning, Error) on message cards at night. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
+            },
+            "general": {
+                "name": "General",
+                "help": "General notification settings in the game feed"
+            },
             "day_start": {
                 "name": "Day Starts At",
                 "help": "The hour by the game's clock from which the day colors are used"
@@ -277,29 +290,27 @@
                 "name": "Night Starts At",
                 "help": "The hour by the game's clock from which the night colors are used, until the day starts"
             },
+            "background_color": {
+                "divider": "Цвет фона"
+            },
             "background_day": {
                 "name": "Day Background Color",
                 "help": "The background of the script's notifications in the game's feed during the day"
-            },
-            "flash_color_day": {
-                "name": "Day Flash Color",
-                "help": "The color notifications flash in during the day when Flash Notifications is on"
-            },
-            "subject_color_day": {
-                "name": "Day Subject Color: %s",
-                "help": "The color of the notification type (Information, Warning, Error) on message cards during the day. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
             },
             "background_night": {
                 "name": "Night Background Color",
                 "help": "The background of the script's notifications in the game's feed at night"
             },
+            "flash_color": {
+                "divider": "Цвет мигания"
+            },
+            "flash_color_day": {
+                "name": "Day Flash Color",
+                "help": "The color notifications flash in during the day when Flash Notifications is on"
+            },
             "flash_color_night": {
                 "name": "Night Flash Color",
                 "help": "The color notifications flash in at night when Flash Notifications is on"
-            },
-            "subject_color_night": {
-                "name": "Night Subject Color: %s",
-                "help": "The color of the notification type (Information, Warning, Error) on message cards at night. By Type: information blue, warnings yellow, errors red. Shown only while Notification Type is Message"
             }
         },
         "debug": {
@@ -434,7 +445,11 @@
             "name": "Success",
             "help": "The emoticon of a success (copied, saved...); empty - none"
         },
-        "no_profiles": "No profiles: Create Main Profile or Save brings one back"
+        "no_profiles": "No profiles: Create Main Profile or Save brings one back",
+        "prefix_at_end": {
+            "name": "Prefix At The End",
+            "help": "The prefix goes after the command's name: godmode.atdar instead of atdar.godmode. Commands are renamed right away"
+        }
     },
     "modules": {
         "debug": {
@@ -692,12 +707,16 @@
             "integer": "%s: a whole number is needed",
             "number": "%s: a number is needed",
             "boolean": "%s: true or false is needed"
+        },
+        "call": {
+            "expression": "Expression",
+            "expression_help": "The whole call as text. The fields below are its arguments: typing in one writes it again"
         }
     },
     "script_menu": {
         "stub": "Not made yet",
-        "options_from_other_menu": {
-            "divider": "Options from other menus"
+        "options_from_menu": {
+            "divider": "Options from menus"
         },
         "command_box": {
             "name": "Command Box",
@@ -918,7 +937,25 @@
                     "nil": "nil takes an entry away: use Remove to delete one",
                     "no_entry": "There's no entry '%s'",
                     "protected": "This file can't be deleted",
-                    "missing": "The file is already gone"
+                    "missing": "The file is already gone",
+                    "key": "This key doesn't belong here. It can be: %s",
+                    "tables_only": "Only tables go here: a value alone has no place",
+                    "name": "Type a name first",
+                    "param": "A parameter starts with its name: handle, handle: int, speed: float = 1.5"
+                },
+                "add_function": {
+                    "name": "Add Function",
+                    "help": "Type a name: a ready-made entry of a function is added under it"
+                },
+                "add_param": {
+                    "name": "Add Parameter",
+                    "help": "Type it as in code: handle, handle: int, speed: float = 1.5"
+                },
+                "entries": {
+                    "divider": "Entries"
+                },
+                "params": {
+                    "divider": "Parameters"
                 }
             },
             "settings": {

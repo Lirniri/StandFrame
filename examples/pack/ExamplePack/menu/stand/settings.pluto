@@ -1,6 +1,6 @@
 -- Settings: the script's section (Profile, Load Menu, Debug, ...) inside the pack's own list
 
-local settings = Atdar.loader.load("ui/stand/core/settings")
+local settings = Atdar.menu.settings
 local lang = Atdar.lang
 
 return {

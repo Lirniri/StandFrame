@@ -24,6 +24,13 @@
 -- Arguments at the end: several expressions separated by commas.
 -- The texts are kept by the caller, texts[i] for the i-th parameter and texts.rest for the Arguments field,
 -- so they stay when the list is made again. A field left empty is nil.
+--
+-- A name in an expression may be a short name of Debug > Call Function (its files): user_ped() for
+-- players.user_ped(). In a field that takes no text (Number, Boolean, 3D Vector...) the brackets may be
+-- left out: user_ped.
+-- A field whose text is one call of a function with known parameters - ENTITY.GET_ENTITY_COORDS(user_ped()) -
+-- becomes a list (when the caller gives spec.on_reshape): the expression itself, then a field for each
+-- parameter of that function, made the same way; typing in one writes the expression again.
 -- Strings: core/language "arguments"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -40,6 +47,17 @@ local module = {}
 
 -- Strings under "arguments"
 local label, text = i18n.scope("arguments")
+
+-- The files of Debug > Call Function (short names, the signatures of Stand's API); loaded at first use:
+-- it loads this file itself
+local function registry(): table
+    return Atdar.loader.load("ui/logic/stand/script/call_function_registry")
+end
+
+-- A name nothing else has, in an expression: a short name from the files
+local function resolve_name(name: string)
+    return registry().value_of(name)
+end
 
 
 -- ─── Types ───────────────────────────────────────────────────────────────────
@@ -100,7 +118,7 @@ end
 -- nothing of its parameters: it takes what's given (isvararg), so its signature is only "...".
 -- skip_self: a method called with its owner: its self isn't asked for
 function module.signature_of(fn, skip_self: ?bool): table
-    
+
     local info = debug.getinfo(fn, "u")
     local names = {}
 
@@ -141,6 +159,9 @@ local function trim(value: string): string
     return value:match("^%s*(.-)%s*$")
 end
 
+-- The kinds whose field never takes a bare word as text: there it can only be a short name
+local WORDLESS_KINDS = { integer = true, float = true, boolean = true, vector3 = true, userdata = true }
+
 -- One field's text as a value of the kind. Never typed: the field's start value (default_of). Empty: nil
 -- @return The value, or nil and what was wrong
 local function read_one(param: table, typed: ?string)
@@ -159,13 +180,24 @@ local function read_one(param: table, typed: ?string)
     if kind == "function" then
         local path = trim(typed)
         local found, fn = path_parser.resolve(path)
-        if not found or type(fn) ~= "function" then
+        if not found then
+            fn = resolve_name(path)
+        end
+        if type(fn) ~= "function" then
             return nil, text("errors.not_function"):format(param.name, path)
         end
         return fn
     end
 
-    local args, count, err = args_parser.parse(typed)
+    -- A bare word where no text is taken: a short name of a function, called without its brackets
+    if WORDLESS_KINDS[kind] and trim(typed):match("^[%a_][%w_]*$") then
+        local fn = resolve_name(trim(typed))
+        if type(fn) == "function" then
+            typed = $"{trim(typed)}()"
+        end
+    end
+
+    local args, count, err = args_parser.parse(typed, resolve_name)
     if err ~= nil then
         return nil, text("errors.bad"):format(param.name, err)
     end
@@ -231,7 +263,7 @@ function module.read(sig: table, texts: table)
 
     if sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
 
-        local rest, rest_count, err = args_parser.parse(texts.rest)
+        local rest, rest_count, err = args_parser.parse(texts.rest, resolve_name)
 
         if err ~= nil then
             return {}, 0, text("errors.bad"):format(text("rest.name"), err)
@@ -242,7 +274,7 @@ function module.read(sig: table, texts: table)
         for i = 1, rest_count do
             args[first + i] = rest[i]
         end
-        
+
         count = first + rest_count
     end
 
@@ -273,36 +305,198 @@ end
 --                 (Stand's text fields take their text through the command box, so each needs one)
 -- spec.on_typed:  function() the user typed in a field (Stand putting a field back doesn't call it)
 -- spec.about:     function(name) -> what the module says of the parameter, for the field's help (optional)
+-- spec.on_reshape: function() a field's text became a call of a function with known parameters, or stopped
+--                 being one: the caller makes the fields again (takes them away and calls build), and the
+--                 field is a list then. Without it every parameter stays one field
+-- spec.verbatim:  the fields hold the arguments as the code would write them (texts in quotes): the fields of
+--                 a function called inside an argument, whose texts are put back into its expression
 function module.build(list: table, spec: table): void
+
     local sig, texts = spec.sig, spec.texts
-    local function field(name_label: int, index, help_key: string, about: ?string, start: ?string)
-        local help = text(help_key)
+
+    -- What each field's text calls now (the path), to see when that changes
+    local calls = {}
+
+    -- The user typed in a field: its text kept, the fields made again when what it calls changed
+    -- @param whole The field is the expression of a call's list: its fields follow any change of it
+    local function typed_in(index, value: string, click_type, whole: bool): void
+        if clicks.is_stopping() then
+            return
+        end
+
+        texts[index] = value
+
+        if not clicks.is_user_click(click_type) then
+            return
+        end
+
+        local call = spec.on_reshape ~= nil and index ~= "rest" and module.call_in(value) or nil
+        local path = call and call.path or nil
+
+        if whole or path ~= calls[index] then
+            spec.on_reshape()
+        end
+
+        if spec.on_typed ~= nil then
+            spec.on_typed()
+        end
+    end
+
+    local function field(node: table, name_label, index, help: string, start: ?string, whole: bool = false)
+        return node:track_named(name_label, menu.text_input(node.handle, name_label, commands.names({ spec.command(index) }),
+            help, function(value, click_type)
+            typed_in(index, value, click_type, whole)
+        end, texts[index] or start or ""))
+    end
+
+    -- A parameter whose text is a call: a list named by the expression, with the expression's own field and
+    -- the fields of the function called. Typing in one of those writes the expression again
+    local function call_list(name_text: string, index, help: string, call: table): void
+
+        local nested = list:list($"{name_text}: {texts[index]}", {}, help)
+        local expression = field(nested, label("call.expression"), index, text("call.expression_help"), nil, true)
+        local inner = module.texts_from(call.sig, table.concat(call.pieces, ", "))
+        local fill
+
+        fill = function()
+            module.build(nested, {
+                sig = call.sig,
+                texts = inner,
+                verbatim = true,
+                command = |sub| -> $"{spec.command(index)}_{sub}",
+                on_typed = function()
+                    texts[index] = module.compose(call.path, call.sig, inner)
+                    pcall(menu.set_menu_name, nested.handle, $"{name_text}: {texts[index]}")
+                    pcall(menu.set_value, expression, texts[index])
+                    if spec.on_typed ~= nil then
+                        spec.on_typed()
+                    end
+                end,
+                -- A call inside this call: only this list's fields are made again
+                on_reshape = function()
+                    nested:clear_from(2)
+                    fill()
+                end,
+            })
+        end
+
+        fill()
+    end
+
+    for i, param in ipairs(sig.params) do
+
+        local kind = module.kind_of(param.type)
+
+        -- As the code would write it, a text is an expression in quotes: not the Text field
+        if spec.verbatim and kind == "string" then
+            kind = "any"
+        end
+
+        local help = text($"help.{kind}")
+        local about = spec.about and spec.about(param.name) or nil
         if about ~= nil then
             help = $"{about}\n{help}"
         end
-        list:track_named(name_label, menu.text_input(list.handle, name_label, commands.names({ spec.command(index) }),
-            help, function(value, click_type)
-            if clicks.is_stopping() then
-                return
-            end
-            texts[index] = value
-            if spec.on_typed ~= nil and clicks.is_user_click(click_type) then
-                spec.on_typed()
-            end
-        end, texts[index] or start or ""))
-    end
-    for i, param in ipairs(sig.params) do
-        local kind = module.kind_of(param.type)
+
+        local call = spec.on_reshape ~= nil and module.call_in(texts[i]) or nil
+        calls[i] = call and call.path or nil
+
         list:divider(param.name)
-        field(label($"types.{kind}"), i, $"help.{kind}", spec.about and spec.about(param.name) or nil, module.default_of(param))
+        if call ~= nil then
+            call_list(text($"types.{kind}"), i, help, call)
+        else
+            field(list, label($"types.{kind}"), i, help, module.default_of(param))
+        end
     end
+
     if sig.vararg then
         -- Under the parameters it's the rest of them; alone it's all of them
         if #sig.params > 0 then
             list:divider("...")
         end
-        field(label("rest.name"), "rest", "rest.help")
+        field(list, label("rest.name"), "rest", text("rest.help"))
     end
+end
+
+-- ─── A call inside an argument ───────────────────────────────────────────────
+
+-- The function a field's text calls, when the text is one call of a path (parsers args.call_of) and the
+-- function's parameters are known: from its code, or from the files of Call Function for Stand's own
+-- @param typed The field's text
+-- @return { path = as typed, sig, pieces = the texts of its arguments }; nil for anything else
+function module.call_in(typed: ?string): ?table
+
+    if typed == nil then
+        return nil
+    end
+
+    local path, pieces = args_parser.call_of(typed)
+    if path == nil then
+        return nil
+    end
+
+    local full = registry().expand(path)
+    local found, fn = path_parser.resolve(full)
+
+    if not found or type(fn) ~= "function" then
+        return nil
+    end
+
+    local sig = module.signature_of(fn)
+
+    if #sig.params == 0 then
+        local registered = registry().registered_signature(full)
+        if registered ~= nil then
+            sig = registered.sig
+        end
+    end
+
+    -- Nothing to name a field by: it stays one field
+    if #sig.params == 0 then
+        return nil
+    end
+
+    return { path = path, sig = sig, pieces = pieces }
+end
+
+-- "path(a, b)" from the texts of a called function's fields: a parameter never typed is its start value, an
+-- empty one in the middle is nil, empty ones at the end are left out
+function module.compose(path: string, sig: table, texts: table): string
+
+    local pieces = {}
+    local last = 0
+
+    for i, param in ipairs(sig.params) do
+        local piece = texts[i]
+        if piece == nil then
+            piece = module.default_of(param)
+        end
+
+        piece = piece ~= nil and trim(piece) or ""
+        pieces[i] = piece
+
+        if piece ~= "" then
+            last = i
+        end
+    end
+
+    local written = {}
+
+    for i = 1, last do
+        table.insert(written, pieces[i] ~= "" and pieces[i] or "nil")
+    end
+
+    if sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
+        -- After every parameter: the ones left empty before it are nil
+        for i = last + 1, #sig.params do
+            table.insert(written, "nil")
+        end
+        table.insert(written, trim(texts.rest))
+    end
+
+    local joined = table.concat(written, ", ")
+
+    return $"{path}({joined})"
 end
 
 return module

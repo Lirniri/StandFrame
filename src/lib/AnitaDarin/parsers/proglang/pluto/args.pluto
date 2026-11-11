@@ -4,10 +4,17 @@
 --   parse(input) - worked out into values: numbers, true, false, nil, "text", names the script sees
 --                  (natives, entities, Atdar, v3, ...) with .field, :method(...) and calls (...)
 --   split(input) - only cut into the texts of the arguments, nothing worked out
+--   call_of(input) - "f(1, 2)" cut into the path called and the texts of its arguments
 --
 --     local args = Atdar.parsers.proglang.pluto.args
 --     args.parse('adder, 5, PLAYER.PLAYER_PED_ID()')  -- { "adder", 5, 1234 }, 3
 --     args.split('f(1, 2), "a, b"')                   -- { "f(1, 2)", '"a, b"' }
+--     args.call_of('game.set(5, true)')               -- "game.set", { "5", "true" }
+--
+-- A name is a global first (util, PLAYER, v3), then something of the script (natives.entity.get_coords is
+-- Atdar.natives.entity.get_coords), then whatever parse's resolve(name) gives it (the short names of
+-- Debug > Call Function: user_ped() for players.user_ped()). The last two only for a name with . : or (
+-- after it: a bare word is still its own text
 
 -- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
 -- that's what a parser is for
@@ -101,6 +108,56 @@ end
 
 local read_list
 
+-- A name that isn't a global: something of the script (natives -> Atdar.natives, a module by its name), then
+-- what the reader's resolve gives it; nil when nothing has the name
+local function named(reader: table, name: string)
+
+    local modules = Atdar.modules
+
+    if modules ~= nil and modules.has ~= nil and modules.has(name) then
+        return modules.get(name)
+    end
+
+    local own = Atdar[name]
+    if own ~= nil then
+        return own
+    end
+
+    if reader.resolve ~= nil then
+        return reader.resolve(name)
+    end
+
+    return nil
+end
+
+-- The value's field; what has no fields (nil, a number) is told by the name typed for it
+local function field_of(value, field: string, trail: string)
+
+    local kind = type(value)
+
+    if kind == "nil" then
+        error($"'{trail}' is nil, it has no '{field}'", 0)
+    end
+
+    if kind ~= "table" and kind ~= "userdata" and kind ~= "string" then
+        error($"'{trail}' is a {kind}, it has no '{field}'", 0)
+    end
+
+    return value[field]
+end
+
+-- Whether the value can be called: a function, or a table or userdata that says how (__call)
+local function callable(value): bool
+
+    if type(value) == "function" then
+        return true
+    end
+
+    local meta = getmetatable(value)
+
+    return type(meta) == "table" and meta.__call ~= nil
+end
+
 -- One expression; its values packed (a call may give several, nil ones too)
 local function read_expr(reader: table): table
     local c = peek(reader)
@@ -137,8 +194,14 @@ local function read_expr(reader: table): table
         if next_c ~= "." and next_c ~= ":" and next_c ~= "(" then
             return { n = 1, name }
         end
-        error($"'{name}' isn't known", 0)
+        values[1] = named(reader, name)
+        if values[1] == nil then
+            error($"'{name}' isn't known", 0)
+        end
     end
+
+    -- What is read so far, as typed: the errors name it ("'ENTITY.GET_COORDS' isn't a function")
+    local trail = name
 
     -- .field, :method(...), (...)
     while true do
@@ -146,7 +209,8 @@ local function read_expr(reader: table): table
         if next_c == "." then
             reader.pos += 1
             local field = need_name(reader, ".")
-            values = { n = 1, values[1][field] }
+            values = { n = 1, field_of(values[1], field, trail) }
+            trail = $"{trail}.{field}"
         elseif next_c == ":" then
             reader.pos += 1
             local method = need_name(reader, ":")
@@ -155,12 +219,22 @@ local function read_expr(reader: table): table
             end
             reader.pos += 1
             local target = values[1]
+            local fn = field_of(target, method, trail)
+            trail = $"{trail}:{method}"
+            if not callable(fn) then
+                error($"'{trail}' isn't a function", 0)
+            end
             local args, count = read_list(reader, ")")
-            values = table.pack(target[method](target, table.unpack(args, 1, count)))
+            values = table.pack(fn(target, table.unpack(args, 1, count)))
+            trail = $"{trail}()"
         elseif next_c == "(" then
+            if not callable(values[1]) then
+                error($"'{trail}' isn't a function", 0)
+            end
             reader.pos += 1
             local args, count = read_list(reader, ")")
             values = table.pack(values[1](table.unpack(args, 1, count)))
+            trail = $"{trail}()"
         else
             return values
         end
@@ -201,10 +275,11 @@ end
 -- calls (entities.get_user_vehicle_as_handle(), PLAYER.PLAYER_PED_ID()), vectors (v3.new(1, 2, 3)).
 -- A bare word is its own text: adder -> "adder". What isn't an expression at all (hello world) is split
 -- by commas into texts instead
+-- @param resolve function(name) -> the value of a name nothing else has (a short name), or nil
 -- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
-function module.parse(input: string)
+function module.parse(input: string, resolve: ?function)
     expect("parse", "input", input, "string")
-    local ok, args, count = pcall(read_list, { src = input, pos = 1 }, "")
+    local ok, args, count = pcall(read_list, { src = input, pos = 1, resolve = resolve }, "")
     if ok then
         return args, count, nil
     end
@@ -254,6 +329,48 @@ function module.split(input: string): table
     end
 
     return trimmed
+end
+
+-- One argument typed as a call, cut into what is called and its arguments' texts, nothing worked out:
+-- "game.set(5, f(1))" -> "game.set", { "5", "f(1)" }. Only a whole call of a path: not "f(1) + 2", not
+-- "a:b(1)" (a method needs its owner), not a call of a call ("f(1)(2)")
+-- @return The path and the texts of its arguments; nil when the text isn't such a call
+function module.call_of(input: string)
+
+    expect("call_of", "input", input, "string")
+
+    local path, inner = input:match("^%s*([%a_][%w_%.]*)%s*%((.*)%)%s*$")
+
+    if path == nil or path:sub(-1) == "." or path:find("..", 1, true) then
+        return nil
+    end
+
+    -- The first bracket must close at the very end: "f(1), g(2)" isn't one call
+    local depth, quote = 0, nil
+
+    for i = 1, #inner do
+        local c = inner:sub(i, i)
+        if quote ~= nil then
+            if c == quote then
+                quote = nil
+            end
+        elseif c == '"' or c == "'" then
+            quote = c
+        elseif c == "(" then
+            depth += 1
+        elseif c == ")" then
+            depth -= 1
+            if depth < 0 then
+                return nil
+            end
+        end
+    end
+
+    if depth ~= 0 or quote ~= nil then
+        return nil
+    end
+
+    return path, module.split(inner)
 end
 
 return module
