@@ -1,0 +1,74 @@
+-- Explosions
+
+local module = {}
+
+-- State
+
+function module.is_in_area(
+    explosion_type: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float
+): bool
+    -- body function:
+    return FIRE.IS_EXPLOSION_IN_AREA(explosion_type, x1, y1, z1, x2, y2, z2)
+end
+
+function module.is_active_in_area(
+    explosion_type: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float
+): bool
+    -- body function:
+    return FIRE.IS_EXPLOSION_ACTIVE_IN_AREA(explosion_type, x1, y1, z1, x2, y2, z2)
+end
+
+function module.is_in_sphere(explosion_type: int, x: float, y: float, z: float, radius: float): bool
+    return FIRE.IS_EXPLOSION_IN_SPHERE(explosion_type, x, y, z, radius)
+end
+
+function module.is_in_angled_area(
+    explosion_type: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float,
+    width: float
+): bool
+    -- body function:
+    return FIRE.IS_EXPLOSION_IN_ANGLED_AREA(explosion_type, x1, y1, z1, x2, y2, z2, width)
+end
+
+-- Get
+
+function module.get_owner_in_sphere(explosion_type: int, x: float, y: float, z: float, radius: float): int
+    return FIRE.GET_OWNER_OF_EXPLOSION_IN_SPHERE(explosion_type, x, y, z, radius)
+end
+
+-- Returns a handle to the first entity within the a circle spawned inside the 2 points from a radius
+function module.get_owner_in_angled_area(
+    explosion_type: int, x1: float, y1: float, z1: float, x2: float, y2: float, z2: float,
+    radius: float
+): int
+    -- body function:
+    return FIRE.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(explosion_type, x1, y1, z1, x2, y2, z2, radius)
+end
+
+-- Actions
+
+function module.add(
+    x: float, y: float, z: float, explosion_type: int, damage_scale: float, is_audible: bool,
+    is_invisible: bool, camera_shake: float, no_damage: bool
+): void
+    -- body function:
+    FIRE.ADD_EXPLOSION(x, y, z, explosion_type, damage_scale, is_audible, is_invisible, camera_shake, no_damage)
+end
+
+function module.add_owned(
+    ped: int, x: float, y: float, z: float, explosion_type: int, damage_scale: float,
+    is_audible: bool, is_invisible: bool, camera_shake: float
+): void
+    -- body function:
+    FIRE.ADD_OWNED_EXPLOSION(ped, x, y, z, explosion_type, damage_scale, is_audible, is_invisible, camera_shake)
+end
+
+function module.add_with_user_vfx(
+    x: float, y: float, z: float, explosion_type: int, explosion_fx: int, damage_scale: float,
+    is_audible: bool, is_invisible: bool, camera_shake: float
+): void
+    -- body function:
+    FIRE.ADD_EXPLOSION_WITH_USER_VFX(x, y, z, explosion_type, explosion_fx, damage_scale, is_audible, is_invisible, camera_shake)
+end
+
+return module

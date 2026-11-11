@@ -1,0 +1,40 @@
+-- Save migration between accounts (SAVEMIGRATION natives)
+
+local module = {}
+
+-- State
+
+function module.is_enabled(): bool
+    return SAVEMIGRATION.SAVEMIGRATION_IS_MP_ENABLED()
+end
+
+-- Get
+
+function module.get_accounts_status(): int
+    return SAVEMIGRATION.SAVEMIGRATION_MP_GET_ACCOUNTS_STATUS()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_account(p0: int, p1: int): bool
+    return SAVEMIGRATION.SAVEMIGRATION_MP_GET_ACCOUNT(p0, p1)
+end
+
+function module.get_status(): int
+    return SAVEMIGRATION.SAVEMIGRATION_MP_GET_STATUS()
+end
+
+-- Actions
+
+function module.request_accounts(): bool
+    return SAVEMIGRATION.SAVEMIGRATION_MP_REQUEST_ACCOUNTS()
+end
+
+function module.num_accounts(): int
+    return SAVEMIGRATION.SAVEMIGRATION_MP_NUM_ACCOUNTS()
+end
+
+function module.request_status(): bool
+    return SAVEMIGRATION.SAVEMIGRATION_MP_REQUEST_STATUS()
+end
+
+return module

@@ -1,0 +1,155 @@
+-- Lights and shadows drawn by scripts
+
+local module = {}
+
+-- Get
+
+function module.get_light_override_max_intensity_scale(): float
+    return GRAPHICS.GET_LIGHT_OVERRIDE_MAX_INTENSITY_SCALE()
+end
+
+-- Set
+
+function module.set_light_override_max_intensity_scale(p0: any): void
+    GRAPHICS.SET_LIGHT_OVERRIDE_MAX_INTENSITY_SCALE(p0)
+end
+
+-- Does not affect weapons, particles, fire/explosions, flashlights or the sun
+function module.set_artificial_lights_state(state: bool): void
+    GRAPHICS.SET_ARTIFICIAL_LIGHTS_STATE(state)
+end
+
+-- If "blackout" is enabled, this native allows you to ignore "blackout" for vehicles
+function module.set_artificial_vehicle_lights_state(toggle: bool): void
+    GRAPHICS.SET_ARTIFICIAL_VEHICLE_LIGHTS_STATE(toggle)
+end
+
+-- Actions
+
+function module.draw_light_with_rangeex(
+    x: float, y: float, z: float, r: int, g: int, b: int, range: float, intensity: float,
+    shadow: float
+): void
+    -- body function:
+    GRAPHICS.DRAW_LIGHT_WITH_RANGEEX(x, y, z, r, g, b, range, intensity, shadow)
+end
+
+function module.draw_light_with_range(
+    pos_x: float, pos_y: float, pos_z: float, color_r: int, color_g: int, color_b: int,
+    range: float, intensity: float
+): void
+    -- body function:
+    GRAPHICS.DRAW_LIGHT_WITH_RANGE(pos_x, pos_y, pos_z, color_r, color_g, color_b, range, intensity)
+end
+
+function module.draw_spot_light(
+    pos_x: float, pos_y: float, pos_z: float, dir_x: float, dir_y: float, dir_z: float,
+    color_r: int, color_g: int, color_b: int, distance: float, brightness: float, hardness: float,
+    radius: float, falloff: float
+): void
+    -- body function:
+    GRAPHICS.DRAW_SPOT_LIGHT(pos_x, pos_y, pos_z, dir_x, dir_y, dir_z, color_r, color_g, color_b, distance, brightness, hardness, radius, falloff)
+end
+
+function module.draw_shadowed_spot_light(
+    pos_x: float, pos_y: float, pos_z: float, dir_x: float, dir_y: float, dir_z: float,
+    color_r: int, color_g: int, color_b: int, distance: float, brightness: float, roundness: float,
+    radius: float, falloff: float, shadow_id: int
+): void
+    -- body function:
+    GRAPHICS.DRAW_SHADOWED_SPOT_LIGHT(pos_x, pos_y, pos_z, dir_x, dir_y, dir_z, color_r, color_g, color_b, distance, brightness, roundness, radius, falloff, shadow_id)
+end
+
+function module.fade_up_ped_light(p0: float): void
+    GRAPHICS.FADE_UP_PED_LIGHT(p0)
+end
+
+function module.update_lights_on_entity(entity: int): void
+    GRAPHICS.UPDATE_LIGHTS_ON_ENTITY(entity)
+end
+
+function module.override_nightvision_light_range(p0: float): void
+    GRAPHICS.OVERRIDE_NIGHTVISION_LIGHT_RANGE(p0)
+end
+
+function module.cascade_shadows_init_session(): void
+    GRAPHICS.CASCADE_SHADOWS_INIT_SESSION()
+end
+
+function module.cascade_shadows_set_cascade_bounds(
+    p0: any, p1: bool, p2: float, p3: float, p4: float, p5: float, p6: bool, p7: float
+): void
+    -- body function:
+    GRAPHICS.CASCADE_SHADOWS_SET_CASCADE_BOUNDS(p0, p1, p2, p3, p4, p5, p6, p7)
+end
+
+function module.cascade_shadows_set_cascade_bounds_scale(p0: float): void
+    GRAPHICS.CASCADE_SHADOWS_SET_CASCADE_BOUNDS_SCALE(p0)
+end
+
+function module.cascade_shadows_set_entity_tracker_scale(p0: float): void
+    GRAPHICS.CASCADE_SHADOWS_SET_ENTITY_TRACKER_SCALE(p0)
+end
+
+function module.cascade_shadows_set_split_z_exp_weight(p0: float): void
+    GRAPHICS.CASCADE_SHADOWS_SET_SPLIT_Z_EXP_WEIGHT(p0)
+end
+
+function module.cascade_shadows_set_bound_position(p0: any): void
+    GRAPHICS.CASCADE_SHADOWS_SET_BOUND_POSITION(p0)
+end
+
+-- When this is set to ON, shadows only draw as you get nearer
+function module.cascade_shadows_enable_entity_tracker(toggle: bool): void
+    GRAPHICS.CASCADE_SHADOWS_ENABLE_ENTITY_TRACKER(toggle)
+end
+
+function module.cascade_shadows_set_screen_size_check_enabled(p0: bool): void
+    GRAPHICS.CASCADE_SHADOWS_SET_SCREEN_SIZE_CHECK_ENABLED(p0)
+end
+
+function module.cascade_shadows_set_shadow_sample_type(type: string): void
+    GRAPHICS.CASCADE_SHADOWS_SET_SHADOW_SAMPLE_TYPE(type)
+end
+
+function module.cascade_shadows_clear_shadow_sample_type(): void
+    GRAPHICS.CASCADE_SHADOWS_CLEAR_SHADOW_SAMPLE_TYPE()
+end
+
+function module.cascade_shadows_set_aircraft_mode(p0: bool): void
+    GRAPHICS.CASCADE_SHADOWS_SET_AIRCRAFT_MODE(p0)
+end
+
+function module.cascade_shadows_set_dynamic_depth_mode(p0: bool): void
+    GRAPHICS.CASCADE_SHADOWS_SET_DYNAMIC_DEPTH_MODE(p0)
+end
+
+function module.cascade_shadows_set_dynamic_depth_value(p0: float): void
+    GRAPHICS.CASCADE_SHADOWS_SET_DYNAMIC_DEPTH_VALUE(p0)
+end
+
+function module.cascade_shadows_enable_freezer(p0: bool): void
+    GRAPHICS.CASCADE_SHADOWS_ENABLE_FREEZER(p0)
+end
+
+function module.seethrough_set_hilight_intensity(intensity: float): void
+    GRAPHICS.SEETHROUGH_SET_HILIGHT_INTENSITY(intensity)
+end
+
+function module.seethrough_set_highlight_noise(noise: float): void
+    GRAPHICS.SEETHROUGH_SET_HIGHLIGHT_NOISE(noise)
+end
+
+function module.disable_vehicle_distantlights(toggle: bool): void
+    GRAPHICS.DISABLE_VEHICLE_DISTANTLIGHTS(toggle)
+end
+
+function module.render_shadowed_lights_with_no_shadows(p0: bool): void
+    GRAPHICS.RENDER_SHADOWED_LIGHTS_WITH_NO_SHADOWS(p0)
+end
+
+function module.request_early_light_check(): void
+    GRAPHICS.REQUEST_EARLY_LIGHT_CHECK()
+end
+
+return module

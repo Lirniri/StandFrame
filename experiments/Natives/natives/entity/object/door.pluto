@@ -1,0 +1,131 @@
+-- Door objects and the door system
+
+local module = {}
+
+-- State
+
+function module.is_registered_with_system(door_hash: int): bool
+    return OBJECT.IS_DOOR_REGISTERED_WITH_SYSTEM(door_hash)
+end
+
+function module.is_closed(door_hash: int): bool
+    return OBJECT.IS_DOOR_CLOSED(door_hash)
+end
+
+-- Get
+
+-- @param locked Pointer: pass memory.alloc(size) and read the result back
+-- @param heading Pointer: pass memory.alloc(size) and read the result back
+function module.get_state_of_closest_type(
+    type: int, x: float, y: float, z: float, locked: int, heading: int
+): void
+    -- body function:
+    OBJECT.GET_STATE_OF_CLOSEST_DOOR_OF_TYPE(type, x, y, z, locked, heading)
+end
+
+-- Set
+
+function module.set_state_of_closest_type(
+    type: int, x: float, y: float, z: float, locked: bool, heading: float, p6: bool
+): void
+    -- body function:
+    OBJECT.SET_STATE_OF_CLOSEST_DOOR_OF_TYPE(type, x, y, z, locked, heading, p6)
+end
+
+function module.set_locked_unstreamed_in_type(
+    model_hash: int, x: float, y: float, z: float, locked: bool, x_rot_mult: float,
+    y_rot_mult: float, z_rot_mult: float
+): void
+    -- body function:
+    OBJECT.SET_LOCKED_UNSTREAMED_IN_DOOR_OF_TYPE(model_hash, x, y, z, locked, x_rot_mult, y_rot_mult, z_rot_mult)
+end
+
+-- Actions
+
+function module.add_to_system(
+    door_hash: int, model_hash: int, x: float, y: float, z: float, p5: bool, script_door: bool,
+    is_local: bool, p8: any
+): void
+    -- body function:
+    OBJECT.ADD_DOOR_TO_SYSTEM(door_hash, model_hash, x, y, z, p5, script_door, is_local, p8)
+end
+
+function module.remove_from_system(door_hash: int, p1: any): void
+    OBJECT.REMOVE_DOOR_FROM_SYSTEM(door_hash, p1)
+end
+
+function module.system_set_state(door_hash: int, state: int, request_door: bool, force_update: bool): void
+    OBJECT.DOOR_SYSTEM_SET_DOOR_STATE(door_hash, state, request_door, force_update)
+end
+
+function module.system_get_state(door_hash: int): int
+    return OBJECT.DOOR_SYSTEM_GET_DOOR_STATE(door_hash)
+end
+
+function module.system_get_pending_state(door_hash: int): int
+    return OBJECT.DOOR_SYSTEM_GET_DOOR_PENDING_STATE(door_hash)
+end
+
+-- Includes networking check: ownership vs. or the door itself **isn't** networked
+function module.system_set_automatic_rate(
+    door_hash: int, rate: float, request_door: bool, force_update: bool
+): void
+    -- body function:
+    OBJECT.DOOR_SYSTEM_SET_AUTOMATIC_RATE(door_hash, rate, request_door, force_update)
+end
+
+function module.system_set_automatic_distance(
+    door_hash: int, distance: float, request_door: bool, force_update: bool
+): void
+    -- body function:
+    OBJECT.DOOR_SYSTEM_SET_AUTOMATIC_DISTANCE(door_hash, distance, request_door, force_update)
+end
+
+-- Sets the ajar angle of a door
+function module.system_set_open_ratio(
+    door_hash: int, ajar: float, request_door: bool, force_update: bool
+): void
+    -- body function:
+    OBJECT.DOOR_SYSTEM_SET_OPEN_RATIO(door_hash, ajar, request_door, force_update)
+end
+
+function module.system_get_automatic_distance(door_hash: int): float
+    return OBJECT.DOOR_SYSTEM_GET_AUTOMATIC_DISTANCE(door_hash)
+end
+
+function module.system_get_open_ratio(door_hash: int): float
+    return OBJECT.DOOR_SYSTEM_GET_OPEN_RATIO(door_hash)
+end
+
+function module.system_get_is_spring_removed(door_hash: int): bool
+    return OBJECT.DOOR_SYSTEM_GET_IS_SPRING_REMOVED(door_hash)
+end
+
+-- Includes networking check: ownership vs. or the door itself **isn't** networked
+function module.system_set_spring_removed(
+    door_hash: int, removed: bool, request_door: bool, force_update: bool
+): void
+    -- body function:
+    OBJECT.DOOR_SYSTEM_SET_SPRING_REMOVED(door_hash, removed, request_door, force_update)
+end
+
+-- Includes networking check: ownership vs. or the door itself **isn't** networked
+function module.system_set_hold_open(door_hash: int, toggle: bool): void
+    OBJECT.DOOR_SYSTEM_SET_HOLD_OPEN(door_hash, toggle)
+end
+
+function module.system_set_open_for_races(door_hash: int, p1: bool): void
+    OBJECT.DOOR_SYSTEM_SET_DOOR_OPEN_FOR_RACES(door_hash, p1)
+end
+
+function module.system_get_is_physics_loaded(p0: any): bool
+    return OBJECT.DOOR_SYSTEM_GET_IS_PHYSICS_LOADED(p0)
+end
+
+-- Search radius: 0.5
+-- @param out_door_hash Pointer: pass memory.alloc(size) and read the result back
+function module.system_find_existing(x: float, y: float, z: float, model_hash: int, out_door_hash: int): bool
+    return OBJECT.DOOR_SYSTEM_FIND_EXISTING_DOOR(x, y, z, model_hash, out_door_hash)
+end
+
+return module

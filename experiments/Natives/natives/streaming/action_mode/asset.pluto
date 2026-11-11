@@ -1,0 +1,24 @@
+local module = {}
+
+-- Action mode assets are requested by name
+
+-- State
+
+function module.is_loaded(name: string): bool
+    return PED.HAS_ACTION_MODE_ASSET_LOADED(name)
+end
+
+-- Actions
+
+-- Requests the asset and waits until it loads (yields, see streaming.wait_loaded)
+-- @return Whether it loaded before the timeout (ms)
+function module.request(name: string, timeout: int = 2000): bool
+    PED.REQUEST_ACTION_MODE_ASSET(name)
+    return Atdar.natives.streaming.wait_loaded($"action mode asset '{name}'", || -> module.is_loaded(name), timeout)
+end
+
+function module.remove(asset: string): void
+    PED.REMOVE_ACTION_MODE_ASSET(asset)
+end
+
+return module

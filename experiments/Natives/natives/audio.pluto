@@ -1,0 +1,350 @@
+local module = {}
+
+-- State
+
+function module.does_context_exist_this_ped(ped: int, speech_name: string, p2: bool): bool
+    return AUDIO.DOES_CONTEXT_EXIST_FOR_THIS_PED(ped, speech_name, p2)
+end
+
+function module.is_mission_news_story_unlocked(news_story: int): bool
+    return AUDIO.IS_MISSION_NEWS_STORY_UNLOCKED(news_story)
+end
+
+function module.is_ambient_zone_enabled(ambient_zone: string): bool
+    return AUDIO.IS_AMBIENT_ZONE_ENABLED(ambient_zone)
+end
+
+function module.is_mission_complete_playing(): bool
+    return AUDIO.IS_MISSION_COMPLETE_PLAYING()
+end
+
+function module.is_mission_complete_ready_for_ui(): bool
+    return AUDIO.IS_MISSION_COMPLETE_READY_FOR_UI()
+end
+
+function module.is_scene_active(scene: string): bool
+    return AUDIO.IS_AUDIO_SCENE_ACTIVE(scene)
+end
+
+function module.is_alarm_playing(alarm_name: string): bool
+    return AUDIO.IS_ALARM_PLAYING(alarm_name)
+end
+
+function module.has_loaded_mp_data_set(): bool
+    return AUDIO.HAS_LOADED_MP_DATA_SET()
+end
+
+function module.has_loaded_sp_data_set(): bool
+    return AUDIO.HAS_LOADED_SP_DATA_SET()
+end
+
+-- Get
+
+function module.get_current_tv_show_play_time(): int
+    return AUDIO.GET_CURRENT_TV_SHOW_PLAY_TIME()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_variation_chosen_for_scripted_line(p0: int): int
+    return AUDIO.GET_VARIATION_CHOSEN_FOR_SCRIPTED_LINE(p0)
+end
+
+-- @param out1 Pointer: pass memory.alloc(size) and read the result back
+-- @param out2 Pointer: pass memory.alloc(size) and read the result back
+-- @param out3 Pointer: pass memory.alloc(size) and read the result back
+function module.get_next_audible_beat(out1: int, out2: int, out3: int): bool
+    return AUDIO.GET_NEXT_AUDIBLE_BEAT(out1, out2, out3)
+end
+
+function module.get_current_track_play_time(radio_station_name: string): int
+    return AUDIO.GET_CURRENT_TRACK_PLAY_TIME(radio_station_name)
+end
+
+-- Set
+
+function module.set_static_emitter_enabled(emitter_name: string, toggle: bool): void
+    AUDIO.SET_STATIC_EMITTER_ENABLED(emitter_name, toggle)
+end
+
+function module.set_initial_player_station(radio_station: string): void
+    AUDIO.SET_INITIAL_PLAYER_STATION(radio_station)
+end
+
+function module.set_ambient_zone_state(zone_name: string, p1: bool, p2: bool): void
+    AUDIO.SET_AMBIENT_ZONE_STATE(zone_name, p1, p2)
+end
+
+function module.set_ambient_zone_list_state(ambient_zone: string, p1: bool, p2: bool): void
+    AUDIO.SET_AMBIENT_ZONE_LIST_STATE(ambient_zone, p1, p2)
+end
+
+function module.set_ambient_zone_state_persistent(ambient_zone: string, p1: bool, p2: bool): void
+    AUDIO.SET_AMBIENT_ZONE_STATE_PERSISTENT(ambient_zone, p1, p2)
+end
+
+function module.set_ambient_zone_list_state_persistent(ambient_zone: string, p1: bool, p2: bool): void
+    AUDIO.SET_AMBIENT_ZONE_LIST_STATE_PERSISTENT(ambient_zone, p1, p2)
+end
+
+function module.set_cutscene_override(name: string): void
+    AUDIO.SET_CUTSCENE_AUDIO_OVERRIDE(name)
+end
+
+function module.set_variable_on_synch_scene(variable_name: string, value: float): void
+    AUDIO.SET_VARIABLE_ON_SYNCH_SCENE_AUDIO(variable_name, value)
+end
+
+function module.set_gps_active(active: bool): void
+    AUDIO.SET_GPS_ACTIVE(active)
+end
+
+function module.set_scene_variable(scene: string, variable: string, value: float): void
+    AUDIO.SET_AUDIO_SCENE_VARIABLE(scene, variable, value)
+end
+
+function module.set_script_cleanup_time(time: int): void
+    AUDIO.SET_AUDIO_SCRIPT_CLEANUP_TIME(time)
+end
+
+-- Enables/disables ped's "loud" footstep sound
+function module.set_ped_footsteps_events_enabled(ped: int, toggle: bool): void
+    AUDIO.SET_PED_FOOTSTEPS_EVENTS_ENABLED(ped, toggle)
+end
+
+-- Enables/disables ped's "quiet" footstep sound
+function module.set_ped_cloth_events_enabled(ped: int, toggle: bool): void
+    AUDIO.SET_PED_CLOTH_EVENTS_ENABLED(ped, toggle)
+end
+
+function module.set_flag(flag_name: string, toggle: bool): void
+    AUDIO.SET_AUDIO_FLAG(flag_name, toggle)
+end
+
+-- Needs to be called every frame
+function module.set_special_effect_mode(mode: int): void
+    AUDIO.SET_AUDIO_SPECIAL_EFFECT_MODE(mode)
+end
+
+function module.set_portal_settings_override(p0: string, p1: string): void
+    AUDIO.SET_PORTAL_SETTINGS_OVERRIDE(p0, p1)
+end
+
+function module.set_skip_minigun_spin_up(p0: bool): void
+    AUDIO.SET_SKIP_MINIGUN_SPIN_UP_AUDIO(p0)
+end
+
+-- Actions
+
+function module.register_script(p0: int): void
+    AUDIO.REGISTER_SCRIPT_WITH_AUDIO(p0)
+end
+
+function module.unregister_script(): void
+    AUDIO.UNREGISTER_SCRIPT_WITH_AUDIO()
+end
+
+function module.request_mission_bank(audio_bank: string, p1: bool, p2: any): bool
+    return AUDIO.REQUEST_MISSION_AUDIO_BANK(audio_bank, p1, p2)
+end
+
+function module.request_ambient_bank(audio_bank: string, p1: bool, p2: any): bool
+    return AUDIO.REQUEST_AMBIENT_AUDIO_BANK(audio_bank, p1, p2)
+end
+
+function module.request_script_bank(audio_bank: string, p1: bool, p2: any): bool
+    return AUDIO.REQUEST_SCRIPT_AUDIO_BANK(audio_bank, p1, p2)
+end
+
+function module.hint_mission_bank(audio_bank: string, p1: bool, p2: any): bool
+    return AUDIO.HINT_MISSION_AUDIO_BANK(audio_bank, p1, p2)
+end
+
+function module.hint_ambient_bank(audio_bank: string, p1: bool, p2: any): bool
+    return AUDIO.HINT_AMBIENT_AUDIO_BANK(audio_bank, p1, p2)
+end
+
+function module.hint_script_bank(audio_bank: string, p1: bool, p2: any): bool
+    return AUDIO.HINT_SCRIPT_AUDIO_BANK(audio_bank, p1, p2)
+end
+
+function module.release_mission_bank(): void
+    AUDIO.RELEASE_MISSION_AUDIO_BANK()
+end
+
+function module.release_ambient_bank(): void
+    AUDIO.RELEASE_AMBIENT_AUDIO_BANK()
+end
+
+function module.release_named_script_bank(audio_bank: string): void
+    AUDIO.RELEASE_NAMED_SCRIPT_AUDIO_BANK(audio_bank)
+end
+
+function module.release_script_bank(): void
+    AUDIO.RELEASE_SCRIPT_AUDIO_BANK()
+end
+
+function module.unhint_ambient_bank(): void
+    AUDIO.UNHINT_AMBIENT_AUDIO_BANK()
+end
+
+function module.unhint_script_bank(): void
+    AUDIO.UNHINT_SCRIPT_AUDIO_BANK()
+end
+
+function module.unhint_named_script_bank(audio_bank: string): void
+    AUDIO.UNHINT_NAMED_SCRIPT_AUDIO_BANK(audio_bank)
+end
+
+function module.release_weapon(): void
+    AUDIO.RELEASE_WEAPON_AUDIO()
+end
+
+function module.activate_slowmo_mode(mode: string): void
+    AUDIO.ACTIVATE_AUDIO_SLOWMO_MODE(mode)
+end
+
+function module.deactivate_slowmo_mode(mode: string): void
+    AUDIO.DEACTIVATE_AUDIO_SLOWMO_MODE(mode)
+end
+
+function module.link_static_emitter_to_entity(emitter_name: string, entity: int): void
+    AUDIO.LINK_STATIC_EMITTER_TO_ENTITY(emitter_name, entity)
+end
+
+function module.unlock_mission_news_story(news_story: int): void
+    AUDIO.UNLOCK_MISSION_NEWS_STORY(news_story)
+end
+
+function module.clear_ambient_zone_state(zone_name: string, p1: bool): void
+    AUDIO.CLEAR_AMBIENT_ZONE_STATE(zone_name, p1)
+end
+
+function module.clear_ambient_zone_list_state(ambient_zone: string, p1: bool): void
+    AUDIO.CLEAR_AMBIENT_ZONE_LIST_STATE(ambient_zone, p1)
+end
+
+function module.refresh_closest_ocean_shoreline(): void
+    AUDIO.REFRESH_CLOSEST_OCEAN_SHORELINE()
+end
+
+-- Plays the given police radio message
+function module.play_police_report(name: string, p1: float): int
+    return AUDIO.PLAY_POLICE_REPORT(name, p1)
+end
+
+function module.cancel_all_police_reports(): void
+    AUDIO.CANCEL_ALL_POLICE_REPORTS()
+end
+
+function module.force_use_game_object(vehicle: int, audio_name: string): void
+    AUDIO.FORCE_USE_AUDIO_GAME_OBJECT(vehicle, audio_name)
+end
+
+-- Called 38 times in the scripts. There are 5 different audioNames used
+function module.play_mission_complete(audio_name: string): void
+    AUDIO.PLAY_MISSION_COMPLETE_AUDIO(audio_name)
+end
+
+function module.block_death_jingle(toggle: bool): void
+    AUDIO.BLOCK_DEATH_JINGLE(toggle)
+end
+
+-- Used to prepare a scene where the surrounding sound is muted or a bit changed. This does not play any sound
+function module.start_scene(scene: string): bool
+    return AUDIO.START_AUDIO_SCENE(scene)
+end
+
+function module.stop_scene(scene: string): void
+    AUDIO.STOP_AUDIO_SCENE(scene)
+end
+
+function module.stop_scenes(): void
+    AUDIO.STOP_AUDIO_SCENES()
+end
+
+function module.add_entity_to_mix_group(entity: int, group_name: string, p2: float): void
+    AUDIO.ADD_ENTITY_TO_AUDIO_MIX_GROUP(entity, group_name, p2)
+end
+
+function module.remove_entity_from_mix_group(entity: int, p1: float): void
+    AUDIO.REMOVE_ENTITY_FROM_AUDIO_MIX_GROUP(entity, p1)
+end
+
+function module.record_broken_glass(x: float, y: float, z: float, radius: float): void
+    AUDIO.RECORD_BROKEN_GLASS(x, y, z, radius)
+end
+
+function module.clear_all_broken_glass(): void
+    AUDIO.CLEAR_ALL_BROKEN_GLASS()
+end
+
+function module.script_overrides_wind_elevation(p0: bool, p1: any): void
+    AUDIO.SCRIPT_OVERRIDES_WIND_ELEVATION(p0, p1)
+end
+
+function module.prepare_alarm(alarm_name: string): bool
+    return AUDIO.PREPARE_ALARM(alarm_name)
+end
+
+function module.start_alarm(alarm_name: string, p2: bool): void
+    AUDIO.START_ALARM(alarm_name, p2)
+end
+
+function module.stop_alarm(alarm_name: string, toggle: bool): void
+    AUDIO.STOP_ALARM(alarm_name, toggle)
+end
+
+function module.stop_all_alarms(stop: bool): void
+    AUDIO.STOP_ALL_ALARMS(stop)
+end
+
+function module.reset_ped_flags(ped: int): void
+    AUDIO.RESET_PED_AUDIO_FLAGS(ped)
+end
+
+-- Sets audio flag "OverridePlayerGroundMaterial"
+function module.override_player_ground_material(hash: int, toggle: bool): void
+    AUDIO.OVERRIDE_PLAYER_GROUND_MATERIAL(hash, toggle)
+end
+
+function module.use_footstep_script_sweeteners(ped: int, p1: bool, hash: int): void
+    AUDIO.USE_FOOTSTEP_SCRIPT_SWEETENERS(ped, p1, hash)
+end
+
+function module.enable_stunt_jump(): void
+    AUDIO.ENABLE_STUNT_JUMP_AUDIO()
+end
+
+function module.prepare_synchronized_event(audio_event: string, p1: any): bool
+    return AUDIO.PREPARE_SYNCHRONIZED_AUDIO_EVENT(audio_event, p1)
+end
+
+function module.prepare_synchronized_event_for_scene(scene_id: int, audio_event: string): bool
+    return AUDIO.PREPARE_SYNCHRONIZED_AUDIO_EVENT_FOR_SCENE(scene_id, audio_event)
+end
+
+function module.play_synchronized_event(scene_id: int): bool
+    return AUDIO.PLAY_SYNCHRONIZED_AUDIO_EVENT(scene_id)
+end
+
+function module.stop_synchronized_event(scene_id: int): bool
+    return AUDIO.STOP_SYNCHRONIZED_AUDIO_EVENT(scene_id)
+end
+
+function module.init_synch_scene_with_position(audio_event: string, x: float, y: float, z: float): void
+    AUDIO.INIT_SYNCH_SCENE_AUDIO_WITH_POSITION(audio_event, x, y, z)
+end
+
+function module.init_synch_scene_with_entity(audio_event: string, entity: int): void
+    AUDIO.INIT_SYNCH_SCENE_AUDIO_WITH_ENTITY(audio_event, entity)
+end
+
+function module.remove_portal_settings_override(p0: string): void
+    AUDIO.REMOVE_PORTAL_SETTINGS_OVERRIDE(p0)
+end
+
+function module.stop_cutscene(): void
+    AUDIO.STOP_CUTSCENE_AUDIO()
+end
+
+return Atdar.loader.auto(module, "natives/audio")

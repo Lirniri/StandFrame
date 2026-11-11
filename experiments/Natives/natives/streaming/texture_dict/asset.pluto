@@ -1,0 +1,30 @@
+local module = {}
+
+-- Streamed texture dictionaries are requested by name, e.g. a feed message's picture "CHAR_LESTER"
+-- (natives/visual/feed_picture)
+
+-- State
+
+function module.is_loaded(name: string): bool
+    return GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED(name)
+end
+
+-- Actions
+
+-- Requests the dictionary and waits until it loads (yields, see streaming.wait_loaded).
+-- timeout false -> only request, don't wait (e.g. from a menu callback); returns whether it's already loaded
+-- @return Whether it loaded before the timeout (ms)
+function module.request(name: string, timeout: int|bool = 2000): bool
+    GRAPHICS.REQUEST_STREAMED_TEXTURE_DICT(name, false)
+    if timeout == false then
+        return module.is_loaded(name)
+    end
+    return Atdar.natives.streaming.wait_loaded($"texture dictionary '{name}'", || -> module.is_loaded(name), timeout)
+end
+
+-- Frees the dictionary when it's no longer needed
+function module.remove(name: string): void
+    GRAPHICS.SET_STREAMED_TEXTURE_DICT_AS_NO_LONGER_NEEDED(name)
+end
+
+return module

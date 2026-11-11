@@ -1,0 +1,394 @@
+-- The gameplay camera (follow ped / vehicle, first person, aim)
+
+local module = {}
+
+-- State
+
+function module.is_shaking(): bool
+    return CAM.IS_GAMEPLAY_CAM_SHAKING()
+end
+
+function module.is_rendering(): bool
+    return CAM.IS_GAMEPLAY_CAM_RENDERING()
+end
+
+function module.is_looking_behind(): bool
+    return CAM.IS_GAMEPLAY_CAM_LOOKING_BEHIND()
+end
+
+function module.is_follow_ped_active(): bool
+    return CAM.IS_FOLLOW_PED_CAM_ACTIVE()
+end
+
+function module.is_follow_vehicle_active(): bool
+    return CAM.IS_FOLLOW_VEHICLE_CAM_ACTIVE()
+end
+
+function module.is_aim_active(): bool
+    return CAM.IS_AIM_CAM_ACTIVE()
+end
+
+function module.is_aim_active_in_accurate_mode(): bool
+    return CAM.IS_AIM_CAM_ACTIVE_IN_ACCURATE_MODE()
+end
+
+function module.is_first_person_aim_active(): bool
+    return CAM.IS_FIRST_PERSON_AIM_CAM_ACTIVE()
+end
+
+function module.is_hint_active(): bool
+    return CAM.IS_GAMEPLAY_HINT_ACTIVE()
+end
+
+function module.is_code_hint_active(): bool
+    return CAM.IS_CODE_GAMEPLAY_HINT_ACTIVE()
+end
+
+function module.is_cinematic_first_person_vehicle_interior_rendering(): bool
+    return CAM.IS_CINEMATIC_FIRST_PERSON_VEHICLE_INTERIOR_CAM_RENDERING()
+end
+
+function module.is_bonnet_cinematic_rendering(): bool
+    return CAM.IS_BONNET_CINEMATIC_CAM_RENDERING()
+end
+
+-- Get
+
+function module.get_coord(): vector3
+    return CAM.GET_GAMEPLAY_CAM_COORD()
+end
+
+function module.get_rot(rotation_order: int): vector3
+    return CAM.GET_GAMEPLAY_CAM_ROT(rotation_order)
+end
+
+function module.get_fov(): float
+    return CAM.GET_GAMEPLAY_CAM_FOV()
+end
+
+function module.get_relative_heading(): float
+    return CAM.GET_GAMEPLAY_CAM_RELATIVE_HEADING()
+end
+
+function module.get_relative_pitch(): float
+    return CAM.GET_GAMEPLAY_CAM_RELATIVE_PITCH()
+end
+
+function module.get_third_person_min_orbit_distance_spring(): float
+    return CAM._GET_THIRD_PERSON_CAM_MIN_ORBIT_DISTANCE_SPRING()
+end
+
+function module.get_third_person_max_orbit_distance_spring(): float
+    return CAM._GET_THIRD_PERSON_CAM_MAX_ORBIT_DISTANCE_SPRING()
+end
+
+function module.get_follow_ped_zoom_level(): int
+    return CAM.GET_FOLLOW_PED_CAM_ZOOM_LEVEL()
+end
+
+function module.get_follow_ped_view_mode(): int
+    return CAM.GET_FOLLOW_PED_CAM_VIEW_MODE()
+end
+
+function module.get_follow_vehicle_zoom_level(): int
+    return CAM.GET_FOLLOW_VEHICLE_CAM_ZOOM_LEVEL()
+end
+
+function module.get_follow_vehicle_view_mode(): int
+    return CAM.GET_FOLLOW_VEHICLE_CAM_VIEW_MODE()
+end
+
+function module.get_first_person_aim_zoom_factor(): float
+    return CAM.GET_FIRST_PERSON_AIM_CAM_ZOOM_FACTOR()
+end
+
+-- Set
+
+function module.set_motion_blur_scaling_this_update(p0: float): void
+    CAM.SET_GAMEPLAY_CAM_MOTION_BLUR_SCALING_THIS_UPDATE(p0)
+end
+
+function module.set_max_motion_blur_strength_this_update(p0: float): void
+    CAM.SET_GAMEPLAY_CAM_MAX_MOTION_BLUR_STRENGTH_THIS_UPDATE(p0)
+end
+
+function module.set_relative_heading(heading: float): void
+    CAM.SET_GAMEPLAY_CAM_RELATIVE_HEADING(heading)
+end
+
+-- This native sets the camera's pitch (rotation on the x-axis)
+function module.set_relative_pitch(angle: float, scaling_factor: float): void
+    CAM.SET_GAMEPLAY_CAM_RELATIVE_PITCH(angle, scaling_factor)
+end
+
+function module.set_first_person_shooter_heading(yaw: float): void
+    CAM.SET_FIRST_PERSON_SHOOTER_CAMERA_HEADING(yaw)
+end
+
+function module.set_first_person_shooter_pitch(pitch: float): void
+    CAM.SET_FIRST_PERSON_SHOOTER_CAMERA_PITCH(pitch)
+end
+
+function module.set_scripted_is_first_person_this_frame(p0: bool): void
+    CAM.SET_SCRIPTED_CAMERA_IS_FIRST_PERSON_THIS_FRAME(p0)
+end
+
+function module.set_shake_amplitude(amplitude: float): void
+    CAM.SET_GAMEPLAY_CAM_SHAKE_AMPLITUDE(amplitude)
+end
+
+-- Forces gameplay cam to specified ped as if you were the ped or spectating it
+function module.set_follow_ped_this_update(ped: int): void
+    CAM.SET_GAMEPLAY_CAM_FOLLOW_PED_THIS_UPDATE(ped)
+end
+
+function module.set_altitude_fov_scaling_state(p0: bool): void
+    CAM.SET_GAMEPLAY_CAM_ALTITUDE_FOV_SCALING_STATE(p0)
+end
+
+function module.set_ignore_entity_collision_this_update(entity: int): void
+    CAM.SET_GAMEPLAY_CAM_IGNORE_ENTITY_COLLISION_THIS_UPDATE(entity)
+end
+
+function module.set_entity_to_limit_focus_over_bounding_sphere_this_update(entity: int): void
+    CAM.SET_GAMEPLAY_CAM_ENTITY_TO_LIMIT_FOCUS_OVER_BOUNDING_SPHERE_THIS_UPDATE(entity)
+end
+
+function module.set_follow_ignore_attach_parent_movement_this_update(): void
+    CAM.SET_FOLLOW_CAM_IGNORE_ATTACH_PARENT_MOVEMENT_THIS_UPDATE()
+end
+
+function module.set_follow_ped_update(cam_name: string, p1: int): bool
+    return CAM.SET_FOLLOW_PED_CAM_THIS_UPDATE(cam_name, p1)
+end
+
+function module.set_follow_ped_ladder_align_this_update(): void
+    CAM.SET_FOLLOW_PED_CAM_LADDER_ALIGN_THIS_UPDATE()
+end
+
+function module.set_third_person_relative_heading_limits_this_update(minimum: float, maximum: float): void
+    CAM.SET_THIRD_PERSON_CAM_RELATIVE_HEADING_LIMITS_THIS_UPDATE(minimum, maximum)
+end
+
+function module.set_third_person_relative_pitch_limits_this_update(minimum: float, maximum: float): void
+    CAM.SET_THIRD_PERSON_CAM_RELATIVE_PITCH_LIMITS_THIS_UPDATE(minimum, maximum)
+end
+
+-- Seems to animate the gameplay camera zoom
+function module.set_third_person_orbit_distance_limits_this_update(p0: float, distance: float): void
+    CAM.SET_THIRD_PERSON_CAM_ORBIT_DISTANCE_LIMITS_THIS_UPDATE(p0, distance)
+end
+
+-- Forces gameplay cam to specified vehicle as if you were in it
+function module.set_in_vehicle_state_this_update(p0: int, p1: int): void
+    CAM.SET_IN_VEHICLE_CAM_STATE_THIS_UPDATE(p0, p1)
+end
+
+function module.set_follow_ped_view_mode(view_mode: int): void
+    CAM.SET_FOLLOW_PED_CAM_VIEW_MODE(view_mode)
+end
+
+function module.set_follow_vehicle_high_angle_mode_this_update(p0: bool): void
+    CAM.SET_FOLLOW_VEHICLE_CAM_HIGH_ANGLE_MODE_THIS_UPDATE(p0)
+end
+
+function module.set_follow_vehicle_high_angle_mode_every_update(p0: bool, p1: bool): void
+    CAM.SET_FOLLOW_VEHICLE_CAM_HIGH_ANGLE_MODE_EVERY_UPDATE(p0, p1)
+end
+
+function module.set_table_games_update(hash: int): bool
+    return CAM.SET_TABLE_GAMES_CAMERA_THIS_UPDATE(hash)
+end
+
+function module.set_follow_vehicle_zoom_level(zoom_level: int): void
+    CAM.SET_FOLLOW_VEHICLE_CAM_ZOOM_LEVEL(zoom_level)
+end
+
+function module.set_follow_vehicle_view_mode(view_mode: int): void
+    CAM.SET_FOLLOW_VEHICLE_CAM_VIEW_MODE(view_mode)
+end
+
+function module.set_follow_vehicle_seat_this_update(seat_index: int): void
+    CAM.SET_FOLLOW_VEHICLE_CAM_SEAT_THIS_UPDATE(seat_index)
+end
+
+function module.set_first_person_aim_zoom_factor(zoom_factor: float): void
+    CAM.SET_FIRST_PERSON_AIM_CAM_ZOOM_FACTOR(zoom_factor)
+end
+
+function module.set_first_person_aim_zoom_factor_limits_this_update(p0: float, p1: float): void
+    CAM.SET_FIRST_PERSON_AIM_CAM_ZOOM_FACTOR_LIMITS_THIS_UPDATE(p0, p1)
+end
+
+function module.set_first_person_aim_relative_heading_limits_this_update(p0: float, p1: float): void
+    CAM.SET_FIRST_PERSON_AIM_CAM_RELATIVE_HEADING_LIMITS_THIS_UPDATE(p0, p1)
+end
+
+function module.set_first_person_aim_relative_pitch_limits_this_update(p0: float, p1: float): void
+    CAM.SET_FIRST_PERSON_AIM_CAM_RELATIVE_PITCH_LIMITS_THIS_UPDATE(p0, p1)
+end
+
+function module.set_first_person_aim_near_clip_this_update(p0: float): void
+    CAM.SET_FIRST_PERSON_AIM_CAM_NEAR_CLIP_THIS_UPDATE(p0)
+end
+
+function module.set_third_person_aim_near_clip_this_update(p0: float): void
+    CAM.SET_THIRD_PERSON_AIM_CAM_NEAR_CLIP_THIS_UPDATE(p0)
+end
+
+function module.set_coord_hint(
+    x: float, y: float, z: float, duration: int, blend_out_duration: int, blend_in_duration: int,
+    p6: int
+): void
+    -- body function:
+    CAM.SET_GAMEPLAY_COORD_HINT(x, y, z, duration, blend_out_duration, blend_in_duration, p6)
+end
+
+function module.set_ped_hint(
+    ped: int, x1: float, y1: float, z1: float, p4: bool, duration: int, blend_out_duration: int,
+    blend_in_duration: int
+): void
+    -- body function:
+    CAM.SET_GAMEPLAY_PED_HINT(ped, x1, y1, z1, p4, duration, blend_out_duration, blend_in_duration)
+end
+
+-- Focuses the camera on the specified vehicle
+function module.set_vehicle_hint(
+    vehicle: int, offset_x: float, offset_y: float, offset_z: float, p4: bool, time: int,
+    ease_in_time: int, ease_out_time: int
+): void
+    -- body function:
+    CAM.SET_GAMEPLAY_VEHICLE_HINT(vehicle, offset_x, offset_y, offset_z, p4, time, ease_in_time, ease_out_time)
+end
+
+function module.set_object_hint(
+    object: int, x_offset: float, y_offset: float, z_offset: float, p4: bool, time: int,
+    ease_in_time: int, ease_out_time: int
+): void
+    -- body function:
+    CAM.SET_GAMEPLAY_OBJECT_HINT(object, x_offset, y_offset, z_offset, p4, time, ease_in_time, ease_out_time)
+end
+
+function module.set_entity_hint(
+    entity: int, x_offset: float, y_offset: float, z_offset: float, p4: bool, time: int,
+    ease_in_time: int, ease_out_time: int, p8: int
+): void
+    -- body function:
+    CAM.SET_GAMEPLAY_ENTITY_HINT(entity, x_offset, y_offset, z_offset, p4, time, ease_in_time, ease_out_time, p8)
+end
+
+function module.set_hint_fov(fov: float): void
+    CAM.SET_GAMEPLAY_HINT_FOV(fov)
+end
+
+function module.set_hint_follow_distance_scalar(value: float): void
+    CAM.SET_GAMEPLAY_HINT_FOLLOW_DISTANCE_SCALAR(value)
+end
+
+function module.set_hint_base_orbit_pitch_offset(value: float): void
+    CAM.SET_GAMEPLAY_HINT_BASE_ORBIT_PITCH_OFFSET(value)
+end
+
+function module.set_hint_relative_side_offset(x_offset: float): void
+    CAM.SET_GAMEPLAY_HINT_CAMERA_RELATIVE_SIDE_OFFSET(x_offset)
+end
+
+function module.set_hint_relative_vertical_offset(y_offset: float): void
+    CAM.SET_GAMEPLAY_HINT_CAMERA_RELATIVE_VERTICAL_OFFSET(y_offset)
+end
+
+function module.set_hint_blend_to_follow_ped_medium_view_mode(toggle: bool): void
+    CAM.SET_GAMEPLAY_HINT_CAMERA_BLEND_TO_FOLLOW_PED_MEDIUM_VIEW_MODE(toggle)
+end
+
+function module.set_first_person_flash_effect_type(p0: any): void
+    CAM.SET_FIRST_PERSON_FLASH_EFFECT_TYPE(p0)
+end
+
+function module.set_first_person_flash_effect_vehicle_model_name(vehicle_name: string): void
+    CAM.SET_FIRST_PERSON_FLASH_EFFECT_VEHICLE_MODEL_NAME(vehicle_name)
+end
+
+function module.set_first_person_flash_effect_vehicle_model_hash(vehicle_model: int): void
+    CAM.SET_FIRST_PERSON_FLASH_EFFECT_VEHICLE_MODEL_HASH(vehicle_model)
+end
+
+-- Actions
+
+function module.reset_full_attach_parent_transform_timer(): void
+    CAM.RESET_GAMEPLAY_CAM_FULL_ATTACH_PARENT_TRANSFORM_TIMER()
+end
+
+function module.force_bonnet_relative_heading_and_pitch(p0: float, p1: float): void
+    CAM.FORCE_BONNET_CAMERA_RELATIVE_HEADING_AND_PITCH(p0, p1)
+end
+
+function module.shake(shake_name: string, intensity: float): void
+    CAM.SHAKE_GAMEPLAY_CAM(shake_name, intensity)
+end
+
+function module.stop_shaking(p0: bool): void
+    CAM.STOP_GAMEPLAY_CAM_SHAKING(p0)
+end
+
+-- Shows the crosshair even if it wouldn't show normally. Only works for one frame, so make sure to call it repeatedly
+function module.disable_altitude_fov_scaling_this_update(): void
+    CAM.DISABLE_GAMEPLAY_CAM_ALTITUDE_FOV_SCALING_THIS_UPDATE()
+end
+
+-- Sets some flag on cinematic camera
+function module.disable_first_person_water_clipping_test_this_update(): void
+    CAM.DISABLE_FIRST_PERSON_CAMERA_WATER_CLIPPING_TEST_THIS_UPDATE()
+end
+
+-- Disables first person camera for the current frame
+function module.disable_on_foot_first_person_view_this_update(): void
+    CAM.DISABLE_ON_FOOT_FIRST_PERSON_VIEW_THIS_UPDATE()
+end
+
+function module.disable_first_person_flash_effect_this_update(): void
+    CAM.DISABLE_FIRST_PERSON_FLASH_EFFECT_THIS_UPDATE()
+end
+
+function module.block_first_person_orientation_reset_this_update(): void
+    CAM.BLOCK_FIRST_PERSON_ORIENTATION_RESET_THIS_UPDATE()
+end
+
+function module.use_vehicle_stunt_settings_this_update(): void
+    CAM.USE_VEHICLE_CAM_STUNT_SETTINGS_THIS_UPDATE()
+end
+
+-- Sets gameplay camera to hash
+function module.use_dedicated_stunt_update(cam_name: string): void
+    CAM.USE_DEDICATED_STUNT_CAMERA_THIS_UPDATE(cam_name)
+end
+
+function module.force_vehicle_stunt_settings_this_update(): void
+    CAM.FORCE_VEHICLE_CAM_STUNT_SETTINGS_THIS_UPDATE()
+end
+
+function module.disable_aim_update(): void
+    CAM.DISABLE_AIM_CAM_THIS_UPDATE()
+end
+
+function module.stop_hint(p0: bool): void
+    CAM.STOP_GAMEPLAY_HINT(p0)
+end
+
+function module.stop_hint_being_cancelled_this_update(p0: bool): void
+    CAM.STOP_GAMEPLAY_HINT_BEING_CANCELLED_THIS_UPDATE(p0)
+end
+
+function module.stop_code_hint(p0: bool): void
+    CAM.STOP_CODE_GAMEPLAY_HINT(p0)
+end
+
+function module.disable_cinematic_bonnet_update(): void
+    CAM.DISABLE_CINEMATIC_BONNET_CAMERA_THIS_UPDATE()
+end
+
+function module.ignore_menu_preference_for_bonnet_update(): void
+    CAM.IGNORE_MENU_PREFERENCE_FOR_BONNET_CAMERA_THIS_UPDATE()
+end
+
+return module

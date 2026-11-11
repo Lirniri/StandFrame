@@ -1,0 +1,222 @@
+-- Pictures for the game feed's message cards (thefeed.post_message opts.picture): CHAR_* texture
+-- dictionaries, each with a texture of the same name - contacts, companies, sites.
+-- Source of the names: https://pastebin.com/XdpJVbHz (167 names), plus ACTING_UP. Some dictionaries are loaded only
+-- in some game modes; a picture that isn't loaded shows empty on the card.
+--
+--     local feed_picture = Atdar.natives.visual.feed_picture
+--     feed_picture.LESTER               -- "CHAR_LESTER"
+--     thefeed.post_message("Text", { picture = feed_picture.LESTER })
+--     feed_picture.is_known("CHAR_LESTER") -- true
+--     feed_picture.list()               -- every name, e.g. for a menu list
+--     feed_picture.title("CHAR_SOCIAL_CLUB") -- "Social Club", for showing it
+
+local module = {}
+
+-- Names without CHAR_, alphabetical as in the source
+local PICTURES = {
+    "ABIGAIL",
+    "ACTING_UP",
+    "ALL_PLAYERS_CONF",
+    "AMANDA",
+    "AMMUNATION",
+    "ANDREAS",
+    "ANTONIA",
+    "ARTHUR",
+    "ASHLEY",
+    "BANK_BOL",
+    "BANK_FLEECA",
+    "BANK_MAZE",
+    "BARRY",
+    "BEVERLY",
+    "BIKESITE",
+    "BLANK_ENTRY",
+    "BLIMP",
+    "BLOCKED",
+    "BOATSITE",
+    "BROKEN_DOWN_GIRL",
+    "BUGSTARS",
+    "CALL911",
+    "CARSITE",
+    "CARSITE2",
+    "CASTRO",
+    "CHAT_CALL",
+    "CHEF",
+    "CHENG",
+    "CHENGSR",
+    "CHOP",
+    "CREATOR_PORTRAITS",
+    "CRIS",
+    "DAVE",
+    "DEFAULT",
+    "DENISE",
+    "DETONATEBOMB",
+    "DETONATEPHONE",
+    "DEVIN",
+    "DIAL_A_SUB",
+    "DOM",
+    "DOMESTIC_GIRL",
+    "DREYFUSS",
+    "DR_FRIEDLANDER",
+    "EPSILON",
+    "ESTATE_AGENT",
+    "FACEBOOK",
+    "FILMNOIR",
+    "FLOYD",
+    "FRANKLIN",
+    "FRANK_TREV_CONF",
+    "GAYMILITARY",
+    "HAO",
+    "HITCHER_GIRL",
+    "HUMANDEFAULT",
+    "HUNTER",
+    "JIMMY",
+    "JIMMY_BOSTON",
+    "JOE",
+    "JOSEF",
+    "JOSH",
+    "LAMAR",
+    "LAZLOW",
+    "LESTER",
+    "LESTER_DEATHWISH",
+    "LEST_FRANK_CONF",
+    "LEST_MIKE_CONF",
+    "LIFEINVADER",
+    "LS_CUSTOMS",
+    "LS_TOURIST_BOARD",
+    "MANUEL",
+    "MARNIE",
+    "MARTIN",
+    "MARY_ANN",
+    "MAUDE",
+    "MECHANIC",
+    "MICHAEL",
+    "MIKE_FRANK_CONF",
+    "MIKE_TREV_CONF",
+    "MILSITE",
+    "MINOTAUR",
+    "MOLLY",
+    "MP_ARMY_CONTACT",
+    "MP_BIKER_BOSS",
+    "MP_BIKER_MECHANIC",
+    "MP_BRUCIE",
+    "MP_DETONATEPHONE",
+    "MP_FAM_BOSS",
+    "MP_FIB_CONTACT",
+    "MP_FM_CONTACT",
+    "MP_GERALD",
+    "MP_JULIO",
+    "MP_MECHANIC",
+    "MP_MERRYWEATHER",
+    "MP_MEX_BOSS",
+    "MP_MEX_DOCKS",
+    "MP_MEX_LT",
+    "MP_MORS_MUTUAL",
+    "MP_PROF_BOSS",
+    "MP_RAY_LAVOY",
+    "MP_ROBERTO",
+    "MP_SNITCH",
+    "MP_STRETCH",
+    "MP_STRIPCLUB_PR",
+    "MRS_THORNHILL",
+    "MULTIPLAYER",
+    "NIGEL",
+    "OMEGA",
+    "ONEIL",
+    "ORTEGA",
+    "OSCAR",
+    "PATRICIA",
+    "PEGASUS_DELIVERY",
+    "PLANESITE",
+    "PROPERTY_ARMS_TRAFFICKING",
+    "PROPERTY_BAR_AIRPORT",
+    "PROPERTY_BAR_BAYVIEW",
+    "PROPERTY_BAR_CAFE_ROJO",
+    "PROPERTY_BAR_COCKOTOOS",
+    "PROPERTY_BAR_ECLIPSE",
+    "PROPERTY_BAR_FES",
+    "PROPERTY_BAR_HEN_HOUSE",
+    "PROPERTY_BAR_HI_MEN",
+    "PROPERTY_BAR_HOOKIES",
+    "PROPERTY_BAR_IRISH",
+    "PROPERTY_BAR_LES_BIANCO",
+    "PROPERTY_BAR_MIRROR_PARK",
+    "PROPERTY_BAR_PITCHERS",
+    "PROPERTY_BAR_SINGLETONS",
+    "PROPERTY_BAR_TEQUILALA",
+    "PROPERTY_BAR_UNBRANDED",
+    "PROPERTY_CAR_MOD_SHOP",
+    "PROPERTY_CAR_SCRAP_YARD",
+    "PROPERTY_CINEMA_DOWNTOWN",
+    "PROPERTY_CINEMA_MORNINGWOOD",
+    "PROPERTY_CINEMA_VINEWOOD",
+    "PROPERTY_GOLF_CLUB",
+    "PROPERTY_PLANE_SCRAP_YARD",
+    "PROPERTY_SONAR_COLLECTIONS",
+    "PROPERTY_TAXI_LOT",
+    "PROPERTY_TOWING_IMPOUND",
+    "PROPERTY_WEED_SHOP",
+    "RON",
+    "SAEEDA",
+    "SASQUATCH",
+    "SIMEON",
+    "SOCIAL_CLUB",
+    "SOLOMON",
+    "STEVE",
+    "STEVE_MIKE_CONF",
+    "STEVE_TREV_CONF",
+    "STRETCH",
+    "STRIPPER_CHASTITY",
+    "STRIPPER_CHEETAH",
+    "STRIPPER_FUFU",
+    "STRIPPER_INFERNUS",
+    "STRIPPER_JULIET",
+    "STRIPPER_NIKKI",
+    "STRIPPER_PEACH",
+    "STRIPPER_SAPPHIRE",
+    "TANISHA",
+    "TAXI",
+    "TAXI_LIZ",
+    "TENNIS_COACH",
+    "TOW_TONYA",
+    "TRACEY",
+    "TREVOR",
+    "WADE",
+    "YOUTUBE",
+}
+
+-- module.LESTER == "CHAR_LESTER"
+local KNOWN = {}
+for _, short in ipairs(PICTURES) do
+    local full = $"CHAR_{short}"
+    module[short] = full
+    KNOWN[full] = true
+end
+
+-- State
+
+-- @param name A full name, "CHAR_LESTER"
+function module.is_known(name: string): bool
+    return KNOWN[name] == true
+end
+
+-- Get
+
+-- @return Every picture's full name ("CHAR_LESTER"), in the source's order (a copy)
+function module.list(): table
+    local list = {}
+    for _, short in ipairs(PICTURES) do
+        table.insert(list, $"CHAR_{short}")
+    end
+    return list
+end
+
+-- @return The name to show: "CHAR_SOCIAL_CLUB" -> "Social Club", "CHAR_MP_FM_CONTACT" -> "Mp Fm Contact"
+function module.title(name: string): string
+    local words = {}
+    for word in name:gsub("^CHAR_", ""):gmatch("[^_]+") do
+        table.insert(words, word:sub(1, 1):upper() .. word:sub(2):lower())
+    end
+    return table.concat(words, " ")
+end
+
+return module

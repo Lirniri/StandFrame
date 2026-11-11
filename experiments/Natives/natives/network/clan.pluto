@@ -1,0 +1,148 @@
+-- Crews (clans)
+
+local module = {}
+
+-- State
+
+-- @param clan_desc Pointer: pass memory.alloc(size) and read the result back
+function module.is_rockstar(clan_desc: int, buffer_size: int): bool
+    return NETWORK.NETWORK_CLAN_IS_ROCKSTAR_CLAN(clan_desc, buffer_size)
+end
+
+function module.has_crewinfo_metadata_been_received(): bool
+    return NETWORK.NETWORK_CLAN_HAS_CREWINFO_METADATA_BEEN_RECEIVED()
+end
+
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.is_emblem_ready(p0: any, p1: int): bool
+    return NETWORK.NETWORK_CLAN_IS_EMBLEM_READY(p0, p1)
+end
+
+-- Get
+
+-- @param clan_desc Pointer: pass memory.alloc(size) and read the result back
+-- @param formatted_tag Pointer: pass memory.alloc(size) and read the result back
+function module.get_ui_formatted_tag(clan_desc: int, buffer_size: int, formatted_tag: int): void
+    NETWORK.NETWORK_CLAN_GET_UI_FORMATTED_TAG(clan_desc, buffer_size, formatted_tag)
+end
+
+function module.get_local_memberships_count(): int
+    return NETWORK.NETWORK_CLAN_GET_LOCAL_MEMBERSHIPS_COUNT()
+end
+
+-- @param member_desc Pointer: pass memory.alloc(size) and read the result back
+function module.get_membership_desc(member_desc: int, p1: int): bool
+    return NETWORK.NETWORK_CLAN_GET_MEMBERSHIP_DESC(member_desc, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_membership_count(p0: int): int
+    return NETWORK.NETWORK_CLAN_GET_MEMBERSHIP_COUNT(p0)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_membership_valid(p0: int, p1: any): bool
+    return NETWORK.NETWORK_CLAN_GET_MEMBERSHIP_VALID(p0, p1)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param clan_membership Pointer: pass memory.alloc(size) and read the result back
+function module.get_membership(p0: int, clan_membership: int, p2: int): bool
+    return NETWORK.NETWORK_CLAN_GET_MEMBERSHIP(p0, clan_membership, p2)
+end
+
+-- @param net_handle Pointer: pass memory.alloc(size) and read the result back
+-- @param txd_name Pointer: pass memory.alloc(size) and read the result back
+function module.get_emblem_txd_name(net_handle: int, txd_name: int): bool
+    return NETWORK.NETWORK_CLAN_GET_EMBLEM_TXD_NAME(net_handle, txd_name)
+end
+
+function module.get_primary_data_clear(): bool
+    return NETWORK.NETWORK_GET_PRIMARY_CLAN_DATA_CLEAR()
+end
+
+function module.get_primary_data_cancel(): void
+    NETWORK.NETWORK_GET_PRIMARY_CLAN_DATA_CANCEL()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.get_primary_data_start(p0: int, p1: any): bool
+    return NETWORK.NETWORK_GET_PRIMARY_CLAN_DATA_START(p0, p1)
+end
+
+function module.get_primary_data_pending(): bool
+    return NETWORK.NETWORK_GET_PRIMARY_CLAN_DATA_PENDING()
+end
+
+function module.get_primary_data_success(): bool
+    return NETWORK.NETWORK_GET_PRIMARY_CLAN_DATA_SUCCESS()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+-- @param p1 Pointer: pass memory.alloc(size) and read the result back
+function module.get_primary_data_new(p0: int, p1: int): bool
+    return NETWORK.NETWORK_GET_PRIMARY_CLAN_DATA_NEW(p0, p1)
+end
+
+-- Actions
+
+function module.find_gamers_in_crew(crew_id: int): bool
+    return NETWORK.NETWORK_FIND_GAMERS_IN_CREW(crew_id)
+end
+
+function module.service_is_valid(): bool
+    return NETWORK.NETWORK_CLAN_SERVICE_IS_VALID()
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.player_is_active(gamer_handle: int): bool
+    return NETWORK.NETWORK_CLAN_PLAYER_IS_ACTIVE(gamer_handle)
+end
+
+-- @param clan_desc Pointer: pass memory.alloc(size) and read the result back
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.player_get_desc(clan_desc: int, buffer_size: int, gamer_handle: int): bool
+    return NETWORK.NETWORK_CLAN_PLAYER_GET_DESC(clan_desc, buffer_size, gamer_handle)
+end
+
+-- @param gamer_handle Pointer: pass memory.alloc(size) and read the result back
+function module.download_membership(gamer_handle: int): bool
+    return NETWORK.NETWORK_CLAN_DOWNLOAD_MEMBERSHIP(gamer_handle)
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.download_membership_pending(p0: int): bool
+    return NETWORK.NETWORK_CLAN_DOWNLOAD_MEMBERSHIP_PENDING(p0)
+end
+
+function module.any_download_membership_pending(): bool
+    return NETWORK.NETWORK_CLAN_ANY_DOWNLOAD_MEMBERSHIP_PENDING()
+end
+
+-- @param p0 Pointer: pass memory.alloc(size) and read the result back
+function module.remote_memberships_are_in_cache(p0: int): bool
+    return NETWORK.NETWORK_CLAN_REMOTE_MEMBERSHIPS_ARE_IN_CACHE(p0)
+end
+
+function module.crewinfo_get_string_value(anim_dict: string, anim_name: string): bool
+    return NETWORK.NETWORK_CLAN_CREWINFO_GET_STRING_VALUE(anim_dict, anim_name)
+end
+
+function module.crewinfo_get_crewranktitle(p0: int, p1: string): bool
+    return NETWORK.NETWORK_CLAN_CREWINFO_GET_CREWRANKTITLE(p0, p1)
+end
+
+function module.request_emblem(p0: any): bool
+    return NETWORK.NETWORK_CLAN_REQUEST_EMBLEM(p0)
+end
+
+function module.release_emblem(p0: any): void
+    NETWORK.NETWORK_CLAN_RELEASE_EMBLEM(p0)
+end
+
+-- @param p4 Pointer: pass memory.alloc(size) and read the result back
+function module.ugc_get_crew_content(p0: any, p1: any, p2: any, p3: string, p4: int): bool
+    return NETWORK.UGC_GET_CREW_CONTENT(p0, p1, p2, p3, p4)
+end
+
+return module

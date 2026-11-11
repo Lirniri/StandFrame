@@ -1,0 +1,92 @@
+-- Helicopters
+
+local module = {}
+
+-- State
+
+function module.is_landing_area_blocked(vehicle: int): bool
+    return VEHICLE.IS_HELI_LANDING_AREA_BLOCKED(vehicle)
+end
+
+function module.is_part_broken(vehicle: int, p1: bool, p2: bool, p3: bool): bool
+    return VEHICLE.IS_HELI_PART_BROKEN(vehicle, p1, p2, p3)
+end
+
+function module.is_any_ped_rappelling(vehicle: int): bool
+    return VEHICLE.IS_ANY_PED_RAPPELLING_FROM_HELI(vehicle)
+end
+
+-- Get
+
+function module.get_main_rotor_health(vehicle: int): float
+    return VEHICLE.GET_HELI_MAIN_ROTOR_HEALTH(vehicle)
+end
+
+function module.get_tail_rotor_health(vehicle: int): float
+    return VEHICLE.GET_HELI_TAIL_ROTOR_HEALTH(vehicle)
+end
+
+function module.get_tail_boom_health(vehicle: int): float
+    return VEHICLE.GET_HELI_TAIL_BOOM_HEALTH(vehicle)
+end
+
+-- Set
+
+function module.set_turbulence_scalar(vehicle: int, p1: float): void
+    VEHICLE.SET_HELI_TURBULENCE_SCALAR(vehicle, p1)
+end
+
+function module.set_blades_full_speed(vehicle: int): void
+    VEHICLE.SET_HELI_BLADES_FULL_SPEED(vehicle)
+end
+
+-- Sets the speed of the helicopter blades in percentage of the full speed
+function module.set_blades_speed(vehicle: int, speed: float): void
+    VEHICLE.SET_HELI_BLADES_SPEED(vehicle, speed)
+end
+
+function module.set_main_rotor_health(vehicle: int, health: float): void
+    VEHICLE.SET_HELI_MAIN_ROTOR_HEALTH(vehicle, health)
+end
+
+function module.set_tail_rotor_health(vehicle: int, health: float): void
+    VEHICLE.SET_HELI_TAIL_ROTOR_HEALTH(vehicle, health)
+end
+
+function module.set_tail_boom_can_break_off(vehicle: int, toggle: bool): bool
+    return VEHICLE.SET_HELI_TAIL_BOOM_CAN_BREAK_OFF(vehicle, toggle)
+end
+
+function module.set_control_lagging_rate_scalar(helicopter: int, multiplier: float): void
+    VEHICLE.SET_HELI_CONTROL_LAGGING_RATE_SCALAR(helicopter, multiplier)
+end
+
+function module.set_resist_to_explosion(vehicle: int, toggle: bool): void
+    VEHICLE.SET_HELI_RESIST_TO_EXPLOSION(vehicle, toggle)
+end
+
+function module.set_disable_explode_from_body_damage(p0: any, p1: any): void
+    VEHICLE.SET_DISABLE_HELI_EXPLODE_FROM_BODY_DAMAGE(p0, p1)
+end
+
+-- Stops the cargobob from being able to attach any vehicle
+function module.set_can_pickup_entity_that_has_pick_up_disabled(vehicle: int, toggle: bool): void
+    VEHICLE.SET_HELI_CAN_PICKUP_ENTITY_THAT_HAS_PICK_UP_DISABLED(vehicle, toggle)
+end
+
+function module.set_combat_offset(vehicle: int, x: float, y: float, z: float): void
+    VEHICLE.SET_HELI_COMBAT_OFFSET(vehicle, x, y, z)
+end
+
+-- Actions
+
+function module.stabilise_entity_attached(vehicle: int, entity: int, p2: float): void
+    VEHICLE.STABILISE_ENTITY_ATTACHED_TO_HELI(vehicle, entity, p2)
+end
+
+-- Native is significantly more complicated than simply generating a random vector & length
+function module.find_spawn_coordinates(ped: int): vector3
+    return VEHICLE.FIND_SPAWN_COORDINATES_FOR_HELI(ped)
+end
+
+return module

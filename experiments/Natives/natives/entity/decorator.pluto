@@ -1,0 +1,63 @@
+-- Decorators: named values scripts attach to entities
+
+local module = {}
+
+-- State
+
+function module.is_registered_as_type(property_name: string, type: int): bool
+    return DECORATOR.DECOR_IS_REGISTERED_AS_TYPE(property_name, type)
+end
+
+-- Get
+
+function module.get_bool(entity: int, property_name: string): bool
+    return DECORATOR.DECOR_GET_BOOL(entity, property_name)
+end
+
+function module.get_float(entity: int, property_name: string): float
+    return DECORATOR.DECOR_GET_FLOAT(entity, property_name)
+end
+
+function module.get_int(entity: int, property_name: string): int
+    return DECORATOR.DECOR_GET_INT(entity, property_name)
+end
+
+-- Set
+
+function module.set_time(entity: int, property_name: string, timestamp: int): bool
+    return DECORATOR.DECOR_SET_TIME(entity, property_name, timestamp)
+end
+
+function module.set_bool(entity: int, property_name: string, value: bool): bool
+    return DECORATOR.DECOR_SET_BOOL(entity, property_name, value)
+end
+
+function module.set_float(entity: int, property_name: string, value: float): bool
+    return DECORATOR.DECOR_SET_FLOAT(entity, property_name, value)
+end
+
+function module.set_int(entity: int, property_name: string, value: int): bool
+    return DECORATOR.DECOR_SET_INT(entity, property_name, value)
+end
+
+-- Actions
+
+-- Returns whether or not the specified property is set for the entity
+function module.exist_on(entity: int, property_name: string): bool
+    return DECORATOR.DECOR_EXIST_ON(entity, property_name)
+end
+
+function module.remove(entity: int, property_name: string): bool
+    return DECORATOR.DECOR_REMOVE(entity, property_name)
+end
+
+function module.register(property_name: string, type: int): void
+    DECORATOR.DECOR_REGISTER(property_name, type)
+end
+
+-- Called after all decorator type initializations
+function module.register_lock(): void
+    DECORATOR.DECOR_REGISTER_LOCK()
+end
+
+return module

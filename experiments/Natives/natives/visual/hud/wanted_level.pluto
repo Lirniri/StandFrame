@@ -1,0 +1,23 @@
+local module = {}
+
+function module.flash(looped: bool): void
+    HUD.FLASH_WANTED_DISPLAY(looped)
+end
+
+-- Set
+
+function module.set_block_wanted_flash(disabled: bool): void
+    HUD.SET_BLOCK_WANTED_FLASH(disabled)
+end
+
+function module.set_mp_gamer_tag_wanted_level(gamer_tag_id: int, wantedlvl: int): void
+    HUD.SET_MP_GAMER_TAG_WANTED_LEVEL(gamer_tag_id, wantedlvl)
+end
+
+-- Actions
+
+function module.force_off_wanted_star_flash(toggle: bool): void
+    HUD.FORCE_OFF_WANTED_STAR_FLASH(toggle)
+end
+
+return module

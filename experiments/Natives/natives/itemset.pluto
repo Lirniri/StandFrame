@@ -1,0 +1,47 @@
+-- Item sets (ITEMSET natives)
+
+local module = {}
+
+-- State
+
+function module.is_valid(itemset: int): bool
+    return ITEMSET.IS_ITEMSET_VALID(itemset)
+end
+
+function module.is_in(item: int, itemset: int): bool
+    return ITEMSET.IS_IN_ITEMSET(item, itemset)
+end
+
+-- Get
+
+function module.get_size(itemset: int): int
+    return ITEMSET.GET_ITEMSET_SIZE(itemset)
+end
+
+function module.get_indexed_item_in(index: int, itemset: int): int
+    return ITEMSET.GET_INDEXED_ITEM_IN_ITEMSET(index, itemset)
+end
+
+-- Actions
+
+function module.create(p0: bool): int
+    return ITEMSET.CREATE_ITEMSET(p0)
+end
+
+function module.destroy(itemset: int): void
+    ITEMSET.DESTROY_ITEMSET(itemset)
+end
+
+function module.add(item: int, itemset: int): bool
+    return ITEMSET.ADD_TO_ITEMSET(item, itemset)
+end
+
+function module.remove(item: int, itemset: int): void
+    ITEMSET.REMOVE_FROM_ITEMSET(item, itemset)
+end
+
+function module.clean(itemset: int): void
+    ITEMSET.CLEAN_ITEMSET(itemset)
+end
+
+return module

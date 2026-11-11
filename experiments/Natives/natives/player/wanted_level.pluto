@@ -1,0 +1,149 @@
+local module = {}
+
+-- State
+
+function module.are_flashing_stars_about_to_drop(player_id: int): bool
+    return PLAYER.ARE_PLAYER_FLASHING_STARS_ABOUT_TO_DROP(player_id)
+end
+
+function module.are_stars_greyed_out(player_id: int): bool
+    return PLAYER.ARE_PLAYER_STARS_GREYED_OUT(player_id)
+end
+
+function module.is_wanted_and_has_been_seen_by_cops(player_id: int): bool
+    return PLAYER.IS_WANTED_AND_HAS_BEEN_SEEN_BY_COPS(player_id)
+end
+
+function module.is_wanted_level_greater(player_id: int, wanted_level: int): bool
+    return PLAYER.IS_PLAYER_WANTED_LEVEL_GREATER(player_id, wanted_level)
+end
+
+-- Get
+
+function module.get_current(player_id: int): int
+    return PLAYER.GET_PLAYER_WANTED_LEVEL(player_id)
+end
+
+-- The game's highest wanted level (the same for every player: the native takes no player)
+function module.get_max(): int
+    return PLAYER.GET_MAX_WANTED_LEVEL()
+end
+
+function module.get_radius(player_id: int): float
+    return PLAYER.GET_WANTED_LEVEL_RADIUS(player_id)
+end
+
+function module.get_wanted_centre_position(player_id: int): vector3
+    return PLAYER.GET_PLAYER_WANTED_CENTRE_POSITION(player_id)
+end
+
+function module.get_wanted_level_threshold(wanted_level: int): int
+    return PLAYER.GET_WANTED_LEVEL_THRESHOLD(wanted_level)
+end
+
+function module.get_wanted_level_time_to_escape(): int
+    return PLAYER.GET_WANTED_LEVEL_TIME_TO_ESCAPE()
+end
+
+function module.get_fake_wanted_level(player_id: int): int
+    return PLAYER.GET_PLAYER_FAKE_WANTED_LEVEL(player_id)
+end
+
+-- Set
+
+function module.set(player_id: int, level: int, disableOnMission: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL(player_id, level, disableOnMission)
+end
+
+function module.set_no_drop(player_id: int, level: int, p2: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player_id, level, p2)
+end
+
+function module.set_now(player_id: int, p1: bool = false): void
+    return PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(player_id, p1)
+end
+
+-- @param position Pointer: pass memory.alloc(size) and read the result back
+function module.set_wanted_centre_position(player_id: int, position: int, p2: bool, p3: bool): void
+    PLAYER.SET_PLAYER_WANTED_CENTRE_POSITION(player_id, position, p2, p3)
+end
+
+function module.set_dispatch_cops(player_id: int, toggle: bool): void
+    PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(player_id, toggle)
+end
+
+function module.set_max_wanted_level(max_wanted_level: int): void
+    PLAYER.SET_MAX_WANTED_LEVEL(max_wanted_level)
+end
+
+function module.set_police_radar_blips(toggle: bool): void
+    PLAYER.SET_POLICE_RADAR_BLIPS(toggle)
+end
+
+-- The player will be ignored by the police if toggle is set to true
+function module.set_police_ignore(player_id: int, toggle: bool): void
+    PLAYER.SET_POLICE_IGNORE_PLAYER(player_id, toggle)
+end
+
+function module.set_law_peds_can_attack_non_wanted_frame(player_id: int): void
+    PLAYER.SET_LAW_PEDS_CAN_ATTACK_NON_WANTED_PLAYER_THIS_FRAME(player_id)
+end
+
+function module.set_wanted_level_multiplier(multiplier: float): void
+    PLAYER.SET_WANTED_LEVEL_MULTIPLIER(multiplier)
+end
+
+-- Max value is 1.0
+function module.set_wanted_level_difficulty(player_id: int, difficulty: float): void
+    PLAYER.SET_WANTED_LEVEL_DIFFICULTY(player_id, difficulty)
+end
+
+function module.set_wanted_level_hidden_escape_time(player_id: int, wanted_level: int, loss_time: int): void
+    PLAYER.SET_WANTED_LEVEL_HIDDEN_ESCAPE_TIME(player_id, wanted_level, loss_time)
+end
+
+-- Actions
+
+function module.change(player_id: int, level: int): void
+    local player = player_id
+
+    if player == players.user() then
+        PLAYER.SET_PLAYER_WANTED_LEVEL_NO_DROP(player, level, false)
+        PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(player, false)
+        PLAYER.SET_PLAYER_WANTED_LEVEL(player, level, false)
+    else
+        players.set_wanted_level(player, level)
+    end
+end
+
+function module.clear_wanted_level(player_id: int): void
+    PLAYER.CLEAR_PLAYER_WANTED_LEVEL(player_id)
+end
+
+function module.reset_wanted_level_difficulty(player_id: int): void
+    PLAYER.RESET_WANTED_LEVEL_DIFFICULTY(player_id)
+end
+
+function module.reset_wanted_level_hidden_escape_time(player_id: int): void
+    PLAYER.RESET_WANTED_LEVEL_HIDDEN_ESCAPE_TIME(player_id)
+end
+
+-- This native is used in both singleplayer and multiplayer scripts
+function module.update_wanted_position_this_frame(player_id: int): void
+    PLAYER.UPDATE_WANTED_POSITION_THIS_FRAME(player_id)
+end
+
+-- This has been found in use in the decompiled files
+function module.suppress_losing_wanted_level_if_hidden_this_frame(player_id: int): void
+    PLAYER.SUPPRESS_LOSING_WANTED_LEVEL_IF_HIDDEN_THIS_FRAME(player_id)
+end
+
+function module.suppress_witnesses_calling_police_this_frame(player_id: int): void
+    PLAYER.SUPPRESS_WITNESSES_CALLING_POLICE_THIS_FRAME(player_id)
+end
+
+function module.report_police_spotted(player_id: int): void
+    PLAYER.REPORT_POLICE_SPOTTED_PLAYER(player_id)
+end
+
+return module

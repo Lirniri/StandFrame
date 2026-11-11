@@ -1,0 +1,69 @@
+-- Shocking events and decision makers (EVENT natives)
+
+local module = {}
+
+-- State
+
+function module.is_shocking_event_in_sphere(
+    event_type: int, x: float, y: float, z: float, radius: float
+): bool
+    -- body function:
+    return EVENT.IS_SHOCKING_EVENT_IN_SPHERE(event_type, x, y, z, radius)
+end
+
+-- Set
+
+function module.set_decision_maker(ped: int, name: int): void
+    EVENT.SET_DECISION_MAKER(ped, name)
+end
+
+-- Actions
+
+function module.clear_decision_maker_event_response(name: int, event_type: int): void
+    EVENT.CLEAR_DECISION_MAKER_EVENT_RESPONSE(name, event_type)
+end
+
+function module.block_decision_maker_event(name: int, event_type: int): void
+    EVENT.BLOCK_DECISION_MAKER_EVENT(name, event_type)
+end
+
+function module.unblock_decision_maker_event(name: int, event_type: int): void
+    EVENT.UNBLOCK_DECISION_MAKER_EVENT(name, event_type)
+end
+
+function module.add_shocking_event_at_position(
+    event_type: int, x: float, y: float, z: float, duration: float
+): int
+    -- body function:
+    return EVENT.ADD_SHOCKING_EVENT_AT_POSITION(event_type, x, y, z, duration)
+end
+
+function module.add_shocking_event_for_entity(event_type: int, entity: int, duration: float): int
+    return EVENT.ADD_SHOCKING_EVENT_FOR_ENTITY(event_type, entity, duration)
+end
+
+function module.remove_shocking_event(event: int): bool
+    return EVENT.REMOVE_SHOCKING_EVENT(event)
+end
+
+function module.remove_all_shocking_events(p0: bool): void
+    EVENT.REMOVE_ALL_SHOCKING_EVENTS(p0)
+end
+
+function module.remove_shocking_event_spawn_blocking_areas(): void
+    EVENT.REMOVE_SHOCKING_EVENT_SPAWN_BLOCKING_AREAS()
+end
+
+function module.suppress_shocking_events_next_frame(): void
+    EVENT.SUPPRESS_SHOCKING_EVENTS_NEXT_FRAME()
+end
+
+function module.suppress_shocking_event_type_next_frame(event_type: int): void
+    EVENT.SUPPRESS_SHOCKING_EVENT_TYPE_NEXT_FRAME(event_type)
+end
+
+function module.suppress_agitation_events_next_frame(): void
+    EVENT.SUPPRESS_AGITATION_EVENTS_NEXT_FRAME()
+end
+
+return module
