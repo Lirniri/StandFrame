@@ -5,6 +5,9 @@ the auto-updater (updater/updater.pluto). Make it before pushing a release to ma
     python updater/manifest.py --version 0.1.0    write it with this version
     python updater/manifest.py --check            exit 1 if it isn't up to date with src
 
+updater/versions.json lists the releases (newest first) for Update > Update To Version: --version adds its
+version to it. Tag each release v<version> (git tag v0.1.10 <commit>), the tag is what the menu installs.
+
 Hashes are of text without \\r (a Windows copy has \\r\\n), like updater.pluto counts them.
 Left out: store/<project>/logs/ - what the script writes there is never part of a release.
 """
@@ -74,6 +77,17 @@ def build(version: str, src: pathlib.Path = SRC, project: str = PROJECT) -> dict
     return {"format": FORMAT, "project": project, "version": version, "files": collect(src, project)}
 
 
+def add_version(versions_file: pathlib.Path, version: str) -> bool:
+    """Puts version first in versions.json unless it's there; "dev" isn't a release. Returns whether it changed"""
+    if version == "dev":
+        return False
+    listed = read(versions_file).get("versions", [])
+    if version in listed:
+        return False
+    versions_file.write_text(json.dumps({"versions": [version] + listed}, indent=2) + "\n", encoding="utf-8", newline="\n")
+    return True
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Makes updater/manifest.json for the auto-updater")
     parser.add_argument("--version", help="the release's version (default: the one the manifest has)")
@@ -100,6 +114,8 @@ def main(argv=None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"{out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}: {len(manifest['files'])} files, version {version}")
+    if add_version(out.parent / "versions.json", version):
+        print(f"versions.json: {version} added")
     return 0
 
 

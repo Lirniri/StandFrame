@@ -1,7 +1,8 @@
 -- Drives the updater (core/updater) for the menu and for the automatic check: keeps what the last check
 -- found, runs check and install one at a time and tells the user what happened.
 -- Settings are in the profile: update_branch, update_check_before, auto_update, update_check_days,
--- update_last_check. Strings: core/language "updater_menu" > "msg"
+-- update_last_check. Update To Version installs the release of a version typed (install_version).
+-- Strings: core/language "updater_menu" > "msg"
 
 local i18n = Atdar.loader.load("core/i18n")
 local Logger = Atdar.loader.load("core/logger")
@@ -157,30 +158,9 @@ function module.check()
     return plan
 end
 
--- Installs what the last check found; with update_check_before on (or no check yet) it checks first and
--- stops if there's nothing newer. Yields: call it from a thread
--- @return "installed", "up_to_date", "failed" or "busy"; the script is to be restarted after "installed"
-function module.install(): string
-
-    if module.busy then
-        log:notify(text("msg.busy"))
-        return "busy"
-    end
-
-    module.busy = true
-
-    local plan = module.plan
-    local err = nil
-
-    if plan == nil or Atdar.profile.get("update_check_before") ~= false then
-        plan, err = run_check()
-    end
-
-    if plan == nil then
-        module.busy = false
-        log:warn(text("msg.check_failed"):format(err))
-        return "failed"
-    end
+-- Carries a plan out: tells, downloads, writes. Called with module.busy set; clears it
+-- @return "installed", "up_to_date" or "failed"
+local function apply_plan(plan: table): string
 
     if updater.is_up_to_date(plan) then
         module.busy = false
@@ -208,6 +188,175 @@ function module.install(): string
     changed()
     log:success(text("msg.installed"):format(tostring(plan.version)))
     return "installed"
+end
+
+-- Installs what the last check found; with update_check_before on (or no check yet) it checks first and
+-- stops if there's nothing newer. Yields: call it from a thread
+-- @return "installed", "up_to_date", "failed" or "busy"; the script is to be restarted after "installed"
+function module.install(): string
+
+    if module.busy then
+        log:notify(text("msg.busy"))
+        return "busy"
+    end
+
+    module.busy = true
+
+    local plan = module.plan
+    local err = nil
+
+    if plan == nil or Atdar.profile.get("update_check_before") ~= false then
+        plan, err = run_check()
+    end
+
+    if plan == nil then
+        module.busy = false
+        log:warn(text("msg.check_failed"):format(err))
+        return "failed"
+    end
+
+    return apply_plan(plan)
+end
+
+-- The versions the last fetch_versions got, nil before one
+module.versions_found = nil
+
+-- The branches that make releases: main - the tried ones, experiment - all of them, the newest too
+local RELEASE_BRANCHES = { "main", "experiment" }
+
+-- Whether version a is newer than b: "0.1.10" is newer than "0.1.9"
+local function is_newer(a: string, b: string): bool
+
+    local left, right = {}, {}
+
+    for number in a:gmatch("%d+") do
+        table.insert(left, tonumber(number))
+    end
+
+    for number in b:gmatch("%d+") do
+        table.insert(right, tonumber(number))
+    end
+
+    for i = 1, math.max(#left, #right) do
+        local x, y = left[i] or 0, right[i] or 0
+        if x ~= y then
+            return x > y
+        end
+    end
+
+    return false
+end
+
+-- The versions released, newest first, each with the branch it was released to: { version, branch }.
+-- With Sync With Branch on (the default) it's the update branch's list. Off: the lists of every branch together;
+-- a version main has is "main", one only experiment has is "experiment". Yields: call it from a thread
+-- @return The entries, or nil and why not
+function module.fetch_versions()
+
+    local o = options()
+    local entries = {}
+
+    if Atdar.profile.get("update_versions_sync") ~= false then
+
+        local versions, err = updater.versions(o)
+
+        if versions == nil then
+            return nil, err
+        end
+
+        for _, version in ipairs(versions) do
+            table.insert(entries, { version = version, branch = o.branch })
+        end
+
+        module.versions_found = entries
+        return entries, nil
+    end
+
+    -- Each version once, under the first branch that has it; a branch that can't be read is skipped
+    local seen = {}
+    local last_err = nil
+
+    for _, branch in ipairs(RELEASE_BRANCHES) do
+
+        o.branch = branch
+        local versions, err = updater.versions(o)
+
+        if versions == nil then
+            last_err = err
+        else
+            for _, version in ipairs(versions) do
+                if not seen[version] then
+                    seen[version] = true
+                    table.insert(entries, { version = version, branch = branch })
+                end
+            end
+        end
+    end
+
+    if #entries == 0 then
+        return nil, last_err
+    end
+
+    table.sort(entries, |a, b| -> is_newer(a.version, b.version))
+    module.versions_found = entries
+    return entries, nil
+end
+
+-- The refs of the repo a typed version can mean: "0.1.8" is the release tagged v0.1.8 (or 0.1.8); anything
+-- else - a tag, a branch, a commit - is taken as typed
+local function refs_of(typed: string): table
+
+    local version = typed:match("^v?(%d+%.%d+%.%d+)$")
+
+    if version ~= nil then
+        return { $"v{version}", version }
+    end
+
+    return { typed }
+end
+
+-- Installs the release of a version, an older one too: the files are made the same as that release's
+-- (profiles and settings stay). Yields: call it from a thread
+-- @param typed "0.1.8", or a tag, a branch or a commit of the repo
+-- @return "installed", "up_to_date", "failed" or "busy"; the script is to be restarted after "installed"
+function module.install_version(typed: string): string
+
+    if module.busy then
+        log:notify(text("msg.busy"))
+        return "busy"
+    end
+
+    if not updater.has_access() then
+        log:warn(text("msg.check_failed"):format(text("msg.no_access"):format(Atdar.name)))
+        return "failed"
+    end
+
+    module.busy = true
+
+    local plan = nil
+    local err = nil
+
+    for _, ref in ipairs(refs_of(typed)) do
+        plan, err = updater.check({ name = Atdar.name, branch = ref })
+        if plan ~= nil then
+            break
+        end
+    end
+
+    if plan == nil then
+        module.busy = false
+        log:warn(text("msg.version_not_found"):format(typed, tostring(err)))
+        return "failed"
+    end
+
+    return apply_plan(plan)
+end
+
+-- Installs a version and starts the script again when it was installed. Yields: call it from a thread
+function module.install_version_and_restart(typed: string): void
+    if module.install_version(typed) == "installed" then
+        installer.restart()
+    end
 end
 
 -- Installs and starts the script again when it was updated. Yields: call it from a thread
