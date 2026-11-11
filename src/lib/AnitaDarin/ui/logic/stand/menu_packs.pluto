@@ -7,6 +7,7 @@ local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local Logger = Atdar.loader.load("core/logger")
 -- Pack files copied and compared as they are
 local plain = Atdar.loader.load("core/filesystem/file")
+local safe_path = Atdar.loader.load("core/filesystem/safe_path")
 
 local log = new Logger("MenuPacks")
 
@@ -124,15 +125,37 @@ function module.read_core_manifest(lib_dir: string): ?table
     return manifest
 end
 
--- Full paths of everything in a manifest. One written before translations moved to store has no store_files
+-- Full paths of everything in a manifest. One written before translations moved to store has no store_files.
+-- The manifest is a file on disk the user can edit: an entry that isn't a path inside lib or store ("..\..\x",
+-- "C:\x") is left out, so removing a copy can't delete anything else
 local function copied_paths(manifest: table, lib_dir: string, store_dir: string): table
+
     local paths = {}
+
+    local function add(root: string, relative): void
+
+        local path = nil
+
+        if type(relative) == "string" then
+            path = safe_path.resolve(root, relative)
+        end
+
+        if path == nil then
+            log:warn($"'{tostring(relative)}' in the list of copied files isn't a path inside the script, left alone")
+            return
+        end
+
+        table.insert(paths, path)
+    end
+
     for _, relative in ipairs(manifest.files) do
-        table.insert(paths, $"{lib_dir}{relative}")
+        add(lib_dir, relative)
     end
+
     for _, relative in ipairs(manifest.store_files or {}) do
-        table.insert(paths, $"{store_dir}{relative}")
+        add(store_dir, relative)
     end
+
     return paths
 end
 

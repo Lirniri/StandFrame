@@ -1,0 +1,109 @@
+-- lib/AnitaDarin/core/filesystem/safe_path.pluto
+--
+-- Paths made from what the user (or a file the user can edit) says: a typed name, a list of files in a manifest.
+-- Nothing of that may reach outside the folder it is meant for, so every such path goes through resolve:
+--
+--     local safe = Atdar.loader.load("core/filesystem/safe_path")
+--     local path, why = safe.resolve(Atdar.filesystem.paths.store, "user/call_function/mine.json")
+--     -- "<store>user\call_function\mine.json", or nil and why not
+--
+-- A name is refused when it is empty, "." or "..", has a character Windows can't have in a name or a path
+-- separator (\ and / are told apart before: they split the path), ends with a dot or a space, or is a device
+-- name (con, nul, aux, prn, com1-9, lpt1-9, with or without an extension). An absolute path, a drive letter ("C:")
+-- and a network path ("\\host") are refused as well, so the result is always inside the root.
+-- The names already in use (letters of any language, spaces inside, dots inside) stay allowed.
+
+local module = {}
+
+local BACKSLASH = string.char(92)
+
+-- Matches a backslash in a pattern
+local BACKSLASH_PATTERN = "%" .. BACKSLASH
+
+-- Characters no name can have: controls, Windows' reserved ones, and the separators
+local BAD_CHARS = '[%c<>:"|?*/' .. BACKSLASH .. "]"
+
+-- Names Windows takes for a device, whatever the extension
+local DEVICES = { con = true, prn = true, aux = true, nul = true }
+
+for i = 1, 9 do
+    DEVICES["com" .. i] = true
+    DEVICES["lpt" .. i] = true
+end
+
+-- Files that run: never written by what the user types
+local CODE_EXTENSIONS = {
+    pluto = true, lua = true, dll = true, exe = true, bat = true, cmd = true, ps1 = true,
+}
+
+-- Whether one name of a path (a file or a folder) can be made
+function module.is_valid_segment(name: string): bool
+
+    if type(name) ~= "string" or name == "" or name == "." or name == ".." then
+        return false
+    end
+
+    if name:find(BAD_CHARS) ~= nil then
+        return false
+    end
+
+    -- Windows drops a trailing dot or space: "x." is "x"
+    local last = name:sub(-1)
+
+    if last == "." or last == " " or name:sub(1, 1) == " " then
+        return false
+    end
+
+    return not DEVICES[name:match("^([^.]*)"):lower()]
+end
+
+-- Whether the file is code (by its extension): a launcher, a library file, a native library
+function module.is_code(path: string): bool
+    local extension = path:match("%.([^./" .. BACKSLASH .. "]+)$")
+    return extension ~= nil and CODE_EXTENSIONS[extension:lower()] == true
+end
+
+-- A path inside root: its names checked, the separators made the ones Windows has
+-- @param root The folder the path is under, with or without a closing separator
+-- @param relative The path from it, with / or \ as the separators
+-- @return The full path, or nil and why not
+function module.resolve(root: string, relative: string)
+
+    if type(relative) ~= "string" or relative == "" then
+        return nil, "empty path"
+    end
+
+    local normal = relative:gsub(BACKSLASH_PATTERN, "/")
+
+    if normal:sub(1, 1) == "/" then
+        return nil, "absolute path"
+    end
+
+    -- A folder ("core/call_function/") keeps its closing separator
+    local closing = ""
+
+    if normal:sub(-1) == "/" then
+        normal = normal:sub(1, -2)
+        closing = BACKSLASH
+    end
+
+    local parts = {}
+
+    for part in (normal .. "/"):gmatch("([^/]*)/") do
+        if not module.is_valid_segment(part) then
+            return nil, $"bad name '{part}'"
+        end
+
+        table.insert(parts, part)
+    end
+
+    local last = root:sub(-1)
+
+    if last ~= BACKSLASH and last ~= "/" then
+        root ..= BACKSLASH
+    end
+
+    return root .. table.concat(parts, BACKSLASH) .. closing, nil
+end
+
+return module

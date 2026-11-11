@@ -17,12 +17,20 @@ function module.read(path: string, binary: bool = false): ?string
     if handle == nil then
         return nil
     end
-    local content = handle:read("*a")
+
+    -- A read that fails (a file locked half way, a disk error) must not leave the handle open
+    local ok, content = pcall(handle.read, handle, "*a")
     handle:close()
+
+    if not ok then
+        return nil
+    end
+
     return content
 end
 
--- Writes the whole file, its folder made when it isn't there
+-- Writes the whole file, its folder made when it isn't there. The handle is closed whatever happens, and a write
+-- that didn't go through (a full disk) is told: false
 -- @param binary Written as it is ("wb"); otherwise as text
 -- @return true, or false and why not
 function module.write(path: string, content: string, binary: bool = false)
@@ -38,8 +46,25 @@ function module.write(path: string, content: string, binary: bool = false)
         return false, err
     end
 
-    handle:write(content)
-    handle:close()
+    local wrote_ok, written, write_err = pcall(handle.write, handle, content)
+    local close_ok, closed, close_err = pcall(handle.close, handle)
+
+    if not wrote_ok then
+        return false, tostring(written)
+    end
+
+    if not written then
+        return false, write_err or "write failed"
+    end
+
+    if not close_ok then
+        return false, tostring(closed)
+    end
+
+    if not closed then
+        return false, close_err or "close failed"
+    end
+
     return true, nil
 end
 

@@ -27,6 +27,10 @@
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 local plain = Atdar.loader.load("core/filesystem/file")
+local safe_path = Atdar.loader.load("core/filesystem/safe_path")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("CallFunctionFiles")
 
 local module = {}
 
@@ -73,15 +77,49 @@ local function folder_of(area: string): string
     return $"{area}/{FOLDER}"
 end
 
--- @return The file's full path, with the separators Windows has
-local function path_of(id: string): string
-    local relative = id:gsub("/", "\\")
+-- Whether the id is a file of the editor: <area>/call_function/<name>.json and nothing else. An id comes from the
+-- list of files, but what is written and deleted is checked here too, so no id can name another place
+local function is_valid_id(id): bool
 
-    return $"{Atdar.filesystem.paths.store}{relative}"
+    if type(id) ~= "string" then
+        return false
+    end
+
+    local area, name = id:match("^(%a+)/call_function/([^/]+)$")
+
+    if area == nil or (area ~= "core" and area ~= "user") then
+        return false
+    end
+
+    return name:sub(-5) == ".json" and safe_path.is_valid_segment(name)
 end
 
-local function file_of(id: string): table
-    return new JsonFile(path_of(id), true, KEY_ORDER)
+-- @return A folder or file of the script's store from its path there ("core/call_function/"), with the
+-- separators Windows has; nil if the path isn't a safe one
+local function store_path(relative: string): ?string
+    return (safe_path.resolve(Atdar.filesystem.paths.store, relative))
+end
+
+-- @return The file's full path; nil if the id isn't a file of the editor
+local function path_of(id: string): ?string
+
+    if not is_valid_id(id) then
+        log:warn($"'{tostring(id)}' isn't a file of the editor, nothing done")
+        return nil
+    end
+
+    return store_path(id)
+end
+
+local function file_of(id: string): ?table
+
+    local path = path_of(id)
+
+    if path == nil then
+        return nil
+    end
+
+    return new JsonFile(path, true, KEY_ORDER)
 end
 
 -- Files
@@ -97,10 +135,10 @@ function module.list(): table
 
     for _, area in ipairs(module.AREAS) do
 
-        local dir = path_of(folder_of(area))
+        local dir = store_path(folder_of(area))
         local names = {}
         -- Stand's list_files fails on a folder that isn't there (user/call_function, before anything is saved in it)
-        local listed = filesystem.is_dir(dir) and filesystem.list_files(dir) or {}
+        local listed = dir ~= nil and filesystem.is_dir(dir) and filesystem.list_files(dir) or {}
 
         for _, path in ipairs(listed) do
             local name = path:match("([^\\/]+)$")
@@ -123,7 +161,8 @@ end
 -- @return The file's table; empty when it can't be read
 function module.read(id: string): table
 
-    local data = file_of(id):read()
+    local file = file_of(id)
+    local data = file ~= nil and file:read() or nil
 
     if type(data) ~= "table" then
         return {}
@@ -136,7 +175,13 @@ end
 -- @return Whether it was written
 function module.write(id: string, data: table): bool
 
-    local written = file_of(id):write(data)
+    local file = file_of(id)
+
+    if file == nil then
+        return false
+    end
+
+    local written = file:write(data)
 
     Atdar.loader.load("ui/logic/stand/script/call_function_registry").forget()
 
@@ -150,33 +195,42 @@ function module.create(typed: string)
 
     local name = (trim(typed):gsub("%.json$", ""))
 
-    if name == "" or name:find("[^%w_%-]") then
+    -- Letters, digits, _ and -; a name Windows keeps for a device (nul, con...) is no name either
+    if name == "" or name:find("[^%w_%-]") or not safe_path.is_valid_segment($"{name}.json") then
         return false, "bad_name"
     end
 
     local folder = folder_of("user")
     local id = $"{folder}{name}.json"
+    local path = path_of(id)
 
-    if filesystem.exists(path_of(id)) then
+    if path == nil then
+        return false, "bad_name"
+    end
+
+    if filesystem.exists(path) then
         return false, "exists"
     end
 
-    file_of(id):write({})
+    if not file_of(id):write({}) then
+        return false, "bad_name"
+    end
 
     return true, id
 end
 
--- Deletes a file (and its backup): not a protected one
+-- Deletes a file (and its backup): only one of the user's own (user/call_function), and not a protected one.
+-- The files shipped with the script (core/call_function) stay: the updater would bring them back anyway
 -- @return Whether it was deleted, or why not ("protected", "missing")
 function module.delete(id: string)
 
-    if module.is_protected(id) then
+    if not is_valid_id(id) or module.is_protected(id) or id:sub(1, 5) ~= "user/" then
         return false, "protected"
     end
 
     local path = path_of(id)
 
-    if not plain.remove(path) then
+    if path == nil or not plain.remove(path) then
         return false, "missing"
     end
 

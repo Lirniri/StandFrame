@@ -283,14 +283,23 @@ Module = class
         return Atdar.loader.load("core/i18n").label($"{prefix}.{key}", english)
     end
 
-    -- A JSON file in the module's folder: module:json_file("vehicles"):write({ ... }), :read()
+    -- A JSON file in the module's folder: module:json_file("vehicles"):write({ ... }), :read().
+    -- The name may have folders ("vehicles/my car") but can't go out of the module's folder: ".." or an absolute path
+    -- is an error (a module passing what the user typed finds out at once, not by a file written elsewhere)
     -- @return nil for a module made in code (it has no folder)
     function json_file(file_name: string): ?table
         local dir = self:folder()
         if dir == nil then
             return nil
         end
-        return new JsonFile($"{dir}{file_name}.json")
+
+        local path, why = Atdar.loader.load("core/filesystem/safe_path").resolve(dir, $"{file_name}.json")
+
+        if path == nil then
+            error($"[Module '{self.name}'] json_file '{file_name}': {why}", 2)
+        end
+
+        return new JsonFile(path)
     end
 
     -- Public methods

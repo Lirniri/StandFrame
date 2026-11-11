@@ -184,10 +184,11 @@ local class JsonFile
             return false
         end
 
-        local written = file:write(text)
-        local closed = file:close()
+        -- Both can throw: the handle is closed either way, so a failed write doesn't leave the file open
+        local wrote_ok, written = pcall(file.write, file, text)
+        local close_ok, closed = pcall(file.close, file)
 
-        if not written or not closed then
+        if not wrote_ok or not written or not close_ok or not closed then
             os.remove(tmp)
             log:error($"{self.path} not written, writing {tmp} failed")
             return false

@@ -1,0 +1,102 @@
+-- core/filesystem/safe_path and what uses it: paths made from typed names and from files the user can edit
+-- stay inside their folder; core/filesystem/file closes its handles and tells a failed write
+local stand = require("stand")
+stand.boot()
+local safe = Atdar.loader.load("core/filesystem/safe_path")
+local plain = Atdar.loader.load("core/filesystem/file")
+local BS = string.char(92)
+
+-- ─── resolve ─────────────────────────────────────────────────────────────────
+
+local root = $"C:{BS}LS{BS}store{BS}AnitaDarin{BS}"
+
+stand.equal(safe.resolve(root, "user/call_function/short_name.json"), $"{root}user{BS}call_function{BS}short_name.json",
+    "a path inside the root: the separators are Windows'")
+stand.equal(safe.resolve(root, $"user{BS}a.json"), $"{root}user{BS}a.json", "a path with backslashes is the same")
+stand.equal(safe.resolve($"C:{BS}LS", "a.json"), $"C:{BS}LS{BS}a.json", "a root without its closing separator gets one")
+stand.equal(safe.resolve(root, "vehicles/my car 2"), $"{root}vehicles{BS}my car 2", "spaces and digits inside a name stay allowed")
+stand.equal(safe.resolve(root, "vehicles/\xD0\xB0\xD0\xB1.json"), $"{root}vehicles{BS}\xD0\xB0\xD0\xB1.json", "so do letters of other languages")
+
+local bad = {
+    "", "..", "../x", $"..{BS}x", "a/../b", "a/..", "./x", "/abs", $"{BS}abs", $"{BS}{BS}host{BS}share",
+    "C:/x", "C:x", "a//b", "a//", "nul", "NUL.json", "con", "Com1.txt", "lpt9", "x.", "a/x. ", " x", "a:b", "a?b", "a*b",
+    'a"b', "a<b", "a|b", "a\nb",
+}
+
+for _, path in ipairs(bad) do
+    local full, why = safe.resolve(root, path)
+    stand.check(full == nil and why ~= nil, $"refused: {path:gsub("%c", "?")}")
+end
+
+stand.equal(safe.resolve(root, nil), nil, "nothing is no path")
+stand.equal(safe.resolve(root, "core/call_function/"), $"{root}core{BS}call_function{BS}", "a folder keeps its closing separator")
+
+stand.check(safe.is_code("a/b.pluto") and safe.is_code("x.LUA") and safe.is_code($"lib{BS}n.dll"), "code files are told by their extension")
+stand.check(not safe.is_code("short_name.json") and not safe.is_code("noextension") and not safe.is_code("a.pluto.json"), "data files aren't")
+
+-- ─── core/filesystem/file ────────────────────────────────────────────────────
+
+local dir = stand.tmpdir("safe_path")
+stand.check(plain.write($"{dir}a/b/c.txt", "hello") and plain.read($"{dir}a/b/c.txt") == "hello", "write makes the folders, read gives it back")
+
+-- A file where a folder is wanted: the write fails and says so instead of reporting true
+stand.write_file($"{dir}blocker", "x")
+local wrote, why = plain.write($"{dir}blocker/inside.txt", "y")
+stand.check(wrote == false and why ~= nil, "a write that can't open the file is false, with a reason")
+stand.equal(plain.read($"{dir}missing.txt"), nil, "a missing file reads as nil")
+
+-- ─── Files Editor: an id can't name another place ────────────────────────────
+
+local store = $"{dir}store{BS}AnitaDarin{BS}"
+io.makedirs($"{store}core/call_function")
+io.makedirs($"{store}user/call_function")
+stand.write_file($"{store}core/call_function/short_name.json", "{}")
+stand.write_file($"{store}core/call_function/other.json", "{}")
+stand.write_file($"{store}user/call_function/mine.json", '{"a": 1}')
+stand.write_file($"{dir}store/victim.json", "{}")
+
+Atdar.filesystem = Atdar.filesystem or { paths = Atdar.loader.load("core/filesystem/paths") }
+local real_store = Atdar.filesystem.paths.store
+Atdar.filesystem.paths.store = store
+local files = Atdar.loader.load("ui/logic/stand/script/call_function_files")
+
+stand.equal(files.read("user/call_function/mine.json").a, 1, "an id of the editor reads")
+stand.equal(next(files.read("../victim.json")), nil, "an id outside the editor's folders reads as empty")
+stand.equal(next(files.read("user/call_function/../../../victim.json")), nil, "a way up reads as empty too")
+
+stand.clear_logs()
+stand.check(not files.write("user/call_function/../../../victim.json", { x = 1 }), "a way up isn't written")
+stand.check(not files.write("core/call_function/x.pluto", { x = 1 }) and not io.exists($"{store}core/call_function/x.pluto"), "only .json files are written")
+stand.check(not files.write("lib/AnitaDarin/core/loader.json", { x = 1 }), "nor a folder of the script's code")
+stand.check(stand.read_file($"{dir}store/victim.json") == "{}", "the file outside is as it was")
+stand.check(stand.find_log("isn't a file of the editor"), "the refusal is logged")
+
+stand.equal(select(2, files.delete("../victim.json")), "protected", "an id outside can't be deleted")
+stand.equal(select(2, files.delete("user/call_function/../../victim.json")), "protected", "nor by a way up")
+stand.equal(select(2, files.delete("core/call_function/other.json")), "protected", "a file shipped with the script (core) stays")
+stand.check(io.exists($"{store}core/call_function/other.json") and io.exists($"{dir}store/victim.json"), "and nothing is gone")
+stand.check(files.delete("user/call_function/mine.json") and not io.exists($"{store}user/call_function/mine.json"), "the user's own file is deleted")
+
+stand.equal(select(2, files.create("nul")), "bad_name", "a device name isn't a file name")
+stand.equal(select(2, files.create("../x")), "bad_name", "a typed way up isn't a name")
+stand.equal(select(2, files.create("a b")), "bad_name", "a name with a space isn't one")
+stand.check(files.create("fresh") and io.exists($"{store}user/call_function/fresh.json"), "a good name makes the file")
+Atdar.filesystem.paths.store = real_store
+
+-- ─── A pack's list of copied files can't point out of the script ─────────────
+
+local packs = Atdar.loader.load("ui/logic/stand/menu_packs")
+local lib = $"{dir}lib{BS}AnitaDarin{BS}"
+local copied = $"{lib}ui{BS}stand{BS}menu_from_store{BS}"
+io.makedirs(copied)
+io.makedirs($"{dir}lib{BS}features")
+stand.write_file($"{copied}ok.pluto", "return {}")
+stand.write_file($"{dir}victim.txt", "mine")
+stand.write_file($"{copied}.copied.json", '{"pack": "X", "files": ["ui/stand/menu_from_store/ok.pluto", "../../victim.txt", "C:/Windows/x"]}')
+stand.clear_logs()
+local ok, removed = packs.remove_copied_core(lib, $"{dir}store{BS}")
+stand.check(ok and removed == 1, "the copied file is removed")
+stand.check(io.exists($"{dir}victim.txt"), "a file the list pointed to outside the script is left alone")
+stand.check(stand.find_log("isn't a path inside the script"), "and the entry is logged")
+
+stand.finish()
