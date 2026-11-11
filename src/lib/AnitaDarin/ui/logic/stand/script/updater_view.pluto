@@ -45,7 +45,7 @@ end
 -- "never" when no check ran, else the time of the last one
 function module.last_check_text(): string
 
-    local time = Atdar.profile.get("update_last_check") or 0
+    local time = manager.last_check_time()
 
     if time == 0 then
         return text("info.never")
@@ -184,6 +184,11 @@ function module.version_rows(kept: bool = false): table
 
     local versions = kept and manager.versions_found or nil
     local err = nil
+
+    -- The list opened less than an hour ago (or in an earlier run) is used, the network isn't asked again
+    if versions == nil and not kept then
+        versions = manager.cached_versions()
+    end
 
     if versions == nil then
         versions, err = manager.fetch_versions()
