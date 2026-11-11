@@ -1,0 +1,64 @@
+-- lib/AnitaDarin/ui/stand/core/stand_refs.pluto
+-- Stand's command refs for code outside the menu layer (ui/logic): whether an item is still there, the item
+-- behind a command name, its command names, running commands. Logic keeps refs as opaque values and asks
+-- here; only ui/stand/core calls Stand's menu.* itself.
+
+local module = {}
+
+-- Whether Stand still has the item. Without menu.is_ref_valid (an older Stand) every item counts as there:
+-- dropping them all would be worse, and every change is guarded by pcall anyway
+function module.is_valid(ref): bool
+
+    if ref == nil then
+        return false
+    end
+
+    if type(menu.is_ref_valid) ~= "function" then
+        return true
+    end
+
+    local ok, valid = pcall(menu.is_ref_valid, ref)
+    return ok and valid == true
+end
+
+-- @return The item answering to a full command name, nil if none (or it was deleted)
+function module.by_command(name: string)
+
+    local ok, ref = pcall(menu.ref_by_command_name, name)
+    if not ok or not module.is_valid(ref) then
+        return nil
+    end
+
+    return ref
+end
+
+-- @return The item's name as Stand shows it, nil if it's gone
+function module.name_of(ref): ?string
+
+    local ok, name = pcall(menu.get_menu_name, ref)
+    if not ok then
+        return nil
+    end
+
+    return name
+end
+
+-- Gives the item these full command names
+-- @return Whether Stand took them (false for a deleted item)
+function module.set_command_names(ref, names: table): bool
+    return (pcall(menu.set_command_names, ref, names))
+end
+
+-- Runs commands as if typed in the command box: "godmode on; heal"
+-- @return Whether Stand took the text, and its error when it didn't
+function module.trigger(text: string)
+    return pcall(menu.trigger_commands, text)
+end
+
+-- Takes the cursor to the item
+-- @return Whether it could
+function module.focus(ref): bool
+    return (pcall(menu.focus, ref))
+end
+
+return module

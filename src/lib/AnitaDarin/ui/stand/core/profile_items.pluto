@@ -1,0 +1,252 @@
+-- lib/AnitaDarin/ui/stand/core/profile_items.pluto
+-- Items that show and write a profile value: MenuNode calls it for an item made with `profile = "<key>"`.
+-- prepare() runs before the Stand item is made (its default, its handler), bind() after (it follows the profile).
+--
+--     ui:toggle({ key = "debug", profile = "debug", commands = { "debug" } })
+--     ui:text_input({ key = "display_name", profile = "display_name", commands = { "displayname" } })
+--     ui:slider({ key = "feed.day_start", profile = "notify_day_start", min = 0, max = 23 })
+--     ui:color({ key = "feed.background_day", profile = "notify_background_day" })
+--     ui:list_action({ key = "log_name", profile = "log_name", values = { "short", "display" } })
+--
+--   key          the item's strings, as for any item; a choice's "<key>.name" has %s for the value's word
+--   profile      the profile key the item shows and writes (Atdar.profile)
+--   after        after(value): what else the user's change does (a notice, applying it at once)
+--   allow_empty  text fields: "" is a value (a prefix may be none; a name may not)
+--   values       choices: the values, in the menu's order
+--   option       choices: option(value) -> the key of a value's word (under the scope); "<key>.<value>" if none
+--   title        choices: title(value) -> a value's word as text, for words that aren't strings (a picture's title)
+--   fallback     choices: the value shown for one that's none of the values (an old profile)
+--
+-- A value set from code (another profile loaded or reset) skips the item's handler (MenuItem.set_value), so it
+-- isn't written back as an edit. Changes apply right away but reach the profile file only on Save, like
+-- Stand's own profiles, unless the profile saves automatically.
+
+local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local Logger = Atdar.loader.load("core/logger")
+local color = Atdar.loader.load("utils/color")
+
+local log = new Logger("Profile")
+
+local module = {}
+
+-- What a colour item shows while its profile value is "" (the game's own colour)
+local DEFAULT_COLOR = { r = 0, g = 0, b = 0, a = 1.0 }
+
+-- Values
+
+-- A profile colour kept as hex -> the Stand colour a colour item shows
+local function profile_color(key: string): table
+    return color.from_hex(Atdar.profile.get(key) or "") or DEFAULT_COLOR
+end
+
+-- Writes the user's value and runs what else the item does
+local function write(opts: table, value): void
+
+    Atdar.profile.set(opts.profile, value)
+
+    if opts.after ~= nil then
+        opts.after(value)
+    end
+end
+
+-- Each kind: its default from the profile, and the handler that writes the user's change.
+-- handler(opts, ...) gets what Stand passes to the item's handler
+local KINDS = {
+
+    toggle = {
+        default = |key| -> Atdar.profile.get(key) == true,
+        value = |key| -> Atdar.profile.get(key) == true,
+        -- Stand puts its saved state back at start by calling the toggle with the same value: no change then
+        handler = function(opts: table, on: bool)
+            if Atdar.profile.get(opts.profile) == on then
+                return
+            end
+
+            write(opts, on)
+        end,
+    },
+
+    text_input = {
+        default = |key| -> Atdar.profile.get(key) or "",
+        value = |key| -> Atdar.profile.get(key),
+        handler = function(opts: table, value: string)
+            if value == "" and not opts.allow_empty then
+                return
+            end
+
+            write(opts, value)
+        end,
+    },
+
+    -- Stand resets an item to the default it was made with when it loads a Stand profile without that item
+    -- (click type 4). So sliders and colours are made with the real default, not the profile's value at that
+    -- moment, and then show the profile's value (bind)
+    slider = {
+        default = |key| -> Atdar.profile.default(key),
+        value = |key| -> Atdar.profile.get(key),
+        handler = |opts, value| -> write(opts, value),
+    },
+
+    color = {
+        default = |key| -> color.from_hex(Atdar.profile.default(key) or "") or DEFAULT_COLOR,
+        value = |key| -> profile_color(key),
+        handler = function(opts: table, colour: table, click_type)
+
+            local key = opts.profile
+            local hex = color.to_hex(colour, true)
+
+            -- Who changes the colour and when: the user or Stand by itself (debug mode)
+            log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)})")
+
+            -- Stand also calls this when the script stops, with the colour the item shows: for "" (the game's
+            -- own) that's black, which would then be saved as picked. Only a different colour is a pick
+            if clicks.is_stopping() or hex == color.to_hex(profile_color(key), true) then
+                return
+            end
+
+            write(opts, hex)
+        end,
+    },
+
+    -- A pick of one of a few values, named "<what>: <the value picked>"
+    list_action = {
+        handler = |opts, index| -> write(opts, opts.values[index]),
+    },
+
+}
+
+-- The option holding each kind's handler (as in MenuNode)
+local HANDLER_OF = {
+    toggle = "on_change",
+    text_input = "on_change",
+    slider = "on_change",
+    color = "on_change",
+    list_action = "on_select",
+}
+
+-- Choices
+
+-- The full string key of a part under the item's scope
+local function scoped(item: table, key: string): string
+
+    local prefix = item.parent ~= nil and item.parent.scope_prefix or nil
+
+    if prefix == nil then
+        return key
+    end
+
+    return $"{prefix}.{key}"
+end
+
+-- The key of a value's word, under the scope
+local function option_key(item: table, opts: table, value): string
+
+    if opts.option ~= nil then
+        return scoped(item, opts.option(value))
+    end
+
+    return scoped(item, $"{opts.key}.{value}")
+end
+
+-- A value's word as text
+local function word(item: table, opts: table, value): string
+
+    if opts.title ~= nil then
+        return opts.title(value or "")
+    end
+
+    return i18n.text(option_key(item, opts, value))
+end
+
+-- The caption of a choice: "<key>.name" with the word of the value the profile has
+local function choice_caption(item: table, opts: table): string
+
+    local current = Atdar.profile.get(opts.profile)
+    local known = false
+
+    for _, value in ipairs(opts.values) do
+        if value == current then
+            known = true
+        end
+    end
+
+    -- A value with a title of its own is shown as it is, also one that isn't offered
+    if not known and opts.title == nil then
+        current = opts.fallback or opts.values[1]
+    end
+
+    local name = i18n.text(scoped(item, $"{opts.key}.name"))
+
+    return name:format(word(item, opts, current))
+end
+
+-- The options of a choice: its values' words, as Stand labels where they're strings
+local function choice_options(item: table, opts: table): table
+
+    local options = {}
+
+    for _, value in ipairs(opts.values) do
+        if opts.title ~= nil then
+            table.insert(options, opts.title(value))
+        else
+            table.insert(options, i18n.label(option_key(item, opts, value)))
+        end
+    end
+
+    return options
+end
+
+-- Items
+
+-- Before the Stand item is made: its default from the profile, its handler writing the user's change
+-- @param kind The MenuNode method: toggle, text_input, slider, color or list_action
+function module.prepare(kind: string, opts: table): void
+
+    local spec = KINDS[kind]
+    if spec == nil then
+        error($"[profile_items] no profile item for kind '{kind}' ({opts.profile})")
+    end
+
+    local field = HANDLER_OF[kind]
+    local own = opts[field]
+
+    if spec.default ~= nil then
+        opts.default = spec.default(opts.profile)
+    end
+
+    if kind == "color" and opts.transparency == nil then
+        opts.transparency = true -- kept as hex RRGGBBAA, with its opacity
+    end
+
+    -- The options are words under the item's scope: set in bind, once the item knows its node
+    if kind == "list_action" then
+        opts.options = {}
+    end
+
+    opts[field] = function(...)
+
+        spec.handler(opts, ...)
+
+        if own ~= nil then
+            own(...)
+        end
+    end
+end
+
+-- After the Stand item is made: it shows the profile's value, also after another profile is loaded or reset
+function module.bind(item: table, kind: string, opts: table): void
+
+    local spec = KINDS[kind]
+    local key = opts.profile
+
+    if kind == "list_action" then
+        item:set_options(choice_options(item, opts))
+        item:caption(|| -> choice_caption(item, opts))
+        return
+    end
+
+    item:value_from(|| -> spec.value(key))
+end
+
+return module

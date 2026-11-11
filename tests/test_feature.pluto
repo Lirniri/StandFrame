@@ -34,7 +34,7 @@ local function record(name) return function() table.insert(events, name) end end
 local toggle = new Feature({ id = "t.toggle", kind = "toggle",
     on_save_state = record("save"), on_enable = record("enable"),
     on_disable = record("disable"), on_load_state = record("load") })
-local toggle_ref = node:add_feature(toggle, "Toggle")
+local toggle_ref = node:add_feature(toggle, "Toggle").ref
 stand.click(toggle_ref)
 stand.click(toggle_ref)
 stand.equal(table.concat(events, ","), "save,enable,disable,load", "save, enable ... disable, load")
@@ -45,7 +45,7 @@ local ticks, disables = 0, 0
 local loop = new Feature({ id = "t.loop", kind = "loop",
     on_tick = function() ticks += 1 if ticks == 3 then error("boom") end end,
     on_disable = function() disables += 1 end })
-local loop_ref = node:add_feature(loop, "Loop")
+local loop_ref = node:add_feature(loop, "Loop").ref
 stand.clear_logs()
 stand.click(loop_ref)
 stand.frame(10)
@@ -81,7 +81,7 @@ stand.check(bare:get_error():find("on_tick", 1, true), "get_error() says what fa
 disables = 0
 local bad_enable = new Feature({ id = "t.bad_enable", kind = "toggle",
     on_enable = function() error("bad enable") end, on_disable = function() disables += 1 end })
-local bad_enable_ref = node:add_feature(bad_enable, "BadEnable")
+local bad_enable_ref = node:add_feature(bad_enable, "BadEnable").ref
 stand.clear_logs()
 stand.click(bad_enable_ref)
 stand.check(not bad_enable_ref.value and not bad_enable:is_enabled(), "toggle switched off")
@@ -91,7 +91,7 @@ stand.equal(disables, 1, "on_disable cleaned up")
 -- ─── A failing action: one error per click, never stuck ──────────────────────
 
 local action = new Feature({ id = "t.action", kind = "action", on_trigger = function() error("bad click") end })
-local action_ref = node:add_feature(action, "Action")
+local action_ref = node:add_feature(action, "Action").ref
 stand.clear_logs()
 stand.click(action_ref)
 stand.click(action_ref)
@@ -102,7 +102,7 @@ stand.check(not action:is_triggering(), "the action isn't stuck as running")
 
 local bad_off = new Feature({ id = "t.bad_off", kind = "loop", on_tick = || -> nil,
     on_disable = function() error("bad cleanup") end })
-local bad_off_ref = node:add_feature(bad_off, "BadOff")
+local bad_off_ref = node:add_feature(bad_off, "BadOff").ref
 stand.clear_logs()
 stand.click(bad_off_ref)
 stand.frame(2)

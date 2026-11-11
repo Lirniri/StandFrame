@@ -54,4 +54,27 @@ local wrapped = new ui.Node(stand.root)
 stand.equal(wrapped:divider("Made through Atdar.menu.Node").kind, "divider", "Atdar.menu.Node wraps a Stand ref")
 stand.equal(ui.nothing_like_this, nil, "a name that is no part is nil")
 
+-- ─── Items in a Stand ref, the options form (Atdar.menu.<kind>) ──────────────
+
+local ref_list = ui.list(stand.root, { name = "Wrapped" })
+stand.check(ref_list.handle ~= nil and stand.child(stand.root, "Wrapped") == ref_list.handle, "list(ref, opts): a MenuNode in the ref")
+local pressed = 0
+local button = ui.action(ref_list.handle, { name = "Press", on_click = function() pressed += 1 end })
+stand.click(button.ref)
+stand.equal(pressed, 1, "action(ref, opts): the button works and is a MenuItem")
+local flag = ui.toggle(ref_list, { name = "Flag", on_change = || -> nil })
+stand.equal(flag.kind, "toggle", "a node works as the parent too")
+stand.check(ui.node(ref_list.handle) == ui.node(ref_list.handle), "one node per ref")
+ui.node(ref_list.handle):clear()
+stand.equal(#ref_list.handle.children, 1, "that node removes what was made through the ref, not the node's own")
+stand.check(ui.root().handle == stand.root and ui.root() == ui.root(), "root(): the script's root, one node")
+local outside = ui.item(stand.child(stand.root, "Wrapped"))
+outside:set_name("Renamed")
+stand.equal(stand.name_of(ref_list.handle), "Renamed", "item(ref): a ref from Stand changed through MenuItem")
+local hidden_item = ui.spoiler(stand.root, { name = "Code", value = "42", hidden = "***" })
+stand.equal(stand.name_of(hidden_item.ref), "Code: ***", "spoiler(ref, opts) gives back the MenuItem")
+local picker = ui.color(stand.root, { name = "Tint", default = { r = 1, g = 0, b = 0 }, on_change = || -> nil })
+stand.equal(picker.ref.kind, "colour", "color(ref, opts) too")
+stand.check(ui.Item ~= nil and ui.live ~= nil and ui.refs ~= nil, "the new parts: Item, live, refs")
+
 stand.finish()

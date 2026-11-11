@@ -1,5 +1,6 @@
 local load = Atdar.loader.load
 local MenuNode = load("ui/stand/core/menu_node")
+local builder = load("ui/stand/core/menu_builder")
 local settings = load("ui/stand/core/settings")
 local script_menu = load("ui/stand/script/section")
 local menu_loader = load("ui/logic/stand/menu_loader")
@@ -11,17 +12,20 @@ local log = new Logger("Menu")
 
 local module = {}
 
-module.root = new MenuNode(menu.my_root())
+module.root = MenuNode.my_root()
 
 -- Divider shown while no menu is loaded and there's no built-in one; gone once a menu loads
 local notice = nil
+
+-- The loaded menu's items: a node of their own on the root, so clearing it leaves the root's other items
+local menu_node = nil
 
 -- Made before the settings section is (re)built, so it stays above it. key: its string,
 -- "not found" by default, "unloaded" after Unload while a built-in menu is there.
 -- i18n directly: label()/text() of this file are declared further down
 local function show_notice(key: string = "menu_loader.not_found"): void
     if notice then
-        pcall(menu.set_menu_name, notice, i18n.label(key))
+        notice:set_name(i18n.label(key))
     else
         notice = module.root:divider(i18n.label(key))
     end
@@ -29,8 +33,21 @@ end
 
 local function hide_notice(): void
     if notice then
-        menu.delete(notice)
+        notice:remove()
         notice = nil
+    end
+end
+
+-- Makes the loaded menu's items from the layout in dir; an error goes up to the menu loader
+local function build_menu(dir: string): void
+    menu_node = new MenuNode(module.root.handle)
+    builder.build_menu(menu_node, dir)
+end
+
+local function clear_menu(): void
+    if menu_node then
+        menu_node:clear()
+        menu_node = nil
     end
 end
 
@@ -51,7 +68,10 @@ end
 
 -- Loads, unloads and copies menus (ui/logic/stand/menu_loader); it calls back for the root's items
 local loader = menu_loader.new({
-    root_handle = module.root.handle,
+    build_menu = build_menu,
+    clear_menu = clear_menu,
+    mark_settings = settings.mark,
+    restore_settings = settings.restore,
     show_notice = show_notice,
     hide_notice = hide_notice,
     remove_settings = remove_settings,

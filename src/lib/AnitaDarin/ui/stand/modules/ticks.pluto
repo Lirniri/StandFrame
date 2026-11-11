@@ -6,7 +6,6 @@
 -- Strings: core/language "modules"
 
 local i18n = Atdar.loader.load("core/i18n")
-local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local runs = Atdar.loader.load("ui/logic/stand/ticks")
 
 local module = {}
@@ -19,25 +18,26 @@ local hooks = {
     status_changed = |name| -> nil,
 }
 
--- Module name -> the Status line in its on_tick() list
+-- Module name -> the Status line (MenuItem) in its on_tick() list
 local tick_statuses = {}
 
 -- Shows how the manual on_tick of the module is: state "running" / "running_for" (seconds left) /
 -- "stopped" / "failed"
 local function show_tick_status(module_name: string, state: string, seconds_left: ?int): void
 
-    local ref = tick_statuses[module_name]
-    if ref == nil then
+    local line = tick_statuses[module_name]
+    local value = text($"tick.state.{state}")
+
+    if line == nil then
         return
     end
 
-    local value = text($"tick.state.{state}")
     if seconds_left ~= nil then
         value = value:format(seconds_left)
     end
 
-    -- The list may belong to a section that was already removed
-    pcall(menu.set_menu_name, ref, text("entry.status_line"):format(value))
+    -- The list may belong to a section that was already removed: then nothing changes
+    line:set_name(text("entry.status_line"):format(value))
 
     -- The module's Status: "running by hand" while a run goes on
     hooks.status_changed(module_name)
@@ -53,23 +53,18 @@ end
 function module.list(entry: table, mod: table, title: string): void
 
     local name = mod.name
-    local node = entry:list(title, {}, label("tick.help"))
-
-    node:action(label("tick.start_init.name"), || -> runs.start(name, nil, true), {}, label("tick.start_init.help"))
-    node:action(label("tick.start.name"), || -> runs.start(name, nil, false), {}, label("tick.start.help"))
-
-    node:track(menu.click_slider(node.handle, label("tick.start_for.name"), {}, label("tick.start_for.help"),
-        1, 600, 10, 1, function(seconds, click_type)
-        if not clicks.is_user_action(click_type) then
-            return
-        end
-        runs.start(name, seconds, false)
-    end))
-
-    node:action(label("tick.stop.name"), || -> runs.stop_told(name), {}, label("tick.stop.help"))
-    tick_statuses[name] = node:divider(text("entry.status_line"):format(text("tick.state.stopped")))
-    
+    local node = entry:list({ name = title, help = label("tick.help") })
+    local ui = node:scope("modules")
     local run = runs.run_of(name)
+
+    ui:action({ key = "tick.start_init", on_click = || -> runs.start(name, nil, true) })
+    ui:action({ key = "tick.start", on_click = || -> runs.start(name, nil, false) })
+    ui:click_slider({ key = "tick.start_for", min = 1, max = 600, default = 10, step = 1, user_only = true,
+        on_click = |seconds| -> runs.start(name, seconds, false) })
+    ui:action({ key = "tick.stop", on_click = || -> runs.stop_told(name) })
+
+    tick_statuses[name] = ui:divider({ name = text("entry.status_line"):format(text("tick.state.stopped")) })
+
     if run ~= nil and run.ends ~= nil then
         show_tick_status(name, "running_for", math.max(runs.seconds_left(run), 1))
     elseif run ~= nil then

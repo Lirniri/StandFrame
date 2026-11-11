@@ -21,6 +21,7 @@ local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local Logger = Atdar.loader.load("core/logger")
 local logic = Atdar.loader.load("ui/logic/stand/modules")
 local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
+local display = Atdar.loader.load("ui/stand/core/call_display")
 -- The fields of a function's arguments
 local arguments = Atdar.loader.load("ui/stand/core/arguments")
 -- What calls gave and the module's variables, shown (Variable lines, Value and Variables lists)
@@ -35,33 +36,34 @@ local module = {}
 -- Strings under "modules"
 local label = i18n.scope("modules")
 
--- The open Modules list's items: list (the MenuNode), entries / statuses / sections per module name.
--- Empty while no Modules list is open
+-- The loops of a module's functions put their time and result on screen
+call_loop.bind({ timed = display.timed, draw = display.draw })
+
+-- The open Modules list's items: list (the MenuNode), entries / statuses (MenuItems) and sections (to make
+-- the functions again) per module name. Empty while no Modules list is open
 local view = {}
 
 -- A function's key -> the Loop Status line and the Loop switch in its list
 local loop_statuses = {}
 local loop_toggles = {}
--- Keys whose switch the script itself is setting: its on_change isn't the user's then
-local syncing = {}
 
 -- Statuses also change on their own (a module can fail in its tick), so Refresh and every action
--- update all entries. The refs may belong to a section that was already removed: a failed update is skipped
+-- update all entries. An item may belong to a section that was already removed: its update does nothing
 local function refresh(): void
 
     local modules = Atdar.modules
 
-    for name, ref in pairs(view.entries or {}) do
+    for name, entry in pairs(view.entries or {}) do
         if modules.has(name) then
 
             local mod = modules.get(name)
+            local status = (view.statuses or {})[name]
 
-            pcall(menu.set_menu_name, ref, logic.caption(mod))
-            pcall(menu.set_help_text, ref, logic.help(mod))
+            entry:set_name(logic.caption(mod))
+            entry:set_help(logic.help(mod))
 
-            local status_ref = (view.statuses or {})[name]
-            if status_ref ~= nil then
-                pcall(menu.set_menu_name, status_ref, logic.status_line(mod))
+            if status ~= nil then
+                status:set_name(logic.status_line(mod))
             end
         end
     end
@@ -74,10 +76,10 @@ ticks.bind({
     -- The module's Status divider: "running by hand" while a run goes on
     status_changed = function(module_name)
 
-        local status_ref = (view.statuses or {})[module_name]
+        local status = (view.statuses or {})[module_name]
 
-        if status_ref ~= nil and Atdar.modules.has(module_name) then
-            pcall(menu.set_menu_name, status_ref, logic.status_line(Atdar.modules.get(module_name)))
+        if status ~= nil and Atdar.modules.has(module_name) then
+            status:set_name(logic.status_line(Atdar.modules.get(module_name)))
         end
     end,
 })
@@ -87,22 +89,87 @@ ticks.bind({
 logic.on_loop = function(key, kind, every)
 
     local toggle = loop_toggles[key]
+    local status = loop_statuses[key]
 
     if toggle ~= nil then
-        syncing[key] = true
-        pcall(menu.set_value, toggle, kind == "running" or kind == "every")
-        syncing[key] = nil
+        toggle:set_value(kind == "running" or kind == "every")
     end
-
-    local status = loop_statuses[key]
 
     if status == nil then
         return
     end
 
-    local ok, err = pcall(menu.set_menu_name, status, call_loop.status_line(kind, every))
-    if not ok then
-        log:debug($"{key}: Loop Status line not updated: {tostring(err)}")
+    if not status:set_name(call_loop.status_line(kind, every)) then
+        log:debug($"{key}: Loop Status line not updated")
+    end
+end
+
+-- The Arguments list of a function: a field for each parameter, by its type. A field that becomes a list
+-- (a function called in it) makes the fields again
+local function arguments_list(node: table, mod: table, fn: table, state: table): void
+
+    local args_list = node:list({ name = label("loop.args"), help = label("loop.args_help") })
+    local fields = nil
+
+    -- Call and the loops use what's typed. Stand's text fields take their text through the command box, so
+    -- each needs a command: short and the same each time - "moduleargsfor3_2_1": the module's number, the
+    -- function's, the parameter's. They're not among the found commands
+    fields = args_list:section(function(list)
+        arguments.build(list, {
+            sig = fn.sig,
+            texts = state.texts,
+            command = |index| -> $"moduleargsfor{logic.number_of(mod.name)}_{fn.number or 0}_{index}",
+            -- Typed by the user (not Stand putting the field back), with Call After Typing on
+            on_typed = function()
+                if state.on_enter then
+                    logic.call_typed(mod, fn)
+                end
+            end,
+            about = |name| -> logic.param_about(mod, fn, name),
+            on_reshape = || -> fields.rebuild(),
+        })
+    end)
+end
+
+-- Table Depth, Call Functions In Tables, Change Variable Values: made at the end of the function's list
+-- while its last result is a table, right under the Value list
+-- @return A function that takes them away
+local function table_settings(ui: table, key: string)
+
+    local items = {}
+
+    -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
+    table.insert(items, ui:slider({ key = "loop.table_depth", min = 1, max = 8, default = values.result_depth(key),
+        step = 1, on_change = function(depth, previous, click_type)
+            if clicks.is_stopping() then
+                return
+            end
+
+            values.set_result_depth(key, depth, not clicks.is_user_click(click_type))
+        end }))
+
+    table.insert(items, ui:toggle({ key = "loop.call_in_tables", default = values.call_in_tables(key),
+        on_change = function(on, click_type)
+            if clicks.is_stopping() then
+                return
+            end
+
+            values.set_call_in_tables(key, on, not clicks.is_user_click(click_type))
+        end }))
+
+    table.insert(items, ui:toggle({ key = "loop.edit_in_tables", default = values.edit_in_tables(key),
+        on_change = function(on, click_type)
+            if clicks.is_stopping() then
+                return
+            end
+
+            values.set_edit_in_tables(key, on, not clicks.is_user_click(click_type))
+        end }))
+
+    return function()
+        for _, item in ipairs(items) do
+            item:remove()
+        end
     end
 end
 
@@ -115,161 +182,88 @@ local function function_list(entry: table, mod: table, fn: table): void
     local live = logic.is_live(mod, fn)
     -- The current opening of the list: going back (or opening again) ends the live calls of the one before
     local opening = nil
-    local fill
+    local node = entry:list({ name = logic.item_name(fn), help = logic.function_help(mod, fn),
+        on_back = function()
+            opening = nil
+        end,
+        on_open = function()
+            if state.on_open then
+                logic.call_typed(mod, fn)
+            end
 
-    local node = entry:list(logic.item_name(fn), {}, logic.function_help(mod, fn), function()
-        opening = nil
-    end, function()
-        if state.on_open then
-            logic.call_typed(mod, fn)
-        end
-
-        if live then
-            local this = {}
-            opening = this
-            logic.keep_live(mod, fn, || -> opening == this)
-        end
-    end)
+            if live then
+                local this = {}
+                opening = this
+                logic.keep_live(mod, fn, || -> opening == this)
+            end
+        end,
+    })
+    local ui = node:scope("modules")
 
     -- The cursor on the function's list (not inside it)
-    menu.on_focus(node.handle, function()
+    node:on_focus(function()
         if state.on_focus then
             logic.call_typed(mod, fn)
         end
     end)
 
-    -- The list's items; made again when an argument's field becomes a list (a function called in it) or back
-    fill = function()
-
-        if arguments.has_fields(fn.sig) then
-
-            -- The fields are in the Arguments list. A field that becomes a list (a function called in it) makes
-            -- only these again
-            local args_list = node:list(label("loop.args"), {}, label("loop.args_help"))
-            local fill_args
-
-            -- A field for each parameter, by its type: Call and the loops use what's typed. Stand's text fields
-            -- take their text through the command box, so each needs a command: short and the same each time -
-            -- "moduleargsfor3_2_1": the module's number, the function's, the parameter's. They're not among the
-            -- found commands
-            fill_args = function()
-                arguments.build(args_list, {
-                    sig = fn.sig,
-                    texts = state.texts,
-                    command = |index| -> $"moduleargsfor{logic.number_of(mod.name)}_{fn.number or 0}_{index}",
-                    -- Typed by the user (not Stand putting the field back), with Call After Typing on
-                    on_typed = function()
-                        if state.on_enter then
-                            logic.call_typed(mod, fn)
-                        end
-                    end,
-                    about = |name| -> logic.param_about(mod, fn, name),
-                    on_reshape = function()
-                        args_list:clear()
-                        fill_args()
-                    end,
-                })
-            end
-
-            fill_args()
-        end
-
-        -- The settings of calling, under the arguments: Call After Typing (when there are arguments), Call, ...
-        node:divider(label("loop.settings"))
-
-        if arguments.has_fields(fn.sig) then
-            node:toggle(label("loop.call_on_enter.name"), function(on)
-                state.on_enter = on or nil
-            end, {}, label("loop.call_on_enter.help"), state.on_enter == true)
-        end
-
-        -- Call; with a number of ms picked, Call After
-        Atdar.loader.load("ui/stand/core/call_slider").build(node, {
-            name_now = label("loop.call"),
-            name_after = label("loop.call_after.name"),
-            help = label("call.button.help"),
-            call = || -> logic.call_typed(mod, fn),
-            call_after = |ms| -> logic.call_after(mod, fn, ms),
-        })
-
-        node:toggle(label("loop.call_on_open.name"), function(on)
-            state.on_open = on or nil
-        end, {}, label("loop.call_on_open.help"), state.on_open == true)
-
-        node:toggle(label("loop.call_on_focus.name"), function(on)
-            state.on_focus = on or nil
-        end, {}, label("loop.call_on_focus.help"), state.on_focus == true)
-
-        -- What its loop puts on the screen: the time of a call and what it gave
-        node:toggle(label("loop.show_time.name"), function(on)
-            state.show_time = on
-        end, {}, label("loop.show_time.help"), state.show_time ~= false)
-
-        node:toggle(label("loop.show_result.name"), function(on)
-            state.show_result = on
-        end, {}, label("loop.show_result.help"), state.show_result ~= false)
-
-        -- How its loop is: the status line, Loop, Loop With Interval. Above what it gave, so the table settings
-        -- made under the Value list are the last items
-        loop_statuses[key] = node:divider(call_loop.status_line(logic.loop_status(key)))
-
-        -- On: every frame; off: the loop stops, also one started with an interval. Made as the loop is now
-        loop_toggles[key] = node:toggle(label("loop.loop.name"), function(on)
-            if clicks.is_stopping() or syncing[key] then
-                return
-            end
-
-            logic.set_loop(mod, fn, on)
-        end, {}, label("loop.loop.help"), logic.is_looping(key))
-
-        node:track(menu.click_slider(node.handle, label("loop.every.name"), {}, label("loop.every.help"),
-            100, 60000, 1000, 100, function(ms, click_type)
-            if clicks.is_user_action(click_type) then
-                logic.start_loop(mod, fn, ms)
-            end
-        end))
-
-        -- What it gave last and, for a table, its Value list right under
-        values.add_result_lines(node, key)
-
-        -- The table settings, while the last result is a table, at the end: right under the Value list.
-        -- How deep a table it gave opens in the Value list, the functions in the table become lists with the
-        -- panel of Debug > Call Function, the other values become fields to type a new value in
-        values.bind_depth_items(key, function()
-
-            local first = #node.children + 1
-
-            node:track(menu.slider(node.handle, label("loop.table_depth.name"), {}, label("loop.table_depth.help"),
-                1, 8, values.result_depth(key), 1, function(depth, previous, click_type)
-                if clicks.is_stopping() then
-                    return
-                end
-
-                -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
-                values.set_result_depth(key, depth, not clicks.is_user_click(click_type))
-            end))
-
-            node:toggle(label("loop.call_in_tables.name"), function(on, click_type)
-                if clicks.is_stopping() then
-                    return
-                end
-
-                values.set_call_in_tables(key, on, not clicks.is_user_click(click_type))
-            end, {}, label("loop.call_in_tables.help"), values.call_in_tables(key))
-
-            node:toggle(label("loop.edit_in_tables.name"), function(on, click_type)
-                if clicks.is_stopping() then
-                    return
-                end
-
-                values.set_edit_in_tables(key, on, not clicks.is_user_click(click_type))
-            end, {}, label("loop.edit_in_tables.help"), values.edit_in_tables(key))
-
-            return function() node:clear_from(first) end
-        end)
+    if arguments.has_fields(fn.sig) then
+        arguments_list(node, mod, fn, state)
     end
 
-    fill()
+    -- The settings of calling, under the arguments: Call After Typing (when there are arguments), Call, ...
+    ui:divider({ name = label("loop.settings") })
+
+    if arguments.has_fields(fn.sig) then
+        ui:toggle({ key = "loop.call_on_enter", default = state.on_enter == true,
+            on_change = function(on) state.on_enter = on or nil end })
+    end
+
+    -- Call; with a number of ms picked, Call After
+    Atdar.loader.load("ui/stand/core/call_slider").build(node, {
+        name_now = label("loop.call"),
+        name_after = label("loop.call_after.name"),
+        help = label("call.button.help"),
+        call = || -> logic.call_typed(mod, fn),
+        call_after = |ms| -> logic.call_after(mod, fn, ms),
+    })
+
+    ui:toggle({ key = "loop.call_on_open", default = state.on_open == true,
+        on_change = function(on) state.on_open = on or nil end })
+
+    ui:toggle({ key = "loop.call_on_focus", default = state.on_focus == true,
+        on_change = function(on) state.on_focus = on or nil end })
+
+    -- What its loop puts on the screen: the time of a call and what it gave
+    ui:toggle({ key = "loop.show_time", default = state.show_time ~= false,
+        on_change = function(on) state.show_time = on end })
+
+    ui:toggle({ key = "loop.show_result", default = state.show_result ~= false,
+        on_change = function(on) state.show_result = on end })
+
+    -- How its loop is: the status line, Loop, Loop With Interval. Above what it gave, so the table settings
+    -- made under the Value list are the last items
+    loop_statuses[key] = ui:divider({ name = call_loop.status_line(logic.loop_status(key)) })
+
+    -- On: every frame; off: the loop stops, also one started with an interval. Made as the loop is now
+    loop_toggles[key] = ui:toggle({ key = "loop.loop", default = logic.is_looping(key), on_change = function(on)
+        if clicks.is_stopping() then
+            return
+        end
+
+        logic.set_loop(mod, fn, on)
+    end })
+
+    ui:click_slider({ key = "loop.every", min = 100, max = 60000, default = 1000, step = 100, user_only = true,
+        on_click = |ms| -> logic.start_loop(mod, fn, ms) })
+
+    -- What it gave last and, for a table, its Value list right under
+    values.add_result_lines(node, key)
+
+    -- The table settings, while the last result is a table, at the end: right under the Value list.
+    -- How deep a table it gave opens in the Value list, the functions in the table become lists with the
+    -- panel of Debug > Call Function, the other values become fields to type a new value in
+    values.bind_depth_items(key, || -> table_settings(ui, key))
 end
 
 -- The Module Functions list (its Variables, then a list per function of the module, as logic.layout puts
@@ -277,13 +271,16 @@ end
 local function functions_of(entry: table, mod: table): void
 
     local layout = logic.layout(mod)
-    local functions_node = entry:list(label("functions.name"), {}, label("functions.help"))
+    local ui = entry:scope("modules")
+    local functions_node = ui:list({ key = "functions" })
+    -- The hooks: a Base Functions list like a category, or with categories off a section under its divider
+    local hooks_node = entry
 
     values.variables_list(functions_node, mod.name, logic.hidden_of)
 
     -- debug.groups first, in the module's order, each under its divider
     for _, group in ipairs(layout.groups) do
-        functions_node:divider(group.name)
+        functions_node:divider({ name = group.name })
         for _, fn in ipairs(group.functions) do
             function_list(functions_node, mod, fn)
         end
@@ -292,15 +289,15 @@ local function functions_of(entry: table, mod: table): void
     -- The rest under Functions: first a list per category with functions in it (Getters, Setters...),
     -- then the ones in none ("No functions" when there are none at all)
     if layout.divider then
-        functions_node:divider(label("functions.divider"))
+        functions_node:divider({ name = label("functions.divider") })
     end
 
     if layout.none then
-        functions_node:readonly_name(label("no_functions"))
+        functions_node:readonly_name({ name = label("no_functions") })
     end
 
     for _, category in ipairs(layout.categories) do
-        local category_node = functions_node:list(category.name)
+        local category_node = functions_node:list({ name = category.name })
         for _, fn in ipairs(category.functions) do
             function_list(category_node, mod, fn)
         end
@@ -313,19 +310,16 @@ local function functions_of(entry: table, mod: table): void
     -- At the bottom: the module's helpers named with _, then its private ones named with __
     -- (callable the same way)
     for _, part in ipairs(layout.parts) do
-        functions_node:divider(label(part.key))
+        functions_node:divider({ name = label(part.key) })
         for _, fn in ipairs(part.functions) do
             function_list(functions_node, mod, fn)
         end
     end
 
-    -- The hooks: a Base Functions list like a category, or with categories off a section under its divider
-    local hooks_node = entry
-
     if logic.categories_off(mod.name) then
-        entry:divider(label("base_functions.name"))
+        ui:divider({ name = label("base_functions.name") })
     else
-        hooks_node = entry:list(label("base_functions.name"), {}, label("base_functions.help"))
+        hooks_node = ui:list({ key = "base_functions" })
     end
 
     for _, hook in ipairs(layout.hooks) do
@@ -333,7 +327,8 @@ local function functions_of(entry: table, mod: table): void
         if hook.tick then
             ticks.list(hooks_node, mod, hook.name)
         else
-            hooks_node:action(hook.name, || -> logic.call(mod.name, hook.hook, {}, 0), {}, label("call.hook.help"))
+            hooks_node:action({ name = hook.name, help = label("call.hook.help"),
+                on_click = || -> logic.call(mod.name, hook.hook, {}, 0) })
         end
     end
 end
@@ -342,48 +337,49 @@ end
 local function rebuild_functions(name: string): void
 
     local section = (view.sections or {})[name]
-    local modules = Atdar.modules
 
-    if section == nil or not modules.has(name) then
+    if section == nil or not Atdar.modules.has(name) then
         return
     end
 
-    section.entry:clear_from(section.first)
-    functions_of(section.entry, modules.get(name))
+    section.rebuild()
 end
 
 -- A module's items in its list (entry): Status, Start / Restart / Stop / Reload, then its functions
 local function fill_module(entry: table, name: string): void
 
     local mod = Atdar.modules.get(name)
+    local ui = entry:scope("modules")
 
-    view.statuses[name] = entry:divider(logic.status_line(mod))
+    view.statuses[name] = ui:divider({ name = logic.status_line(mod) })
 
     for _, action in ipairs(logic.ACTIONS) do
-        entry:action(label(action), function()
+        ui:action({ name = label(action), on_click = function()
             logic.run_action(action, name)
             if action == "reload" then
                 rebuild_functions(name)
             end
             refresh()
-        end)
+        end })
     end
 
-    entry:divider(label("functions.divider"))
+    ui:divider({ name = label("options.divider") })
+
+    -- The module's functions to call by hand, with the toggle that decides how they're laid out
+    local calls = ui:list({ key = "function_call" })
 
     -- Before the functions, so making them again (below) leaves it where it is
-    entry:toggle(label("no_categories.name"), function(on)
+    calls:toggle({ key = "no_categories", default = logic.categories_off(name), on_change = function(on)
         if clicks.is_stopping() or logic.categories_off(name) == on then
             return
         end
 
         logic.set_categories_off(name, on)
         rebuild_functions(name)
-    end, {}, label("no_categories.help"), logic.categories_off(name))
+    end })
 
-    -- Where the functions start, so Reload can make them again
-    view.sections[name] = { entry = entry, first = #entry.children + 1 }
-    functions_of(entry, mod)
+    -- The functions, made again by Reload with the module's new code
+    view.sections[name] = calls:section(|node| -> functions_of(node, Atdar.modules.get(name)))
 end
 
 -- The modules reloaded have new code: their functions are made again, every status is updated
@@ -401,9 +397,9 @@ end
 local function add_entry(node: table, name: string): void
 
     local mod = Atdar.modules.get(name)
-    local entry = node:list(logic.caption(mod), {}, logic.help(mod), refresh, refresh)
+    local entry = node:list({ name = logic.caption(mod), help = logic.help(mod), on_back = refresh, on_open = refresh })
 
-    view.entries[name] = entry.handle
+    view.entries[name] = entry
     fill_module(entry, name)
 end
 
@@ -425,26 +421,28 @@ end
 -- The open list's items: actions, then a list per module
 local function fill(node: table): void
 
+    local ui = node:scope("modules")
+
     -- Left from a time the user didn't go back out of it (the menu closed): made again
     node:clear()
     view = { list = node, entries = {}, statuses = {}, sections = {} }
 
-    node:action(label("open_folder.name"), logic.open_folder, {}, label("open_folder.help"))
-    node:action(label("refresh.name"), || -> refresh_with_new(node), {}, label("refresh.help"))
+    ui:action({ key = "open_folder", on_click = logic.open_folder })
+    ui:action({ key = "refresh", on_click = || -> refresh_with_new(node) })
 
-    node:action(label("stop_all.name"), function()
+    ui:action({ key = "stop_all", on_click = function()
         logic.stop_all()
         refresh()
-    end, {}, label("stop_all.help"))
+    end })
 
-    node:action(label("reload_changed.name"), function()
+    ui:action({ key = "reload_changed", on_click = function()
         reloaded(logic.reload_changed())
         refresh_with_new(node)
-    end, {}, label("reload_changed.help"))
+    end })
 
-    node:action(label("reload_all.name"), || -> reloaded(logic.reload_all()), {}, label("reload_all.help"))
+    ui:action({ key = "reload_all", on_click = || -> reloaded(logic.reload_all()) })
 
-    node:divider(label("list.divider"))
+    ui:divider({ name = label("list.divider") })
 
     -- Files added since the start are run first, so their modules are in the list
     logic.load_new_files()
@@ -456,7 +454,7 @@ local function fill(node: table): void
     end
 
     if #names == 0 then
-        node:readonly_name(label("empty"))
+        ui:readonly_name({ name = label("empty") })
     end
 end
 
@@ -485,8 +483,12 @@ module.add_category = logic.add_category
 -- Puts a Modules list into node (a MenuNode, e.g. a pack's list), its items made only while it's open
 -- @return The list (a MenuNode)
 function module.list_in(node: table): table
+
     local list = nil
-    list = node:list(label("name"), {}, label("help"), || -> empty(list), || -> fill(list))
+
+    list = node:list({ name = label("name"), help = label("help"),
+        on_back = || -> empty(list), on_open = || -> fill(list) })
+
     return list
 end
 
@@ -496,26 +498,28 @@ end
 function module.module_in(node: table, name: string): ?table
 
     local modules = Atdar.modules
+    local entry = nil
 
     if not modules.has(name) then
         log:warn($"module_in: there's no module '{name}'")
         return nil
     end
 
-    local entry = nil
-
-    entry = node:list(logic.caption(modules.get(name)), {}, logic.help(modules.get(name)), function()
-        empty(entry)
-        -- Its name is out of the list it's in: made again here, with the status and file now
-        if modules.has(name) then
-            pcall(menu.set_menu_name, entry.handle, logic.caption(modules.get(name)))
-            pcall(menu.set_help_text, entry.handle, logic.help(modules.get(name)))
-        end
-    end, function()
-        entry:clear()
-        view = { list = entry, entries = { [name] = entry.handle }, statuses = {}, sections = {} }
-        fill_module(entry, name)
-    end)
+    entry = node:list({ name = logic.caption(modules.get(name)), help = logic.help(modules.get(name)),
+        on_back = function()
+            empty(entry)
+            -- Its name is out of the list it's in: made again here, with the status and file now
+            if modules.has(name) then
+                entry:set_name(logic.caption(modules.get(name)))
+                entry:set_help(logic.help(modules.get(name)))
+            end
+        end,
+        on_open = function()
+            entry:clear()
+            view = { list = entry, entries = { [name] = entry }, statuses = {}, sections = {} }
+            fill_module(entry, name)
+        end,
+    })
 
     return entry
 end

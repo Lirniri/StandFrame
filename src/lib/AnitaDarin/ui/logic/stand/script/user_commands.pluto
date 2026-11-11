@@ -12,6 +12,7 @@ local Logger = Atdar.loader.load("core/logger")
 local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local commands = Atdar.loader.load("ui/logic/stand/commands")
 local command_box = Atdar.loader.load("parsers/stand/command_box")
+local stand_refs = Atdar.loader.load("ui/stand/core/stand_refs")
 
 local log = new Logger("Commands")
 local text = select(2, i18n.scope("script_menu.user_commands"))
@@ -213,7 +214,7 @@ function module.run(name: string, entry: table): bool
     table.insert(times, now)
     recent[name] = times
     running[name] = true
-    local ok, err = pcall(menu.trigger_commands, table.concat(entry.commands, "; "))
+    local ok, err = stand_refs.trigger(table.concat(entry.commands, "; "))
     running[name] = nil
     if not ok then
         log:warn(text("failed"):format(name, tostring(err)))
@@ -231,16 +232,19 @@ end
 -- The name of the item a command line runs ("godmode on" -> the godmode item's "God Mode"): a label
 -- as Stand gives it, so it follows Stand's language; nil when no item has that command (yet)
 local function item_name(line: string)
+
     local word = line:match("^%S+")
-    if word == nil or type(menu.ref_by_command_name) ~= "function" then
+
+    if word == nil then
         return nil
     end
-    local ok, ref = pcall(menu.ref_by_command_name, word)
-    if not ok or ref == nil or not menu.is_ref_valid(ref) then
+
+    local ref = stand_refs.by_command(word)
+    if ref == nil then
         return nil
     end
-    local named, name = pcall(menu.get_menu_name, ref)
-    return named and name or nil
+
+    return stand_refs.name_of(ref)
 end
 
 -- What a user command's Run is called: the names of the items it runs, "Settings" or "God Mode, Never
@@ -272,11 +276,7 @@ end
 
 -- Whether Stand already has a command of that name (Stand's own, the script's, another user one)
 function module.command_taken(full: string): bool
-    if type(menu.ref_by_command_name) ~= "function" then
-        return false
-    end
-    local ok, ref = pcall(menu.ref_by_command_name, full)
-    return ok and ref ~= nil and menu.is_ref_valid(ref) == true
+    return stand_refs.by_command(full) ~= nil
 end
 
 return module

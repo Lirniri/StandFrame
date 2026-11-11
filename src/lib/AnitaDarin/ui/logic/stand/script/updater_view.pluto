@@ -12,7 +12,7 @@ local file = Atdar.loader.load("core/filesystem/file")
 local paths = Atdar.loader.load("core/filesystem/paths")
 
 local log = new Logger("Updater")
-local text = select(2, i18n.scope("updater_menu"))
+local label, text = i18n.scope("updater_menu")
 
 local module = {}
 
@@ -132,12 +132,13 @@ function module.branch_caption(): string
     return text("branch.name"):format(branch)
 end
 
+-- The branches as Stand labels: Stand shows them in the language shown now, the picker needn't be redone
 function module.branch_options(): table
 
     local options = {}
 
     for _, branch in ipairs(module.BRANCHES) do
-        table.insert(options, text($"branch.{branch}"))
+        table.insert(options, label($"branch.{branch}"))
     end
 
     return options

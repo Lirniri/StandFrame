@@ -1,57 +1,83 @@
 -- A button that acts only on a second click within a few seconds: for things that can't be undone.
 -- Stand's menu.show_warning isn't used: in the game it let such clicks through without showing anything.
 --
---     local reset_ref, cancel = confirm.action(node, label("reset.name"), label("reset.again"),
---         function() ... end,                       -- on the second click
---         function() log:warn("Click again...") end, -- on the first: say what would happen
---         label("reset.help"))
+--     local reset, cancel = node:confirm({ key = "reset",  -- "reset.name", "reset.again", "reset.help"
+--         on_confirm = function() ... end,                  -- on the second click
+--         on_first = function() log:warn("Click again...") end, -- on the first: say what would happen
+--     })
 --     -- cancel() forgets a first click, e.g. when the user goes back out of the list
+--
+-- The old form, confirm.action(node, name, again_name, on_confirm, on_first, help), still works.
+
+local i18n = Atdar.loader.load("core/i18n")
 
 local module = {}
 
 -- How long a first click waits for the second, ms
 module.WAIT_MS = 5000
 
--- @param name The button's name; again_name - its name while it waits for the second click
--- @param on_confirm Called on the second click
--- @param on_first Called on the first click (optional): say what the second one would do
--- @return The button's ref, and cancel()
-function module.action(node: table, name, again_name, on_confirm, on_first, help = "")
+-- The button (MenuNode:confirm). Options: key or name, again, help, commands, on_confirm(), on_first()
+-- @return The item, and cancel()
+function module.make(node: table, opts: table)
 
-    local ref
+    local item = nil
+    local name = opts.name
+    local again = opts.again
 
     -- Until when a second click confirms; nil - not waiting
     local armed_until = nil
 
-    ref = node:action(name, function()
+    -- The name is kept to put back after the wait: a label, so it follows the language
+    if opts.key ~= nil then
+        local key = node.scope_prefix ~= nil and $"{node.scope_prefix}.{opts.key}" or opts.key
+        name ??= i18n.label($"{key}.name")
+        again ??= i18n.label($"{key}.again")
+    end
+
+    local spec = { key = opts.key, name = name, help = opts.help, commands = opts.commands }
+
+    spec.on_click = function()
+
         local now = util.current_time_millis()
-        if armed_until == nil or now > armed_until then
 
-            armed_until = now + module.WAIT_MS
-            pcall(menu.set_menu_name, ref, again_name)
-            
-            if on_first then
-                on_first()
-            end
-
-            -- The button gets its name back when the time is up or the click was cancelled
-            util.create_tick_handler(function()
-                if armed_until ~= nil and util.current_time_millis() <= armed_until then
-                    return true
-                end
-
-                armed_until = nil
-                pcall(menu.set_menu_name, ref, name)
-
-                return false
-            end)
+        if armed_until ~= nil and now <= armed_until then
+            armed_until = nil
+            opts.on_confirm()
             return
         end
 
-        armed_until = nil
-        on_confirm()
-    end, {}, help)
-    return ref, function() armed_until = nil end
+        armed_until = now + module.WAIT_MS
+        item:set_name(again)
+
+        if opts.on_first then
+            opts.on_first()
+        end
+
+        -- The button gets its name back when the time is up or the click was cancelled
+        util.create_tick_handler(function()
+            if armed_until ~= nil and util.current_time_millis() <= armed_until then
+                return true
+            end
+
+            armed_until = nil
+            item:set_name(name)
+
+            return false
+        end)
+    end
+
+    item = node:action(spec)
+
+    return item, function() armed_until = nil end
+end
+
+-- @param name The button's name; again_name - its name while it waits for the second click
+-- @param on_confirm Called on the second click
+-- @param on_first Called on the first click (optional): say what the second one would do
+-- @return The button's item, and cancel()
+function module.action(node: table, name, again_name, on_confirm, on_first, help = "")
+    return module.make(node, { name = name, again = again_name, on_confirm = on_confirm, on_first = on_first,
+        help = help })
 end
 
 return module

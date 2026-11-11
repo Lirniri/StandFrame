@@ -2,11 +2,10 @@
 -- The loop of a called function: one call every frame, or once every `every` ms, until it's stopped or ends
 -- by itself. The same for Call Function (ui/stand/script/call_function) and for a module's functions
 -- (ui/stand/modules/list); each says what a call is (step) and when the loop is no longer wanted (is_current).
--- What the last call gave is drawn on the screen every frame (ui/stand/core/call_display).
+-- What the last call gave is drawn on the screen every frame, by what the menu binds (bind).
 
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
-local display = Atdar.loader.load("ui/stand/core/call_display")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("CallLoop")
@@ -15,6 +14,20 @@ local module = {}
 
 -- Strings under "modules" ("loop.*")
 local text = select(2, i18n.scope("modules"))
+
+-- What the menu gives (bind): timed(name, fn, shown) runs fn with its time shown on screen, draw(text) draws
+-- a result for this frame. Unbound, a call just runs and nothing is drawn
+local display = {
+    timed = function(name, fn, shown) fn() end,
+    draw = |shown| -> nil,
+}
+
+-- @param given timed and draw (ui/stand/core/call_display)
+function module.bind(given: table): void
+    for key, fn in pairs(given) do
+        display[key] = fn
+    end
+end
 
 -- "Loop Status: running" / "every 500 ms" / "stopped" / "failed": what a loop's status line says
 -- @param kind "running", "every" (with every, ms), "stopped" or "failed"
@@ -85,7 +98,7 @@ end
 -- @param shown The function's own Show Call Time
 -- @return What call returned
 function module.timed(name: string, call: function, shown: bool = true): table
-    
+
     local results = nil
 
     display.timed(name, function()

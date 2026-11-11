@@ -1,9 +1,37 @@
+-- lib/AnitaDarin/ui/stand/core/menu_node.pluto
+-- The one way the script makes Stand menu items. A MenuNode wraps a list: it makes items in it, keeps track
+-- of them (to rename their commands, switch off toggles and delete them on a rebuild or reload) and gives
+-- back a MenuItem (ui/stand/core/menu_item) to change each one later. Only ui/stand/core calls menu.* itself.
+--
+-- Every item method takes a table of options:
+--
+--     local ui = node:scope("profile")                      -- keys below are under "profile."
+--     ui:toggle({ key = "debug", commands = { "debug" }, on_change = fn })
+--     ui:action({ key = "reload", on_click = fn, user_only = true })
+--     ui:list({ key = "files", fill = fill_files })         -- made on open, removed on back
+--     local status = ui:readonly({ key = "status", value = "off" })
+--     status:set_value("on")
+--
+--   key          the strings "<scope>.<key>.name" and "<scope>.<key>.help" (help only if it exists)
+--   name, help   a text or a Stand label in place of the key's (a name that's no string, a formatted text)
+--   commands     base command names: the profile's prefix is added (ui/logic/stand/commands)
+--   track        false: the commands aren't renamed with the prefix settings or listed as found commands
+--   full_commands  the commands are full names already: no prefix is added, nothing is tracked
+--   user_only    the handler runs only for the user's own clicks (ui/logic/stand/clicks)
+--   warning      warning(...) -> a text: Stand's warning box asks before the handler runs; nil -> no box
+--   profile      the item shows and writes this profile value (ui/stand/core/profile_items)
+--   caption, help_from, shown_when, value_from   functions the item follows (MenuItem)
+--
+-- The old forms, node:action(name, on_click, commands, help) and the like, still work: menu packs use them.
+
 local globals = Atdar.globals
 local Feature = Atdar.loader.load("features/feature")
--- Capitalized: methods below take a `commands` parameter with the item's base command names
+-- Capitalized: items take a `commands` option with their base command names
 local Commands = Atdar.loader.load("ui/logic/stand/commands")
-local menu_utils = Atdar.loader.load("utils/menu")
 local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local MenuItem = Atdar.loader.load("ui/stand/core/menu_item")
+local live = Atdar.loader.load("ui/stand/core/live")
 
 -- Stand item for each Feature kind; names and help may be Stand labels (int) from i18n
 local ITEM_FOR_KIND = {
@@ -44,44 +72,210 @@ local TOGGLE_KINDS = { loop = true, toggle = true }
 -- Ticks to wait after switching toggles off, so Stand's toggle_loop threads see it and stop
 local STOP_TICKS = 2
 
+-- The option holding each kind's handler
+local HANDLER_OF = {
+    action = "on_click",
+    toggle = "on_change",
+    list_action = "on_select",
+    text_input = "on_change",
+    slider = "on_change",
+    click_slider = "on_click",
+    color = "on_change",
+    text_slider = "on_click",
+}
+
+-- Loaded at the first item that asks: most menus have none
+local profile_items = nil
+local confirm = nil
+
+-- Options
+
+-- Whether the strings have key
+local function has_string(key: string): bool
+    return i18n.get ~= nil and i18n.get(key) ~= nil
+end
+
+-- The Stand label of the string at key; the key itself for a script without strings (a test of its own)
+local function label_of(key: string)
+
+    if i18n.label == nil then
+        return key
+    end
+
+    return i18n.label(key)
+end
+
+-- The name and help an item gets from its options
+local function texts_of(node: table, opts: table)
+
+    local name = opts.name
+    local help = opts.help
+
+    if opts.key ~= nil then
+
+        local key = node.scope_prefix ~= nil and $"{node.scope_prefix}.{opts.key}" or opts.key
+
+        if name == nil then
+            name = label_of($"{key}.name")
+        end
+        if help == nil and has_string($"{key}.help") then
+            help = label_of($"{key}.help")
+        end
+    end
+
+    if opts.help_key ~= nil and help == nil then
+        local key = node.scope_prefix ~= nil and $"{node.scope_prefix}.{opts.help_key}" or opts.help_key
+        help = label_of($"{key}.help")
+    end
+
+    if name == nil and opts.caption ~= nil then
+        name = opts.caption()
+    end
+
+    return name or "", help or ""
+end
+
+-- The handler Stand calls: skipped while the item's value is set from code, for the user's clicks only
+-- with user_only, after Stand's warning box with warning
+local function handler_for(item: table, fn, opts: table)
+
+    if fn == nil then
+        return function() end
+    end
+
+    return function(...)
+
+        if item.muted > 0 then
+            return
+        end
+
+        local count = select("#", ...)
+        local click_type = count > 0 and select(count, ...) or nil
+
+        if opts.user_only and not clicks.is_user_action(click_type) then
+            return
+        end
+
+        if opts.warning ~= nil then
+
+            local text = opts.warning(...)
+
+            if text ~= nil then
+                local args = table.pack(...)
+                item:warn(click_type, text, || -> fn(table.unpack(args, 1, args.n)))
+                return
+            end
+        end
+
+        return fn(...)
+    end
+end
+
+-- Binds what the options ask the item to follow
+local function bind_live(item: table, opts: table): void
+    if opts.caption ~= nil then
+        item:caption(opts.caption)
+    end
+    if opts.help_from ~= nil then
+        item:help_from(opts.help_from)
+    end
+    if opts.shown_when ~= nil then
+        item:shown_when(opts.shown_when)
+    end
+    if opts.value_from ~= nil then
+        item:value_from(opts.value_from)
+    end
+end
+
 -- Declared first and assigned explicitly so methods can reference MenuNode:
 -- neither `local class` nor `class` on a forward-declared local binds it inside the body in Stand's Pluto
 local MenuNode
 
--- Wraps a Stand command ref and creates child items in it.
--- Several nodes may wrap the same ref: each one tracks only the items created through it
+-- Wraps a Stand list and makes items in it.
+-- Several nodes may wrap the same ref: each one tracks only the items made through it
 MenuNode = class
 
-    function __construct(handle)
+    -- @param parent The node that made this list, nil for a root or a ref from outside
+    function __construct(handle, parent)
         globals.pluto.class.fix_index(self)
 
         self.handle = handle
-        self.children = {}
+        self.ref = handle -- a list is an item too (MenuItem's methods)
+        self.parent = parent
+        self.kind = "list"
+        self.muted = 0
+        self.scope_prefix = parent ~= nil and parent.scope_prefix or nil
+        self.children = {} -- MenuItems and MenuNodes, in the order they were made
         self.sublists = {}
-        self.toggles = {}
+        self.toggles = {} -- items of loop and toggle features: switched off before they're deleted
     end
 
-    -- commands: the item's base command names, so they can be renamed when the prefix settings change
-    function track(child_handle, commands: table = {})
-        table.insert(self.children, child_handle)
-        Commands.track(child_handle, commands)
-        return child_handle
+    -- The same node, its keys under prefix: ui:toggle({ key = "debug" }) -> "<prefix>.debug.name".
+    -- Lists made in it keep the prefix
+    function scope(prefix: string): table
+        return setmetatable({ scope_prefix = prefix }, { __index = self })
     end
 
-    -- track() for an item named by a Stand label from i18n: hovering it sends its translation path
-    -- when that's switched on (Debug > Languages)
-    function track_named(name, child_handle, commands)
-        -- A script without strings (a test of its own) has no i18n to watch with
-        if i18n.watch_path then
-            i18n.watch_path(child_handle, name)
+    -- Keeping track
+
+    -- Makes the item with create(handle, name, command_names, help, handler) and keeps it
+    -- @return The MenuItem
+    function make(kind: string, opts: table, create): table
+
+        local item = new MenuItem(nil, self, kind)
+        local name, help = texts_of(self, opts)
+        local commands = opts.commands or {}
+
+        if opts.profile ~= nil then
+            profile_items ??= Atdar.loader.load("ui/stand/core/profile_items")
+            profile_items.prepare(kind, opts)
         end
-        return self:track(child_handle, commands)
+
+        local handler = handler_for(item, opts[HANDLER_OF[kind]], opts)
+
+        if opts.full_commands then
+            item.ref = create(self.handle, name, commands, help, handler)
+            self:keep(item, name, {})
+        else
+            item.ref = create(self.handle, name, Commands.names(commands), help, handler)
+            self:keep(item, name, opts.track == false and {} or commands)
+        end
+
+        if opts.profile ~= nil then
+            profile_items.bind(item, kind, opts)
+        end
+
+        bind_live(item, opts)
+
+        return item
+    end
+
+    -- Remembers an item made in this list. commands: its base command names, so it's renamed when the
+    -- prefix settings change. A name that's a Stand label sends its translation path on hover when that's
+    -- switched on (Debug > Languages)
+    function keep(item: table, name, commands: table = {}): table
+
+        table.insert(self.children, item)
+        Commands.track(item.ref, commands)
+
+        if i18n.watch_path then
+            i18n.watch_path(item, name)
+        end
+
+        return item
+    end
+
+    -- An item made outside MenuNode (a ref from Stand) kept here like its own
+    -- @return Its MenuItem
+    function track(child_handle, commands: table = {}): table
+        return self:keep(new MenuItem(child_handle, self), nil, commands)
     end
 
     -- Forgets every item in this node and its sublists in Commands, before they're deleted
     function untrack_commands(): void
-        for _, child_handle in ipairs(self.children) do
-            Commands.untrack(child_handle)
+        for _, child in ipairs(self.children) do
+            Commands.untrack(child.ref)
+            live.forget(child)
         end
         for _, sublist in ipairs(self.sublists) do
             sublist:untrack_commands()
@@ -92,21 +286,7 @@ MenuNode = class
     -- A toggle_loop deleted while on keeps ticking in Stand and fails with "CommandRef is not valid"
     function stop_toggles(): void
 
-        local stopped = false
-
-        local function stop_in(node)
-            for _, ref in ipairs(node.toggles) do
-                if menu.get_value(ref) then
-                    menu.set_value(ref, false)
-                    stopped = true
-                end
-            end
-            for _, sublist in ipairs(node.sublists) do
-                stop_in(sublist)
-            end
-        end
-
-        stop_in(self)
+        local stopped = self:switch_off_toggles()
 
         if stopped then
             for _ = 1, STOP_TICKS do
@@ -115,59 +295,45 @@ MenuNode = class
         end
     end
 
-    function divider(text: string|int)
-        return self:track_named(text, menu.divider(self.handle, text))
+    -- Switches off the toggles of this node and its sublists without waiting
+    -- @return Whether any was on
+    function switch_off_toggles(): bool
+
+        local stopped = false
+
+        for _, item in ipairs(self.toggles) do
+            if item:get_value() then
+                item:set_value(false, true)
+                stopped = true
+            end
+        end
+
+        for _, sublist in ipairs(self.sublists) do
+            if sublist:switch_off_toggles() then
+                stopped = true
+            end
+        end
+
+        return stopped
     end
 
-    -- "Name: value" line; change the value later with menu.set_value(ref, "...")
-    function readonly(name: string|int, value: string = "")
-        return self:track_named(name, menu.readonly(self.handle, name, value))
-    end
+    -- Removing
 
-    -- Text-only line, like a divider but in the normal item style
-    function readonly_name(name: string|int)
-        return self:track_named(name, menu.readonly_name(self.handle, name))
-    end
-
-    -- Opens the link in the browser when clicked
-    function hyperlink(name: string|int, link: string, help: string|int = "")
-        return self:track_named(name, menu.hyperlink(self.handle, name, link, help))
-    end
-
-    -- on_back(): Stand calls it when the user goes back out of the list (optional; no "= nil" default:
-    -- that shifts Pluto's other defaults)
-    -- on_open(): Stand calls it when the user opens the list (optional, like on_back)
-    function list(name: string|int, commands: table = {}, help: string|int = "", on_back, on_open): table
-        local child = new MenuNode(menu.list(self.handle, name, Commands.names(commands), help, on_open, on_back))
-        self:track_named(name, child.handle, commands)
-        table.insert(self.sublists, child)
-        return child
-    end
-
-    -- Removes this node and everything in it from the Stand menu
-    function delete(): void
-        self:stop_toggles()
-        self:untrack_commands()
-        Commands.untrack(self.handle)
-        menu.delete(self.handle)
-    end
-
-    -- Removes the items from the index-th on (in the order they were made), leaving the ones before:
-    -- a part of a list made again (e.g. a module's functions after its code is reloaded)
-    function clear_from(index: int): void
+    -- Removes the items first..last (in the order they were made)
+    function remove_range(first: int, last: int): void
 
         local removed = {}
 
-        for i = #self.children, index, -1 do
+        for i = last, first, -1 do
             removed[self.children[i]] = true
         end
 
         -- Toggles switched off first: one deleted while on keeps ticking in Stand
         for i = #self.toggles, 1, -1 do
-            local ref = self.toggles[i]
-            if removed[ref] then
-                if menu.get_value(ref) then
-                    menu.set_value(ref, false)
+            local item = self.toggles[i]
+            if removed[item] then
+                if item:get_value() then
+                    item:set_value(false, true)
                 end
                 table.remove(self.toggles, i)
             end
@@ -175,98 +341,319 @@ MenuNode = class
 
         for i = #self.sublists, 1, -1 do
             local sublist = self.sublists[i]
-            if removed[sublist.handle] then
+            if removed[sublist] then
+                sublist:switch_off_toggles()
                 sublist:untrack_commands()
                 table.remove(self.sublists, i)
             end
         end
 
-        for i = #self.children, index, -1 do
-            local child_handle = table.remove(self.children, i)
-            Commands.untrack(child_handle)
-            menu.delete(child_handle)
+        for i = last, first, -1 do
+            local child = table.remove(self.children, i)
+            Commands.untrack(child.ref)
+            live.forget(child)
+            pcall(menu.delete, child.ref)
         end
     end
 
-    -- Removes every item created through this node, leaving the node itself
-    function clear(): void
+    -- Removes one item made through this node
+    function remove_child(item: table): void
+        for i = #self.children, 1, -1 do
+            if self.children[i] == item then
+                self:remove_range(i, i)
+                return
+            end
+        end
+
+        -- Not one of ours (made before a clear): just deleted
+        live.forget(item)
+        pcall(menu.delete, item.ref)
+    end
+
+    -- Removes this list and everything in it from the Stand menu
+    function delete(): void
+
         self:stop_toggles()
+
+        if self.parent ~= nil then
+            self.parent:remove_child(self)
+            return
+        end
+
         self:untrack_commands()
-        for _, child_handle in ipairs(self.children) do
-            menu.delete(child_handle)
+        Commands.untrack(self.handle)
+        pcall(menu.delete, self.handle)
+    end
+
+    -- Removes the items from the index-th on (in the order they were made), leaving the ones before:
+    -- a part of a list made again (e.g. a module's functions after its code is reloaded)
+    function clear_from(index: int): void
+        if index <= #self.children then
+            self:remove_range(index, #self.children)
         end
-        self.children = {}
-        self.sublists = {}
-        self.toggles = {}
     end
 
-    -- List of options where picking one calls on_select(index, option_name, click_type)
-    function list_action(name: string|int, options: table, on_select: function, commands: table = {}, help: string|int = "")
-        return self:track_named(name, menu.list_action(self.handle, name, Commands.names(commands), help, options, on_select), commands)
+    -- Removes every item made through this node, leaving the node itself
+    function clear(): void
+
+        self:stop_toggles()
+
+        -- Emptied in place: a scope() of this node shares the tables
+        self:remove_range(1, #self.children)
     end
 
-    -- Text field; on_change(value, click_type) runs when the user enters text.
-    -- Stand takes the text through its command box, so the field needs command names
-    function text_input(name: string|int, commands: table, on_change: function, help: string|int = "", default: string = "")
-        return self:track_named(name, menu.text_input(self.handle, name, Commands.names(commands), help, on_change, default), commands)
+    -- The rest of the list, made by fill(node) now and again by part.rebuild(). Items made after it in the
+    -- same list are part of it too
+    -- @return part: { rebuild() }
+    function section(fill): table
+
+        local node = self
+        local first = #self.children + 1
+
+        fill(node)
+
+        return {
+            rebuild = function()
+                node:clear_from(first)
+                fill(node)
+            end,
+        }
     end
 
-    -- Plain button that isn't backed by a feature
-    function action(name: string|int, on_click: function, commands: table = {}, help: string|int = "")
-        return self:track_named(name, menu.action(self.handle, name, Commands.names(commands), help, on_click), commands)
+    -- Items
+
+    -- A list. Options: fill(list) - its items are made when it's opened and removed on back (keep = true:
+    -- left until the next open); on_open(), on_back()
+    -- Old form: list(name, commands, help, on_back, on_open)
+    function list(name: string|int|table, commands: table = {}, help: string|int = "", on_back, on_open): table
+
+        local opts = type(name) == "table" and name
+            or { name = name, commands = commands, help = help, on_back = on_back, on_open = on_open }
+
+        local child = nil
+
+        local function opened(...)
+            if opts.fill ~= nil then
+                child:clear()
+                opts.fill(child)
+            end
+            if opts.on_open ~= nil then
+                opts.on_open(...)
+            end
+        end
+
+        local function closed(...)
+            if opts.fill ~= nil and opts.keep ~= true then
+                child:clear()
+            end
+            if opts.on_back ~= nil then
+                opts.on_back(...)
+            end
+        end
+
+        local text, help_text = texts_of(self, opts)
+        local names = Commands.names(opts.commands or {})
+        local has_open = opts.fill ~= nil or opts.on_open ~= nil
+        local has_back = opts.fill ~= nil or opts.on_back ~= nil
+
+        child = new MenuNode(menu.list(self.handle, text, names, help_text,
+            has_open and opened or nil, has_back and closed or nil), self)
+
+        self:keep(child, text, opts.track == false and {} or (opts.commands or {}))
+        table.insert(self.sublists, child)
+        bind_live(child, opts)
+
+        return child
     end
 
-    -- Plain on/off switch that isn't backed by a feature; on_change(on, click_type).
+    -- A divider; old form: divider(text)
+    function divider(text: string|int|table): table
+        local opts = type(text) == "table" and text or { name = text }
+        return self:make("divider", opts, |handle, name| -> menu.divider(handle, name))
+    end
+
+    -- "Name: value" line; item:set_value("...") changes the value. Old form: readonly(name, value)
+    function readonly(name: string|int|table, value: string = ""): table
+        local opts = type(name) == "table" and name or { name = name, value = value }
+        return self:make("readonly", opts, |handle, text| -> menu.readonly(handle, text, opts.value or ""))
+    end
+
+    -- Text-only line, like a divider but in the normal item style
+    function readonly_name(name: string|int|table): table
+        local opts = type(name) == "table" and name or { name = name }
+        return self:make("readonly_name", opts, |handle, text| -> menu.readonly_name(handle, text))
+    end
+
+    -- Opens the link in the browser when clicked. Options: link
+    function hyperlink(name: string|int|table, link: string = "", help: string|int = ""): table
+        local opts = type(name) == "table" and name or { name = name, link = link, help = help }
+        return self:make("hyperlink", opts, |handle, text, _, help_text| -> menu.hyperlink(handle, text, opts.link, help_text))
+    end
+
+    -- A button. Options: on_click(click_type)
+    function action(name: string|int|table, on_click, commands: table = {}, help: string|int = ""): table
+        local opts = type(name) == "table" and name
+            or { name = name, on_click = on_click, commands = commands, help = help }
+        return self:make("action", opts, |handle, text, names, help_text, handler| ->
+            menu.action(handle, text, names, help_text, handler))
+    end
+
+    -- An on/off switch. Options: on_change(on, click_type), default.
     -- Stand calls it only on a change, so nothing keeps running and it needn't be stopped on delete
-    function toggle(name: string|int, on_change: function, commands: table = {}, help: string|int = "", default: bool = false)
-        return self:track_named(name, menu.toggle(self.handle, name, Commands.names(commands), help, on_change, default), commands)
+    function toggle(name: string|int|table, on_change, commands: table = {}, help: string|int = "", default: bool = false): table
+        local opts = type(name) == "table" and name
+            or { name = name, on_change = on_change, commands = commands, help = help, default = default }
+        return self:make("toggle", opts, |handle, text, names, help_text, handler| ->
+            menu.toggle(handle, text, names, help_text, handler, opts.default == true))
     end
 
-    -- Number picker; on_change(value, prev_value, click_type)
-    function slider(name: string|int, min: int, max: int, default: int, step: int, on_change: function, commands: table = {}, help: string|int = "")
-        return self:track_named(name, menu.slider(self.handle, name, Commands.names(commands), help,
-            min, max, default, step, on_change), commands)
+    -- Options to pick from in a submenu. Options: options, on_select(index, option_name, click_type)
+    function list_action(name: string|int|table, options: table = {}, on_select, commands: table = {}, help: string|int = ""): table
+        local opts = type(name) == "table" and name
+            or { name = name, options = options, on_select = on_select, commands = commands, help = help }
+        return self:make("list_action", opts, |handle, text, names, help_text, handler| ->
+            menu.list_action(handle, text, names, help_text, opts.options or {}, handler))
     end
 
-    -- Number picker that acts on a click with the number picked; on_click(value, click_type)
-    function click_slider(name: string|int, min: int, max: int, default: int, step: int, on_click: function, commands: table = {}, help: string|int = "")
-        return self:track_named(name, menu.click_slider(self.handle, name, Commands.names(commands), help,
-            min, max, default, step, on_click), commands)
+    -- A text field. Options: on_change(value, click_type), default.
+    -- Stand takes the text through its command box, so the field needs a command
+    function text_input(name: string|int|table, commands: table = {}, on_change, help: string|int = "", default: string = ""): table
+        local opts = type(name) == "table" and name
+            or { name = name, commands = commands, on_change = on_change, help = help, default = default }
+        return self:make("text_input", opts, |handle, text, names, help_text, handler| ->
+            menu.text_input(handle, text, names, help_text, handler, opts.default or ""))
     end
 
-    -- Colour picker (utils/menu.color); default { r, g, b, a } 0.0 - 1.0; on_change(colour, click_type).
-    -- transparency adds Opacity
-    function color(name: string|int, default: table, on_change: function, commands: table = {}, help: string|int = "",
-            transparency: bool = false)
-        return self:track_named(name, menu_utils.color(self.handle, name, Commands.names(commands), help, default, on_change,
-            transparency), commands)
+    -- A number picker. Options: min, max, default (min), step (1), on_change(value, prev_value, click_type)
+    function slider(name: string|int|table, min: int = 0, max: int = 0, default: int = 0, step: int = 1, on_change,
+        commands: table = {}, help: string|int = ""
+    ): table
+        -- body function:
+        local opts = type(name) == "table" and name or { name = name, min = min, max = max, default = default,
+            step = step, on_change = on_change, commands = commands, help = help }
+        return self:make("slider", opts, |handle, text, names, help_text, handler| ->
+            menu.slider(handle, text, names, help_text, opts.min, opts.max, opts.default or opts.min, opts.step or 1, handler))
     end
 
-    -- Options picked with left/right, without a submenu; on_click(index, option_name, click_type)
-    function text_slider(name: string|int, options: table, on_click: function, commands: table = {}, help: string|int = "")
-        return self:track_named(name, menu.textslider(self.handle, name, Commands.names(commands), help, options, on_click), commands)
+    -- A number picker that acts on a click with the number picked. Options: min, max, default, step,
+    -- on_click(value, click_type)
+    function click_slider(name: string|int|table, min: int = 0, max: int = 0, default: int = 0, step: int = 1, on_click,
+        commands: table = {}, help: string|int = ""
+    ): table
+        -- body function:
+        local opts = type(name) == "table" and name or { name = name, min = min, max = max, default = default,
+            step = step, on_click = on_click, commands = commands, help = help }
+        return self:make("click_slider", opts, |handle, text, names, help_text, handler| ->
+            menu.click_slider(handle, text, names, help_text, opts.min, opts.max, opts.default or opts.min,
+                opts.step or 1, handler))
     end
 
-    function add_feature(feature: table, name: string|int, commands: table = {}, help: string|int = "")
+    -- A colour picker: Stand's own colour submenu (HSV, RGB, hex, copy). Options: default { r, g, b, a }
+    -- 0.0 - 1.0 (no a: opaque), on_change(colour, click_type), transparency (adds Opacity)
+    function color(name: string|int|table, default: table = {}, on_change, commands: table = {}, help: string|int = "",
+        transparency: bool = false
+    ): table
+        -- body function:
+        local opts = type(name) == "table" and name or { name = name, default = default, on_change = on_change,
+            commands = commands, help = help, transparency = transparency }
 
-        local create = ITEM_FOR_KIND[feature.kind]
-        if not create then
-            error($"[MenuNode] unknown kind '{feature.kind}' for feature '{feature.id}'")
+        -- Read when the item is made: a profile item gets its default in make (profile_items.prepare)
+        return self:make("color", opts, function(handle, text, names, help_text, handler)
+
+            local base = opts.default or {}
+            local alpha = (opts.transparency and base.a ~= nil) and base.a or 1.0
+            local colour = { r = base.r or 0, g = base.g or 0, b = base.b or 0, a = alpha }
+
+            return menu.colour(handle, text, names, help_text, colour, opts.transparency == true, handler)
+        end)
+    end
+
+    -- Options picked with left/right, without a submenu. Options: options, on_click(index, option_name, click_type)
+    function text_slider(name: string|int|table, options: table = {}, on_click, commands: table = {}, help: string|int = ""): table
+        local opts = type(name) == "table" and name
+            or { name = name, options = options, on_click = on_click, commands = commands, help = help }
+        return self:make("text_slider", opts, |handle, text, names, help_text, handler| ->
+            menu.textslider(handle, text, names, help_text, opts.options or {}, handler))
+    end
+
+    -- A line that hides its value until clicked; another click hides it again: "Name: Hidden" / "Name: value".
+    -- Options: name or key, value, hidden (the text shown in its place)
+    function spoiler(opts: table): table
+
+        local shown = false
+        local item = nil
+        local name, help = texts_of(self, opts)
+        local hidden = opts.hidden or "Hidden"
+
+        local function caption(): string
+
+            local title = name
+            local value = hidden
+
+            if type(name) == "number" then
+                title = lang.get_localised(name)
+            end
+            if shown then
+                value = opts.value or ""
+            end
+
+            return $"{title}: {value}"
         end
 
-        local ref = self:track_named(name, create(self.handle, feature, name, Commands.names(commands), help), commands)
+        local spec = { name = caption(), help = help, commands = opts.commands, on_click = function()
+            shown = not shown
+            item:set_name(caption())
+        end }
 
-        if TOGGLE_KINDS[feature.kind] then
-            table.insert(self.toggles, ref)
-            -- A failed feature is switched off; its toggle follows. The ref may be deleted by then
-            feature:set_failure_handler(function()
-                pcall(menu.set_value, ref, false)
+        item = self:action(spec)
+        return item
+    end
+
+    -- A button that acts only on a second click within a few seconds: for things that can't be undone
+    -- (ui/stand/core/confirm). Options: key or name, again (the name while it waits; "<key>.again" with a key),
+    -- on_confirm(), on_first() (say what the second click would do)
+    -- @return The item, and cancel(): forgets a first click
+    function confirm(opts: table)
+        confirm ??= Atdar.loader.load("ui/stand/core/confirm")
+        return confirm.make(self, opts)
+    end
+
+    -- A feature's item: a toggle_loop, toggle or action by its kind.
+    -- Options: feature, key or name, commands, help. Old form: add_feature(feature, name, commands, help)
+    function add_feature(feature: table, name: string|int = "", commands: table = {}, help: string|int = ""): table
+
+        local opts = feature.kind == nil and feature
+            or { feature = feature, name = name, commands = commands, help = help }
+
+        local target = opts.feature
+        local create = ITEM_FOR_KIND[target.kind]
+        if not create then
+            error($"[MenuNode] unknown kind '{target.kind}' for feature '{target.id}'")
+        end
+
+        local item = self:make("feature", opts, |handle, text, names, help_text| ->
+            create(handle, target, text, names, help_text))
+
+        if TOGGLE_KINDS[target.kind] then
+            table.insert(self.toggles, item)
+            -- A failed feature is switched off; its toggle follows. The item may be gone by then
+            target:set_failure_handler(function()
+                item:set_value(false, true)
             end)
         end
-        
-        return ref
+
+        return item
     end
 
+end
+
+for name, fn in pairs(MenuItem.METHODS) do
+    MenuNode[name] = fn
+end
+
+-- The script's own root list in Stand
+function MenuNode.my_root(): table
+    return new MenuNode(menu.my_root())
 end
 
 return MenuNode

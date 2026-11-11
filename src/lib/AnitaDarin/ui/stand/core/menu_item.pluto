@@ -1,0 +1,169 @@
+-- lib/AnitaDarin/ui/stand/core/menu_item.pluto
+-- One item of the menu as MenuNode makes it: what can be changed on it after it's made. Every change checks
+-- that Stand still has the item, so code holding an item never needs pcall or menu.* itself.
+--
+--     local status = node:readonly({ key = "status" })
+--     status:set_value("running")
+--     node:toggle({ key = "debug", on_change = fn }):shown_when(|| -> Atdar.debug)
+--
+-- A list (MenuNode) has these methods too: they work on its own ref.
+
+local globals = Atdar.globals
+local refs = Atdar.loader.load("ui/stand/core/stand_refs")
+local live = Atdar.loader.load("ui/stand/core/live")
+
+-- The methods, shared with MenuNode (copied into it by METHODS); self.ref is the Stand item
+local methods = {}
+
+-- Whether Stand still has the item
+function methods.valid(self): bool
+    return refs.is_valid(self.ref)
+end
+
+-- @return Whether the name took (false for an item that's gone)
+function methods.set_name(self, name: string|int): bool
+    return (pcall(menu.set_menu_name, self.ref, name))
+end
+
+-- @return The name as Stand shows it, nil if it's gone
+function methods.get_name(self): ?string
+    return refs.name_of(self.ref)
+end
+
+function methods.set_help(self, help: string|int): bool
+    return (pcall(menu.set_help_text, self.ref, help))
+end
+
+-- Sets the value without running the item's own handler: a value shown from code isn't the user's change
+-- @param run_handler Also run the handler, as if the value came from the user
+-- @return Whether it took
+function methods.set_value(self, value, run_handler: bool = false): bool
+
+    if run_handler then
+        return (pcall(menu.set_value, self.ref, value))
+    end
+
+    self.muted += 1
+    local ok = pcall(menu.set_value, self.ref, value)
+    self.muted -= 1
+
+    return ok
+end
+
+-- @return The value, nil if the item is gone
+function methods.get_value(self)
+
+    local ok, value = pcall(menu.get_value, self.ref)
+    if not ok then
+        return nil
+    end
+
+    return value
+end
+
+function methods.set_visible(self, visible: bool): bool
+    return (pcall(menu.set_visible, self.ref, visible))
+end
+
+-- New options for a list_action or a text_slider
+function methods.set_options(self, options: table): bool
+
+    if self.kind == "text_slider" then
+        return (pcall(menu.set_textslider_options, self.ref, options))
+    end
+
+    return (pcall(menu.set_list_action_options, self.ref, options))
+end
+
+-- Takes the cursor to the item
+function methods.focus(self): bool
+    return refs.focus(self.ref)
+end
+
+-- fn() when the cursor comes onto the item
+function methods.on_focus(self, fn): table
+    pcall(menu.on_focus, self.ref, fn)
+    return self
+end
+
+-- fn() when the cursor leaves the item
+function methods.on_blur(self, fn): table
+    pcall(menu.on_blur, self.ref, fn)
+    return self
+end
+
+-- fn() every tick while the item is on screen
+function methods.on_view_tick(self, fn): table
+    pcall(menu.on_tick_in_viewport, self.ref, fn)
+    return self
+end
+
+-- Stand's warning box: proceed() runs once the user agrees. Call it from the item's own handler with the
+-- click type the handler got
+function methods.warn(self, click_type: int, text: string, proceed): void
+    menu.show_warning(self.ref, click_type, text, proceed)
+end
+
+-- Removes the item from the menu and from the node that made it
+function methods.remove(self): void
+
+    if self.parent ~= nil then
+        self.parent:remove_child(self)
+        return
+    end
+
+    live.forget(self)
+    pcall(menu.delete, self.ref)
+end
+
+-- Live parts: set now and again when the language or a profile value changes (ui/stand/core/live)
+
+-- The name follows fn()
+function methods.caption(self, fn): table
+    live.bind(self, "caption", fn)
+    return self
+end
+
+-- The help text follows fn()
+function methods.help_from(self, fn): table
+    live.bind(self, "help", fn)
+    return self
+end
+
+-- The item is shown only while fn() is true
+function methods.shown_when(self, fn): table
+    live.bind(self, "shown", fn)
+    return self
+end
+
+-- The value follows fn(), without running the item's handler
+function methods.value_from(self, fn): table
+    live.bind(self, "value", fn)
+    return self
+end
+
+-- Declared first and assigned explicitly so methods can reference MenuItem (as MenuNode does)
+local MenuItem
+
+MenuItem = class
+
+    -- @param kind The MenuNode method that made it: "action", "toggle", "text_slider"...
+    function __construct(ref, parent, kind: string = "")
+        globals.pluto.class.fix_index(self)
+
+        self.ref = ref
+        self.parent = parent -- the MenuNode that made it, nil for one wrapped from outside
+        self.kind = kind
+        self.muted = 0 -- > 0 while set_value runs from code: the handler skips
+    end
+
+end
+
+for name, fn in pairs(methods) do
+    MenuItem[name] = fn
+end
+
+-- For MenuNode, which is an item too (a list)
+MenuItem.METHODS = methods
+
+return MenuItem

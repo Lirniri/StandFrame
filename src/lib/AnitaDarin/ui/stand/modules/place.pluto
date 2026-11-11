@@ -7,36 +7,41 @@
 -- Strings: core/language "modules"
 
 local i18n = Atdar.loader.load("core/i18n")
+local live = Atdar.loader.load("ui/stand/core/live")
+local MenuItem = Atdar.loader.load("ui/stand/core/menu_item")
+local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
+local display = Atdar.loader.load("ui/stand/core/call_display")
 
 local module = {}
 
 -- Strings under "modules"
 local label = i18n.scope("modules")
 
--- The place (build): the "Debug" divider, the list, items added with debug_only()
-local place = {}
 -- Debug mode, as the profile last said
 local debug_mode = Atdar.debug == true
 
--- The "Debug" divider, the Modules list and the items added with debug_only() show in debug mode
-local function update_visibility(): void
+-- The loops of called functions (Call Function here, a module's functions in the list) put their time and
+-- result on screen. Bound at the start: Call Function's loops run before the Modules list is ever opened
+call_loop.bind({ timed = display.timed, draw = display.draw })
 
-    local refs = { place.divider, place.list and place.list.handle }
+local function is_debug(): bool
+    return debug_mode
+end
 
-    for _, ref in ipairs(place.extra or {}) do
-        table.insert(refs, ref)
+-- A MenuItem for what a maker gave: the item itself, or a Stand ref from a menu made the old way
+local function item_of(made): table
+
+    if type(made) == "table" and made.shown_when ~= nil then
+        return made
     end
 
-    for _, ref in pairs(refs) do
-        pcall(menu.set_visible, ref, debug_mode)
-    end
+    return new MenuItem(made)
 end
 
 -- Puts an item made after build() under the "Debug" divider's visibility: shown only in debug mode
-function module.debug_only(ref): void
-    place.extra ??= {}
-    table.insert(place.extra, ref)
-    pcall(menu.set_visible, ref, debug_mode)
+-- @param made A MenuItem (or a Stand ref)
+function module.debug_only(made): void
+    item_of(made):shown_when(is_debug)
 end
 
 -- The list's items, loaded the first time they're needed
@@ -48,8 +53,12 @@ end
 -- them loads when it's first opened
 -- @return The list (a MenuNode)
 function module.list_in(node: table): table
+
     local list = nil
-    list = node:list(label("name"), {}, label("help"), || -> modules_menu().close(list), || -> modules_menu().open(list))
+
+    list = node:list({ name = label("name"), help = label("help"),
+        on_back = || -> modules_menu().close(list), on_open = || -> modules_menu().open(list) })
+
     return list
 end
 
@@ -62,35 +71,34 @@ end
 
 -- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode).
 -- before_list: a function(parent), or an array of them, that make items right under the divider, above Modules,
--- each in its order; every one returns the item's handle, which is shown in debug mode too
+-- each in its order; every one returns its item (or the item's handle), which is shown in debug mode too
 function module.build(parent: table, before_list: ?function|table): void
+
+    local makers = before_list
 
     -- The manager failed to load: the loader left an empty table
     if Atdar.modules == nil or type(Atdar.modules.names) ~= "function" then
         return
     end
 
-    -- A section made again (a profile created or deleted): the old place's items are gone
-    place = { divider = parent:divider(label("debug.divider")), extra = {} }
-
-    local makers = before_list
-
     if type(before_list) == "function" then
         makers = { before_list }
     end
 
+    parent:divider({ name = label("debug.divider"), shown_when = is_debug })
+
     for _, make in ipairs(makers or {}) do
-        table.insert(place.extra, make(parent))
+        module.debug_only(make(parent))
     end
 
-    place.list = module.list_in(parent)
-    update_visibility()
+    module.list_in(parent):shown_when(is_debug)
 end
 
+-- The items follow at once: whether live's own refresh ran before this one is up to the order of the listeners
 Atdar.profile.on_change(function(key: string, value)
     if key == "debug" then
         debug_mode = value == true
-        update_visibility()
+        live.refresh()
     end
 end)
 

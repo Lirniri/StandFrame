@@ -5,10 +5,7 @@
 -- Strings: core/language "menu_loader"
 
 local load = Atdar.loader.load
-local MenuNode = load("ui/stand/core/menu_node")
-local builder = load("ui/stand/core/menu_builder")
 local packs = load("ui/logic/stand/menu_packs")
-local settings = load("ui/stand/core/settings")
 local i18n = load("core/i18n")
 local Logger = load("core/logger")
 local commands = load("ui/logic/stand/commands")
@@ -67,7 +64,10 @@ end
 
 -- The menu loader's state: what is loaded and the actions on it
 -- @param hooks The root's part, the menu loader only calls it:
---              root_handle: the root's ref the menu's items go under;
+--              build_menu(dir: string): makes the menu's items under the root from the layout in dir
+--              (ui/stand/core/menu_builder); an error in it is caught here;
+--              clear_menu(): takes those items away again;
+--              mark_settings(): -> what the settings section has now; restore_settings(mark): back to it;
 --              show_notice(key: ?string): the divider shown while no menu is loaded;
 --              hide_notice(): takes it away;
 --              remove_settings(): takes the settings section away;
@@ -95,37 +95,39 @@ function module.new(hooks: table): table
         -- and clearing that list would leave the settings section pointing at deleted items
         hooks.remove_settings()
         -- Then items: switching their toggles off disables features the normal way, through Stand
-        current.node:clear()
+        hooks.clear_menu()
         for _, id in ipairs(current.feature_ids) do
             features.remove(id)
         end
-        settings.restore(current.settings_mark)
+        hooks.restore_settings(current.settings_mark)
         i18n.remove_source(current.strings)
         current = nil
     end
 
     -- Replaces the loaded menu: adds its translations (language_dir), runs feature_files,
-    -- then build(node) adds the items. kind ("builtin" or "pack") tells later whether the built-in menu is loaded;
-    -- menu_dir: the menu's folder, where its commands folder (custom command names and words) is: the pack's in store,
-    -- or the built-in menu's in core; pack: the pack's folder name, so Load Menu can show which pack is loaded
-    local function load_menu(kind: string, language_dir: string, feature_files: table, build: function,
-            menu_dir: string, pack: ?string): void
+    -- then the root builds the items from layout_dir. kind ("builtin" or "pack") tells later whether the built-in
+    -- menu is loaded; menu_dir: the menu's folder, where its commands folder (custom command names and words) is:
+    -- the pack's in store, or the built-in menu's in core; pack: the pack's folder name, so Load Menu can show
+    -- which pack is loaded
+    local function load_menu(kind: string, language_dir: string, feature_files: table, layout_dir: string,
+        menu_dir: string, pack: ?string
+    ): void
+        -- body function:
         hooks.hide_notice()
         unload_current()
 
         -- Before features and items, so both can already use the menu's strings
         local strings = i18n.add_source(language_dir)
         local ids_before = features.ids()
-        local settings_mark = settings.mark()
+        local settings_mark = hooks.mark_settings()
         local loaded = packs.load_feature_files(feature_files)
         if loaded < #feature_files then
             log:warn($"ran {loaded} of {#feature_files} feature file(s)")
         end
 
-        -- A separate node on the root ref tracks only this menu's items; their custom names apply as they're made
+        -- Their custom names apply as the items are made
         commands.begin_menu(menu_dir)
-        local node = new MenuNode(hooks.root_handle)
-        local built, err = pcall(build, node)
+        local built, err = pcall(hooks.build_menu, layout_dir)
         commands.end_menu()
         if not built then
             log:error($"menu build failed: {err}")
@@ -137,7 +139,7 @@ function module.new(hooks: table): table
                 table.insert(feature_ids, id)
             end
         end
-        current = { kind = kind, pack = pack, node = node, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
+        current = { kind = kind, pack = pack, feature_ids = feature_ids, settings_mark = settings_mark, strings = strings }
         -- Stand applies the active profile only to items created during the script's main body,
         -- so a menu loaded later by hand starts without the profile's states
         hooks.rebuild_settings()
@@ -145,12 +147,12 @@ function module.new(hooks: table): table
 
     function controller.load_builtin(): void
         load_menu("builtin", packs.core_language_dir(paths.store), find_builtin_features(),
-            |node| -> builder.build_menu(node, BUILTIN_MENU_DIR), BUILTIN_MENU_DIR)
+            BUILTIN_MENU_DIR, BUILTIN_MENU_DIR)
     end
 
     function controller.load_pack(info: table): void
         load_menu("pack", $"{info.dir}language\\", info.feature_files,
-            |node| -> builder.build_menu(node, packs.layout_dir(info.dir)), info.dir, info.folder)
+            packs.layout_dir(info.dir), info.dir, info.folder)
     end
 
     -- Load Menu > Unload: takes the loaded menu out. Like a start without a menu, the root then says so;

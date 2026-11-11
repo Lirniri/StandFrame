@@ -46,10 +46,12 @@ local display = Atdar.loader.load("ui/stand/core/call_display")
 
 local module = {}
 
--- Strings under "script_menu.call_function"
-local label = i18n.scope("script_menu.call_function")
+-- Strings under "script_menu.call_function": the keys of its items
+local SCOPE = "script_menu.call_function"
+local label = i18n.scope(SCOPE)
 
 -- The strings of the Modules list's function lists, shared: Call After, Call When Opened, Loop
+local LOOP_SCOPE = "modules.loop"
 local mlabel = i18n.scope("modules")
 
 -- The argument fields and the result lines are loaded when a panel is first made, not with the script's section
@@ -61,6 +63,13 @@ local function values(): table
     return Atdar.loader.load("ui/stand/modules/values")
 end
 
+-- A switch that only writes its value into state[field]
+local function state_toggle(node: table, key: string, state: table, field: string, default: bool): table
+    return node:toggle({ key = key, default = default, on_change = function(on)
+        state[field] = on
+    end })
+end
+
 -- The panel
 
 -- Makes the panel in list, from the Argument on.
@@ -70,37 +79,35 @@ end
 --                       base of the commands of the parameters' fields ("<base>_1", "<base>_rest")
 -- spec.with_name:       Call After Typing Function is there (a list with a Function Name field)
 -- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
--- @return { call = function(), opened = function(), name_typed = function() }: Call, what the list does when
+-- @return { rebuild(), call(), opened(), name_typed() }: the panel made again, Call, what the list does when
 --         opened, and what a Function Name field does when typed
 function module.panel(list: table, spec: table): table
 
     local state = spec.state
-    -- Where the panel starts in the list: made again from here when an argument's field becomes a list
-    local first = #list.children + 1
+    local ui = list:scope(SCOPE)
+    local loop = list:scope(LOOP_SCOPE)
     -- The Loop Status line and the Loop switch of the latest making
-    local status_ref = nil
+    local status = nil
     local loop_toggle = nil
-    -- Set while the script itself switches Loop: its on_change isn't the user's then
-    local syncing = false
-    local fill
+    -- The Arguments list of the latest making. A field that becomes a list (a function called in it) makes
+    -- only these fields again, not the whole panel
+    local args_list = nil
+    local fill_args
+    local panel = nil
 
     -- The loop started, stopped or failed: the status line says it, the switch follows without starting
     -- or stopping anything
     state.on_loop = function(kind, every)
-
-        if status_ref ~= nil then
-            pcall(menu.set_menu_name, status_ref, calls.status_line(kind, every))
+        if status ~= nil then
+            status:set_name(calls.status_line(kind, every))
         end
-
         if loop_toggle ~= nil then
-            syncing = true
-            pcall(menu.set_value, loop_toggle, kind == "running" or kind == "every")
-            syncing = false
+            loop_toggle:set_value(kind == "running" or kind == "every")
         end
     end
 
     -- The cursor on this list (not inside it)
-    menu.on_focus(list.handle, function()
+    list:on_focus(function()
         if state.on_focus and not clicks.is_stopping() then
             calls.call(spec)
         end
@@ -112,11 +119,6 @@ function module.panel(list: table, spec: table): table
             calls.call(spec)
         end
     end
-
-    -- The Arguments list of the latest making, and its fields. A field that becomes a list (a function called in
-    -- it) makes only these again, not the whole panel
-    local args_list = nil
-    local fill_args
 
     fill_args = function()
 
@@ -136,35 +138,34 @@ function module.panel(list: table, spec: table): table
             return
         end
 
-        args_list:text_input(mlabel("loop.args"), { spec.args_command }, function(value, click_type)
-            if not clicks.is_user_action(click_type) then
-                return
-            end
-
-            state.args = value
-            typed()
-        end, label("args.help"), state.args or "")
+        args_list:text_input({
+            name = mlabel("loop.args"),
+            help = label("args.help"),
+            commands = { spec.args_command },
+            default = state.args or "",
+            user_only = true,
+            on_change = function(value)
+                state.args = value
+                typed()
+            end,
+        })
     end
 
-    fill = function()
+    -- The same order as a function in the Modules list: Arguments, the Call Settings divider, Call, Call After,
+    -- Call When Opened / Hovered, the loop's status, Loop, Loop With Interval, the Variable line with its
+    -- Value list and table settings
+    panel = list:section(function()
 
-        -- The same order as a function in the Modules list: Arguments, the Call Settings divider, Call, Call After,
-        -- Call When Opened / Hovered, the loop's status, Loop, Loop With Interval, the Variable line with its
-        -- Value list and table settings
         if spec.with_name then
-            list:toggle(label("on_enter_name.name"), function(on)
-                state.on_enter_name = on
-            end, {}, label("on_enter_name.help"), state.on_enter_name == true)
+            state_toggle(ui, "on_enter_name", state, "on_enter_name", state.on_enter_name == true)
         end
 
-        args_list = list:list(mlabel("loop.args"), {}, mlabel("loop.args_help"))
+        args_list = list:list({ name = mlabel("loop.args"), help = mlabel("loop.args_help") })
         fill_args()
 
         -- The settings of calling, under the arguments
-        list:divider(mlabel("loop.settings"))
-        list:toggle(label("on_enter.name"), function(on)
-            state.on_enter = on
-        end, {}, label("on_enter.help"), state.on_enter == true)
+        list:divider({ name = mlabel("loop.settings") })
+        state_toggle(ui, "on_enter", state, "on_enter", state.on_enter == true)
 
         -- Call; with a number of ms picked, Call After
         Atdar.loader.load("ui/stand/core/call_slider").build(list, {
@@ -175,88 +176,67 @@ function module.panel(list: table, spec: table): table
             call_after = |ms| -> calls.call_after(spec, ms),
         })
 
-        list:toggle(mlabel("loop.call_on_open.name"), function(on)
-            state.on_open = on
-        end, {}, mlabel("loop.call_on_open.help"), state.on_open == true)
-
-        list:toggle(mlabel("loop.call_on_focus.name"), function(on)
-            state.on_focus = on
-        end, {}, mlabel("loop.call_on_focus.help"), state.on_focus == true)
+        state_toggle(loop, "call_on_open", state, "on_open", state.on_open == true)
+        state_toggle(loop, "call_on_focus", state, "on_focus", state.on_focus == true)
 
         -- What its loop puts on the screen: the time of a call and what it gave
-        list:toggle(mlabel("loop.show_time.name"), function(on)
-            state.show_time = on
-        end, {}, mlabel("loop.show_time.help"), state.show_time ~= false)
-
-        list:toggle(mlabel("loop.show_result.name"), function(on)
-            state.show_result = on
-        end, {}, mlabel("loop.show_result.help"), state.show_result ~= false)
+        state_toggle(loop, "show_time", state, "show_time", state.show_time ~= false)
+        state_toggle(loop, "show_result", state, "show_result", state.show_result ~= false)
 
         -- The loop: its status line (as the loop is now), Loop, Loop With Interval
-        status_ref = list:divider(calls.status_line(calls.loop_status(state)))
+        status = list:divider({ name = calls.status_line(calls.loop_status(state)) })
 
-        loop_toggle = list:toggle(mlabel("loop.loop.name"), function(on)
-            if clicks.is_stopping() or syncing then
-                return
+        loop_toggle = loop:toggle({ key = "loop", default = state.loop ~= nil, on_change = function(on)
+            if not clicks.is_stopping() then
+                calls.set_loop(spec, on)
             end
+        end })
 
-            calls.set_loop(spec, on)
-        end, {}, mlabel("loop.loop.help"), state.loop ~= nil)
-
-        list:click_slider(mlabel("loop.every.name"), 100, 60000, 1000, 100, function(ms, click_type)
-            if clicks.is_user_action(click_type) then
-                calls.start_loop(spec, ms)
-            end
-        end, {}, mlabel("loop.every.help"))
+        loop:click_slider({ key = "every", min = 100, max = 60000, default = 1000, step = 100, user_only = true,
+            on_click = |ms| -> calls.start_loop(spec, ms) })
 
         -- What came out: the Variable line, and for a table the Value list under it
         values().add_result_lines(list, spec.key, spec.kept)
 
-        -- Table Depth, Call Functions In Tables and Change Variable Values: made while the result is a table, at the
-        -- end of the list, right under the Value list. Stand puts the saved state of these back while they're made:
-        -- then it's only remembered (quiet)
+        -- Table Depth, Call Functions In Tables and Change Variable Values: made while the result is a table, at
+        -- the end of the list, right under the Value list. Stand puts the saved state of these back while they're
+        -- made: then it's only remembered (quiet)
         values().bind_depth_items(spec.key, function()
 
-            local first_table_item = #list.children + 1
-
-            list:slider(mlabel("loop.table_depth.name"), 1, 8, values().result_depth(spec.key), 1, function(depth, previous, click_type)
-                if clicks.is_stopping() then
-                    return
+            local depth = loop:slider({ key = "table_depth", min = 1, max = 8,
+                default = values().result_depth(spec.key), on_change = function(value, previous, click_type)
+                if not clicks.is_stopping() then
+                    values().set_result_depth(spec.key, value, not clicks.is_user_click(click_type))
                 end
-
-                values().set_result_depth(spec.key, depth, not clicks.is_user_click(click_type))
-            end, {}, mlabel("loop.table_depth.help"))
+            end })
 
             -- The functions in the table become lists with the same panel
-            list:toggle(mlabel("loop.call_in_tables.name"), function(on, click_type)
-                if clicks.is_stopping() then
-                    return
+            local in_tables = loop:toggle({ key = "call_in_tables", default = values().call_in_tables(spec.key),
+                on_change = function(on, click_type)
+                if not clicks.is_stopping() then
+                    values().set_call_in_tables(spec.key, on, not clicks.is_user_click(click_type))
                 end
-
-                values().set_call_in_tables(spec.key, on, not clicks.is_user_click(click_type))
-            end, {}, mlabel("loop.call_in_tables.help"), values().call_in_tables(spec.key))
+            end })
 
             -- The other values in the table become fields to type a new value in
-            list:toggle(mlabel("loop.edit_in_tables.name"), function(on, click_type)
-                if clicks.is_stopping() then
-                    return
+            local edit = loop:toggle({ key = "edit_in_tables", default = values().edit_in_tables(spec.key),
+                on_change = function(on, click_type)
+                if not clicks.is_stopping() then
+                    values().set_edit_in_tables(spec.key, on, not clicks.is_user_click(click_type))
                 end
+            end })
 
-                values().set_edit_in_tables(spec.key, on, not clicks.is_user_click(click_type))
-            end, {}, mlabel("loop.edit_in_tables.help"), values().edit_in_tables(spec.key))
-
-            return function() list:clear_from(first_table_item) end
+            return function()
+                depth:remove()
+                in_tables:remove()
+                edit:remove()
+            end
         end)
-    end
-
-    fill()
+    end)
 
     return {
         -- The arguments' fields made again, after the function changed (spec.sig is new)
-        rebuild = function()
-            list:clear_from(first)
-            fill()
-        end,
+        rebuild = || -> panel.rebuild(),
         call = || -> calls.call(spec),
         opened = function()
             if state.on_open then
@@ -282,19 +262,14 @@ local show_added = nil
 local function add_item(list: table, entry: table, number: int): void
 
     local item = calls.describe(entry, number)
+    local panel = nil
 
     if not item.has_fields then
-        list:action(item.name, || -> calls.call(item.spec), {}, label("added.button_help"))
+        list:action({ name = item.name, help = label("added.button_help"), on_click = || -> calls.call(item.spec) })
         return
     end
 
-    local panel = nil
-    local node = list:list(item.name, {}, label("added.help"), nil, function()
-        if panel ~= nil then
-            panel.opened()
-        end
-    end)
-
+    local node = list:list({ name = item.name, help = label("added.help"), on_open = || -> panel.opened() })
     panel = module.panel(node, item.spec)
 end
 
@@ -304,19 +279,11 @@ local function build_by_name(node: table): void
     local panel = nil
     local spec = nil
     local state = calls.main_state
-
-    local list = node:list(label("by_name.name"), {}, label("by_name.help"), nil, function()
-        if panel ~= nil then
-            panel.opened()
-        end
-    end)
+    local list = node:list({ key = "by_name", on_open = || -> panel.opened() })
 
     -- With Call After Typing Function on, typing the name calls it (or reads a table or a variable) at once
-    list:text_input(label("function.name"), { "callfuncname" }, function(value, click_type)
-        if not clicks.is_user_action(click_type) then
-            return
-        end
-
+    list:text_input({ key = "function", commands = { "callfuncname" }, default = state.name or "", user_only = true,
+        on_change = function(value)
         local named, changed = calls.set_main_name(value)
 
         -- Another function: its parameters are the fields now (a table or a variable has none: the one field)
@@ -328,7 +295,7 @@ local function build_by_name(node: table): void
         if named and panel ~= nil then
             panel.name_typed()
         end
-    end, label("function.help"), state.name or "")
+    end })
 
     spec = {
         key = calls.RESULT_KEY,
@@ -350,68 +317,64 @@ local function build_functions(node: table): void
 
     calls.load_saved()
 
-    local list = node:list(label("functions.name"), {}, label("functions.help"))
-    local first = nil
+    local list = node:list({ key = "functions" })
 
-    -- The items of the functions made again, with the numbers and names they have now
-    show_added = function()
-        list:clear_from(first)
-        for number, entry in ipairs(calls.added()) do
-            add_item(list, entry, number)
-        end
-    end
-
-    list:text_input(label("add.name"), { "addfunc" }, function(value, click_type)
-        if not clicks.is_user_action(click_type) then
-            return
-        end
+    list:text_input({ key = "add", commands = { "addfunc" }, user_only = true, on_change = function(value)
 
         local entry, number = calls.add(value)
 
         if entry ~= nil then
             add_item(list, entry, number)
         end
-    end, label("add.help"), "")
+    end })
 
     -- The number of the function to take out
-    list:text_input(label("clear.name"), { "clearfunc" }, function(value, click_type)
-        if clicks.is_user_action(click_type) and calls.remove(value) then
+    list:text_input({ key = "clear", commands = { "clearfunc" }, user_only = true, on_change = function(value)
+        if calls.remove(value) then
             show_added()
         end
-    end, label("clear.help"), "")
+    end })
 
-    list:action(label("clear_all.name"), function()
+    list:action({ key = "clear_all", on_click = function()
         if calls.clear_all() then
             show_added()
         end
-    end, {}, label("clear_all.help"))
+    end })
 
-    list:toggle(label("save.name"), function(on)
+    list:toggle({ key = "save", default = calls.settings.save, on_change = function(on)
         if not clicks.is_stopping() then
             calls.set_save(on)
         end
-    end, {}, label("save.help"), calls.settings.save)
+    end })
 
-    list:divider(label("functions.name"))
-    first = #list.children + 1
-    show_added()
+    list:divider({ name = label("functions.name") })
+
+    -- The items of the functions, with the numbers and names they have now; made again by show_added
+    local added = list:section(function()
+        for number, entry in ipairs(calls.added()) do
+            add_item(list, entry, number)
+        end
+    end)
+
+    show_added = added.rebuild
 end
 
 -- Makes the list in node
--- @return The list's handle
+-- @return The list's Stand handle (the tests look into it)
 function module.build(node: table): any
 
     local settings = calls.settings
-    local list = node:list(label("name"), {}, label("help"))
+    local list = node:list({ name = label("name"), help = label("help") })
+    local ui = list:scope(SCOPE)
 
-    build_by_name(list)
-    build_functions(list)
+    build_by_name(ui)
+    build_functions(ui)
 
-    list:action(label("guide.name"), calls.show_guide, {}, label("guide.help"))
+    ui:action({ key = "guide", on_click = calls.show_guide })
 
-    list:divider(label("settings.divider"))
+    ui:divider({ name = label("settings.divider") })
 
-    list:toggle(label("short_names.name"), function(on, click_type)
+    ui:toggle({ key = "short_names", default = settings.short_names, on_change = function(on, click_type)
         if clicks.is_stopping() or settings.short_names == on then
             return
         end
@@ -422,28 +385,28 @@ function module.build(node: table): any
         if show_added ~= nil and clicks.is_user_click(click_type) then
             show_added()
         end
-    end, {}, label("short_names.help"), settings.short_names)
+    end })
 
     -- Off by default; on: no function shows it, whatever its own switch says
-    list:toggle(label("show_time.name"), function(on)
+    ui:toggle({ key = "show_time", default = not display.show_time, on_change = function(on)
         display.show_time = not on
-    end, {}, label("show_time.help"), not display.show_time)
+    end })
 
-    list:toggle(label("show_result.name"), function(on)
+    ui:toggle({ key = "show_result", default = not display.show_result, on_change = function(on)
         display.show_result = not on
-    end, {}, label("show_result.help"), not display.show_result)
+    end })
 
-    list:slider(label("result_length.name"), display.LENGTH_MIN, display.LENGTH_MAX, display.result_length, 10,
-        function(value)
+    ui:slider({ key = "result_length", min = display.LENGTH_MIN, max = display.LENGTH_MAX,
+        default = display.result_length, step = 10, on_change = function(value)
         display.result_length = value
-    end, {}, label("result_length.help"))
+    end })
 
-    list:toggle(label("stand.name"), function(on)
+    ui:toggle({ key = "stand", default = settings.stand, on_change = function(on)
         settings.stand = on
-    end, {}, label("stand.help"), settings.stand)
+    end })
 
     -- The JSON files of Call Function (short names, the Stand API, the user's own) as a tree to edit
-    Atdar.loader.load("ui/stand/script/call_function_editor").build(list)
+    Atdar.loader.load("ui/stand/script/call_function_editor").build(ui)
 
     return list.handle
 end

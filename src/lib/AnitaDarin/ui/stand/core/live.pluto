@@ -1,0 +1,102 @@
+-- lib/AnitaDarin/ui/stand/core/live.pluto
+-- Items whose name, help, visibility or value follow a function (item:caption(fn), help_from, shown_when,
+-- value_from). They're set again whenever the language or a profile value changes, and on refresh().
+-- Items removed through their node are forgotten at once; one deleted some other way is dropped the next
+-- time it's looked at.
+
+local i18n = Atdar.loader.load("core/i18n")
+
+local module = {}
+
+-- The items with bindings, in the order they got their first one
+local items = {}
+
+local subscribed = false
+
+-- The language and the profile are watched once, on the first binding: a menu without any needs neither
+local function subscribe(): void
+
+    if subscribed then
+        return
+    end
+
+    subscribed = true
+
+    if i18n.on_change then
+        i18n.on_change(|| -> module.refresh())
+    end
+
+    local profile = Atdar.profile
+    if profile and profile.on_change then
+        profile.on_change(|| -> module.refresh())
+    end
+end
+
+-- Sets what the item's bindings say now
+-- @return Whether every one of them took (false when Stand refused a value)
+function module.apply(item: table): bool
+
+    local live = item.live
+    local ok = true
+
+    if live.caption then
+        ok = item:set_name(live.caption()) and ok
+    end
+    if live.help then
+        ok = item:set_help(live.help()) and ok
+    end
+    if live.shown then
+        ok = item:set_visible(live.shown() == true) and ok
+    end
+    if live.value then
+        ok = item:set_value(live.value()) and ok
+    end
+
+    return ok
+end
+
+-- Binds one of the item's parts (caption, help, shown, value) to fn and sets it now
+function module.bind(item: table, part: string, fn: function): void
+
+    subscribe()
+
+    if item.live == nil then
+        item.live = {}
+        table.insert(items, item)
+    end
+
+    item.live[part] = fn
+    module.apply(item)
+end
+
+-- Stops following the item: it's being removed
+function module.forget(item: table): void
+    item.live = nil
+end
+
+-- Sets every bound item again; drops the ones that are gone
+-- @return Whether every item took its values
+function module.refresh(): bool
+
+    local ok = true
+
+    for i = #items, 1, -1 do
+
+        local item = items[i]
+
+        if item.live == nil or not item:valid() then
+            table.remove(items, i)
+        else
+            ok = module.apply(item) and ok
+        end
+    end
+
+    return ok
+end
+
+-- How many items are followed now (tests)
+function module.count(): int
+    return #items
+end
+
+return module

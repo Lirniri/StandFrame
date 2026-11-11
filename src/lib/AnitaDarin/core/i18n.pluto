@@ -363,15 +363,16 @@ end
 
 -- Strings with the same English text share one Stand label, so a label alone doesn't say which key it came
 -- from. The key asked for last is the one for the item being made: label() is called just before it
+-- @param item A MenuItem (ui/stand/core/menu_item): the notice is sent from its on_focus
 -- @return Whether the item gets the hover notice
-function module.watch_path(ref, label): bool
+function module.watch_path(item: table, label): bool
 
     local key = type(label) == "number" and recent[label] or nil
     if key == nil then
         return false
     end
 
-    menu.on_focus(ref, function()
+    item:on_focus(function()
 
         local parts = {}
 

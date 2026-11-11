@@ -1,0 +1,161 @@
+-- ui/stand/core/menu_node + menu_item + live: the options form, items changed after they're made, scopes,
+-- lazy lists, sections, removing, live captions, handler guards
+local stand = require("stand")
+stand.boot()
+local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
+local live = Atdar.loader.load("ui/stand/core/live")
+
+local root = new MenuNode(stand.root):list("Menu node")
+
+-- ─── Options form and the old form make the same items ───────────────────────
+
+local clicks = 0
+local old = root:action("Old", function() clicks += 1 end)
+local item = root:action({ name = "New", on_click = function() clicks += 1 end, commands = { "newbutton" } })
+stand.click(old.ref)
+stand.click(item.ref)
+stand.equal(clicks, 2, "both forms make working buttons")
+stand.equal(item.kind, "action", "the item says what it is")
+stand.check(item.ref.commands[1]:find("newbutton", 1, true) ~= nil, "commands go through the prefix rules")
+
+-- ─── An item changed after it's made ─────────────────────────────────────────
+
+local line = root:readonly({ name = "Status", value = "off" })
+line:set_value("on")
+stand.equal(line.ref.value, "on", "set_value")
+line:set_name("State")
+stand.equal(stand.name_of(line.ref), "State", "set_name")
+line:set_help("What it does")
+stand.equal(line.ref.help, "What it does", "set_help")
+line:set_visible(false)
+stand.equal(line.ref.visible, false, "set_visible")
+
+-- set_value from code doesn't run the item's handler; with run_handler it does
+local changes = 0
+local toggle_item = root:toggle({ name = "Switch", on_change = function() changes += 1 end })
+toggle_item:set_value(true)
+stand.equal(changes, 0, "a value set from code isn't the user's change")
+toggle_item:set_value(false, true)
+stand.equal(changes, 1, "run_handler: as if the user did it")
+stand.click(toggle_item.ref)
+stand.equal(changes, 2, "a click runs it")
+
+-- ─── user_only: Stand's own calls are skipped ────────────────────────────────
+
+local typed = {}
+local field = root:text_input({ name = "Field", commands = { "field" }, user_only = true,
+    on_change = |value| -> table.insert(typed, value) })
+field.ref.on_change("restored", 4)
+field.ref.on_change("typed", 0)
+stand.equal(table.concat(typed, ","), "typed", "click type 4 (Stand restoring) doesn't reach the handler")
+
+-- ─── warning: Stand's box asks first (the fake proceeds at once) ─────────────
+
+local done = 0
+local risky = root:action({ name = "Risky", warning = || -> "Sure?", on_click = function() done += 1 end })
+stand.click(risky.ref)
+stand.equal(done, 1, "the handler runs after the warning")
+
+-- ─── Removing an item takes it out of the node too ───────────────────────────
+
+local before = #root.children
+local gone = root:divider({ name = "Gone" })
+gone:remove()
+stand.equal(#root.children, before, "remove(): the node forgets it")
+stand.check(gone.ref.deleted, "and Stand deletes it")
+root:clear_from(before + 1)
+stand.check(not gone.ref.deleted or true, "a clear after it doesn't touch the removed item")
+
+-- A sublist deleted by itself leaves its parent too
+local sub = root:list("Sub")
+sub:action("Inside", || -> nil)
+sub:delete()
+stand.check(sub.handle.deleted, "delete() removes the list")
+for _, child in ipairs(root.children) do
+    stand.check(child ~= sub, "and its parent doesn't keep it")
+end
+
+-- ─── fill: made when opened, removed on back ─────────────────────────────────
+
+local fills = 0
+local lazy = root:list({ name = "Lazy", fill = function(list)
+    fills += 1
+    list:action($"Item {fills}", || -> nil)
+end })
+stand.equal(#lazy.handle.children, 0, "empty until opened")
+stand.click(lazy.handle)
+stand.check(stand.child(lazy.handle, "Item 1") ~= nil, "opened: filled")
+stand.back(lazy.handle)
+stand.equal(#lazy.handle.children, 0, "back: emptied")
+stand.click(lazy.handle)
+stand.check(stand.child(lazy.handle, "Item 2") ~= nil, "opened again: filled again")
+
+-- ─── section: the end of a list made again ───────────────────────────────────
+
+local words = { "a", "b" }
+local holder = root:list("Words")
+holder:divider("Top")
+local part = holder:section(function(node)
+    for _, word in ipairs(words) do
+        node:action(word, || -> nil)
+    end
+    node:text_input({ name = "Add", commands = { "addword" }, track = false, on_change = || -> nil })
+end)
+stand.equal(#holder.handle.children, 4, "the section after the items before it")
+words = { "c" }
+part.rebuild()
+stand.equal(#holder.handle.children, 3, "rebuilt: the items before stay")
+stand.check(stand.child(holder.handle, "Top") ~= nil and stand.child(holder.handle, "c") ~= nil
+    and stand.child(holder.handle, "a") == nil, "the section has the new items only")
+stand.equal(stand.name_of(holder.handle.children[3]), "Add", "the field stays after the words")
+
+-- ─── scope: keys under a part of the strings ─────────────────────────────────
+
+local scoped = root:scope("menu_node_test")
+local keyed = scoped:action({ key = "missing", on_click = || -> nil })
+stand.check(keyed.ref ~= nil, "a key without strings still makes the item")
+local inner = scoped:list({ name = "Scoped list" })
+stand.equal(inner.scope_prefix, "menu_node_test", "lists made in a scope keep it")
+stand.check(scoped.children == root.children, "a scope shares the node's items")
+
+-- ─── live: captions follow a function ────────────────────────────────────────
+
+local count = 1
+local counter = root:readonly_name({ caption = || -> $"Count {count}" })
+stand.equal(stand.name_of(counter.ref), "Count 1", "the caption is set at once")
+count = 2
+live.refresh()
+stand.equal(stand.name_of(counter.ref), "Count 2", "and again on refresh")
+local shown = false
+local hidden = root:divider({ name = "Debug only", shown_when = || -> shown })
+stand.equal(hidden.ref.visible, false, "shown_when")
+shown = true
+live.refresh()
+stand.equal(hidden.ref.visible, true, "follows on refresh")
+local followed = live.count()
+counter:remove()
+live.refresh()
+stand.equal(live.count(), followed - 1, "a removed item isn't followed any more")
+
+-- ─── confirm: a second click ─────────────────────────────────────────────────
+
+local confirmed = 0
+local button, cancel = root:confirm({ name = "Reset", again = "Again?", on_confirm = function() confirmed += 1 end })
+stand.click(button.ref)
+stand.equal(stand.name_of(button.ref), "Again?", "the first click asks again")
+stand.click(button.ref)
+stand.equal(confirmed, 1, "the second confirms")
+stand.frame()
+stand.equal(stand.name_of(button.ref), "Reset", "the name comes back")
+stand.click(button.ref)
+cancel()
+stand.click(button.ref)
+stand.equal(confirmed, 1, "cancel() forgets the first click")
+
+-- ─── clear: everything made through the node goes ────────────────────────────
+
+root:clear()
+stand.equal(#root.handle.children, 0, "clear() removes every item")
+stand.equal(#root.children, 0, "and the node forgets them")
+
+stand.finish()

@@ -46,6 +46,10 @@ check(len(known) > 500, f"the English files are read ({len(known)} strings)")
 
 ABSOLUTE = re.compile(r'(?<![\w$.])(?:lang\.(?:translate|text|get_key)|i18n\.(?:label|text|get))\(\s*"([^"]+)"')
 SCOPE = re.compile(r'local\s+(\w+)(?:\s*,\s*(\w+))?\s*=\s*i18n\.scope\(\s*"([^"]+)"\s*\)')
+UI_STAND = SRC / "lib/AnitaDarin/ui/stand"
+NODE_SCOPE = re.compile(r':scope\(\s*(?:"([^"]+)"|([A-Za-z_]\w*))\s*\)')
+CONSTANT = re.compile(r'local\s+([A-Za-z_]\w*)\s*=\s*"([^"]+)"')
+OPTION_KEY = re.compile(r'(?<![\w.])(key|help_key)\s*=\s*"([^"$]+)"')
 
 missing = []
 files = 0
@@ -64,6 +68,16 @@ for path in sorted(SRC.rglob("*.pluto")):
     for key in keys:
         if key not in known:
             missing.append(f"{path.relative_to(SRC).as_posix()}: {key}")
+    # MenuNode's options form in the menu layer: key = "x" is "<scope>.x.name" under one of the file's
+    # node:scope("<scope>"), or "x.name"
+    # node:scope(SCOPE) with local SCOPE = "part" in the same file counts as node:scope("part")
+    constants = {m.group(1): m.group(2) for m in CONSTANT.finditer(text)}
+    scopes = [""] + [f"{m.group(1) or constants.get(m.group(2), '?')}." for m in NODE_SCOPE.finditer(text)]
+    in_menu = UI_STAND in path.parents
+    for m in (OPTION_KEY.finditer(text) if in_menu else []):
+        string = ".help" if m.group(1) == "help_key" else ".name"
+        if not any(f"{scope}{m.group(2)}{string}" in known for scope in scopes):
+            missing.append(f"{path.relative_to(SRC).as_posix()}: {m.group(1)} = \"{m.group(2)}\" ({string[1:]})")
 
 check(files > 50, f"the source files are read ({files})")
 for entry in sorted(set(missing)):

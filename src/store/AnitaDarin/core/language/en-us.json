@@ -520,6 +520,13 @@
             "name": "Disable Function Categories",
             "help": "The module's functions in one list, without Getters, Setters and the others; the base functions as a section, not a list"
         },
+        "options": {
+            "divider": "Options"
+        },
+        "function_call": {
+            "name": "Function Call",
+            "help": "Calling the module's functions by hand"
+        },
         "functions": {
             "name": "Module Functions",
             "help": "The module's variables and functions",
