@@ -164,10 +164,26 @@ local function raw_path(o: table, path: string): string
     return url_path($"/{o.repo}/{o.branch}/{path}")
 end
 
--- GETs https://<host><path> and waits for the answer. Yields: call it from a thread
+-- Whether a request is running: Stand's async_http holds one at a time, and a second init made while it
+-- runs crashes Stand (the versions list asked twice at once, a check during a list)
+local fetching = false
+
+-- GETs https://<host><path> and waits for the answer, one request at a time: another thread's request
+-- is waited for first. Yields: call it from a thread
 -- @return The body, or nil and why not
 function module.fetch(host: string, path: string, timeout: int = 15000)
-    
+
+    local waiting_since = util.current_time_millis()
+
+    while fetching do
+        if util.current_time_millis() - waiting_since > timeout then
+            return nil, "timed out"
+        end
+        util.yield()
+    end
+
+    fetching = true
+
     local done, body, err = false, nil, nil
     
     async_http.init(host, path, function(result, headers, status)
@@ -188,11 +204,13 @@ function module.fetch(host: string, path: string, timeout: int = 15000)
     
     while not done do
         if util.current_time_millis() - started > timeout then
+            fetching = false
             return nil, "timed out"
         end
         util.yield()
     end
-    
+
+    fetching = false
     return body, err
 end
 

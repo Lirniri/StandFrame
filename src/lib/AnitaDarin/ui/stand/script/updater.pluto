@@ -107,10 +107,21 @@ function module.build(node: table): table
 
     -- Made again at every opening, so the list is what the repo has now; kept: with the versions of the last
     -- opening (Limit Shown To changed: nothing new to ask the network)
+    local latest = 0
+
     local function fill_versions(kept: bool = false): void
+
+        latest += 1
+        local mine = latest
+
         util.create_thread(function()
 
             local rows = updater.version_rows(kept)
+
+            -- A newer making started meanwhile (opened again, the limit changed): it fills the list, not this one
+            if mine ~= latest then
+                return
+            end
 
             -- The list may be gone by now (the section was made again)
             pcall(function()
