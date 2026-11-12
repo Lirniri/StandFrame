@@ -246,6 +246,7 @@ local function add_item(list: table, entry: table, number: int): void
     if item.is_table then
         list:list({ name = item.name, help = label("added.table_help"),
             fill = |node| -> values().add_result_lines(node, item.spec.key, true),
+            on_back = || -> values().drop_lines(item.spec.key),
             on_open = || -> calls():call(item.spec) })
         return
     end

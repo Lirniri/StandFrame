@@ -108,6 +108,15 @@ function module.add_result_lines(node: table, key: string, kept: ?bool): void
     update_result_list(key)
 end
 
+-- The list the key's lines are in was gone back out of: they're gone, so a loop that still gives results
+-- doesn't write into them (Stand says CommandRef is not valid for a deleted list)
+function module.drop_lines(key: string): void
+    result_lines[key] = nil
+    detail_lines[key] = nil
+    result_tables[key] = nil
+    kept_keys[key] = nil
+end
+
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
 
@@ -292,9 +301,19 @@ update_result_list = function(key)
     end
 
     if shape ~= shown.shape then
-        shown.list:clear()
+        local ok, lines, named = pcall(function()
+            shown.list:clear()
+            return build_variables(shown.list, items, key, call_on, edit_on)
+        end)
+
+        -- The list is gone (its menu was left): nothing to show in, so it's forgotten
+        if not ok then
+            module.drop_lines(key)
+            return
+        end
+
         shown.shape = shape
-        shown.lines, shown.named = build_variables(shown.list, items, key, call_on, edit_on)
+        shown.lines, shown.named = lines, named
         shown.texts = {}
         for _, item in ipairs(items) do
             shown.texts[item.path] = item.text
