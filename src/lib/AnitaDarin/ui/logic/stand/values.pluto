@@ -227,6 +227,16 @@ end
 -- @return { key_text, value }: "[1]", "name", "[158214]"
 function module.table_entries(tbl: table): table
 
+    -- A table whose submodules load on first use (loader.auto) lists only the loaded ones: its files are asked for
+    -- now, so they show; a folder with too many (the natives) is left as it is
+    local files = Atdar.loader.auto_keys(tbl)
+
+    if #files <= module.MAX_AUTO_LOAD then
+        for _, file in ipairs(files) do
+            pcall(function() return tbl[file] end)
+        end
+    end
+
     local entries = {}
     local length = #tbl
 
@@ -255,6 +265,9 @@ function module.table_entries(tbl: table): table
     
     return entries
 end
+
+-- A table made by loader.auto with more files than this isn't loaded whole to be looked at
+module.MAX_AUTO_LOAD = 60
 
 -- Entries shown of one table; the rest is a "..." line
 module.MAX_TABLE_ENTRIES = 100

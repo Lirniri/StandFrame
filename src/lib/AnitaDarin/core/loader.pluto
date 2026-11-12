@@ -166,6 +166,41 @@ end
 -- lib/AnitaDarin/; the loader runs before utils/filesystem, so the path is built here
 local LIB_DIR = $"{filesystem.scripts_dir()}lib\\{Atdar.name}\\"
 
+-- The tables made by auto and the folder each loads from (weak: a table that's gone takes its entry)
+local auto_bases = setmetatable({}, { __mode = "k" })
+
+-- The names a table made by auto could load, from the files of its folder: a facade lists only what was loaded, so
+-- what's still on disk is what a viewer of the table (Call Function) has to ask for
+-- @return The names sorted; empty for a table not made by auto
+function module.auto_keys(tbl: table): table
+
+    local base = auto_bases[tbl]
+    local names = {}
+
+    if base == nil then
+        return names
+    end
+
+    local dir = LIB_DIR .. base:gsub("/", "\\") .. "\\"
+
+    if not filesystem.is_dir(dir) then
+        return names
+    end
+
+    for _, path in ipairs(filesystem.list_files(dir)) do
+
+        local name = path:match("([^\\/]+)%.pluto$")
+
+        if name ~= nil then
+            table.insert(names, name)
+        end
+    end
+
+    table.sort(names)
+
+    return names
+end
+
 -- Fields missing from tbl are loaded on first access from <base>/<field>.pluto and kept in tbl,
 -- so a facade doesn't list its submodules. A field with no such file stays nil, so typos aren't hidden.
 -- Example: return Atdar.loader.auto(module, "natives/visual/hud") -> hud.minimap loads natives/visual/hud/minimap.pluto
@@ -173,6 +208,8 @@ function module.auto(tbl: table, base: string): table
 
     -- Fields already known to have no file: not checked on disk again
     local missing = {}
+
+    auto_bases[tbl] = base
     return setmetatable(tbl, {
         __index = function(t, key)
             if type(key) ~= "string" or missing[key] then

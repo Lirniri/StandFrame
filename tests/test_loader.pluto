@@ -97,6 +97,8 @@ Atdar.load_timing = false
 local real_exists = filesystem.exists
 local checks = 0
 filesystem.exists = function(path) checks += 1 return real_exists(path) end
+stand.check(table.concat(loader.auto_keys(Atdar.natives.visual), ","):find("hud", 1, true) ~= nil, "auto_keys: the files of an auto table's folder")
+stand.equal(#loader.auto_keys({}), 0, "auto_keys: a table not made by auto has none")
 stand.equal(Atdar.natives.visual.hudd, nil, "a typo is nil")
 local after_first = checks
 stand.equal(Atdar.natives.visual.hudd, nil, "the typo is still nil")
