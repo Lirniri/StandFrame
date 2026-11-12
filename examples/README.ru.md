@@ -14,7 +14,7 @@
 | [features/](features/README.ru.md) | Фичи: то, что пользователь включает, выключает или нажимает в меню |
 | [menu/](menu/README.ru.md) | Файлы меню: пункты `MenuNode`, фичи в меню, раздел настроек, отладка модулей в своём меню, готовые помощники |
 | [pack/](pack/README.ru.md) | Полный пакет меню `ExamplePack`: info.json, фичи, меню, переводы — копируется и загружается целиком |
-| [utils/](utils/README.ru.md) | Что построено на нативах в `Atdar.util.game`: Graceland (падение с любой высоты, управление стиком), помощники игры, `tools.states` |
+| [utils/](utils/README.ru.md) | Что построено на нативах в `Atdar.util.game`: Graceland (падение с любой высоты, управление стиком), функции игрока (`auto_heal`, `levitate`, `freecam` ...), мир (часы, облака, timecycle), помощники игры, `tools.states` |
 
 ## Что где лежит в `Atdar`
 
@@ -28,9 +28,12 @@
 | Пути | `Atdar.filesystem.paths` | `paths.store`, `paths.lib`, `paths.resources` |
 | JSON-файл | `Atdar.filesystem.json.File` | `new File(path):read()` / `:write(t)` |
 | Нативы | `Atdar.natives.<раздел>` | `Atdar.natives.entity.vehicle.delete(handle)` |
+| Память игры | `Atdar.natives.memory` | `Atdar.natives.memory.pointers.get("roll_check")` |
+| Свой код для Call Function | `Atdar.user_script` | `Atdar.user_script.hello("you")` |
 | Парсеры | `Atdar.parsers.<вид>` | `Atdar.parsers.proglang.pluto.args.parse("5, true")` |
 | Модули | `Atdar.modules` | `Atdar.modules.get("VehicleManager")` |
 | Фичи | `Atdar.features` | `Atdar.features.get("self.godmode")` |
+| Игрок и мир | `Atdar.util.game` | `Atdar.util.game.players.user.auto_heal.enable()` |
 | Цвета | `Atdar.color` | `Atdar.color.from_hex("FF8000")` |
 | Проверки аргументов | `core/check` | `check.expecter("мой/файл")` |
 | Отладка режима | `Atdar.debug` | `if Atdar.debug then ... end` |

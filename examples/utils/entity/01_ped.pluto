@@ -17,3 +17,9 @@ end
 -- script sets, read it with that on and off and compare; a reset flag lasts one frame
 local flags = ped_utils.get_set_flags(ped)
 util.log($"{#flags.config} config flags and {#flags.reset} reset flags are on")
+
+-- Plays an animation: the dictionary is asked for and waited for, so call it from a thread or an action. Flags are
+-- the game's (1 plays once, 1 + 16 + 32 loops and holds the upper body), duration is in ms (-1 is the whole animation)
+if ped_utils.play_animation(ped, "amb@world_human_cheering@male_a", "base", 1 + 16 + 32) then
+    ped_utils.stop_animation(ped)    -- the tasks are cleared
+end

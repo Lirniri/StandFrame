@@ -15,6 +15,8 @@ What any file of the script needs: a module, a feature or a menu.
 | `07_parsers_and_colors.pluto` | `Atdar.parsers`: arguments, names, Stand commands, JSON; `Atdar.color`: hex, Stand, game |
 | `08_natives_more.pluto` | Pointers and handles, players, the session, control over an entity, map blips |
 | `09_natives_all.pluto` | Where a native's wrapper is (`CAM.GET_GAMEPLAY_CAM_FOV` -> `camera.gameplay.get_fov`), finding it by its short name, pointer parameters |
+| `10_memory.pluto` | `Atdar.natives.memory`: finding code by a pattern (`scan`), named places (`pointers`), giving the bytes back (`patch`), the Pointer Editor module |
+| `11_user_script.pluto` | `Atdar.user_script`: your own functions for Call Function, written in Debug > Files Editor |
 
 These files show the calls rather than a working feature of their own: paste the lines you need into your module,
 feature or menu file.

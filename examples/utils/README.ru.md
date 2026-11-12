@@ -5,7 +5,7 @@
 Что построено на нативах, в `Atdar.util.game`: то, что несколько нативов делают вместе. Главное здесь Graceland.
 
 Папки повторяют код: `players/user/` это `Atdar.util.game.players.user` (локальный игрок: Graceland работает только на нём,
-берёт его id и его пед), `entity/` это `Atdar.util.game.entity`, `tools/` это `Atdar.util.game.tools`.
+берёт его id и его пед), `entity/` это `Atdar.util.game.entity`, `world/` это `Atdar.util.game.world`, `tools/` это `Atdar.util.game.tools`.
 
 | Файл | Что показывает |
 |---|---|
@@ -13,8 +13,10 @@
 | `players/user/02_graceland_feature.pluto` | Graceland как переключатель-фича в меню |
 | `players/user/03_helpers.pluto` | Из чего собран Graceland: стик в мире, защита от падения, восстановление брони и выносливости |
 | `players/user/04_landing_roll.pluto` | `landing_roll`: держит игроку направление перед землёй, чтобы игра сделала перекат; кирпичики, из которых он собран (`natives.input.ACTION`, `press_next_frame`, `ped.is_plain_falling`, `entity.get_horizontal_speed`) |
-| `entity/01_ped.pluto` | `entity.ped`: выход из ragdoll с сохранением скорости, включённые флаги педа (любого) |
-| `entity/02_vehicle.pluto` | `entity.vehicle`: ремонт транспорта |
+| `players/user/05_player_functions.pluto` | Функции игрока, собранные на тикере (`auto_heal`, `levitate`, `freecam`, `damage`, `air_swim` ...): `enable`, `disable`, `is_enabled`, числа для настройки, `outfit` и свой цикл через `ticker.make` |
+| `entity/01_ped.pluto` | `entity.ped`: выход из ragdoll с сохранением скорости, включённые флаги педа (любого), запуск и остановка анимации |
+| `entity/02_vehicle.pluto` | `entity.vehicle`: ремонт транспорта, переворот на колёса |
+| `world/01_world.pluto` | `Atdar.util.game.world`: часы, timecycle, облака, дальность прорисовки, затемнение, пешеходы |
 | `tools/01_states.pluto` | `Atdar.util.game.tools.states`: опрашивает все нативы `is_` / `has_` / `can_` и показывает, что изменилось |
 | `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: лаборатория управления падением без ragdoll: `arm()` / `arm_loop()`, которые сами ловят падение (или каждое падение подряд) и следят за флагами и активными задачами педа в воздухе (при желании каждый кадр) (покадровая запись со сводкой по окнам времени и изменения флагов педа в воздухе), флаги педа до и после момента, способы управления для проб, помощь с перекатом (клавиша вперёд перед землёй) |
 
@@ -90,6 +92,20 @@ fall rag=1 can=1 cache=0 fall=1 air=1 h=250 v=22.3 F1 L0 J1 A1 hp=328 vel=5.8,2.
 - Модуль прогнан на заглушках игры (симуляция, смерть в ней взята из того, что видели в игре): с настройками по умолчанию
   выживают все высоты от 3 до 250 м и 30, 60 и 240 кадров в секунду. Это не сама игра: один очень длинный кадр (0,5 с и
   больше) у земли всё ещё может убить.
+
+## Функции игрока
+
+Каждый файл в `players/user/`, кроме Graceland, это одна функция локального игрока, названная по функции Stand, которой она
+следует (`auto_heal`, `airwalk`, `auto_boost`, `damage`, `drunk_mode`, `exit_stop`, `freecam`, `infinite_ammo`,
+`invisibility`, `levitate`, `move_freedom`, `no_collision`, `no_reload`, `auto_cancel_anim`, `air_swim`, `dont_jack_me`,
+`leave_engine_running`, `no_roll_cooldown`). Те, что что-то делают каждый кадр, собраны через `ticker.make(name, tick,
+release)` и имеют общие `enable()`, `disable()` и `is_enabled()`: ошибка в `tick` выключает функцию, а `release` возвращает
+всё, что она изменила (в том числе когда скрипт остановлен). `ticker.config_flag(name, flag)` то же для конфиг-флага педа,
+который держится включённым. `no_roll_cooldown` правит код игры, поэтому ему нужен указатель `combat_roll_patch` (см.
+[basics/10_memory.pluto](../basics/10_memory.pluto)); без него `enable()` вернёт `false` и ничего не изменит.
+
+`outfit` хранит одежду педа в `store/<script>/user/outfits/<имя>.json`. В `world/` каждый файл это одна вещь мира; `clock`
+единственный, кто не цикл (`set`, `lock`, `unlock`, `set_speed`).
 
 ## `Atdar.util.game.tools.states`
 

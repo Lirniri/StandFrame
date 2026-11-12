@@ -15,7 +15,7 @@ English and Russian.
 | [features/](features/) | Features: what the user switches on and off or clicks in the menu |
 | [menu/](menu/) | Menu files: `MenuNode` items, features in the menu, the settings section, module debugging in your own menu, ready-made helpers |
 | [pack/](pack/) | A complete menu pack, `ExamplePack`: info.json, features, menu, translations, copied and loaded as a whole |
-| [utils/](utils/) | What is built on natives in `Atdar.util.game`: Graceland (a fall from any height, steered with the stick), game helpers, `tools.states` |
+| [utils/](utils/) | What is built on natives in `Atdar.util.game`: Graceland (a fall from any height, steered with the stick), the player's functions (`auto_heal`, `levitate`, `freecam` ...), the world (clock, clouds, timecycle), game helpers, `tools.states` |
 
 ## What's where in `Atdar`
 
@@ -29,9 +29,12 @@ English and Russian.
 | Paths | `Atdar.filesystem.paths` | `paths.store`, `paths.lib`, `paths.resources` |
 | JSON file | `Atdar.filesystem.json.File` | `new File(path):read()` / `:write(t)` |
 | Natives | `Atdar.natives.<section>` | `Atdar.natives.entity.vehicle.delete(handle)` |
+| Game memory | `Atdar.natives.memory` | `Atdar.natives.memory.pointers.get("roll_check")` |
+| Your own Call Function code | `Atdar.user_script` | `Atdar.user_script.hello("you")` |
 | Parsers | `Atdar.parsers.<kind>` | `Atdar.parsers.proglang.pluto.args.parse("5, true")` |
 | Modules | `Atdar.modules` | `Atdar.modules.get("VehicleManager")` |
 | Features | `Atdar.features` | `Atdar.features.get("self.godmode")` |
+| Player and world | `Atdar.util.game` | `Atdar.util.game.players.user.auto_heal.enable()` |
 | Colours | `Atdar.color` | `Atdar.color.from_hex("FF8000")` |
 | Argument checks | `core/check` | `check.expecter("my/file")` |
 | Debug mode | `Atdar.debug` | `if Atdar.debug then ... end` |

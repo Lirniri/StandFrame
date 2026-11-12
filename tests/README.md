@@ -28,6 +28,10 @@ What's checked:
 | `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk, system modules (`is_system`), `is_running` by name, `hand_over` / `take_over` across a Reload |
 | `test_modules_menu` | the modules menu: visibility in debug mode, actions, translation, system modules shown only with Show System Modules, Options and Function Call hidden while a module isn't running, a function in a table without `CallFunction` is a plain line |
 | `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming, Call Function and the Files Editor under it (the `CallFunction` and `FileEditor` system modules), each shown only while its module runs, `CallFunction` keeping its state through a Reload |
+| `test_menu_node` | `ui/stand/core`: the options form of `MenuNode` and its items, items changed after they're made, scopes, lazy lists, live captions, handler guards |
+| `test_menu_layer.py` | Stand's menu API is called only in `ui/stand/core`; everything else goes through `MenuNode` |
+| `test_safe_path` | paths made from typed names stay inside their folder; `core/filesystem/file` closes handles and tells a failed write; the Files Editor can't name another place |
+| `test_example_pack` | the pack in `store/<script>/menu/Example`: found, copied to core, its menu builds and its features work |
 | `test_menu_startup` | startup as in bootstrap: copying a pack into the core, loading the built-in menu |
 | `test_menu_utils` | `utils/menu`: colour picker, spoiler; `utils/color`: hex, Stand, game |
 | `test_installer` | renaming the script with its log file open, a name already taken, a folder held open |

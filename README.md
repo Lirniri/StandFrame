@@ -18,11 +18,14 @@ for modules.
   translation progress, and reload language files without restarting.
 - **Command box.** Configure command prefixes and separators, rename script and menu commands, add aliases, and create
   user commands that run a sequence of Stand commands.
+- **Debug tools.** Call Function runs any function of the script by its path (with a history of calls, a picker, and
+  your own functions written in the Files Editor, reached as `Atdar.user_script`). The Pointer Editor makes and scans
+  named places in the game's memory found by a signature.
 - **Notifications and logs.** Choose where notifications appear and configure game-feed style, picture, colours, and
   per-level emoji. Logs are written to daily files.
 
 The built-in menu is still in development. Its current feature items include self/player options (such as god mode,
-movement and health/armour/stamina actions) and a vehicle action; some menu sections are present as scaffolding and
+movement with Graceland, ragdoll control, scuba mode and double jump, and health/armour/stamina actions) and a vehicle action; some menu sections are present as scaffolding and
 don't yet contain features. The Update menu checks for and installs new versions (manually or on an interval). See [updater/README.md](updater/README.md).
 
 ## Install and run
@@ -59,8 +62,9 @@ configure notifications and command names, and use Load Menu to select or copy a
 | `src/AnitaDarin.pluto` | Launcher; uses its file name to locate the matching library and data folders |
 | `src/lib/AnitaDarin/core/` | Loader, profiles, translations, logging, filesystem, checks, and module management |
 | `src/lib/AnitaDarin/features/` | Feature implementation and registry |
-| `src/lib/AnitaDarin/modules/` | Built-in modules, including `VehicleManager`; `modules/systems/` holds system modules the menus use (`CallFunction`, `FileEditor`), hidden in the Modules list unless Show System Modules is on |
-| `src/lib/AnitaDarin/natives/` | Game native wrappers, grouped by namespace |
+| `src/lib/AnitaDarin/modules/` | Built-in modules, including `VehicleManager`; `modules/systems/` holds system modules the menus use (`CallFunction`, `FileEditor`, `PointerEditor`), hidden in the Modules list unless Show System Modules is on |
+| `src/lib/AnitaDarin/natives/` | Game native wrappers, grouped by namespace; `natives/memory/` reads and patches the game's memory by signature |
+| `src/lib/AnitaDarin/utils/` | What is built on natives: `util.game` (Graceland, the player's functions, the world, helpers) and menu helpers |
 | `src/lib/AnitaDarin/parsers/` | Parsers for colours, JSON, Pluto source, and Stand command names |
 | `src/lib/AnitaDarin/ui/stand/` | Stand menu, settings, profiles, command box, and module debugging |
 | `src/store/AnitaDarin/` | Default data and the built-in menu pack |

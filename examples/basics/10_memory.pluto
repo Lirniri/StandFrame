@@ -1,0 +1,37 @@
+-- EXAMPLE: the game's memory, Atdar.natives.memory (lib/AnitaDarin/natives/memory/).
+--
+-- Places in the code of the game are found by a pattern of bytes (a signature), as their address changes with a build
+-- of the game. Nothing here is tried in the game yet: a call that finds nothing gives nil, and says so in the log
+
+local memory = Atdar.natives.memory
+
+-- A pattern: bytes in hex with a space between, ?? for any byte
+local address = memory.scan.find("48 8B 81 ?? ?? 00 00")
+if address ~= nil then
+    util.log($"found at {address}: {memory.scan.get_bytes(address, 7)}")
+end
+
+-- A number inside the code (an offset of a field): the int at 3 bytes from the start of the pattern
+local offset = memory.scan.read_offset("48 8B 81 ?? ?? 00 00", 3, 4)
+
+-- A named place: say once how to find it, ask for it by name (searched on the first ask, then kept)
+memory.pointers.store("roll_check", "48 8B ?? ?? 89 ?? ??", "address")
+local roll = memory.pointers.get("roll_check")      -- nil if there is no such place
+util.log($"pointers: {#memory.pointers.names()} stored, roll_check found: {roll ~= nil}")
+memory.pointers.rescan("roll_check")                -- try again, after the game has loaded more
+
+-- Changing the code and giving it back: the old bytes are kept under the name. Every patch is given back when the
+-- script stops, as a patch left in the game outlives it
+if roll ~= nil then
+    memory.patch.nop("roll", roll, 9)               -- 9 bytes do nothing now
+    util.log($"patched: {memory.patch.is_patched("roll")}")
+    memory.patch.restore("roll")
+end
+
+-- Pointers can also be worked out in the game: Debug > Pointer Editor makes them, keeps them in
+-- store/<script>/user/pointers.json and stores them again at every start. In code the same is the PointerEditor module
+local editor = Atdar.modules.get("PointerEditor")
+if editor ~= nil then
+    editor:add("example", "48 8B ?? ?? 89")         -- true, or false and why
+    editor:remove("example")
+end

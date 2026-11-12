@@ -9,3 +9,8 @@ local vehicle = natives.entity.ped.vehicle.get(ped)
 if vehicle ~= 0 then
     Atdar.util.game.entity.vehicle.repair(vehicle, true, true)    -- washed clean, engine started
 end
+
+-- Stands a vehicle on its wheels again, facing where the camera looks (pitch and roll are 0). false if it isn't a vehicle
+if vehicle ~= 0 then
+    Atdar.util.game.entity.vehicle.flip(vehicle)
+end

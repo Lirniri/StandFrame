@@ -5,7 +5,7 @@
 Things built on natives, in `Atdar.util.game`: what several natives do together. Graceland is the main one.
 
 The folders follow the code: `players/user/` is `Atdar.util.game.players.user` (the local player: Graceland works on
-him only, it takes his id and his ped), `entity/` is `Atdar.util.game.entity`, `tools/` is `Atdar.util.game.tools`.
+him only, it takes his id and his ped), `entity/` is `Atdar.util.game.entity`, `world/` is `Atdar.util.game.world`, `tools/` is `Atdar.util.game.tools`.
 
 | File | What it shows |
 |---|---|
@@ -13,8 +13,10 @@ him only, it takes his id and his ped), `entity/` is `Atdar.util.game.entity`, `
 | `players/user/02_graceland_feature.pluto` | Graceland as a toggle feature in a menu |
 | `players/user/03_helpers.pluto` | What Graceland is made of: the stick in the world, fall protection, restoring armor and stamina |
 | `players/user/04_landing_roll.pluto` | `landing_roll`: holds a direction for the player before the ground so the game rolls him; the pieces it is built on (`natives.input.ACTION`, `press_next_frame`, `ped.is_plain_falling`, `entity.get_horizontal_speed`) |
-| `entity/01_ped.pluto` | `entity.ped`: ending a ragdoll with the speed kept, a ped's flags that are on (any ped) |
-| `entity/02_vehicle.pluto` | `entity.vehicle`: repairing a vehicle |
+| `players/user/05_player_functions.pluto` | The player's functions made with the ticker (`auto_heal`, `levitate`, `freecam`, `damage`, `air_swim` ...): `enable`, `disable`, `is_enabled`, the numbers to set, `outfit`, and a loop of your own with `ticker.make` |
+| `entity/01_ped.pluto` | `entity.ped`: ending a ragdoll with the speed kept, a ped's flags that are on (any ped), playing and stopping an animation |
+| `entity/02_vehicle.pluto` | `entity.vehicle`: repairing a vehicle, flipping it onto its wheels |
+| `world/01_world.pluto` | `Atdar.util.game.world`: the clock, timecycle, clouds, draw distance, blackout, pedestrians |
 | `tools/01_states.pluto` | `Atdar.util.game.tools.states`: asks every `is_` / `has_` / `can_` native and shows what changed |
 | `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: a laboratory for steering a fall without a ragdoll: `arm()` / `arm_loop()` that catch a fall (or every fall in a row) by themselves, and watch the flags and the active tasks of the ped in the air (every frame if asked) (a frame-by-frame record with a summary by windows of time, and the changes in the ped's flags in the air), the ped's flags before and after a moment, the ways to steer to try, the roll assist (the forward key pressed before the ground) |
 
@@ -89,6 +91,20 @@ reached the ground), `TOUCH` (the speed jumped, a touch), `RAGDOLL STARTED`, `ra
 - The module was run on stand-ins for the game (a simulation with a death model taken from what was seen in the game):
   every height from 3 to 250 m and 30, 60 and 240 frames a second live with the default settings. It is not the
   game: a single very long frame (0.5 s or more) near the ground can still kill.
+
+## The player's functions
+
+Every file of `players/user/` besides Graceland is one function of the local player, named after Stand's feature it
+follows (`auto_heal`, `airwalk`, `auto_boost`, `damage`, `drunk_mode`, `exit_stop`, `freecam`, `infinite_ammo`,
+`invisibility`, `levitate`, `move_freedom`, `no_collision`, `no_reload`, `auto_cancel_anim`, `air_swim`, `dont_jack_me`,
+`leave_engine_running`, `no_roll_cooldown`). The ones that do something every frame are made with `ticker.make(name, tick,
+release)` and share `enable()`, `disable()` and `is_enabled()`: an error in `tick` switches the function off, and `release`
+gives back what it changed (also when the script stops). `ticker.config_flag(name, flag)` is the same for a config flag of
+the ped held on. `no_roll_cooldown` patches the game's code, so it needs the pointer `combat_roll_patch` (see
+[basics/10_memory.pluto](../basics/10_memory.pluto)); without it `enable()` gives `false` and changes nothing.
+
+`outfit` keeps what the ped wears in `store/<script>/user/outfits/<name>.json`. In `world/` each file is one thing of the
+world; `clock` is the only one that isn't a loop (`set`, `lock`, `unlock`, `set_speed`).
 
 ## `Atdar.util.game.tools.states`
 

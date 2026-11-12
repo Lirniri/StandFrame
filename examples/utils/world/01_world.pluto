@@ -1,0 +1,28 @@
+-- EXAMPLE: the things of the world, Atdar.util.game.world (lib/AnitaDarin/utils/util/game/world/).
+--
+-- The game forgets most of these each frame, so the ones with enable() put them again every frame until disable()
+
+local world = Atdar.util.game.world
+
+-- The clock: set the time, hold it, change how fast it goes
+world.clock.set(23, 30)           -- hour, minute, second
+world.clock.lock(12, 0)           -- stays 12:00 until unlock()
+world.clock.unlock()
+world.clock.set_speed(500)        -- a minute of the game takes 500 ms (2000 is the game's own)
+world.clock.reset_speed()
+
+-- The look of the picture: a timecycle modifier by its name
+world.timecycle.set("NG_filmic01")
+world.timecycle.enable()
+world.timecycle.disable()
+
+-- Clouds (the name of a cloud hat of the game), the draw distance (1.0 is the game's own)
+world.clouds.set("Cloudy 01.xml")
+world.lodscale.set(3.0)
+-- world.clouds.enable(); world.lodscale.enable()
+
+-- Lights off, and no pedestrians
+world.blackout.enable()
+world.blackout.disable()
+world.population.enable()
+world.population.disable()

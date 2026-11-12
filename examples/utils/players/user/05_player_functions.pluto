@@ -1,0 +1,46 @@
+-- EXAMPLE: the functions of the local player, each a file of lib/AnitaDarin/utils/util/game/players/user/.
+--
+-- Most of them are a loop that does something every frame while it is on, made with the ticker. They all have
+-- enable(), disable() and is_enabled(): a stopped script gives everything back, and so does disable()
+
+local user = Atdar.util.game.players.user
+
+-- A plain switch: the player's health and armour are kept full
+user.auto_heal.enable()
+util.log($"auto heal on: {user.auto_heal.is_enabled()}")
+user.auto_heal.disable()
+
+-- Some have a number to set, any time (also while it is on)
+user.levitate.set_speed(15.0)        -- flying like with a noclip, metres a second
+user.freecam.set_speed(10.0)         -- a free camera, the ped stays where it is
+-- user.levitate.enable() and user.freecam.enable() start them, with the stick, Jump (up) and Duck (down)
+
+-- A multiplier for the damage the player does: weapons, melee, vehicles (a number left out keeps its value)
+user.damage.set(10.0)
+user.damage.set(nil, 5.0, 2.0)
+-- user.damage.enable()
+
+-- The ones that are only a ped's config flag held on every frame
+-- user.air_swim.enable()              -- swims in the air
+-- user.dont_jack_me.enable()          -- nobody drags the player out of a car
+-- user.leave_engine_running.enable()  -- the engine stays on after getting out
+
+-- What the player wears: the clothes (components) and props, kept in store/<script>/user/outfits/
+local worn = user.outfit.capture()
+local saved = user.outfit.save("example")      -- true, or false and why
+util.log($"outfit saved: {saved}, names: {#user.outfit.list()}")
+-- user.outfit.load("example") puts it on again
+
+-- A function of your own that is a loop: ticker.make(name, tick, release). tick is called every frame,
+-- release when it is switched off or the script stops. It is a table with enable, disable and is_enabled
+local counter = 0
+local mine = user.ticker.make("Example", function()
+    counter += 1
+end, function()
+    util.log($"example stopped after {counter} frames")
+end)
+
+mine.enable()
+mine.disable()
+
+-- All of them are reachable from Call Function, for example Atdar.util.game.players.user.auto_heal.enable

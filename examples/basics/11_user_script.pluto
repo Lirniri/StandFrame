@@ -1,0 +1,26 @@
+-- EXAMPLE: your own functions for Call Function, Atdar.user_script (lib/AnitaDarin/core/user_script.pluto).
+--
+-- The .pluto files of store/<script>/core/call_function/ are written in Debug > Files Editor. Each file returns a table, and
+-- its functions are called by a path, in Call Function or in code. user_script.pluto is the main file: it is made when
+-- it is missing and can't be deleted
+
+local user_script = Atdar.user_script
+
+-- The function that comes with the main file
+util.log(user_script.hello("example"))
+
+-- Another file, mine.pluto, would be reached as Atdar.user_script.mine.hello. A file that returns no table gives a
+-- function (the one it returns, else its code)
+local files = Atdar.loader.load("core/user_script")
+util.log($"files: {#files.list()}")
+
+-- Writing a file from code: the lines are the file; a mistake in the code is told (check), not refused
+files.write_lines("example", {
+    "local module = {}",
+    "function module.double(x: number): number",
+    "    return x * 2",
+    "end",
+    "return module",
+})
+util.log($"example.double(4) = {user_script.example.double(4)}")
+files.delete("example")
