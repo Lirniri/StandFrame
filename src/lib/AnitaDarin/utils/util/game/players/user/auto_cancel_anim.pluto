@@ -1,0 +1,40 @@
+-- Leaves a scenario (a sit, a lean, a phone call of the world) when the player moves: Stand's Auto Cancel Anim does
+-- this for the animations it plays itself and for a scenario. Only the scenario is here, since the animations of
+-- Stand are not ours: when a movement key is held and the ped is in a scenario, its tasks are cleared at once.
+--
+--     local cancel = Atdar.util.game.players.user.auto_cancel_anim
+--
+--     cancel.enable()
+--     cancel.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local MOVE_ACTIONS = { "MOVE_UP_ONLY", "MOVE_DOWN_ONLY", "MOVE_LEFT_ONLY", "MOVE_RIGHT_ONLY" }
+
+-- Whether a movement key is held
+local function moving(): bool
+
+    local input = Atdar.natives.input
+
+    for _, name in ipairs(MOVE_ACTIONS) do
+        if input.is_pressed(0, input.ACTION[name]) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function tick(): void
+
+    if not moving() then
+        return
+    end
+
+    local ped = Atdar.natives.player.get_ped_id()
+
+    if Atdar.natives.entity.ped.task.has_use_scenario(ped) then
+        Atdar.natives.entity.ped.task.clear(ped, 1)
+    end
+end
+
+return ticker.make("AutoCancelAnim", tick)

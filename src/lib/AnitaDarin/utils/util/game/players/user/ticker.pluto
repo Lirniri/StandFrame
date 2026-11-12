@@ -1,0 +1,75 @@
+local Logger = Atdar.loader.load("core/logger")
+
+-- The control of a function that does something every frame while it is on: enable, disable and is_enabled with the
+-- tick handler, the pcall that stops it on an error, and what it gives back when it is switched off or the script stops.
+-- The functions of the player that are only a loop (move_freedom, no_collision, no_reload, ...) are made with it:
+--
+--     local module = Atdar.util.game.players.user.ticker.make("Name", tick, release)
+--     return module
+local module = {}
+
+-- @param name The name in the log
+-- @param tick function() one frame; it runs for the local player only while the game is not paused
+-- @param release function() given back at disable and at the stop of the script, may be nil
+-- @return A table with enable(), disable(), is_enabled()
+function module.make(name: string, tick: function, release: ?function): table
+
+    local log = new Logger(name)
+    local control = {}
+    local state = { enabled = false, run = 0 }
+
+    -- Whether it's on
+    function control.is_enabled(): bool
+        return state.enabled
+    end
+
+    -- Switches it off and gives back what it changed
+    function control.disable(): void
+
+        if not state.enabled then
+            return
+        end
+
+        state.enabled = false
+
+        if release ~= nil then
+            pcall(release)
+        end
+    end
+
+    -- Switches it on. A second call does nothing
+    function control.enable(): void
+
+        if state.enabled then
+            return
+        end
+
+        state.enabled = true
+        state.run += 1
+
+        local run = state.run
+
+        util.create_tick_handler(function()
+
+            if not state.enabled or state.run ~= run then
+                return false
+            end
+
+            local ok, err = pcall(tick)
+
+            if not ok then
+                log:error($"{name} stopped\n{err}")
+                control.disable()
+                return false
+            end
+
+            return true
+        end)
+    end
+
+    util.on_stop(control.disable)
+
+    return control
+end
+
+return module

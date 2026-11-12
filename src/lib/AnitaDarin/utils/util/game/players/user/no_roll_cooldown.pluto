@@ -1,0 +1,50 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("NoRollCooldown")
+
+-- The combat roll without its cooldown (Stand's No Roll Cooldown): Stand makes 9 bytes of the game's check of whether
+-- a ped can roll NOP (CPedIntelligence::GetCanCombatRoll). Where that is in the game is not known here: the place is
+-- a pointer by the name "combat_roll_patch" in Atdar.natives.memory.pointers, with the signature of it (the Pointer Editor
+-- in Debug makes one, from a pattern worked out for this build of the game). Without it enable() does nothing and says so.
+--
+--     local roll = Atdar.util.game.players.user.no_roll_cooldown
+--
+--     roll.enable()      -- false: the pointer is not found, nothing is changed
+--     roll.disable()     -- the bytes are back
+local module = {}
+
+-- The name of the pointer, and how many bytes are made NOP
+module.POINTER = "combat_roll_patch"
+local BYTES = 9
+
+local KEY = "no_roll_cooldown"
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return Atdar.natives.memory.patch.is_patched(KEY)
+end
+
+-- Switches it on
+-- @return Whether it is on: false when the pointer is not found
+function module.enable(): bool
+
+    if module.is_enabled() then
+        return true
+    end
+
+    local address = Atdar.natives.memory.pointers.get(module.POINTER)
+
+    if address == nil then
+        log:warn($"the pointer {module.POINTER} is not found: add its signature in Debug > Pointer Editor")
+        return false
+    end
+
+    return Atdar.natives.memory.patch.nop(KEY, address, BYTES)
+end
+
+-- Gives the bytes back
+function module.disable(): void
+    Atdar.natives.memory.patch.restore(KEY)
+end
+
+return module

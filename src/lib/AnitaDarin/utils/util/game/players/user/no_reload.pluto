@@ -1,0 +1,34 @@
+-- The ammo of the weapon in hand is filled at once every frame (Stand's No Reload): no reload, no empty clip. A minigun
+-- is left out: Stand leaves it out too (it has to spin up and its ammo is the clip).
+--
+--     local reload = Atdar.util.game.players.user.no_reload
+--
+--     reload.enable()
+--     reload.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The weapons that are left out, by the name of the game (joaat of it)
+local SKIPPED = { "WEAPON_MINIGUN", "WEAPON_RAYMINIGUN" }
+
+local skipped_hashes = nil
+
+local function tick(): void
+
+    skipped_hashes ??= {}
+
+    if next(skipped_hashes) == nil then
+        for _, name in ipairs(SKIPPED) do
+            skipped_hashes[util.joaat(name)] = true
+        end
+    end
+
+    local ped = Atdar.natives.player.get_ped_id()
+
+    if skipped_hashes[Atdar.natives.entity.ped.weapon.get_selected(ped)] then
+        return
+    end
+
+    Atdar.natives.weapon.refill_ammo_instantly(ped)
+end
+
+return ticker.make("NoReload", tick)

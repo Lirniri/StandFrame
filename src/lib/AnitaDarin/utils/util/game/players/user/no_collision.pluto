@@ -1,0 +1,18 @@
+-- The player's ped goes through everything (Stand's No Collision, "ghost ride"): the collision of the ped is off every frame
+-- and given back when it is switched off.
+--
+--     local ghost = Atdar.util.game.players.user.no_collision
+--
+--     ghost.enable()
+--     ghost.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local function tick(): void
+    Atdar.natives.entity.set_completely_disable_collision(Atdar.natives.player.get_ped_id(), false, false)
+end
+
+local function release(): void
+    Atdar.natives.entity.set_collision(Atdar.natives.player.get_ped_id(), true, false)
+end
+
+return ticker.make("NoCollision", tick, release)

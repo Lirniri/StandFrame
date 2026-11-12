@@ -1,0 +1,98 @@
+-- Changing the code of the game in memory and giving it back, like Stand's Bytepatch: the bytes that were there are kept
+-- under a name, restore puts them back. Every patch is given back when the script stops (a patch left in the code of
+-- the game outlives the script and is the way to a crash). Nothing here is tried in the game yet.
+--
+--     local patch = Atdar.natives.memory.patch
+--
+--     patch.nop("roll", address, 9)     -- 9 bytes at the address do nothing now
+--     patch.restore("roll")             -- the old bytes are back
+local module = {}
+
+local NOP = 0x90
+
+-- The patches that are on, by name: { address, saved = { the bytes that were there } }
+local patches = {}
+
+-- Writes a byte: Stand has write_ubyte, and where it has not the signed write_byte gets the same byte as a signed number
+local function write_byte(address: int, value: int): void
+
+    if memory.write_ubyte ~= nil then
+        memory.write_ubyte(address, value)
+        return
+    end
+
+    if value > 127 then
+        value -= 256
+    end
+
+    memory.write_byte(address, value)
+end
+
+-- State
+
+-- Whether the patch of the name is on
+function module.is_patched(key: string): bool
+    return patches[key] ~= nil
+end
+
+-- Actions
+
+-- Makes count bytes at the address NOP (they do nothing), keeping what was there
+-- @return Whether it was done: not when the name is on already or the address cannot be one
+function module.nop(key: string, address: int, count: int): bool
+
+    if patches[key] ~= nil or type(address) ~= "number" or address < 0x10000 or count < 1 then
+        return false
+    end
+
+    local saved = {}
+
+    for index = 0, count - 1 do
+        saved[index + 1] = memory.read_byte(address + index) & 0xFF
+    end
+
+    patches[key] = { address = address, saved = saved }
+
+    for index = 0, count - 1 do
+        write_byte(address + index, NOP)
+    end
+
+    return true
+end
+
+-- Puts the old bytes of the patch back
+-- @return Whether there was such a patch
+function module.restore(key: string): bool
+
+    local patch = patches[key]
+
+    if patch == nil then
+        return false
+    end
+
+    for index, byte in ipairs(patch.saved) do
+        write_byte(patch.address + index - 1, byte)
+    end
+
+    patches[key] = nil
+
+    return true
+end
+
+-- Puts the old bytes of every patch back
+function module.restore_all(): void
+
+    local keys = {}
+
+    for key in pairs(patches) do
+        table.insert(keys, key)
+    end
+
+    for _, key in ipairs(keys) do
+        module.restore(key)
+    end
+end
+
+util.on_stop(module.restore_all)
+
+return module

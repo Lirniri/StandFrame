@@ -1,0 +1,39 @@
+-- Movement where the game forbids it, the way Stand's Move Freedom does it (the flags half of it): every frame the
+-- maximum move blend ratio is the highest (sprint), and the reset flags that forbid jumping, vaulting and auto
+-- vaulting are cleared, and so are the interior capsule settings; sprinting is allowed in an interior too.
+--
+--     local freedom = Atdar.util.game.players.user.move_freedom
+--
+--     freedom.enable()
+--     freedom.disable()
+--
+-- Stand also ignores the calls of SET_PED_STEALTH_MOVEMENT with a native override: that needs a hook and is left
+-- out here, so a script that puts the ped in stealth can still do it.
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The highest blend ratio of the move (sprint)
+local MAX_BLEND_RATIO = 3.0
+
+-- The flags (Atdar.natives.entity.ped.flags): the reset flags last one frame, so they are cleared every frame
+local RESET_OFF = { 46, 47, 102, 362 } -- DISABLE_PLAYER_JUMPING, DISABLE_PLAYER_VAULTING, DISABLE_PLAYER_AUTO_VAULTING, USE_INTERIOR_CAPSULE_SETTINGS
+local IGNORE_INTERIOR_CHECK_FOR_SPRINTING = 427
+
+local function tick(): void
+
+    local n_ped = Atdar.natives.entity.ped
+    local ped = Atdar.natives.player.get_ped_id()
+
+    n_ped.set_max_move_blend_ratio(ped, MAX_BLEND_RATIO)
+
+    for _, flag in ipairs(RESET_OFF) do
+        n_ped.flags.set_reset(ped, flag, false)
+    end
+
+    n_ped.flags.set_config(ped, IGNORE_INTERIOR_CHECK_FOR_SPRINTING, true)
+end
+
+local function release(): void
+    Atdar.natives.entity.ped.flags.set_config(Atdar.natives.player.get_ped_id(), IGNORE_INTERIOR_CHECK_FOR_SPRINTING, false)
+end
+
+return ticker.make("MoveFreedom", tick, release)
