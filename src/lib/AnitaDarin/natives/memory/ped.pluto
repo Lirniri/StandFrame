@@ -1,5 +1,5 @@
 -- What a ped's tasks hold, read and written in the game's memory, as functions in the way of the natives (the ped is
--- the first argument). It is not a native: the offsets are those of a build of the game (Atdar.memory.task.offsets),
+-- the first argument). It is not a native: the offsets are those of a build of the game (Atdar.natives.memory.task.offsets),
 -- and when they are wrong the functions do nothing and say so by their result.
 local module = {}
 
@@ -20,13 +20,13 @@ module.FALL_FLAG_GRACELAND = 0x11C00
 -- The flags of the fall task of the ped, nil if it doesn't fall in that task
 function module.get_fall_flags(ped: int): ?int
 
-    local task = Atdar.memory.task.find_task(ped, Atdar.memory.task.TASK_FALL)
+    local task = Atdar.natives.memory.task.find_task(ped, Atdar.natives.memory.task.TASK_FALL)
 
     if task == nil then
         return nil
     end
 
-    return memory.read_int(task + Atdar.memory.task.offsets.fall_flags)
+    return memory.read_int(task + Atdar.natives.memory.task.offsets.fall_flags)
 end
 
 -- Set
@@ -36,13 +36,13 @@ end
 -- @return Whether the task was there and the flags were written
 function module.set_fall_flags(ped: int, flags: int): bool
 
-    local task = Atdar.memory.task.find_task(ped, Atdar.memory.task.TASK_FALL)
+    local task = Atdar.natives.memory.task.find_task(ped, Atdar.natives.memory.task.TASK_FALL)
 
     if task == nil then
         return false
     end
 
-    memory.write_int(task + Atdar.memory.task.offsets.fall_flags, flags)
+    memory.write_int(task + Atdar.natives.memory.task.offsets.fall_flags, flags)
     return true
 end
 

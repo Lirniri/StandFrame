@@ -13,17 +13,17 @@ local log = new Logger("AirControl")
 --     air.set_flags(air.AIR_CONTROL)   -- only the steering, without the damping and the landing
 --     air.disable()
 --
--- The flags are written from the memory (Atdar.memory.ped), once per frame to the fall task of the local player,
+-- The flags are written from the memory (Atdar.natives.memory.ped), once per frame to the fall task of the local player,
 -- where Stand does it on each update of the task: it can be late by a frame. If the offsets of the memory belong to
 -- another build of the game, nothing is found and nothing is written: look at the log (debug) and describe()
 local module = {}
 
-module.AIR_CONTROL = Atdar.memory.ped.FALL_FLAG.AIR_CONTROL
-module.DAMP_Z = Atdar.memory.ped.FALL_FLAG.DAMP_Z
-module.BEAST_FALL = Atdar.memory.ped.FALL_FLAG.BEAST_FALL
+module.AIR_CONTROL = Atdar.natives.memory.ped.FALL_FLAG.AIR_CONTROL
+module.DAMP_Z = Atdar.natives.memory.ped.FALL_FLAG.DAMP_Z
+module.BEAST_FALL = Atdar.natives.memory.ped.FALL_FLAG.BEAST_FALL
 
 local settings = {
-    flags = Atdar.memory.ped.FALL_FLAG_GRACELAND,
+    flags = Atdar.natives.memory.ped.FALL_FLAG_GRACELAND,
     debug = false,
 }
 
@@ -53,7 +53,7 @@ end
 
 -- The tasks of the local player now (their numbers from the root), what to look at when nothing happens
 function module.describe(): string
-    return Atdar.memory.task.describe(Atdar.natives.player.get_ped_id())
+    return Atdar.natives.memory.task.describe(Atdar.natives.player.get_ped_id())
 end
 
 local function hex(value: int): string
@@ -63,7 +63,7 @@ end
 -- One frame
 local function tick(): void
 
-    local mem_ped = Atdar.memory.ped
+    local mem_ped = Atdar.natives.memory.ped
     local ped = Atdar.natives.player.get_ped_id()
     local flags = mem_ped.get_fall_flags(ped)
 
@@ -101,7 +101,7 @@ local function release(): void
     local ped = Atdar.natives.player.get_ped_id()
 
     if state.added ~= 0 then
-        Atdar.memory.ped.remove_fall_flags(ped, state.added)
+        Atdar.natives.memory.ped.remove_fall_flags(ped, state.added)
     end
 
     state.added = 0
@@ -119,6 +119,16 @@ function module.enable(): void
 
     state.enabled = true
     state.run += 1
+
+    -- The offsets that have a signature are read from the game's code first (none have yet)
+    for name, found in pairs(Atdar.natives.memory.task.resolve()) do
+
+        if found then
+            log:debug($"offset {name}: read from the code")
+        else
+            log:debug($"offset {name}: not found, the default stays")
+        end
+    end
 
     local run = state.run
 

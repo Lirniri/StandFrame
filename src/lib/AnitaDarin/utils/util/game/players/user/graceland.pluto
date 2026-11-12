@@ -146,8 +146,8 @@ function module.set_flag_protection(toggle: bool): void
 end
 
 -- Whether the fall task of the game is steered through the memory too (air_control: the flags Stand's own Graceland puts
--- in it, Atdar.memory.ped.set_air_control), on by default: no ragdoll is needed to steer the fall then. It reads the
--- memory by the offsets of a build of the game (Atdar.memory.task.offsets): if they are wrong nothing is found and
+-- in it, Atdar.natives.memory.ped.set_air_control), on by default: no ragdoll is needed to steer the fall then. It reads the
+-- memory by the offsets of a build of the game (Atdar.natives.memory.task.offsets): if they are wrong nothing is found and
 -- only the ragdoll steering is left, so off is the way back. It is for the plain fall, before the ragdoll starts or
 -- without one (a big set_ragdoll_distance); look at the log with set_debug
 function module.set_memory_control(toggle: bool): void

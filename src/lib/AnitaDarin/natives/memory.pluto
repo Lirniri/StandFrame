@@ -1,0 +1,5 @@
+-- The game's memory read and written in the way of the natives (the entity first): not natives, so the offsets of a build
+-- of the game are behind them and they say by their result when those are wrong. Atdar.natives.memory.<section>
+local module = {}
+
+return Atdar.loader.auto(module, "natives/memory")

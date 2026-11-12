@@ -4,7 +4,7 @@
 -- changes, they are what stops working. They are in module.offsets, change them there without touching the code.
 --
 -- Everything is read through guards (a pointer must look like one, the walk is bounded). This file only reads: what is
--- written to a task is in Atdar.memory.ped. If a step doesn't look right, the functions give nil instead of reading further.
+-- written to a task is in Atdar.natives.memory.ped. If a step doesn't look right, the functions give nil instead of reading further.
 local module = {}
 
 module.TASK_FALL = 423
@@ -19,6 +19,11 @@ module.offsets = {
     type_id = 0x34,              -- aiTask: the number of the task (CTaskTypes)
     fall_flags = 0x180,          -- CTaskFall: the flags
 }
+
+-- How to read an offset out of the code of the game when the numbers above are not those of the build: by the name of
+-- the offset { pattern = "48 8B 81 ?? ?? 00 00", at = 3, size = 4 }, see natives.memory.scan.read_offset. None are
+-- known yet, so it is empty; set_signature adds one and resolve reads them
+module.signatures = {}
 
 local MAX_PRIORITY = 4
 local MAX_DEPTH = 32
@@ -60,6 +65,31 @@ local function get_root(ped: int): ?int
     end
 
     return root
+end
+
+-- Sets how to find an offset by name (one of the names of module.offsets), see module.signatures
+function module.set_signature(name: string, pattern: string, at: int, size: int = 4): void
+    module.signatures[name] = { pattern = pattern, at = at, size = size }
+end
+
+-- Reads the offsets that have a signature out of the game's code and puts them in module.offsets; the ones that are
+-- not found stay as they were
+-- @return A table of the name and whether it was found
+function module.resolve(): table
+
+    local result = {}
+
+    for name, signature in pairs(module.signatures) do
+        local value = Atdar.natives.memory.scan.read_offset(signature.pattern, signature.at, signature.size)
+
+        result[name] = value ~= nil
+
+        if value ~= nil then
+            module.offsets[name] = value
+        end
+    end
+
+    return result
 end
 
 -- Get

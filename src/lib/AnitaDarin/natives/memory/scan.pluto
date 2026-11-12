@@ -1,0 +1,70 @@
+-- Finding code in the game's memory by a pattern of bytes (a signature), for the places whose address or offset changes
+-- with a build of the game. A pattern is bytes in hex with a space between and ?? (or ?) for any byte:
+-- "48 8B 81 ?? ?? 00 00". Stand's memory.scan does the search; it is not tried in this project yet, so nothing here is
+-- known to find anything in the game: look at what find gives and what describe in task shows.
+local module = {}
+
+-- Get
+
+-- The address of the first place where the pattern is, nil if it is nowhere (or the scan is not there)
+function module.find(pattern: string): ?int
+
+    local ok, address = pcall(memory.scan, pattern)
+
+    if not ok or type(address) ~= "number" or address == 0 then
+        return nil
+    end
+
+    return address
+end
+
+-- A number that is a part of the code found by the pattern: the pattern is found, and the int (size 4) or the byte
+-- (size 1) is read at the place of it, "at" bytes from the start of the pattern. It is how the offset of a field is
+-- read out of an instruction like "mov rax, [rcx+10A0h]" (48 8B 81 A0 10 00 00: at 3, size 4), where the pattern
+-- has ?? in place of the number so that it stays the same when the offset changes
+-- @param at Bytes from the start of the pattern
+-- @param size 1 or 4
+-- @return The number, nil if the pattern is not found
+function module.read_offset(pattern: string, at: int, size: int = 4): ?int
+
+    local address = module.find(pattern)
+
+    if address == nil then
+        return nil
+    end
+
+    if size == 1 then
+        return memory.read_byte(address + at) & 0xFF
+    end
+
+    return memory.read_int(address + at)
+end
+
+-- The address that a "call" or "lea [rip+x]" found by the pattern points at: the int at "at" is the distance from the
+-- end of the instruction ("at" + 4 plus "extra" bytes that follow the number in it)
+-- @return The address, nil if the pattern is not found
+function module.read_rip(pattern: string, at: int, extra: int = 0): ?int
+
+    local address = module.find(pattern)
+
+    if address == nil then
+        return nil
+    end
+
+    return address + at + 4 + extra + memory.read_int(address + at)
+end
+
+-- The bytes at the address as text in the form of a pattern ("48 8B 81 A0 10 00 00"), to see what code is there and to
+-- make a pattern of it
+function module.get_bytes(address: int, count: int): string
+
+    local bytes = {}
+
+    for index = 0, count - 1 do
+        table.insert(bytes, string.format("%02X", memory.read_byte(address + index) & 0xFF))
+    end
+
+    return table.concat(bytes, " ")
+end
+
+return module
