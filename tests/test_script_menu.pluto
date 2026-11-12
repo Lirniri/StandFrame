@@ -817,6 +817,15 @@ stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...)", "Clear: the
 stand.equal(fields_of(stand.child(functions_list, "2: GET_THING(...)")).children[1].value, "5", "the others keep what's typed in their fields")
 add_function.on_change("test_typed", 0)
 stand.equal(added_names(), "1: test_plain: int | 2: GET_THING(...) | 3: test_typed(count, name, ...)", "one added again goes to the end")
+-- Hide Function Word: on by default; the switch is what the logic reads
+local hide_logic = Atdar.loader.load("ui/logic/stand/values")
+stand.equal(stand.child(call_list, "Hide Function Word").value, true, "Hide Function Word is on by default")
+stand.equal(hide_logic.hide_function, true, "and so is the logic's")
+stand.click(stand.child(call_list, "Hide Function Word"))
+stand.equal(hide_logic.hide_function, false, "off: the logic writes the whole word")
+stand.click(stand.child(call_list, "Hide Function Word"))
+stand.equal(hide_logic.hide_function, true, "on again")
+
 -- Use Short Names: on, the last name only; off, the whole path is shown; the list follows at once
 stand.equal(stand.child(call_list, "Use Short Names").value, true, "Use Short Names is on by default")
 stand.click(stand.child(call_list, "Use Short Names"))

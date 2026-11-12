@@ -601,6 +601,11 @@ local with_functions = { go = function(speed: int, note: string) table.insert(ta
     vague = function(...) end }
 counter.add = function() return with_functions end
 stand.frame()
+values_logic.hide_function = true
+stand.frame()
+stand.check(stand.find_item(stand.find_item(add_node, "Value (2)"), "go(speed, note)") ~= nil, "the word is hidden in the line of a function")
+values_logic.hide_function = false
+stand.frame()
 local go_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "go: function(speed, note)")
 stand.check(go_list ~= nil and go_list.kind == "list", "a function in the table is a list")
 stand.equal(#go_list.children, 0, "its panel is made when it's opened")
