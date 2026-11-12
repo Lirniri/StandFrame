@@ -983,8 +983,88 @@
                 },
                 "params": {
                     "divider": "Parameters"
+                },
+                "places": {
+                    "divider": "Places",
+                    "user": "User",
+                    "menu": "Menu",
+                    "logs": "Logs"
+                },
+                "opened": {
+                    "divider": "Opened From Call Function"
+                },
+                "view": {
+                    "divider": "Lines",
+                    "page": "Page %d of %d",
+                    "previous": {
+                        "name": "Previous Page",
+                        "help": "The 40 lines before these"
+                    },
+                    "next": {
+                        "name": "Next Page",
+                        "help": "The next 40 lines"
+                    },
+                    "missing": "Not there (the file or folder is gone)",
+                    "code": "A file that runs: it isn't shown here",
+                    "big": "The file is over 1 MB: too big to show here"
                 }
             },
+            "pick": {
+                "name": "Pick Function",
+                "help": "Takes the function's name from a list, so it needn't be typed: your short names, the registry, or a module's functions",
+                "page": "Page %d of %d",
+                "previous": { "name": "Previous Page", "help": "The functions before these" },
+                "next": { "name": "Next Page", "help": "The next functions" },
+                "short_names": {
+                    "name": "My Short Names",
+                    "help": "The names of user/call_function/short_names.json"
+                },
+                "registry": {
+                    "name": "Registry",
+                    "help": "The short names shipped with the script (core/call_function/short_name.json)"
+                },
+                "modules": {
+                    "name": "Modules",
+                    "help": "A module's functions, called as its methods (Module:function)"
+                }
+            },
+            "history": {
+                "name": "History",
+                "help": "The last 10 calls with what was typed for them. A click calls one again. Kept until the game is closed",
+                "divider": "Last Calls",
+                "repeat_last": {
+                    "name": "Repeat Last",
+                    "help": "Calls the latest call again with the same arguments"
+                },
+                "clear": {
+                    "name": "Clear History",
+                    "help": "Forgets the calls"
+                }
+            },
+            "result_tools": {
+                "divider": "Result"
+            },
+            "copy_result": {
+                "name": "Copy Result",
+                "help": "Puts what the function gave, whole, in the clipboard",
+                "done": "Result copied",
+                "none": "There's no result yet",
+                "unavailable": "This Stand has no clipboard function"
+            },
+            "log_result": {
+                "name": "Log Result",
+                "help": "Writes what the function gave, whole, to the log",
+                "done": "Result written to the log"
+            },
+            "open_logs": {
+                "name": "Open Logs In Editor",
+                "help": "Shows the log files in the Files Editor"
+            },
+            "open_short_names": {
+                "name": "Open Short Names In Editor",
+                "help": "Shows user/call_function/short_names.json in the Files Editor"
+            },
+            "open_missing": "The Files Editor isn't running",
             "settings": {
                 "divider": "Settings"
             },

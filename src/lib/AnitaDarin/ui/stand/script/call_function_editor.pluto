@@ -238,9 +238,88 @@ local function file_list(parent: table, file: table, refresh: function): void
     })
 end
 
+-- Places: user, menu (the packs, and the core menu as "core") and logs, to look at. Nothing here is written
+
+-- A text file: its lines a page at a time, with Previous and Next
+local function view_file(parent: table, id: string, name: string|int): void
+
+    parent:list({ name = name, help = id, fill = function(node)
+
+        local page = 1
+        local body = nil
+
+        body = node:section(function()
+
+            local data, why = files():read_text(id, page)
+
+            if data == nil then
+                node:readonly_name({ name = label($"view.{why}") })
+                return
+            end
+
+            node:readonly_name({ name = text("view.page"):format(data.page, data.pages) })
+
+            node:scope(SCOPE):action({ key = "view.previous", on_click = function()
+                page = math.max(data.page - 1, 1)
+                body.rebuild()
+            end })
+            node:scope(SCOPE):action({ key = "view.next", on_click = function()
+                page = math.min(data.page + 1, data.pages)
+                body.rebuild()
+            end })
+
+            node:divider({ name = label("view.divider") })
+
+            for _, line in ipairs(data.lines) do
+                node:readonly_name({ name = line == "" and " " or line })
+            end
+        end)
+    end })
+end
+
+-- A folder: its folders and files, each opened on its own
+local function folder_list(parent: table, id: string, name: string|int): void
+
+    parent:list({ name = name, help = id, fill = function(node)
+
+        local found = files():browse(id)
+
+        if found == nil then
+            node:readonly_name({ name = label("view.missing") })
+            return
+        end
+
+        if #found.folders == 0 and #found.files == 0 then
+            node:readonly_name({ name = label("empty") })
+        end
+
+        for _, folder in ipairs(found.folders) do
+            folder_list(node, $"{id}/{folder}", folder)
+        end
+
+        for _, file in ipairs(found.files) do
+            view_file(node, $"{id}/{file}", file)
+        end
+    end })
+end
+
 -- Whether the FileEditor module is there and running: the list is shown only then
 function module.is_available(): bool
     return Atdar.modules.is_running("FileEditor")
+end
+
+-- The Files Editor's list as it was last made, for module.focus
+local editor_list = nil
+
+-- Takes the cursor to the Files Editor (a link from Call Function)
+-- @return Whether the list is there to go to
+function module.focus(): bool
+
+    if editor_list == nil then
+        return false
+    end
+
+    return editor_list:focus()
 end
 
 -- Makes the Files Editor list in node (Debug)
@@ -263,6 +342,19 @@ function module.build(node: table)
             shown.rebuild()
         end)
 
+        -- Asked for by a link (Call Function's Open In Files Editor): shown first
+        local requested = files():take_request()
+
+        if requested ~= nil then
+            editor:divider({ name = label("opened.divider") })
+
+            if files():browse(requested) ~= nil then
+                folder_list(editor, requested, requested)
+            else
+                view_file(editor, requested, requested)
+            end
+        end
+
         editor:divider({ name = label("files.divider") })
 
         shown = editor:section(function()
@@ -270,7 +362,15 @@ function module.build(node: table)
                 file_list(editor, file, || -> shown.rebuild())
             end
         end)
+
+        editor:divider({ name = label("places.divider") })
+
+        for _, place in ipairs(files():places()) do
+            folder_list(editor, place, label($"places.{place}"))
+        end
     end })
+
+    editor_list = list
 
     return list, module.is_available
 end

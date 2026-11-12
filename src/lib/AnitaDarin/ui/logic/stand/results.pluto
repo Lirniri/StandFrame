@@ -81,6 +81,12 @@ function module.table_of(key: string): ?table
     return entry and entry.tbl or nil
 end
 
+-- @return What the key gave last, whole (the Variable line cuts it); nil when it gave nothing
+function module.text_of(key: string): ?string
+    local entry = last[key]
+    return entry and entry.text or nil
+end
+
 -- @return The value of the userdata the key gave last (a vector's coordinates), nil when it gave something else
 function module.detail_of(key: string): ?string
     local entry = last[key]

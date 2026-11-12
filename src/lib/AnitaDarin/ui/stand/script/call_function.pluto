@@ -50,7 +50,7 @@ local module = {}
 
 -- Strings under "script_menu.call_function": the keys of its items
 local SCOPE = "script_menu.call_function"
-local label = i18n.scope(SCOPE)
+local label, text = i18n.scope(SCOPE)
 
 -- The strings of the Modules list's function lists, shared: Call After, Call When Opened, Loop
 local LOOP_SCOPE = "modules.loop"
@@ -286,17 +286,161 @@ local function add_item(list: table, entry: table, number: int): void
     panel = module.panel(node, item.spec)
 end
 
+-- Pick Function
+
+-- How many functions of a module a page of its list shows
+local PICK_PAGE = 30
+
+-- Items for each of names, a page at a time, with Previous Page and Next Page
+-- @param make function(node, name) makes one item
+local function paged(node: table, names: table, make: function): void
+
+    local ui = node:scope(SCOPE)
+    local page = 1
+    local body = nil
+
+    body = node:section(function()
+
+        local pages = math.max(1, (#names + PICK_PAGE - 1) // PICK_PAGE)
+
+        page = math.min(math.max(page, 1), pages)
+
+        if pages > 1 then
+            node:readonly_name({ name = text("pick.page"):format(page, pages) })
+            ui:action({ key = "pick.previous", on_click = function()
+                page -= 1
+                body.rebuild()
+            end })
+            ui:action({ key = "pick.next", on_click = function()
+                page += 1
+                body.rebuild()
+            end })
+        end
+
+        local first = (page - 1) * PICK_PAGE + 1
+
+        for index = first, math.min(first + PICK_PAGE - 1, #names) do
+            make(node, names[index])
+        end
+    end)
+end
+
+-- The names of a table (a file's short names), sorted
+local function sorted_names(source: table): table
+
+    local names = {}
+
+    for name in pairs(source) do
+        table.insert(names, name)
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+-- The Pick Function list: the function named by a click, not typed. The names come from the user's short names, the
+-- registry and the modules; all made when the list is opened
+-- @param pick function(path) sets the Function Name
+local function build_pick(node: table, pick: function): void
+
+    local ui = node:scope(SCOPE)
+
+    ui:list({ key = "pick", fill = function(list)
+
+        local sub = list:scope(SCOPE)
+
+        -- A list of short names of a file: the name on the button, the path in its help
+        local function short_list(key: string, source: table): void
+            sub:list({ key = key, fill = function(part)
+
+                local names = sorted_names(source)
+
+                if #names == 0 then
+                    part:readonly_name({ name = label("empty") })
+                end
+
+                paged(part, names, function(into, name)
+                    into:action({ name = name, help = source[name].path or source[name], on_click = || -> pick(name) })
+                end)
+            end })
+        end
+
+        short_list("pick.short_names", calls():short_names())
+        short_list("pick.registry", calls():registry())
+
+        sub:list({ key = "pick.modules", fill = function(modules)
+            for _, name in ipairs(Atdar.modules.names()) do
+                modules:list({ name = name, fill = function(part)
+
+                    local names = calls():module_functions(name)
+
+                    if #names == 0 then
+                        part:readonly_name({ name = label("empty") })
+                    end
+
+                    paged(part, names, function(into, path)
+                        into:action({ name = path:match(":(.*)$") or path, help = path, on_click = || -> pick(path) })
+                    end)
+                end })
+            end
+        end })
+    end })
+end
+
+-- History: the last calls, each calls again with what was typed for it
+local function build_history(node: table): void
+
+    local ui = node:scope(SCOPE)
+
+    ui:list({ key = "history", fill = function(list)
+
+        local sub = list:scope(SCOPE)
+        local entries = calls():history()
+
+        if #entries > 0 then
+            sub:action({ key = "history.repeat_last", on_click = || -> calls():repeat_call(entries[1]) })
+        end
+
+        sub:action({ key = "history.clear", on_click = function()
+            calls():clear_history()
+            list:clear()
+            list:readonly_name({ name = label("empty") })
+        end })
+
+        list:divider({ name = label("history.divider") })
+
+        if #entries == 0 then
+            list:readonly_name({ name = label("empty") })
+        end
+
+        for _, entry in ipairs(entries) do
+            list:action({ name = calls():describe_entry(entry), help = entry.path,
+                on_click = || -> calls():repeat_call(entry) })
+        end
+    end })
+end
+
+-- Opens the Files Editor at a place, from a link in Call Function
+local function open_in_editor(id: string): void
+    if calls():open_in_editor(id) then
+        Atdar.loader.load("ui/stand/script/call_function_editor").focus()
+    end
+end
+
 -- The Call A Function list: the function typed by its name, with the panel
 local function build_by_name(node: table): void
 
     local panel = nil
     local spec = nil
+    local name_field = nil
     local state = calls().main_state
     local list = node:list({ key = "by_name", on_open = || -> panel.opened() })
 
-    -- With Call After Typing Function on, typing the name calls it (or reads a table or a variable) at once
-    list:text_input({ key = "function", commands = { "callfuncname" }, default = state.name or "", user_only = true,
-        on_change = function(value)
+    -- The name typed, or picked from Pick Function. With Call After Typing Function on, it calls the function (or
+    -- reads a table or a variable) at once
+    local function name_typed(value: string): void
+
         local named, changed = calls():set_main_name(value)
 
         -- Another function: its parameters are the fields now (a table or a variable has none: the one field)
@@ -308,7 +452,15 @@ local function build_by_name(node: table): void
         if named and panel ~= nil then
             panel.name_typed()
         end
-    end })
+    end
+
+    name_field = list:text_input({ key = "function", commands = { "callfuncname" }, default = state.name or "",
+        user_only = true, on_change = name_typed })
+
+    build_pick(list, function(path: string): void
+        name_field:set_value(path)
+        name_typed(path)
+    end)
 
     spec = {
         key = calls().RESULT_KEY,
@@ -325,6 +477,15 @@ local function build_by_name(node: table): void
     }
 
     panel = module.panel(list, spec)
+
+    -- What it gave, whole, and the files Call Function reads
+    local ui = list:scope(SCOPE)
+
+    ui:divider({ name = label("result_tools.divider") })
+    ui:action({ key = "copy_result", on_click = || -> calls():copy_result() })
+    ui:action({ key = "log_result", on_click = || -> calls():log_result() })
+    ui:action({ key = "open_logs", on_click = || -> open_in_editor("logs") })
+    ui:action({ key = "open_short_names", on_click = || -> open_in_editor("user/call_function/short_names.json") })
 end
 
 -- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added
@@ -393,6 +554,7 @@ function module.build(node: table)
 
     build_by_name(ui)
     build_functions(ui)
+    build_history(ui)
 
     ui:action({ key = "guide", on_click = || -> calls():show_guide() })
 

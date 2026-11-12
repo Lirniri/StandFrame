@@ -401,6 +401,82 @@ local class CallFunction extends Module
         self._history = {}
     end
 
+    -- An entry of the history as a line: "get(1, 2)", the function as the list shows it and what was typed for it
+    function describe_entry(entry: table): string
+
+        local typed = entry.args
+        local keys = {}
+
+        if typed == nil or typed == "" then
+
+            local parts = {}
+
+            for key in pairs(entry.texts) do
+                table.insert(keys, key)
+            end
+
+            table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+
+            for _, key in ipairs(keys) do
+                if entry.texts[key] ~= "" then
+                    table.insert(parts, tostring(entry.texts[key]))
+                end
+            end
+
+            typed = table.concat(parts, ", ")
+        end
+
+        return $"{self:shown(entry.path)}({typed})"
+    end
+
+    -- Result
+
+    -- Puts what Call A Function gave last, whole, in the clipboard
+    function copy_result(): void
+
+        local given = results().text_of(self.RESULT_KEY)
+
+        if given == nil then
+            self.log:notify(text("copy_result.none"))
+            return
+        end
+
+        if util.copy_to_clipboard == nil then
+            self.log:warn(text("copy_result.unavailable"))
+            return
+        end
+
+        util.copy_to_clipboard(given)
+        self.log:notify(text("copy_result.done"))
+    end
+
+    -- Writes what Call A Function gave last, whole, to the log
+    function log_result(): void
+
+        local given = results().text_of(self.RESULT_KEY)
+
+        if given == nil then
+            self.log:notify(text("copy_result.none"))
+            return
+        end
+
+        self.log:info($"Call Function result: {given}")
+        self.log:notify(text("log_result.done"))
+    end
+
+    -- Asks the Files Editor to show a file or folder first (the caller then takes the cursor to it)
+    -- @param id A place of the editor: "logs", "user/call_function/short_names.json"
+    -- @return Whether the editor is there and took it
+    function open_in_editor(id: string): bool
+
+        if not Atdar.modules.is_running("FileEditor") or not Atdar.modules.get("FileEditor"):request_open(id) then
+            self.log:warn(text("open_missing"))
+            return false
+        end
+
+        return true
+    end
+
     -- Once, after ms; the arguments are worked out then, not now
     function call_after(spec: table, ms: int): void
 
@@ -686,6 +762,25 @@ local class CallFunction extends Module
     end
 
     -- Names
+
+    -- The functions a module offers, as names to type: "VehicleManager:get" (with a colon: they're methods)
+    -- @return The names sorted; empty when there's no such module
+    function module_functions(module_name: string): table
+
+        local names = {}
+
+        if not Atdar.modules.has(module_name) then
+            return names
+        end
+
+        for _, fn in ipairs(Module.functions_of(Atdar.modules.get(module_name))) do
+            table.insert(names, $"{module_name}:{fn.name}")
+        end
+
+        table.sort(names)
+
+        return names
+    end
 
     -- What a typed name means: a path that's there is itself; a short name is the path the user's
     -- short_names.json gives it, then the registry's, else the first function of that name in Atdar or the

@@ -30,6 +30,11 @@ local JsonFile = Atdar.loader.load("core/filesystem/json/file")
 local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
 local plain = Atdar.loader.load("core/filesystem/file")
 local safe_path = Atdar.loader.load("core/filesystem/safe_path")
+local Logger = Atdar.loader.load("core/logger")
+
+-- A text file is shown in pages of this many lines; a bigger file than MAX_TEXT_BYTES isn't opened
+local PAGE_LINES = 40
+local MAX_TEXT_BYTES = 1048576
 
 -- Where the files are, from store/<script>/, and what a file's id is: its path from there
 local AREAS = { "core", "user" }
@@ -138,6 +143,7 @@ local class FileEditor extends Module
                 hide = {
                     "_path_of",
                     "_file_of",
+                    "_browse_path",
                 }
             }
         })
@@ -292,6 +298,148 @@ local class FileEditor extends Module
         plain.remove($"{path}.bak")
 
         return true
+    end
+
+    -- Browsing
+
+    -- @return The places that can be browsed, in order: user, menu, logs
+    function places(): table
+        return { "user", "menu", "logs" }
+    end
+
+    -- A browsed place's full path. Its id is <place>/<path inside>: "user/call_function/short_names.json",
+    -- "menu/<pack>/info.json" for a menu pack, "menu/core/language/en-us.json" for the core menu's files
+    -- (store/<script>/core/menu: a pack named core would be hidden by it), "logs/<file>"
+    -- @return The path; nil if the id isn't a place of the editor or a name in it isn't a safe one
+    function _browse_path(id: string): ?string
+
+        local place, rest = id:match("^(%a+)/?(.*)$")
+        local store = Atdar.filesystem.paths.store
+        local root = nil
+
+        if place == "user" then
+            root = $"{store}user\\"
+        elseif place == "menu" then
+            root = $"{store}menu\\"
+            local first, after = rest:match("^([^/\\]+)/?(.*)$")
+            if first == "core" then
+                root = $"{store}core\\menu\\"
+                rest = after
+            end
+        elseif place == "logs" then
+            root = Logger.folder()
+        else
+            return nil
+        end
+
+        if rest == "" then
+            return root
+        end
+
+        return (safe_path.resolve(root, rest))
+    end
+
+    -- What a place's folder has: the folders and the files in it, each by name and sorted. The menu place has the
+    -- core menu as a folder named core, first
+    -- @return { folders, files }; nil when the id isn't a folder of the editor
+    function browse(id: string): ?table
+
+        local path = self:_browse_path(id)
+
+        if path == nil or not filesystem.is_dir(path) then
+            return nil
+        end
+
+        local found = { folders = {}, files = {} }
+
+        for _, full in ipairs(filesystem.list_files(path)) do
+
+            local name = full:match("([^\\/]+)[\\/]?$")
+
+            if name ~= nil then
+                if filesystem.is_dir(full) then
+                    table.insert(found.folders, name)
+                else
+                    table.insert(found.files, name)
+                end
+            end
+        end
+
+        table.sort(found.folders)
+        table.sort(found.files)
+
+        if id == "menu" and filesystem.is_dir($"{Atdar.filesystem.paths.store}core\\menu\\") then
+            table.insert(found.folders, 1, "core")
+        end
+
+        return found
+    end
+
+    -- Asks the editor to show a file or folder first the next time it's opened (from Call Function's links)
+    -- @param id A browsed place's id, "logs" or "user/call_function/short_names.json"
+    -- @return Whether the id is one of the editor's (nothing is kept for any other)
+    function request_open(id: string): bool
+
+        if self:_browse_path(id) == nil then
+            return false
+        end
+
+        self._requested = id
+
+        return true
+    end
+
+    -- @return The id asked for by request_open, nil when none; it's asked once
+    function take_request(): ?string
+
+        local id = self._requested
+
+        self._requested = nil
+
+        return id
+    end
+
+    -- A text file, a page of its lines (PAGE_LINES each); only for looking, nothing of it is written
+    -- @param page From 1; past the last one it's the last
+    -- @return { lines, page, pages } or nil and why not ("missing", "code" for a file that runs, "big")
+    function read_text(id: string, page: int = 1)
+
+        local path = self:_browse_path(id)
+
+        if path == nil or filesystem.is_dir(path) or not filesystem.exists(path) then
+            return nil, "missing"
+        end
+
+        if safe_path.is_code(path) then
+            return nil, "code"
+        end
+
+        local content = plain.read(path)
+
+        if content == nil then
+            return nil, "missing"
+        end
+
+        if #content > MAX_TEXT_BYTES then
+            return nil, "big"
+        end
+
+        local lines = {}
+
+        for line in (content .. "\n"):gmatch("(.-)\r?\n") do
+            table.insert(lines, line)
+        end
+
+        local pages = math.max(1, (#lines + PAGE_LINES - 1) // PAGE_LINES)
+        local number = math.min(math.max(page, 1), pages)
+        local first = (number - 1) * PAGE_LINES + 1
+        local shown = {}
+
+        for index = first, math.min(first + PAGE_LINES - 1, #lines) do
+            table.insert(shown, lines[index])
+        end
+
+        return { lines = shown, page = number, pages = pages }
     end
 
     -- Places
