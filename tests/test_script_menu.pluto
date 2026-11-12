@@ -36,9 +36,9 @@ stand.equal(functions_of("FileEditor"), "add_table, add_value, count, create, de
     "its functions for the Modules list and Call Function; the helpers (_path_of, _file_of) aren't among them")
 stand.check(Atdar.modules.has("CallFunction") and Atdar.modules.get("CallFunction"):is_running(), "CallFunction is running")
 stand.check(Atdar.modules.is_system("CallFunction"), "and it's a system module")
-stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, describe, expand, forget, "
-    .. "in_stand, load_saved, loop_status, main_path, main_signature, main_target, registered_signature, registry, "
-    .. "remove, set_loop, set_main_name, set_save, short_names, show_guide, shown, signature_of_path, stand_api, "
+stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, clear_history, describe, "
+    .. "expand, forget, history, in_stand, load_saved, loop_status, main_path, main_signature, main_target, "
+    .. "registered_signature, registry, remove, repeat_call, set_loop, set_main_name, set_save, short_names, show_guide, shown, signature_of_path, stand_api, "
     .. "start_loop, stop_loop, value_of",
     "its functions; the helpers (_deliver, _read_file, _save_added...) aren't among them")
 local hidden = {}

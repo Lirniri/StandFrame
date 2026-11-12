@@ -313,6 +313,7 @@ local function build_by_name(node: table): void
     spec = {
         key = calls().RESULT_KEY,
         state = state,
+        path = || -> calls():main_path(),
         sig = calls():main_signature(),
         name = || -> state.name or "",
         -- (a lambda would give only the first of the three values)

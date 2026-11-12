@@ -68,6 +68,9 @@ local STAND_API_FILE = "core/call_function/stand_api.json"
 -- user's choice
 local SAVED_FILE = "user/call_function/saved_functions.json"
 
+-- How many calls the history keeps
+local MAX_HISTORY = 10
+
 -- A file is read again at most once in this many ms: a name is looked for at every call, and a loop calls
 -- every frame. An edit made by hand while the script runs still shows within the second
 local REREAD_MS = 1000
@@ -135,6 +138,25 @@ local function run(fn, owner, args: table, count: int): table
     return table.pack(pcall(fn, owner, table.unpack(args, 1, count)))
 end
 
+-- What makes two history entries the same call: the path and the arguments typed (the texts in the order of their keys)
+local function history_key(entry: table): string
+
+    local keys = {}
+    local parts = { entry.path, entry.args or "" }
+
+    for key in pairs(entry.texts) do
+        table.insert(keys, key)
+    end
+
+    table.sort(keys, |a, b| -> tostring(a) < tostring(b))
+
+    for _, key in ipairs(keys) do
+        table.insert(parts, $"{key}={tostring(entry.texts[key])}")
+    end
+
+    return table.concat(parts, "\n")
+end
+
 -- Tells the items how the loop is now
 local function show_loop(state: table, kind: string, every: ?int): void
     if state.on_loop ~= nil then
@@ -169,6 +191,8 @@ local class CallFunction extends Module
                     "_cache",
                     "_loaded",
                     "_last_id",
+                    "_record",
+                    "_history",
                 }
             }
         })
@@ -197,6 +221,9 @@ local class CallFunction extends Module
         self._loaded = kept.loaded == true
         -- The path from store -> { data = the file's table or nil, at = when it was read }
         self._cache = {}
+        -- The last calls, newest first: { path, texts, args }. Kept while the script runs and through a Reload
+        -- from the menu; not written to a file, so a restart of the game starts it empty
+        self._history = kept.history ?? {}
     end
 
     -- A handover left by a Stop is dropped: this instance goes on with its own
@@ -213,6 +240,7 @@ local class CallFunction extends Module
             added = self._added,
             last_id = self._last_id,
             loaded = self._loaded,
+            history = self._history,
         })
     end
 
@@ -295,6 +323,8 @@ local class CallFunction extends Module
             return
         end
 
+        self:_record(spec)
+
         util.create_thread(function()
             local given = run(value, owner, args, count)
             if not given[1] then
@@ -304,6 +334,71 @@ local class CallFunction extends Module
 
             self:_deliver(spec, given, true)
         end)
+    end
+
+    -- History
+
+    -- Puts a call at the top of the history: the same function with the same arguments is moved there, not repeated
+    -- @param spec Only a panel that says its function's full path (spec.path) is kept: a function in a table has none
+    function _record(spec: table): void
+
+        if spec.path == nil then
+            return
+        end
+
+        local state = spec.state
+        local entry = { path = spec.path(), texts = {}, args = state.args }
+
+        for key, value in pairs(state.texts or {}) do
+            entry.texts[key] = value
+        end
+
+        local same = history_key(entry)
+
+        for index = #self._history, 1, -1 do
+            if history_key(self._history[index]) == same then
+                table.remove(self._history, index)
+            end
+        end
+
+        table.insert(self._history, 1, entry)
+
+        while #self._history > MAX_HISTORY do
+            table.remove(self._history)
+        end
+    end
+
+    -- @return The last calls, newest first: { path, texts, args }
+    function history(): table
+        return self._history
+    end
+
+    -- Calls an entry of the history again with its arguments; the result goes to the Call A Function list
+    function repeat_call(entry: table): void
+
+        local paths = path_parser()
+        local copy = { texts = {}, args = entry.args }
+
+        for key, value in pairs(entry.texts) do
+            copy.texts[key] = value
+        end
+
+        local sig = self:signature_of_path(entry.path)
+
+        self:call({
+            key = self.RESULT_KEY,
+            state = copy,
+            sig = sig,
+            path = || -> entry.path,
+            name = || -> self:shown(entry.path),
+            -- (a lambda would give only the first of the three values)
+            target = function() return paths.resolve(entry.path) end,
+            in_stand = || -> self:in_stand(),
+        })
+    end
+
+    function clear_history(): void
+        self._history = {}
     end
 
     -- Once, after ms; the arguments are worked out then, not now
@@ -938,6 +1033,7 @@ local class CallFunction extends Module
             spec = {
                 key = $"debug.call_function.{entry.id}",
                 state = entry.state,
+                path = || -> entry.path,
                 name = || -> short,
                 -- (a lambda would give only the first of the three values)
                 target = function() return paths.resolve(entry.path) end,
