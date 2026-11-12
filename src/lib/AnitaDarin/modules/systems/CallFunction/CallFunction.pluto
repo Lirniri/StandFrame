@@ -971,7 +971,14 @@ local class CallFunction extends Module
         local paths_list = {}
 
         for _, entry in ipairs(self._added) do
-            table.insert(paths_list, entry.path)
+            local saved = entry.path
+
+            -- Typed with {} to open the table: kept the same way
+            if entry.as_table then
+                saved ..= "{}"
+            end
+
+            table.insert(paths_list, saved)
         end
 
         self:_write_saved(paths_list)
@@ -996,8 +1003,11 @@ local class CallFunction extends Module
 
         for _, path in ipairs(data.functions or {}) do
             if type(path) == "string" then
+
+                local plain, _, as_table = path_parser().split(path)
+
                 self._last_id += 1
-                table.insert(self._added, { id = self._last_id, path = path, state = {} })
+                table.insert(self._added, { id = self._last_id, path = plain, as_table = as_table == true, state = {} })
             end
         end
     end
@@ -1027,11 +1037,14 @@ local class CallFunction extends Module
         return self._added
     end
 
-    -- Adds the function typed (a path or a short name; brackets, if it was typed as a call, aren't part of it)
+    -- Adds the function typed (a path or a short name; brackets, if it was typed as a call, aren't part of it).
+    -- A table typed with braces at the end (util{}) is a list to open; without them it's a button that reads it
+    -- (the braces are there to be typed, nothing adds them)
     -- @return The entry added and its number in the list; nil when nothing was (it's told why)
     function add(typed: string)
 
         local path, matches = self:expand(typed)
+        local as_table = select(3, path_parser().split(typed:match("^%s*(.-)%s*$"))) == true
 
         if path == "" then
             return nil
@@ -1047,7 +1060,7 @@ local class CallFunction extends Module
         end
 
         for _, entry in ipairs(self._added) do
-            if entry.path == path then
+            if entry.path == path and (entry.as_table == true) == as_table then
                 self.log:notify(text("add.already"):format(path))
                 return nil
             end
@@ -1055,7 +1068,7 @@ local class CallFunction extends Module
 
         self._last_id += 1
 
-        local entry = { id = self._last_id, path = path, state = {} }
+        local entry = { id = self._last_id, path = path, as_table = as_table, state = {} }
 
         table.insert(self._added, entry)
         self:_save_added()
@@ -1118,10 +1131,10 @@ local class CallFunction extends Module
         local sig, returns = self:signature_of_path(entry.path)
         local has_fields = sig ~= nil and arguments().has_fields(sig)
         local found, value = paths.resolve(entry.path)
-        local is_table = found and type(value) == "table"
+        local is_table = entry.as_table == true and found and type(value) == "table"
         local name = $"{number}: {short}"
 
-        -- A table is named with its braces, as it's typed to open it: util{}
+        -- A table opened as a list is named with its braces, as it was typed: util{}
         if is_table then
             name ..= "{}"
         end

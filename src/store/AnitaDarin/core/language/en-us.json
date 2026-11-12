@@ -1108,7 +1108,7 @@
             "guide": {
                 "name": "Arguments Guide",
                 "help": "Sends to Stand how to write the functions' arguments in the argument fields",
-                "text": "Each argument has its own field, by the type written for it in the code. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given"
+                "text": "Each argument has its own field, by the type written for it in the code. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given. In Function Name and Add a path may name a table: util{} opens it as a list (its tables are lists, its functions can be called, its values typed over), without {} it is only read; one item by its key in brackets: util.list[1], util[\"name\"]"
             },
             "added": {
                 "help": "A field for each argument by the type the code says, then Call, Call After, Loop...",
