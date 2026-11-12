@@ -32,6 +32,11 @@ end
 -- Script profile: display/short name, command prefix. Needs filesystem paths, used by the logger and menu
 Atdar.profile = Atdar.loader.load("core/profile")
 
+-- The user's own code for Call Function (store/<script>/core/call_function/*.pluto, written in Files Editor):
+-- Atdar.user_code is what reads and writes the files, Atdar.user_script gives their functions by a path
+Atdar.user_code = Atdar.loader.load("core/user_script")
+Atdar.user_script = Atdar.user_code.scripts
+
 -- Native wrappers: Atdar.natives.<section>, each loaded from natives/<section>.pluto on first use.
 -- An error in one file doesn't crash the script, that file stays empty
 Atdar.natives = Atdar.loader.auto({}, "natives")

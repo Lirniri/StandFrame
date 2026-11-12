@@ -46,11 +46,11 @@ local function next_command(): string
 end
 
 -- A text field of the editor; not one of the found commands (its command isn't tracked)
--- @param opts The item's options: key, or name and help; default (what's in it)
+-- @param opts The item's options: key, or name and help; default (what's in it); command (its own name, else a numbered one)
 -- @param on_typed function(value) the user typed in it
 local function field(node: table, opts: table, on_typed: function): table
 
-    opts.commands = { next_command() }
+    opts.commands = { opts.command or next_command() }
     opts.track = false
     opts.user_only = true
     opts.on_change = |value| -> on_typed(value)
@@ -319,6 +319,174 @@ local function folder_list(parent: table, id: string, name: string|int): void
     end })
 end
 
+-- User code: the .pluto files of core/call_function (core/user_script), a line at a time
+
+-- How many lines of a file a page shows
+local CODE_PAGE = 30
+
+-- The code logic: what reads and writes the files
+local function code(): table
+    return Atdar.user_code
+end
+
+-- Tells the mistake in the code, if the save found one (the file is saved anyway)
+local function code_saved(name: string, ok: bool, mistake: ?string): void
+
+    if not ok then
+        log:error(text("code.not_saved"):format(name))
+        return
+    end
+
+    if mistake ~= nil then
+        log:warn(text("code.mistake"):format(name, mistake))
+    end
+end
+
+-- A code file: its lines as fields, Add Line, Insert Line, Remove Line and the pages
+local function code_file(parent: table, name: string, refresh: function): void
+
+    local deleted = false
+    local cancel = nil
+
+    parent:list({ name = $"{name}.pluto", help = label("code.file_help"), fill = function(node)
+
+        local ui = node:scope(SCOPE)
+        local page = 1
+        local body = nil
+
+        if name == code().MAIN then
+            node:readonly_name({ name = label("code.main") })
+        else
+            cancel = select(2, ui:confirm({ key = "code.delete",
+                on_confirm = function()
+                    local ok, why = code().delete(name)
+
+                    if not ok then
+                        log:warn(text($"code.errors.{why}"))
+                        return
+                    end
+
+                    deleted = true
+                    node:clear()
+                    log:notify(text("code.deleted"):format(name))
+                end,
+                on_first = || -> log:warn(text("code.delete_warning"):format(name)),
+            }))
+        end
+
+        -- The line is added at the end
+        field(ui, { key = "code.add_line" }, function(value)
+            local lines = code().read_lines(name) or {}
+            local ok, mistake = code().insert_line(name, #lines + 1, value)
+
+            code_saved(name, ok, mistake)
+            page = math.huge
+            body.rebuild()
+        end)
+
+        -- "3: text": a new line before line 3
+        field(ui, { key = "code.insert_line" }, function(value)
+
+            local number, line = value:match("^%s*(%d+)%s*:%s?(.*)$")
+
+            if number == nil then
+                log:warn(text("code.errors.insert"))
+                return
+            end
+
+            code_saved(name, code().insert_line(name, tonumber(number), line))
+            body.rebuild()
+        end)
+
+        field(ui, { key = "code.remove_line" }, function(value)
+
+            local number = tonumber(value)
+
+            if number == nil or not code().remove_line(name, math.tointeger(number) or 0) then
+                log:warn(text("code.errors.no_line"):format(value))
+                return
+            end
+
+            body.rebuild()
+        end)
+
+        body = node:section(function()
+
+            local lines = code().read_lines(name)
+
+            if lines == nil then
+                node:readonly_name({ name = label("view.missing") })
+                return
+            end
+
+            local pages = math.max(1, math.ceil(#lines / CODE_PAGE))
+
+            page = math.min(math.max(page, 1), pages)
+
+            node:readonly_name({ name = text("view.page"):format(page, pages) })
+
+            ui:action({ key = "code.previous", on_click = function()
+                page = math.max(page - 1, 1)
+                body.rebuild()
+            end })
+            ui:action({ key = "code.next", on_click = function()
+                page = math.min(page + 1, pages)
+                body.rebuild()
+            end })
+
+            node:divider({ name = label("view.divider") })
+
+            for number = (page - 1) * CODE_PAGE + 1, math.min(page * CODE_PAGE, #lines) do
+
+                -- [1]: a bare number would be taken for a translation key
+                field(node, { name = $"[{number}]", help = label("code.line_help"), default = lines[number],
+                    command = $"callfunceditor_usercode{number}" },
+                    function(value)
+                        code_saved(name, code().set_line(name, number, value))
+                    end)
+            end
+        end)
+    end,
+    on_back = function()
+        if cancel ~= nil then
+            cancel()
+        end
+
+        if deleted then
+            refresh()
+        end
+    end })
+end
+
+-- The list of the user code: Create File and a list per file
+local function code_list(parent: table): void
+
+    parent:list({ name = label("code.name"), help = label("code.help"), fill = function(node)
+
+        local shown = nil
+
+        field(node:scope(SCOPE), { key = "code.create" }, function(value)
+            local name, why = code().create(value)
+
+            if name == nil then
+                log:warn(text($"code.errors.{why}"))
+                return
+            end
+
+            log:notify(text("code.created"):format(name))
+            shown.rebuild()
+        end)
+
+        node:divider({ name = label("files.divider") })
+
+        shown = node:section(function()
+            for _, name in ipairs(code().list()) do
+                code_file(node, name, || -> shown.rebuild())
+            end
+        end)
+    end })
+end
+
 -- Whether the FileEditor module is there and running: the list is shown only then
 function module.is_available(): bool
     return Atdar.modules.is_running("FileEditor")
@@ -370,6 +538,9 @@ function module.build(node: table)
                 view_file(editor, requested, requested)
             end
         end
+
+        -- The user's own code: Atdar.user_script, called from Call Function
+        code_list(editor)
 
         editor:divider({ name = label("files.divider") })
 

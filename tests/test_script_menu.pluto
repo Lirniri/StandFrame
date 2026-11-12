@@ -1078,12 +1078,72 @@ stand.check(browser:request_open("logs") and not browser:request_open("store/x")
 stand.equal(browser:take_request(), "logs", "the editor takes what was asked")
 stand.equal(browser:take_request(), nil, "and only once")
 
+-- User code: the .pluto files of core/call_function, a line at a time; their functions are reached by Atdar.user_script
+local code_store = stand.tmpdir("user_code_store") .. "AnitaDarin/"
+Atdar.filesystem.paths.store = code_store
+local user_code = Atdar.loader.load("core/user_script")
+Atdar.user_code = user_code
+Atdar.user_script = user_code.scripts
+local code_names = user_code.list()
+local main_lines = user_code.read_lines("user_script")
+local hello_value = Atdar.user_script.hello("you")
+local created_name = user_code.create("mine")
+local _, exists_why = user_code.create("mine")
+local _, bad_why = user_code.create("../x")
+user_code.set_line("mine", 2, "function module.two() return 2 end")
+local mine_lines = user_code.read_lines("mine")
+local two_value = Atdar.user_script.mine.two()
+local walked = {}
+for key in pairs(Atdar.user_script) do
+    table.insert(walked, key)
+end
+table.sort(walked)
+local saved_ok, mistake = user_code.set_line("mine", 1, "local module = {")
+local fixed_ok, no_mistake = user_code.set_line("mine", 1, "local module = {}")
+local inserted = user_code.insert_line("mine", 1, "-- top")
+local removed = user_code.remove_line("mine", 1)
+local main_delete, main_why = user_code.delete("user_script")
+local delete_ok = user_code.delete("mine")
+local after_delete = user_code.list()
+local missing_name = user_code.read_lines("nope")
+Atdar.filesystem.paths.store = real_store
+stand.equal(table.concat(code_names, ","), "user_script", "user code: the main file is made when it's missing")
+stand.check(main_lines ~= nil and #main_lines > 3, "user code: the main file has the template")
+stand.equal(hello_value, "hello you", "user code: Atdar.user_script gives a function of the main file")
+stand.equal(created_name, "mine", "user code: a file is made by its name")
+stand.equal(exists_why, "exists", "user code: a file that's there isn't made again")
+stand.equal(bad_why, "name", "user code: a name with a path in it isn't taken")
+stand.equal(mine_lines[2], "function module.two() return 2 end", "user code: a line is set")
+stand.equal(table.concat(walked, ","), "hello,mine", "user code: a walk of Atdar.user_script gives the main file's functions and the other files")
+stand.equal(two_value, 2, "user code: Atdar.user_script.<file> gives that file's function")
+stand.check(saved_ok and mistake ~= nil, "user code: a mistake is told, the file is saved all the same")
+stand.check(fixed_ok and no_mistake == nil, "user code: a right code tells nothing")
+stand.check(inserted and removed, "user code: a line is put in and taken away")
+stand.check(main_delete == false and main_why == "main", "user code: the main file isn't deleted")
+stand.check(delete_ok and #after_delete == 1, "user code: a file is deleted")
+stand.equal(missing_name, nil, "user code: a file that isn't there has no lines")
+
 local editor = stand.child(debug_list, "Files Editor")
 stand.equal(#editor.children, 0, "Files Editor: nothing in it until it's opened")
 stand.click(editor)
-stand.equal(names_in(editor), "Create File | Files | core/short_name.json | core/stand_api.json | user/free.json | Places | User | Menu | Logs",
-    "opened: Create File, the Files divider, a list per file (core first), then the Places")
+stand.equal(names_in(editor), "Create File | User Code | Files | core/short_name.json | core/stand_api.json | user/free.json | Places | User | Menu | Logs",
+    "opened: Create File, User Code, the Files divider, a list per file (core first), then the Places")
 stand.equal(stand.child(editor, "Files").kind, "divider", "Files is a divider")
+
+-- User Code: Create File, then a list per file; a file's list has the line fields
+Atdar.filesystem.paths.store = code_store
+local code_node = stand.child(editor, "User Code")
+stand.click(code_node)
+local code_children = names_in(code_node)
+local main_node = stand.child(code_node, "user_script.pluto")
+stand.click(main_node)
+local main_children = names_in(main_node)
+Atdar.filesystem.paths.store = real_store
+stand.equal(code_children, "Create File | Files | user_script.pluto", "User Code: Create File and the main file")
+stand.check(main_children:find("The main file", 1, true) and main_children:find("Add Line", 1, true)
+    and main_children:find("Insert Line", 1, true) and main_children:find("Remove Line", 1, true)
+    and not main_children:find("Delete File", 1, true), "a code file: its line tools, no Delete File for the main one")
+stand.check(stand.child(main_node, "[1]") ~= nil and stand.child(main_node, "[1]").kind == "text_input", "a code file: a line is a text field")
 
 -- A protected file: no Delete File
 local short_name_list = stand.child(editor, "core/short_name.json")

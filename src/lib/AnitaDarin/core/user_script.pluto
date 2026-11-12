@@ -1,0 +1,339 @@
+-- lib/AnitaDarin/core/user_script.pluto
+--
+-- The user's own code for Call Function: the .pluto files of store/<script>/core/call_function/, written in
+-- Debug > Files Editor. Each file returns a table; its functions are called like any other, by a path:
+--
+--     Atdar.user_script.hello           -- a function of user_script.pluto (the main file)
+--     Atdar.user_script.mine.hello      -- a function of mine.pluto
+--
+-- Only this folder and only .pluto files with a plain name (letters, digits, _) are written here: safe_path keeps
+-- refusing every other code file. user_script.pluto is the main file: it's made when it's missing and can't be
+-- deleted. A file is read again after it was written, not at every call.
+
+local file = Atdar.loader.load("core/filesystem/file")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("UserScript")
+
+local module = {}
+
+-- The main file's name, without .pluto
+module.MAIN = "user_script"
+
+-- What the main file has when it's made
+local TEMPLATE = [[
+-- Your own functions for Call Function: Debug > Call Function > Name: Atdar.user_script.hello
+local module = {}
+
+function module.hello(name: string = "world"): string
+    return "hello " .. name
+end
+
+return module
+]]
+
+-- name -> the table a file returned, kept until the file is written again
+local loaded = {}
+
+-- @return The folder of the files, with the closing separator
+function module.folder(): string
+    return $"{Atdar.filesystem.paths.store}core\\call_function\\"
+end
+
+-- Whether it can be a file's name: letters, digits and _, so it reads in a path (Atdar.user_script.mine)
+function module.is_valid_name(name): bool
+    return type(name) == "string" and name:match("^[%w_]+$") ~= nil and #name <= 40
+end
+
+-- @return The file's full path; nil if the name isn't a valid one
+function module.path_of(name: string): ?string
+
+    if not module.is_valid_name(name) then
+        return nil
+    end
+
+    return $"{module.folder()}{name}.pluto"
+end
+
+-- Makes the main file when it isn't there
+function module.ensure_main(): void
+
+    local path = module.path_of(module.MAIN)
+
+    if path ~= nil and not filesystem.exists(path) then
+        file.write(path, TEMPLATE)
+    end
+end
+
+-- @return The names of the files without .pluto, the main one first and the rest sorted
+function module.list(): table
+
+    module.ensure_main()
+
+    local names = {}
+    local folder = module.folder()
+
+    for _, full in ipairs(filesystem.list_files(folder)) do
+
+        local name = full:match("([^\\/]+)%.pluto$")
+
+        if name ~= nil and name ~= module.MAIN and module.is_valid_name(name) then
+            table.insert(names, name)
+        end
+    end
+
+    table.sort(names)
+    table.insert(names, 1, module.MAIN)
+
+    return names
+end
+
+-- @return The file's lines (an empty file has one empty line); nil when there's no such file
+function module.read_lines(name: string): ?table
+
+    local path = module.path_of(name)
+
+    if path == nil then
+        return nil
+    end
+
+    if name == module.MAIN then
+        module.ensure_main()
+    end
+
+    local content = file.read(path)
+
+    if content == nil then
+        return nil
+    end
+
+    local lines = {}
+
+    for line in (content .. "\n"):gmatch("(.-)\r?\n") do
+        table.insert(lines, line)
+    end
+
+    -- The text ended with a line break: the empty piece after it isn't a line
+    if #lines > 1 and lines[#lines] == "" then
+        table.remove(lines)
+    end
+
+    return lines
+end
+
+-- Whether the file's code is written right, told before it runs. Stand has no load for a text, so the file is
+-- read by loadfile
+-- @return true, or false and what is wrong
+function module.check(path: string)
+
+    local fn, err = loadfile(path)
+
+    if fn == nil then
+        return false, tostring(err)
+    end
+
+    return true, nil
+end
+
+-- Saves the lines as the file; a mistake in the code is told, not refused (the code is typed line by line, so it's
+-- wrong half of the time)
+-- @return Whether it was saved, and the mistake in the code when there is one
+function module.write_lines(name: string, lines: table)
+
+    local path = module.path_of(name)
+
+    if path == nil then
+        return false
+    end
+
+    local code = table.concat(lines, "\n") .. "\n"
+    local saved = file.write(path, code)
+
+    if not saved then
+        return false
+    end
+
+    loaded[name] = nil
+
+    return true, select(2, module.check(path))
+end
+
+-- Puts a text in a line; past the last line it makes the lines up to it
+-- @return Whether it was saved, and the mistake in the code when there is one
+function module.set_line(name: string, number: int, value: string)
+
+    local lines = module.read_lines(name)
+
+    if lines == nil or number < 1 then
+        return false
+    end
+
+    for index = #lines + 1, number do
+        lines[index] = ""
+    end
+
+    lines[number] = value
+
+    return module.write_lines(name, lines)
+end
+
+-- Makes a new line with the text before the line at number (past the last one: at the end)
+-- @return Whether it was saved, and the mistake in the code when there is one
+function module.insert_line(name: string, number: int, value: string = "")
+
+    local lines = module.read_lines(name)
+
+    if lines == nil or number < 1 then
+        return false
+    end
+
+    table.insert(lines, math.min(number, #lines + 1), value)
+
+    return module.write_lines(name, lines)
+end
+
+-- Takes a line away; the last one left stays, empty
+-- @return Whether it was saved, and the mistake in the code when there is one
+function module.remove_line(name: string, number: int)
+
+    local lines = module.read_lines(name)
+
+    if lines == nil or number < 1 or number > #lines then
+        return false
+    end
+
+    table.remove(lines, number)
+
+    if #lines == 0 then
+        lines[1] = ""
+    end
+
+    return module.write_lines(name, lines)
+end
+
+-- Makes an empty file
+-- @return The name, or nil and why not: "name" (not a valid one), "exists"
+function module.create(typed: string)
+
+    local name = typed:match("^%s*(.-)%s*$"):gsub("%.pluto$", "")
+    local path = module.path_of(name)
+
+    if path == nil then
+        return nil, "name"
+    end
+
+    if filesystem.exists(path) then
+        return nil, "exists"
+    end
+
+    if not file.write(path, "local module = {}\n\nreturn module\n") then
+        return nil, "write"
+    end
+
+    return name
+end
+
+-- @return Whether the file is gone; false and why not: "main" (the main file stays), "missing"
+function module.delete(name: string)
+
+    if name == module.MAIN then
+        return false, "main"
+    end
+
+    local path = module.path_of(name)
+
+    if path == nil or not file.remove(path) then
+        return false, "missing"
+    end
+
+    loaded[name] = nil
+
+    return true
+end
+
+-- The table a file returns, loaded on the first ask and kept until the file is written again
+-- @return The table; nil and why not when the code is wrong or doesn't return a table
+function module.load(name: string)
+
+    if loaded[name] ~= nil then
+        return loaded[name]
+    end
+
+    local path = module.path_of(name)
+
+    if path == nil then
+        return nil, "name"
+    end
+
+    if name == module.MAIN then
+        module.ensure_main()
+    end
+
+    if not filesystem.exists(path) then
+        return nil, "missing"
+    end
+
+    local fn, err = loadfile(path)
+
+    if fn == nil then
+        log:error($"{name}.pluto: {err}")
+        return nil, tostring(err)
+    end
+
+    local ok, result = pcall(fn)
+
+    if not ok then
+        log:error($"{name}.pluto: {result}")
+        return nil, tostring(result)
+    end
+
+    if type(result) ~= "table" then
+        return nil, "no table"
+    end
+
+    loaded[name] = result
+
+    return result
+end
+
+-- Atdar.user_script: a file's name gives its table, anything else is looked for in the main file
+module.scripts = setmetatable({}, {
+    __index = function(_, key)
+
+        if type(key) ~= "string" then
+            return nil
+        end
+
+        local path = module.path_of(key)
+
+        if path ~= nil and filesystem.exists(path) then
+            return (module.load(key))
+        end
+
+        local main = module.load(module.MAIN)
+
+        return main ~= nil and main[key] or nil
+    end,
+
+    -- The table has no fields of its own, so a walk (Call Function opening it) is told what it gives: the main
+    -- file's fields, then each other file by its name
+    __pairs = function()
+
+        local entries = {}
+        local main = module.load(module.MAIN)
+
+        for key, value in pairs(main or {}) do
+            entries[key] = value
+        end
+
+        for _, name in ipairs(module.list()) do
+            if name ~= module.MAIN then
+                entries[name] = module.load(name)
+            end
+        end
+
+        return next, entries, nil
+    end,
+})
+
+return module

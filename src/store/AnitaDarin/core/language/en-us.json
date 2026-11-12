@@ -982,8 +982,14 @@
                     "divider": "Opened From Call Function"
                 },
                 "view": {
-                    "hide": { "name": "Hide Text", "help": "Type a text to take out of every line shown, to shorten them: AniDar. The file isn't changed. Type the same text again to show it" },
-                    "clear_hidden": { "name": "Show Hidden Text", "help": "Shows every text taken out again" },
+                    "hide": {
+                        "name": "Hide Text",
+                        "help": "Type a text to take out of every line shown, to shorten them: AniDar. The file isn't changed. Type the same text again to show it"
+                    },
+                    "clear_hidden": {
+                        "name": "Show Hidden Text",
+                        "help": "Shows every text taken out again"
+                    },
                     "hidden": "Hidden: %s",
                     "divider": "Lines",
                     "page": "Page %d of %d",
@@ -998,6 +1004,56 @@
                     "missing": "Not there (the file or folder is gone)",
                     "code": "A file that runs: it isn't shown here",
                     "big": "The file is over 1 MB: too big to show here"
+                },
+                "code": {
+                    "name": "User Code",
+                    "help": "Your own functions in store/<script>/core/call_function/*.pluto. Call them from Call Function: Atdar.user_script.hello (user_script.pluto) or Atdar.user_script.<file>.hello",
+                    "file_help": "A code file: every line is a field. Each change is saved at once",
+                    "main": "The main file: it can't be deleted",
+                    "line_help": "Type the line as code. To clear a line, use Remove Line",
+                    "deleted": "%s.pluto deleted",
+                    "created": "%s.pluto created",
+                    "create": {
+                        "name": "Create File",
+                        "help": "Type a name: an empty .pluto file is made. Letters, digits and _ only"
+                    },
+                    "delete": {
+                        "name": "Delete File",
+                        "again": "Click Again To Delete",
+                        "help": "Deletes this file. Click twice within 5 seconds"
+                    },
+                    "delete_warning": "Delete %s.pluto? Click again within 5 seconds",
+                    "add_line": {
+                        "name": "Add Line",
+                        "help": "Type a line of code: it's added at the end of the file"
+                    },
+                    "insert_line": {
+                        "name": "Insert Line",
+                        "help": "Number, a colon and the code: 3: local x = 1 puts it before line 3"
+                    },
+                    "remove_line": {
+                        "name": "Remove Line",
+                        "help": "Type the number of the line to take away"
+                    },
+                    "previous": {
+                        "name": "Previous Page",
+                        "help": "The 30 lines before these"
+                    },
+                    "next": {
+                        "name": "Next Page",
+                        "help": "The next 30 lines"
+                    },
+                    "mistake": "%s.pluto saved, but the code has a mistake: %s",
+                    "not_saved": "%s.pluto couldn't be saved",
+                    "errors": {
+                        "name": "A file name has letters, digits and _ only",
+                        "exists": "There's a file with this name already",
+                        "write": "The file couldn't be written",
+                        "main": "The main file can't be deleted",
+                        "missing": "The file is already gone",
+                        "insert": "Type it as number: code (3: local x = 1)",
+                        "no_line": "There's no line %s"
+                    }
                 }
             },
             "pick": {
@@ -1005,8 +1061,14 @@
                 "help": "Takes the function's name from a list, so it needn't be typed: your short names, the registry, or a module's functions",
                 "empty": "Nothing here yet",
                 "page": "Page %d of %d",
-                "previous": { "name": "Previous Page", "help": "The functions before these" },
-                "next": { "name": "Next Page", "help": "The next functions" },
+                "previous": {
+                    "name": "Previous Page",
+                    "help": "The functions before these"
+                },
+                "next": {
+                    "name": "Next Page",
+                    "help": "The next functions"
+                },
                 "short_names": {
                     "name": "My Short Names",
                     "help": "The names of user/call_function/short_names.json"
