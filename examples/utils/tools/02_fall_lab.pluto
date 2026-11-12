@@ -1,0 +1,34 @@
+-- EXAMPLE: tools.fall_lab, a laboratory for steering a fall without a ragdoll.
+--
+-- Atdar.util.game.tools.fall_lab (lib/AnitaDarin/utils/tools/natives/fall_lab.pluto). Graceland stays clean: what is
+-- tried here and works is moved there. Everything below goes to the log at debug level
+
+local lab = Atdar.util.game.tools.fall_lab
+
+-- 0. The easy way, nothing to press in time: call arm(), then jump or step off a ledge. When the player falls
+-- without a ragdoll it records every frame and watches the ped's flags; what changes in the air (another feature
+-- switched on there, say) is written with the time of the fall, and after the landing the summary follows, by windows
+-- of half a second: the "along the stick" column changes where the steering begins. One fall, then it is disarmed
+lab.arm()
+-- lab.disarm()           -- cancels it before the fall
+
+-- 1. A fall frame by frame, with a summary. Works for any fall: ours, or what another script does (Stand's own
+-- feature). Call it, jump, hold the stick in the air; after the time the summary is in the log: the speed, the
+-- acceleration along the stick (m/s2 per unit of input), and whether the position follows the velocity (a big
+-- difference means the coordinates are written, not the velocity)
+lab.record(4)
+lab.set_raw_step(10)      -- every 10th frame in full too (0 - the summary only)
+
+-- 2. What changes at a moment, in the flags of the ped: call it in a plain fall, switch the other feature on, call it
+-- again, then the difference, with the names of the flags
+lab.flags_snapshot("before")
+lab.flags_snapshot("after")
+lab.flags_diff("before", "after")     -- no names: the last two moments
+
+-- 3. Steering the plain fall by the stick, in a way to try: "velocity", "force", "position" or "override"
+-- (override turns the game's physics off: risky). No death and no ragdoll in a fall while it runs
+lab.set_mode("force")
+lab.set_air_control(20, 25)           -- m/s per second the stick adds, and the speed limit
+lab.start()
+-- ... jump, hold the stick; the numbers: lab.record(4)
+lab.stop()

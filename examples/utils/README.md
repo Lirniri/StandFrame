@@ -15,6 +15,7 @@ him only, it takes his id and his ped), `entity/` is `Atdar.util.game.entity`, `
 | `entity/01_ped.pluto` | `entity.ped`: ending a ragdoll with the speed kept, a ped's flags that are on (any ped) |
 | `entity/02_vehicle.pluto` | `entity.vehicle`: repairing a vehicle |
 | `tools/01_states.pluto` | `Atdar.util.game.tools.states`: asks every `is_` / `has_` / `can_` native and shows what changed |
+| `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: a laboratory for steering a fall without a ragdoll: `arm()` that catches a fall by itself (a frame-by-frame record with a summary by windows of time, and the changes in the ped's flags in the air), the ped's flags before and after a moment, the ways to steer to try |
 
 ## Graceland: a fall from any height
 

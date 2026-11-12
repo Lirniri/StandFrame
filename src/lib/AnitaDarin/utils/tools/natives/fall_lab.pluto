@@ -1,0 +1,741 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("FallLab")
+
+-- A laboratory for steering a fall without a ragdoll: tries ways to change the player's own values, and records
+-- any fall frame by frame with a short summary, to find out what another script (Stand's own feature) does.
+-- Graceland stays clean: what works is moved there.
+--
+--     local lab = Atdar.util.game.tools.fall_lab
+--
+--     lab.arm()           -- the easy way: call it, then jump; everything is caught by itself (see arm)
+--     lab.record(3)       -- writes down 3 seconds of frames, then the summary in the log; works for any fall,
+--                         -- ours or Stand's: switch Stand's feature on, jump, hold the stick, call record()
+--     lab.set_mode("force")
+--     lab.start()         -- steers the plain fall by the stick in that mode, no death, no ragdoll
+--     lab.stop()
+local module = {}
+
+-- The modes of start(): what is changed to steer
+--   velocity  the horizontal speed is kept and changed by the stick, written with SET_ENTITY_VELOCITY
+--   force     the stick adds a force (APPLY_FORCE_TO_ENTITY, weak force, mass relative)
+--   position  the coordinates are moved by the kept speed every frame (goes through what is in the way)
+--   override  the reset flag OVERRIDE_PHYSICS: the game's physics is off (no gravity, no collision), the coordinates
+--             are moved by the kept speed, gravity is added here; given back near the ground. Risky: the map is
+--             not a thing it stops for, only the height above the ground is
+--   none      only the protection, no steering
+local MODES = { velocity = true, force = true, position = true, override = true, none = true }
+
+-- The summary of a record is also given for windows of this many ms
+local WINDOW_MS = 500
+
+-- arm(): how often (ms) the ped's flags are looked at in a fall, how many times a flag may change before it is
+-- noise (a timer, a blink) and is left out, how long (ms) the player must be out of the fall to end it, and
+-- how long a fall may be watched at most
+local FLAG_CHECK_MS = 100
+local NOISE_FLIPS = 4
+local LAND_MS = 300
+local MAX_ARM_MS = 40000
+
+local GRAVITY = 9.81
+local TERMINAL_SPEED = 70.0
+
+-- The override mode gives the physics back this high (m above the ground)
+local OVERRIDE_STOP_HEIGHT = 2.0
+
+local settings = {
+    mode = "velocity",
+    accel = 20.0,       -- m/s per second the stick adds
+    max_speed = 25.0,   -- m/s limit of the horizontal speed
+    raw_step = 0,       -- every n-th frame of a record is written in full (0 - none)
+}
+
+-- Whether start() runs and which run of its tick handler is the wanted one; the kept speed (the velocity, position
+-- and override modes), whether the override gave the physics back in this fall; the recording: which run, the frames
+local state = {
+    running = false, run = 0,
+    kept_x = nil, kept_y = nil, kept_z = nil, override_done = false,
+    rec_run = 0, frames = {},
+}
+
+-- Settings
+
+-- How start() steers, see MODES
+-- @param mode "velocity", "force", "position", "override" or "none"
+function module.set_mode(mode: string): void
+
+    if not MODES[mode] then
+        log:warn($"set_mode: '{mode}' is not velocity, force, position, override or none")
+        return
+    end
+
+    settings.mode = mode
+end
+
+-- How fast the stick changes the horizontal speed (m/s per second) and its limit (m/s)
+function module.set_air_control(accel: number, max_speed: number): void
+    settings.accel = accel
+    settings.max_speed = max_speed
+end
+
+-- Every n-th frame of a record is written to the log in full, 0 (default) - only the summary
+function module.set_raw_step(step: int): void
+    settings.raw_step = step
+end
+
+-- Steering
+
+-- Forgets the speed the modes keep
+local function forget(): void
+    state.kept_x = nil
+    state.kept_y = nil
+    state.kept_z = nil
+end
+
+-- One frame of steering the plain fall in the mode of settings
+local function steer(ped: int): void
+
+    local mode = settings.mode
+    local n_entity = Atdar.natives.entity
+    local velocity = n_entity.get_velocity(ped)
+    local frame = Atdar.natives.misc.get_frame_time()
+    local _, _, dir_x, dir_y = Atdar.util.game.players.user.get_move_input()
+
+    if mode == "none" then
+        return
+    end
+
+    -- A force goes into the game's own physics, nothing is kept
+    if mode == "force" then
+        n_entity.apply_force(ped, 0, dir_x * settings.accel, dir_y * settings.accel, 0.0,
+            0.0, 0.0, 0.0, 0, false, true, true, false, true)
+        return
+    end
+
+    -- The other modes keep a speed of their own: it begins as the game's and the stick changes it
+    if state.kept_x == nil then
+        state.kept_x = velocity.x
+        state.kept_y = velocity.y
+        state.kept_z = velocity.z
+    end
+
+    state.kept_x += dir_x * settings.accel * frame
+    state.kept_y += dir_y * settings.accel * frame
+
+    local speed = math.sqrt(state.kept_x ^ 2 + state.kept_y ^ 2)
+
+    if speed > settings.max_speed then
+        state.kept_x *= settings.max_speed / speed
+        state.kept_y *= settings.max_speed / speed
+    end
+
+    if mode == "velocity" then
+        n_entity.set_velocity(ped, state.kept_x, state.kept_y, velocity.z)
+        return
+    end
+
+    local coords = n_entity.get_coords(ped, false, 0)
+
+    if mode == "position" then
+        n_entity.set_coords_no_offset(ped, coords.x + state.kept_x * frame, coords.y + state.kept_y * frame,
+            coords.z, false, false, false)
+        return
+    end
+
+    -- override: near the ground the physics goes back to the game, with the speed this one has
+    if state.override_done then
+        return
+    end
+
+    if n_entity.get_height_above_ground(ped) < OVERRIDE_STOP_HEIGHT then
+        state.override_done = true
+        n_entity.set_velocity(ped, state.kept_x, state.kept_y, state.kept_z)
+        return
+    end
+
+    state.kept_z = math.max(state.kept_z - GRAVITY * frame, -TERMINAL_SPEED)
+    Atdar.natives.entity.ped.flags.set_reset(ped, Atdar.natives.entity.ped.flags.RESET.OVERRIDE_PHYSICS, true)
+    n_entity.set_coords_no_offset(ped, coords.x + state.kept_x * frame, coords.y + state.kept_y * frame,
+        coords.z + state.kept_z * frame, false, false, false)
+end
+
+-- One frame of start(): the protection every frame, the steering while the player falls without a ragdoll
+local function tick(): void
+
+    local n_player = Atdar.natives.player
+    local n_ped = Atdar.natives.entity.ped
+    local ped = n_player.get_ped_id()
+
+    if n_player.is_dead(n_player.get_id()) then
+        return
+    end
+
+    Atdar.util.game.players.user.set_fall_protection(true)
+
+    local falling = n_ped.is_falling(ped) and not n_player.is_ragdoll(ped) and not n_ped.vehicle.is_in_any(ped)
+
+    if not falling then
+        forget()
+        state.override_done = false
+        return
+    end
+
+    steer(ped)
+end
+
+-- Starts steering every plain fall in the mode of set_mode, with no death and no ragdoll in a fall. A second call
+-- does nothing
+function module.start(): void
+
+    if state.running then
+        return
+    end
+
+    state.running = true
+    state.run += 1
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        if not state.running or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(tick)
+
+        if not ok then
+            log:error($"fall lab stopped\n{err}")
+            module.stop()
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Stops it: the fall is the game's again
+function module.stop(): void
+
+    if not state.running then
+        return
+    end
+
+    state.running = false
+    state.run += 1
+    forget()
+    state.override_done = false
+    pcall(Atdar.util.game.players.user.set_fall_protection, false)
+end
+
+-- Recording
+
+-- One frame of what a fall is made of
+local function sample(ms: int): table
+
+    local n_entity = Atdar.natives.entity
+    local ped = Atdar.natives.player.get_ped_id()
+    local coords = n_entity.get_coords(ped, false, 0)
+    local velocity = n_entity.get_velocity(ped)
+    local rotation = n_entity.get_rotation(ped, 2)
+    local stick_x, stick_y, dir_x, dir_y = Atdar.util.game.players.user.get_move_input()
+
+    return {
+        t = ms, px = coords.x, py = coords.y, pz = coords.z, vx = velocity.x, vy = velocity.y, vz = velocity.z,
+        sx = stick_x, sy = stick_y, dx = dir_x, dy = dir_y, heading = n_entity.get_heading(ped),
+        pitch = rotation.x, roll = rotation.y,
+    }
+end
+
+-- A mean as text, "-" where there was nothing to average
+local function mean(sum: number, count: int): string
+
+    if count == 0 then
+        return "-"
+    end
+
+    return string.format("%.0f", sum / count)
+end
+
+-- The summary of the frames recorded last, in the log: what the velocity does under the stick, and whether the
+-- position follows the velocity (it doesn't where the coordinates are written)
+-- @param raw_step Every n-th frame in full as well; nil - set_raw_step
+function module.dump(raw_step: ?int): void
+
+    local frames = state.frames
+
+    raw_step ??= settings.raw_step
+
+    if #frames < 3 then
+        log:debug("dump: nothing recorded, call record() first")
+        return
+    end
+
+    local dt_min = math.huge
+    local dt_max = 0.0
+    local dt_sum = 0.0
+    local accel_sum = 0.0
+    local input_frames = 0
+    local pos_error_sum = 0.0
+    local pos_error_max = 0.0
+    local steps = 0
+    local counted = 0
+    local windows = {}
+
+    for i = 2, #frames do
+
+        local a = frames[i - 1]
+        local b = frames[i]
+        local dt = (b.t - a.t) / 1000.0
+
+        if dt > 0 then
+
+            local ax = (b.vx - a.vx) / dt
+            local ay = (b.vy - a.vy) / dt
+            local dir_len = math.sqrt(b.dx ^ 2 + b.dy ^ 2)
+            local err = math.sqrt(((b.px - a.px) / dt - b.vx) ^ 2 + ((b.py - a.py) / dt - b.vy) ^ 2)
+
+            local index = math.floor((b.t - frames[1].t) / WINDOW_MS) + 1
+            local window = windows[index]
+
+            if window == nil then
+                window = {
+                    n = 0, speed = 0.0, accel = 0.0, input = 0, err = 0.0,
+                    turn = 0.0, face_dir = 0.0, face_dir_n = 0, face_vel = 0.0, face_vel_n = 0,
+                    pitch = 0.0, roll = 0.0, tilt = 0.0,
+                    stick = 0.0, vel_dir = 0.0, vel_dir_n = 0,
+                }
+                windows[index] = window
+            end
+
+            window.n += 1
+            window.speed += math.sqrt(b.vx ^ 2 + b.vy ^ 2)
+            window.err += err
+
+            -- Where the ped faces: how fast it turns, and how far its facing is from the stick and from its motion
+            -- (the heading is degrees counterclockwise from north, so the forward is (-sin, cos))
+            local face = math.rad(b.heading)
+            local face_x = -math.sin(face)
+            local face_y = math.cos(face)
+            local speed_h = math.sqrt(b.vx ^ 2 + b.vy ^ 2)
+
+            window.turn += math.abs(((b.heading - a.heading + 180.0) % 360.0 - 180.0) / dt)
+
+            -- The stick: how far it is held (0 - 1.4), and how far the horizontal velocity is from where it points.
+            -- A velocity that follows the stick (a target speed) holds still on that speed, with no acceleration at all
+            window.stick += math.sqrt(b.sx ^ 2 + b.sy ^ 2)
+
+            if dir_len > 0.2 and speed_h > 0.5 then
+                window.vel_dir += math.deg(math.acos(math.max(-1.0, math.min(1.0, (b.vx * b.dx + b.vy * b.dy) / (speed_h * dir_len)))))
+                window.vel_dir_n += 1
+            end
+
+            -- The lean of the body: pitch (forward and back) and roll (to the sides), and how fast they change
+            window.pitch += b.pitch
+            window.roll += b.roll
+            window.tilt += (math.abs((b.pitch - a.pitch + 180.0) % 360.0 - 180.0)
+                + math.abs((b.roll - a.roll + 180.0) % 360.0 - 180.0)) / dt
+
+            if dir_len > 0.2 then
+                window.face_dir += math.deg(math.acos(math.max(-1.0, math.min(1.0, (face_x * b.dx + face_y * b.dy) / dir_len))))
+                window.face_dir_n += 1
+            end
+
+            if speed_h > 1.0 then
+                window.face_vel += math.deg(math.acos(math.max(-1.0, math.min(1.0, (face_x * b.vx + face_y * b.vy) / speed_h))))
+                window.face_vel_n += 1
+            end
+
+            if dir_len > 0.2 then
+                window.accel += (ax * b.dx + ay * b.dy) / (dir_len ^ 2)
+                window.input += 1
+            end
+
+            counted += 1
+            dt_sum += dt
+            dt_min = math.min(dt_min, dt)
+            dt_max = math.max(dt_max, dt)
+            pos_error_sum += err
+            pos_error_max = math.max(pos_error_max, err)
+
+            if math.sqrt(ax ^ 2 + ay ^ 2) > 30.0 then
+                steps += 1
+            end
+
+            -- The acceleration along the stick, per unit of the stick
+            if dir_len > 0.2 then
+                accel_sum += (ax * b.dx + ay * b.dy) / (dir_len ^ 2)
+                input_frames += 1
+            end
+        end
+    end
+
+    if counted == 0 then
+        log:debug("dump: the frames have no time between them")
+        return
+    end
+
+    local first = frames[1]
+    local last = frames[#frames]
+    local speed_start = math.sqrt(first.vx ^ 2 + first.vy ^ 2)
+    local speed_end = math.sqrt(last.vx ^ 2 + last.vy ^ 2)
+
+    log:debug(string.format("record: %d frames in %.1f s, a frame %.1f ms (%.1f - %.1f)", #frames,
+        (last.t - first.t) / 1000.0, dt_sum / counted * 1000.0, dt_min * 1000.0, dt_max * 1000.0))
+    log:debug(string.format("record: horizontal speed %.1f -> %.1f m/s, jumps of more than 30 m/s2 in %d frames",
+        speed_start, speed_end, steps))
+
+    if input_frames > 0 then
+        log:debug(string.format("record: along the stick %.1f m/s2 per unit of input (mean of %d frames with the stick held)",
+            accel_sum / input_frames, input_frames))
+    else
+        log:debug("record: the stick was not held: hold it in the air to see the acceleration")
+    end
+
+    log:debug(string.format("record: position against velocity, horizontal: mean %.1f, max %.1f m/s (a big one: the coordinates are written, not the velocity)",
+        pos_error_sum / counted, pos_error_max))
+
+    -- By windows of time: where the steering begins or the coordinates start to be written shows as a change here
+    for index = 1, #windows do
+
+        local window = windows[index]
+
+        if window ~= nil and window.n > 0 then
+
+            local accel = "-"
+
+            if window.input > 0 then
+                accel = string.format("%.1f", window.accel / window.input)
+            end
+
+            log:debug(string.format("window %.1f-%.1f s: speed %.1f m/s, along the stick %s m/s2 (%d frames with input), position against velocity %.1f m/s, turns %.0f deg/s, facing vs stick %s deg, vs motion %s deg, pitch %.0f roll %.0f deg, leans %.0f deg/s, stick held %.2f, velocity vs stick %s deg",
+                (index - 1) * WINDOW_MS / 1000.0, index * WINDOW_MS / 1000.0, window.speed / window.n, accel, window.input,
+                window.err / window.n, window.turn / window.n, mean(window.face_dir, window.face_dir_n),
+                mean(window.face_vel, window.face_vel_n), window.pitch / window.n, window.roll / window.n,
+                window.tilt / window.n, window.stick / window.n, mean(window.vel_dir, window.vel_dir_n)))
+        end
+    end
+
+    if raw_step > 0 then
+        for i = 1, #frames, raw_step do
+            local f = frames[i]
+            log:debug(string.format("raw %d ms pos=%.2f,%.2f,%.2f vel=%.2f,%.2f,%.2f stick=%.1f,%.1f dir=%.1f,%.1f heading=%.0f pitch=%.0f roll=%.0f",
+                f.t, f.px, f.py, f.pz, f.vx, f.vy, f.vz, f.sx, f.sy, f.dx, f.dy, f.heading, f.pitch, f.roll))
+        end
+    end
+end
+
+-- Records every frame for a while, then writes the summary (dump). The numbers of a fall: start it, jump, hold the
+-- stick while falling. Works while another script steers too
+-- @param seconds How long, 3 by default
+function module.record(seconds: ?number): void
+
+    seconds ??= 3.0
+
+    state.rec_run += 1
+
+    local run = state.rec_run
+    local frames = {}
+    local started = util.current_time_millis()
+
+    log:debug($"recording {seconds} s: jump and hold the stick in the air")
+
+    util.create_tick_handler(function()
+
+        if state.rec_run ~= run then
+            return false
+        end
+
+        local ms = util.current_time_millis() - started
+        local ok, taken = pcall(sample, ms)
+
+        if not ok then
+            log:error($"record stopped\n{taken}")
+            return false
+        end
+
+        table.insert(frames, taken)
+
+        if ms < seconds * 1000 then
+            return true
+        end
+
+        state.frames = frames
+        pcall(module.dump)
+        return false
+    end)
+end
+
+-- Flags
+
+-- The flags of the player's ped that were true, by the name of the moment: { config = { [id] = true }, reset = ... }
+local flag_snapshots = {}
+local flag_taken = {}
+
+-- A name typed in Call Function may come with quotes around it ("before"): they are not part of the name
+local function clean(name: ?string): ?string
+
+    if name == nil then
+        return nil
+    end
+
+    return (name:gsub("^[\"']+", ""):gsub("[\"']+$", ""))
+end
+
+-- The names of the flags by their numbers, from the tables of natives/entity/ped/flags, found on the first use
+local flag_names = nil
+
+local function name_of(kind: string, id: int): string
+
+    if flag_names == nil then
+
+        local flags = Atdar.natives.entity.ped.flags
+
+        flag_names = { config = {}, reset = {} }
+
+        for name, number in flags.CONFIG do
+            flag_names.config[number] = name
+        end
+
+        for name, number in flags.RESET do
+            flag_names.reset[number] = name
+        end
+    end
+
+    local name = flag_names[kind][id] ?? "?"
+
+    return $"{name}({id})"
+end
+
+-- Keeps the ped's flags that are true now (util.game.entity.ped.get_set_flags) under a name. To find what another
+-- script changes at a moment: take it before and after (in the air, in a plain fall), then flags_diff
+-- @param name Any word; nil - the number of the moment (1, 2, ...)
+function module.flags_snapshot(name: ?string): void
+
+    name = clean(name) ?? tostring(#flag_taken + 1)
+
+    local flags = Atdar.util.game.entity.ped.get_set_flags(Atdar.natives.player.get_ped_id())
+    local set = { config = {}, reset = {} }
+
+    for _, id in ipairs(flags.config) do
+        set.config[id] = true
+    end
+
+    for _, id in ipairs(flags.reset) do
+        set.reset[id] = true
+    end
+
+    if flag_snapshots[name] == nil then
+        table.insert(flag_taken, name)
+    end
+
+    flag_snapshots[name] = set
+    log:debug($"flags '{name}': {#flags.config} config, {#flags.reset} reset")
+end
+
+-- Writes the flags that are true in one moment and not in the other, config and reset, both ways
+-- @param first A name given to flags_snapshot; nil - the one before the last
+-- @param second A name given to flags_snapshot; nil - the last
+function module.flags_diff(first: ?string, second: ?string): void
+
+    first = clean(first) ?? flag_taken[#flag_taken - 1]
+    second = clean(second) ?? flag_taken[#flag_taken]
+
+    local a = first ~= nil ? flag_snapshots[first] : nil
+    local b = second ~= nil ? flag_snapshots[second] : nil
+
+    if a == nil or b == nil then
+        log:debug($"flags_diff: no snapshot, taken: {table.concat(flag_taken, ", ")}")
+        return
+    end
+
+    local lines = 0
+
+    for _, kind in { "config", "reset" } do
+
+        local only_a = {}
+        local only_b = {}
+
+        for id in a[kind] do
+            if not b[kind][id] then
+                table.insert(only_a, name_of(kind, id))
+            end
+        end
+
+        for id in b[kind] do
+            if not a[kind][id] then
+                table.insert(only_b, name_of(kind, id))
+            end
+        end
+
+        table.sort(only_a)
+        table.sort(only_b)
+
+        if #only_a > 0 then
+            log:debug($"{kind} flags only in '{first}': {table.concat(only_a, ", ")}")
+            lines += 1
+        end
+
+        if #only_b > 0 then
+            log:debug($"{kind} flags only in '{second}': {table.concat(only_b, ", ")}")
+            lines += 1
+        end
+    end
+
+    local result = "done"
+
+    if lines == 0 then
+        result = "no difference"
+    end
+
+    log:debug($"flags_diff '{first}' -> '{second}': {result}")
+end
+
+-- Arm
+
+local arm_state = { armed = false, run = 0 }
+
+-- The flags of the player's ped that are true now as sets: { config = { [id] = true }, reset = { [id] = true } }
+local function flags_set(ped: int): table
+
+    local flags = Atdar.util.game.entity.ped.get_set_flags(ped)
+    local set = { config = {}, reset = {} }
+
+    for _, id in ipairs(flags.config) do
+        set.config[id] = true
+    end
+
+    for _, id in ipairs(flags.reset) do
+        set.reset[id] = true
+    end
+
+    return set
+end
+
+-- Writes what changed in the flags since the last look, with the time of the fall: "+" became true, "-" false.
+-- A flag that changes more than NOISE_FLIPS times is left out
+local function report_changes(before: table, now: table, ms: int, flips: table): void
+
+    local plus = {}
+    local minus = {}
+
+    for _, kind in { "config", "reset" } do
+
+        for id in now[kind] do
+            if not before[kind][id] then
+                flips[kind .. id] = (flips[kind .. id] ?? 0) + 1
+                if flips[kind .. id] <= NOISE_FLIPS then
+                    table.insert(plus, kind .. " " .. name_of(kind, id))
+                end
+            end
+        end
+
+        for id in before[kind] do
+            if not now[kind][id] then
+                flips[kind .. id] = (flips[kind .. id] ?? 0) + 1
+                if flips[kind .. id] <= NOISE_FLIPS then
+                    table.insert(minus, kind .. " " .. name_of(kind, id))
+                end
+            end
+        end
+    end
+
+    if #plus > 0 then
+        log:debug(string.format("%.2f s flags +: %s", ms / 1000.0, table.concat(plus, ", ")))
+    end
+
+    if #minus > 0 then
+        log:debug(string.format("%.2f s flags -: %s", ms / 1000.0, table.concat(minus, ", ")))
+    end
+end
+
+-- The easy way to catch a moment in a fall, with nothing to press in time: call it once, then jump (or step off a
+-- ledge). When the player falls without a ragdoll it records every frame and watches the flags of the ped every
+-- FLAG_CHECK_MS; whatever changes in the air, such as another feature switched on there, is written with the time
+-- of the fall ("1.80 s flags +: ..."). A moment after the landing the summary follows (dump), by windows of
+-- time: where the steering begins shows as a change of "along the stick". One fall, then it is disarmed
+function module.arm(): void
+
+    if arm_state.armed then
+        return
+    end
+
+    arm_state.armed = true
+    arm_state.run += 1
+
+    local run = arm_state.run
+    local session = { waiting = true, frames = {}, started = 0, last_check = 0, previous = nil, flips = {}, out_since = nil }
+
+    log:debug("armed: jump, and switch the other feature on in the air")
+
+    util.create_tick_handler(function()
+
+        if not arm_state.armed or arm_state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(function()
+
+            local n_player = Atdar.natives.player
+            local n_ped = Atdar.natives.entity.ped
+            local ped = n_player.get_ped_id()
+            local now = util.current_time_millis()
+            local falling = n_ped.is_falling(ped) and not n_player.is_ragdoll(ped) and not n_ped.vehicle.is_in_any(ped)
+
+            if session.waiting then
+                if falling then
+                    session.waiting = false
+                    session.started = now
+                    session.last_check = now
+                    session.previous = flags_set(ped)
+                    log:debug("the fall began: recording")
+                end
+                return
+            end
+
+            local ms = now - session.started
+
+            table.insert(session.frames, sample(ms))
+
+            if now - session.last_check >= FLAG_CHECK_MS then
+                local current = flags_set(ped)
+
+                report_changes(session.previous, current, ms, session.flips)
+                session.previous = current
+                session.last_check = now
+            end
+
+            if falling then
+                session.out_since = nil
+            else
+                session.out_since ??= now
+            end
+
+            if (session.out_since ~= nil and now - session.out_since >= LAND_MS) or ms >= MAX_ARM_MS then
+                state.frames = session.frames
+                arm_state.armed = false
+                log:debug("the fall ended")
+                module.dump()
+            end
+        end)
+
+        if not ok then
+            log:error($"arm stopped\n{err}")
+            arm_state.armed = false
+        end
+
+        return arm_state.armed
+    end)
+end
+
+-- Cancels arm() before the fall
+function module.disarm(): void
+    arm_state.armed = false
+    arm_state.run += 1
+end
+
+-- A stopped script leaves nothing running
+util.on_stop(module.stop)
+util.on_stop(module.disarm)
+
+return module
