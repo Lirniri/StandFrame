@@ -29,6 +29,10 @@ local GROUND_HEIGHT = 2.0
 -- A ragdoll that touches something this high (m above the ground) or higher is a hit on a wall, not the landing
 local WALL_MIN_HEIGHT = 3.0
 
+-- With the flag protection the flag IS_STANDING tells the ground too, but only lower than this (m above the ground): the
+-- flag was seen as 0 in the air and 1 at the touch of the ground, and the limit keeps a wrong 1 in the air harmless
+local STANDING_MAX_HEIGHT = 4.0
+
 -- A ragdoll that falls slower than this (m/s) isn't ended for the landing: it lands by itself
 local MIN_LANDING_SPEED = 5.0
 
@@ -45,10 +49,11 @@ local FALL_LOG_MS = 1000
 -- The settings, see the set_ functions
 local settings = {
     steering = true,
-    ragdoll_distance = 8.0,
+    ragdoll_distance = 12.0,
     safe_landing = true,
     landing_time = 0.5,
     wall_protection = true,
+    flag_protection = false,
     facing = "camera",
     stuck_ragdoll_ms = 1500,
     debug = false,
@@ -60,7 +65,7 @@ local settings = {
 -- the ragdoll control is given, when a ragdoll began to lie still; the rest is for the debug log
 local state = {
     enabled = false, run = 0,
-    blocked = false, landing_done = false, fall_heading = nil, ground_since = nil, control_given = false, still_since = nil,
+    blocked = false, landing_done = false, flags_saved = nil, fall_heading = nil, ground_since = nil, control_given = false, still_since = nil,
     was_ragdoll = false, was_airborne = false, last_fall_log = 0, last_speed = 0.0,
 }
 
@@ -101,6 +106,17 @@ end
 -- as after a landing, instead of tumbling down the wall. Off: the ragdoll goes on
 function module.set_wall_protection(toggle: bool): void
     settings.wall_protection = toggle
+end
+
+-- Whether the game's own ped flags are used too in a fall, off by default (a try, none of the flags was tried in the
+-- game before). In the air, every frame: DISABLE_JUMP_RAGDOLL_ON_COLLISION, NEVER_DIE_FROM_CAPSULE_RAGDOLL_SETTINGS
+-- and DISABLE_MATERIAL_COLLISION_DAMAGE (reset flags); once per fall the config flags that block a ragdoll from the
+-- hit of a ped, an object or a vehicle, put back as they were on the ground. With steering off also NEVER_RAGDOLL and
+-- the config flag DONT_ACTIVATE_RAGDOLL_FROM_FALLING: no ragdoll in a fall, by the flags instead of by the distance.
+-- The wall is also seen by the reset flag PED_HIT_WALL_LAST_FRAME, and the ground by the config flag IS_STANDING
+-- (lower than 4 m). The flags give no steering
+function module.set_flag_protection(toggle: bool): void
+    settings.flag_protection = toggle
 end
 
 -- Where the player faces when the ragdoll of a fall is ended (for the landing or a wall): "camera" - where the camera
@@ -205,7 +221,14 @@ local function land_safely(ped: int, airborne: bool): void
 
     if state.landing_done then
 
-        if airborne or height >= GROUND_HEIGHT then
+        local grounded = not airborne and height < GROUND_HEIGHT
+
+        if settings.flag_protection and height < STANDING_MAX_HEIGHT then
+            local flags = Atdar.natives.entity.ped.flags
+            grounded = grounded or flags.get_config(ped, flags.CONFIG.IS_STANDING)
+        end
+
+        if not grounded then
             state.ground_since = nil
             return
         end
@@ -251,7 +274,13 @@ local function end_on_wall(ped: int, airborne: bool): void
         return
     end
 
-    if n_entity.get_height_above_ground(ped) < WALL_MIN_HEIGHT or not n_entity.has_collided_with_anything(ped) then
+    local hit = n_entity.has_collided_with_anything(ped)
+
+    if settings.flag_protection then
+        hit = hit or n_entity.ped.flags.get_reset(ped, n_entity.ped.flags.RESET.PED_HIT_WALL_LAST_FRAME)
+    end
+
+    if n_entity.get_height_above_ground(ped) < WALL_MIN_HEIGHT or not hit then
         return
     end
 
@@ -259,6 +288,70 @@ local function end_on_wall(ped: int, airborne: bool): void
     Atdar.util.game.entity.ped.end_ragdoll(ped, get_facing())
     set_ragdoll_blocked(ped, true)
     log:debug("ragdoll ended: a wall")
+end
+
+-- Gives back the config flags hold_flags() changed, as they were before
+local function drop_flags(ped: int): void
+
+    if state.flags_saved == nil then
+        return
+    end
+
+    local flags = Atdar.natives.entity.ped.flags
+
+    for id, value in state.flags_saved do
+        flags.set_config(ped, id, value)
+    end
+
+    state.flags_saved = nil
+end
+
+-- The ped flags of the flag protection (set_flag_protection): the reset flags every frame in the air, the config
+-- flags once at the start of a fall, given back by drop_flags() on the ground
+local function hold_flags(ped: int, airborne: bool): void
+
+    if not settings.flag_protection then
+        return
+    end
+
+    if not airborne then
+        drop_flags(ped)
+        return
+    end
+
+    local flags = Atdar.natives.entity.ped.flags
+    local prf = flags.RESET
+    local pcf = flags.CONFIG
+
+    flags.set_reset(ped, prf.DISABLE_JUMP_RAGDOLL_ON_COLLISION, true)
+    flags.set_reset(ped, prf.NEVER_DIE_FROM_CAPSULE_RAGDOLL_SETTINGS, true)
+    flags.set_reset(ped, prf.DISABLE_MATERIAL_COLLISION_DAMAGE, true)
+
+    -- With steering on a ragdoll is wanted: only the impacts are blocked, not the ragdoll of the fall itself
+    if not settings.steering then
+        flags.set_reset(ped, prf.NEVER_RAGDOLL, true)
+    end
+
+    if state.flags_saved ~= nil then
+        return
+    end
+
+    local ids = {
+        pcf.DONT_ACTIVATE_RAGDOLL_FROM_ANY_PED_IMPACT,
+        pcf.DONT_ACTIVATE_RAGDOLL_FROM_IMPACT_OBJECT,
+        pcf.DONT_ACTIVATE_RAGDOLL_FROM_VEHICLE_IMPACT,
+    }
+
+    if not settings.steering then
+        table.insert(ids, pcf.DONT_ACTIVATE_RAGDOLL_FROM_FALLING)
+    end
+
+    state.flags_saved = {}
+
+    for _, id in ipairs(ids) do
+        state.flags_saved[id] = flags.get_config(ped, id)
+        flags.set_config(ped, id, true)
+    end
 end
 
 -- Debug: what the log functions are, in one table
@@ -277,7 +370,8 @@ end
 
 -- Writes one line to the debug log. Legend: rag ragdoll, can can_ragdoll (what the game says), cache what graceland
 -- set, fall is_falling, air in the air, h height above the ground, v speed, F L J A the game's flags (pure fall,
--- landing, jumping, in the air), hp health, vel the velocity, stick the left stick, dir the stick in the world
+-- landing, jumping, in the air, S standing on something, W hit a wall last frame: S and W are only read, to learn
+-- what they say), hp health, vel the velocity, stick the left stick, dir the stick in the world
 -- (compare it with vel)
 function logger.write(event: string, ped: int, airborne: bool): void
 
@@ -290,11 +384,12 @@ function logger.write(event: string, ped: int, airborne: bool): void
     local bit = logger.bit
 
     local line = string.format(
-        "%s rag=%d can=%d cache=%d fall=%d air=%d h=%.0f v=%.1f F%d L%d J%d A%d hp=%d vel=%.1f,%.1f,%.1f stick=%.1f,%.1f dir=%.1f,%.1f",
+        "%s rag=%d can=%d cache=%d fall=%d air=%d h=%.0f v=%.1f F%d L%d J%d A%d S%d W%d hp=%d vel=%.1f,%.1f,%.1f stick=%.1f,%.1f dir=%.1f,%.1f",
         event, bit(n_player.is_ragdoll(ped)), bit(n_player.can_ragdoll(ped)), bit(state.blocked),
         bit(n_entity.ped.is_falling(ped)), bit(airborne), n_entity.get_height_above_ground(ped), n_entity.get_speed(ped),
         bit(flags.get_reset(ped, prf.IS_FALLING)), bit(flags.get_reset(ped, prf.IS_LANDING)),
         bit(flags.get_reset(ped, prf.IS_JUMPING)), bit(flags.get_config(ped, flags.CONFIG.IS_IN_THE_AIR)),
+        bit(flags.get_config(ped, flags.CONFIG.IS_STANDING)), bit(flags.get_reset(ped, prf.PED_HIT_WALL_LAST_FRAME)),
         n_entity.get_health(ped), velocity.x, velocity.y, velocity.z, stick_x, stick_y, dir_x, dir_y
     )
 
@@ -361,6 +456,7 @@ local function apply(): void
     end
 
     Atdar.util.game.players.user.set_fall_protection(true, distance)
+    hold_flags(ped, airborne)
 
     -- Steering off: a long fall ends in a ragdoll after some time in the air, it can't start while the player is
     -- in it. Already in a ragdoll (a hit, an explosion) it stays as the game has it. Ended for the landing: it stays
@@ -397,6 +493,7 @@ local function release(): void
     local ped = n_player.get_ped_id()
 
     Atdar.util.game.players.user.set_fall_protection(false)
+    drop_flags(ped)
 
     state.blocked = false
     Atdar.natives.entity.ped.ragdoll.set_can(ped, true)

@@ -45,6 +45,7 @@ The player falls without dying and steers the fall with the stick. It works like
 | `set_landing_time(seconds)` | `0.5` | How long before the ground the ragdoll is ended: 27 m at 55 m/s, 6 m at 12 m/s |
 | `set_wall_protection(toggle)` | `true` | A ragdoll that flies into a wall (above 3 m from the ground) is ended there: the player falls the rest without a ragdoll and without damage |
 | `set_facing(mode)` | `"camera"` | Where the player faces when the ragdoll is ended: `"camera"` (where the camera looks), `"start"` (the way he faced when the fall began), `"none"` (any way the ragdoll left him) |
+| `set_flag_protection(toggle)` | `false` | A try: also uses the game's ped flags in a fall (impacts don't ragdoll the player, `NEVER_RAGDOLL` with steering off, the wall seen by `PED_HIT_WALL_LAST_FRAME`, the ground by `IS_STANDING`). Gives no steering |
 | `set_stuck_ragdoll(ms)` | `1500` | A ragdoll that lies still this long after a landing is ended; `0` - never |
 | `set_debug(toggle)` | `false` | One line per fall event in the debug log |
 

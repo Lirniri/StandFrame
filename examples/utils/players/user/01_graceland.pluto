@@ -14,6 +14,7 @@ graceland.set_safe_landing(true)    -- false: the ragdoll lands as it is, and a 
 graceland.set_landing_time(0.5)     -- seconds before the ground (at the speed it has) the ragdoll is ended
 graceland.set_wall_protection(true) -- false: a ragdoll that hits a wall in the air goes on tumbling
 graceland.set_facing("camera")      -- where he faces when the ragdoll ends: "camera", "start" (as the fall began), "none"
+graceland.set_flag_protection(false) -- true: the game's ped flags too (impacts, NEVER_RAGDOLL), a try, see the README
 graceland.set_stuck_ragdoll(1500)   -- ms a ragdoll may lie still after a landing before the player gets up (0 - never)
 graceland.set_debug(false)          -- true: one line per fall event in the debug log, see the README
 

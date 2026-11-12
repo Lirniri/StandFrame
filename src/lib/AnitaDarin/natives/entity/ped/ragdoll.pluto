@@ -2,6 +2,31 @@
 
 local module = {}
 
+-- The flags of set_blocking_flags / clear_blocking_flags: which kind of ragdoll to block (from NativeDB).
+-- Not tried in the game, and not known: whether the argument is the number itself or a bit mask (1 << number).
+-- One forum post says a decompiled script passes 32768, which is 1 << 15, so a mask is possible; whether it
+-- works for the local player and whether FALLING alone stops the ragdoll of a long fall is not known either
+module.BLOCKING = {
+    BULLET_IMPACT = 0, -- ragdoll from bullet hits
+    VEHICLE_IMPACT = 1, -- ragdoll from vehicle hits
+    FIRE = 2, -- ragdoll from burning
+    ELECTROCUTION = 3, -- ragdoll from stun gun / electricity
+    PLAYER_IMPACT = 4, -- ragdoll from player impact
+    EXPLOSION = 5, -- ragdoll from explosions
+    IMPACT_OBJECT = 6, -- ragdoll from thrown/falling object hits
+    MELEE = 7, -- ragdoll from melee hits
+    RUBBER_BULLET = 8, -- ragdoll from rubber bullets
+    FALLING = 9, -- ragdoll from falling (name only; effect not verified)
+    WATER_JET = 10, -- ragdoll from water jets
+    DROWNING = 11, -- ragdoll from drowning
+    UNKNOWN_12 = 12, -- unnamed in NativeDB, _0x9F52E2C4
+    PLAYER_BUMP = 13, -- ragdoll from player bump
+    PLAYER_RAGDOLL_BUMP = 14, -- ragdoll from bump by a ragdolling player
+    PED_RAGDOLL_BUMP = 15, -- ragdoll from bump by a ragdolling ped
+    VEHICLE_GRAB = 16, -- ragdoll from vehicle grab
+    SMOKE_GRENADE = 17, -- ragdoll from smoke grenade
+}
+
 -- State
 
 function module.is_running_task(ped: int): bool
