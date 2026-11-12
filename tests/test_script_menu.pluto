@@ -499,7 +499,7 @@ stand.check(all_visible(false), "the divider, Options From Menu, Call Function, 
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | History | Arguments Guide | Settings | Use Short Names | Disable Call Time For All | Disable Result On Screen For All | Result Length On Screen | Notice In Stand",
+stand.equal(names_in(call_list), "Call A Function | Functions | History | Arguments Guide | Settings | Use Short Names | Disable Call Time For All | Disable Result On Screen For All | Result Length On Screen | Hide Function Word | Notice In Stand",
     "Call Function: two lists, the Arguments Guide, then the settings; the Files Editor isn't in it")
 -- Arguments Guide: how to write the arguments, as a notice in Stand
 stand.toasts = {}
@@ -1102,6 +1102,14 @@ local saved_ok, mistake = user_code.set_line("mine", 1, "local module = {")
 local fixed_ok, no_mistake = user_code.set_line("mine", 1, "local module = {}")
 local inserted = user_code.insert_line("mine", 1, "-- top")
 local removed = user_code.remove_line("mine", 1)
+user_code.create("plain")
+user_code.write_lines("plain", { "return 5" })
+user_code.create("bare")
+user_code.write_lines("bare", { "Atdar.bare_ran = (Atdar.bare_ran or 0) + 1" })
+local plain_value = Atdar.user_script.plain
+local bare_value = Atdar.user_script.bare
+local bare_runs = Atdar.bare_ran
+bare_value()
 local main_delete, main_why = user_code.delete("user_script")
 local delete_ok = user_code.delete("mine")
 local after_delete = user_code.list()
@@ -1120,7 +1128,9 @@ stand.check(saved_ok and mistake ~= nil, "user code: a mistake is told, the file
 stand.check(fixed_ok and no_mistake == nil, "user code: a right code tells nothing")
 stand.check(inserted and removed, "user code: a line is put in and taken away")
 stand.check(main_delete == false and main_why == "main", "user code: the main file isn't deleted")
-stand.check(delete_ok and #after_delete == 1, "user code: a file is deleted")
+stand.check(delete_ok and #after_delete == 3, "user code: a file is deleted")
+stand.check(type(plain_value) == "function" and plain_value() == 5, "user code: a file that returns a function gives it")
+stand.check(type(bare_value) == "function" and bare_runs == 1 and Atdar.bare_ran == 2, "user code: a file that returns nothing gives its code as a function")
 stand.equal(missing_name, nil, "user code: a file that isn't there has no lines")
 
 local editor = stand.child(debug_list, "Files Editor")
@@ -1139,7 +1149,7 @@ local main_node = stand.child(code_node, "user_script.pluto")
 stand.click(main_node)
 local main_children = names_in(main_node)
 Atdar.filesystem.paths.store = real_store
-stand.equal(code_children, "Create File | Files | user_script.pluto", "User Code: Create File and the main file")
+stand.equal(code_children, "Create File | Files | user_script.pluto | bare.pluto | plain.pluto", "User Code: Create File, the main file and the others")
 stand.check(main_children:find("The main file", 1, true) and main_children:find("Add Line", 1, true)
     and main_children:find("Insert Line", 1, true) and main_children:find("Remove Line", 1, true)
     and not main_children:find("Delete File", 1, true), "a code file: its line tools, no Delete File for the main one")

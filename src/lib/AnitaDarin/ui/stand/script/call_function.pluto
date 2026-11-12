@@ -76,6 +76,11 @@ local function values(): table
     return Atdar.loader.load("ui/stand/modules/values")
 end
 
+-- The logic of the values: how a function in a table is written
+local function values_logic(): table
+    return Atdar.loader.load("ui/logic/stand/values")
+end
+
 -- A switch that only writes its value into state[field]
 local function state_toggle(node: table, key: string, state: table, field: string, default: bool): table
     return node:toggle({ key = key, default = default, on_change = function(on)
@@ -559,6 +564,11 @@ function module.build(node: table)
     ui:slider({ key = "result_length", min = display.LENGTH_MIN, max = display.LENGTH_MAX,
         default = display.result_length, step = 10, on_change = function(value)
         display.result_length = value
+    end })
+
+    -- A function in a table's list is written "(...)" while on, else "function(...)"; the lists made after it follow
+    ui:toggle({ key = "hide_function", default = values_logic().hide_function, on_change = function(on)
+        values_logic().hide_function = on
     end })
 
     ui:toggle({ key = "stand", default = settings.stand, on_change = function(on)

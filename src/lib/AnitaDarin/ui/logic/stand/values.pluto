@@ -17,8 +17,18 @@ local text = select(2, i18n.scope("modules"))
 -- Tables inside tables made lists this deep; deeper ones are a line ("{...}")
 module.MAX_VARIABLE_DEPTH = 3
 
--- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known
+-- Functions are written "(...)" without the word "function" while this is on (Call Function's Hide Function Word)
+module.hide_function = true
+
+-- "function(amount, note): void"; a method's self left out, "function(...)" when nothing is known. Without the
+-- word, "(amount, note): void", while module.hide_function is on
 local function function_text(fn): string
+
+    local word = "function"
+
+    if module.hide_function then
+        word = ""
+    end
 
     local info = debug.getinfo(fn, "u")
     local params = {}
@@ -37,10 +47,22 @@ local function function_text(fn): string
     local returns = source_parser.return_type(fn)
     
     if returns == nil then
-        return $"function({params_text})"
+        return $"{word}({params_text})"
     end
 
-    return $"function({params_text}): {returns}"
+    return $"{word}({params_text}): {returns}"
+end
+
+-- How an entry's line is named: "name: value", and for a function "enable(): void" while the word is hidden
+-- (the brackets follow the name), else "enable: function(): void"
+-- @param item An item of collect_variable: name, text, is_function
+function module.item_title(item: table): string
+
+    if item.is_function and module.hide_function then
+        return $"{item.name}{item.text}"
+    end
+
+    return $"{item.name}: {item.text}"
 end
 
 -- Items shown of one table; the rest is "..."

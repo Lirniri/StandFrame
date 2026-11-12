@@ -210,7 +210,7 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
                 local args_command = $"tablefnargs{results.scope_number(scope)}_{number}"
                 local entry = nil
 
-                entry = node:list({ name = $"{item.name}: {item.text}", help = label("loop.help"),
+                entry = node:list({ name = logic.item_title(item), help = label("loop.help"),
                     fill = function(inner)
                         panel = call_function().panel(inner, {
                             key = id,
@@ -262,7 +262,7 @@ local function set_line(line: ?table, item: table, named: ?bool): void
     end
 
     if named then
-        line:set_name($"{item.name}: {item.text}")
+        line:set_name(logic.item_title(item))
     end
 
     line:set_value(item.text)

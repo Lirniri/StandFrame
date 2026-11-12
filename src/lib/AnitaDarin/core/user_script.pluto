@@ -251,8 +251,9 @@ function module.delete(name: string)
     return true
 end
 
--- The table a file returns, loaded on the first ask and kept until the file is written again
--- @return The table; nil and why not when the code is wrong or doesn't return a table
+-- What a file returns, loaded on the first ask and kept until the file is written again: its table, or a function
+-- when it returns no table (the function it returns, else the file's code as a function)
+-- @return The table or function; nil and why not when the code is wrong
 function module.load(name: string)
 
     if loaded[name] ~= nil then
@@ -287,8 +288,10 @@ function module.load(name: string)
         return nil, tostring(result)
     end
 
-    if type(result) ~= "table" then
-        return nil, "no table"
+    -- A file that returns no table is the code itself: calling it runs the file again (it ran once now, to see
+    -- what it returns)
+    if type(result) ~= "table" and type(result) ~= "function" then
+        result = fn
     end
 
     loaded[name] = result
@@ -312,7 +315,11 @@ module.scripts = setmetatable({}, {
 
         local main = module.load(module.MAIN)
 
-        return main ~= nil and main[key] or nil
+        if type(main) ~= "table" then
+            return nil
+        end
+
+        return main[key]
     end,
 
     -- The table has no fields of its own, so a walk (Call Function opening it) is told what it gives: the main
@@ -322,7 +329,7 @@ module.scripts = setmetatable({}, {
         local entries = {}
         local main = module.load(module.MAIN)
 
-        for key, value in pairs(main or {}) do
+        for key, value in pairs(type(main) == "table" and main or {}) do
             entries[key] = value
         end
 

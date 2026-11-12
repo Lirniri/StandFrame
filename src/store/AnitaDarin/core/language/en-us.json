@@ -1127,6 +1127,10 @@
                 "help": "The functions in the list are named by the last part of the path: PLAYER_PED_ID, not PLAYER.PLAYER_PED_ID; toast, not util.toast. A short name can also be typed in Function Name and Add: the entry from store/<script>/user/call_function/short_names.json is used first (for example, {\"ped\": \"PLAYER.PLAYER_PED_ID\"}); otherwise the first matching function is used, first in the script and then in Stand's tables. Off: the full path.",
                 "many": "%s: %d functions have this name, the first is used"
             },
+            "hide_function": {
+                "name": "Hide Function Word",
+                "help": "A function in a table's list is written (amount): void instead of function(amount): void. The lists made after the change follow"
+            },
             "registry": {
                 "bad_param": "%s (short_name.json): parameter %d has no \"name\", so the registry's parameters for it are left out"
             },

@@ -404,6 +404,9 @@ stand.equal(stand.name_of(tick_status), "Status: error", "Status: error")
 -- What a call gave, as told: tables unpacked, functions as their signatures (the return type read from
 -- the file they're written in)
 local describe = modules_menu.describe
+-- The word is hidden by default (Hide Function Word); these checks are for the long one
+local values_logic = Atdar.loader.load("ui/logic/stand/values")
+values_logic.hide_function = false
 stand.equal(describe({ 1, 2, 3 }), "{1, 2, 3}", "a list of numbers: the numbers")
 stand.equal(describe({ "a", "b" }), '{"a", "b"}', "a list of texts: the texts")
 stand.equal(describe({}), "{}", "an empty table")
@@ -418,6 +421,11 @@ local function probe_long(first: int,
     second: string): ?int return nil end
 local function probe_none(x) return x end
 stand.equal(describe(probe_void), "function(a, b): void", "a function: its parameters and return type")
+values_logic.hide_function = true
+stand.equal(describe(probe_void), "(a, b): void", "Hide Function Word on: no function before the brackets")
+stand.equal(values_logic.item_title({ name = "go", text = "(): void", is_function = true }), "go(): void", "a function line: the brackets follow the name")
+stand.equal(values_logic.item_title({ name = "n", text = "5" }), "n: 5", "another line: name and value")
+values_logic.hide_function = false
 stand.equal(describe(probe_bool), "function(): bool", "without parameters")
 stand.equal(describe(probe_long), "function(first, second): ?int", "parameters on more lines than one")
 stand.equal(describe(probe_none), "function(x)", "no return type written: none shown")
