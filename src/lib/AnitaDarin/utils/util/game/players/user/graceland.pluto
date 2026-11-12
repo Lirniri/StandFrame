@@ -79,6 +79,7 @@ local settings = {
     wall_protection = true,
     flag_protection = false,
     memory_control = true,
+    beast_fall = true,
     facing = "camera",
     stuck_ragdoll_ms = 1500,
     debug = false,
@@ -101,6 +102,11 @@ function module.is_enabled(): bool
 end
 
 -- Settings
+
+-- Settings>Ragdoll
+
+-- What belongs to the steering through a ragdoll: it starts after a distance, is ended above the ground and on a wall,
+-- and the player is stood up after it
 
 -- Whether the player steers a fall: a ragdoll starts after set_ragdoll_distance and the stick steers it, on by
 -- default. Off: no ragdoll in a fall at all, no steering, and no death from it
@@ -134,26 +140,6 @@ function module.set_wall_protection(toggle: bool): void
     settings.wall_protection = toggle
 end
 
--- Whether the game's own ped flags are used too in a fall, off by default (a try, none of the flags was tried in the
--- game before). In the air, every frame: DISABLE_JUMP_RAGDOLL_ON_COLLISION, NEVER_DIE_FROM_CAPSULE_RAGDOLL_SETTINGS
--- and DISABLE_MATERIAL_COLLISION_DAMAGE (reset flags); once per fall the config flags that block a ragdoll from the
--- hit of a ped, an object or a vehicle, put back as they were on the ground. With steering off also NEVER_RAGDOLL and
--- the config flag DONT_ACTIVATE_RAGDOLL_FROM_FALLING: no ragdoll in a fall, by the flags instead of by the distance.
--- The wall is also seen by the reset flag PED_HIT_WALL_LAST_FRAME. The flags give no steering. (The config flag
--- IS_STANDING tells the ground with or without this, lower than 4 m: it was seen as 0 in the air, 1 on the ground)
-function module.set_flag_protection(toggle: bool): void
-    settings.flag_protection = toggle
-end
-
--- Whether the fall task of the game is steered through the memory too (air_control: the flags Stand's own Graceland puts
--- in it, Atdar.natives.memory.ped.set_air_control), on by default: no ragdoll is needed to steer the fall then. It reads the
--- memory by the offsets of a build of the game (Atdar.natives.memory.task.offsets): if they are wrong nothing is found and
--- only the ragdoll steering is left, so off is the way back. It is for the plain fall, before the ragdoll starts or
--- without one (a big set_ragdoll_distance); look at the log with set_debug
-function module.set_memory_control(toggle: bool): void
-    settings.memory_control = toggle
-end
-
 -- Where the player faces when the ragdoll of a fall is ended (for the landing or a wall): "camera" - where the camera
 -- looks (default), "start" - the way he faced when the fall began, "none" - as the game leaves him: any way,
 -- the ragdoll turned him. The player lands on his feet facing that way
@@ -173,6 +159,39 @@ end
 function module.set_stuck_ragdoll(ms: int): void
     settings.stuck_ragdoll_ms = ms
 end
+
+-- Settings>No ragdoll
+
+-- What belongs to the fall without a ragdoll: the flags of the game, the memory steering of the fall task
+
+-- Whether the fall task of the game is steered through the memory too (air_control: the flags Stand's own Graceland puts
+-- in it, Atdar.natives.memory.ped.set_air_control), on by default: no ragdoll is needed to steer the fall then. It reads the
+-- memory by the offsets of a build of the game (Atdar.natives.memory.task.offsets): if they are wrong nothing is found and
+-- only the ragdoll steering is left, so off is the way back. It is for the plain fall, before the ragdoll starts or
+-- without one (a big set_ragdoll_distance); look at the log with set_debug
+function module.set_memory_control(toggle: bool): void
+    settings.memory_control = toggle
+end
+
+-- Whether the steered fall has the animation of the beast's fall (the arms out, the flag BEAST_FALL of the game's fall task),
+-- on by default; off: the steering and the damping only. It is a flag of the fall task, so it works with set_memory_control
+-- on, and it can be switched in the middle of a fall
+function module.set_beast_fall(toggle: bool): void
+    settings.beast_fall = toggle
+end
+
+-- Whether the game's own ped flags are used too in a fall, off by default (a try, none of the flags was tried in the
+-- game before). In the air, every frame: DISABLE_JUMP_RAGDOLL_ON_COLLISION, NEVER_DIE_FROM_CAPSULE_RAGDOLL_SETTINGS
+-- and DISABLE_MATERIAL_COLLISION_DAMAGE (reset flags); once per fall the config flags that block a ragdoll from the
+-- hit of a ped, an object or a vehicle, put back as they were on the ground. With steering off also NEVER_RAGDOLL and
+-- the config flag DONT_ACTIVATE_RAGDOLL_FROM_FALLING: no ragdoll in a fall, by the flags instead of by the distance.
+-- The wall is also seen by the reset flag PED_HIT_WALL_LAST_FRAME. The flags give no steering. (The config flag
+-- IS_STANDING tells the ground with or without this, lower than 4 m: it was seen as 0 in the air, 1 on the ground)
+function module.set_flag_protection(toggle: bool): void
+    settings.flag_protection = toggle
+end
+
+-- Settings>Common
 
 -- Whether it writes a fall to the log (debug level, the functions of the logger table below): the state every
 -- FALL_LOG_MS in the air and right away at a ragdoll, a touch, the ground. One line each, "fall rag=0 can=1 ... vel=x,y,z stick=x,y dir=x,y"
@@ -522,6 +541,7 @@ local function sync_air_control(): void
 
     if settings.memory_control then
         air_control.set_debug(settings.debug)
+        air_control.set_beast_fall(settings.beast_fall)
         air_control.enable()
         return
     end

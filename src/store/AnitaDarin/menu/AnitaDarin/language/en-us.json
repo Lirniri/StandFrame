@@ -10,6 +10,82 @@
                 "scuba_mode": {
                     "name": "Scuba Mode"
                 },
+                "jumping": {
+                    "name": "Jumping",
+                    "double_jump": {
+                        "name": "Double Jump",
+                        "divider": {
+                            "settings": {
+                                "name": "Settings"
+                            },
+                            "miscellaneous": {
+                                "name": "Miscellaneous"
+                            }
+                        },
+                        "quantity": {
+                            "name": "Quantity Of Double Jump",
+                            "help": "0 means infinite jumps"
+                        },
+                        "recharge": {
+                            "name": "Recharge",
+                            "help": "0 means no recharge"
+                        },
+                        "regular_jump": {
+                            "name": "Regular Jump"
+                        },
+                        "beast_jump": {
+                            "name": "Beast Jump"
+                        },
+                        "double_regular_jump": {
+                            "name": "Double Regular Jump"
+                        },
+                        "double_beast_jump": {
+                            "name": "Double Beast Jump"
+                        },
+                        "double_regular_main_force": {
+                            "name": "Main Rebound Force"
+                        },
+                        "double_regular_first_force": {
+                            "name": "Rebound Force On First Jump"
+                        },
+                        "double_beast_main_force": {
+                            "name": "Main Rebound Force"
+                        },
+                        "double_beast_first_force": {
+                            "name": "Rebound Force On First Jump"
+                        },
+                        "regular_to_double_beast": {
+                            "name": "Make Double Beast Jump"
+                        },
+                        "beast_to_double_regular": {
+                            "name": "Make Double Regular Jump"
+                        },
+                        "double_regular_to_beast": {
+                            "name": "Make Beast Jump"
+                        },
+                        "double_beast_to_regular": {
+                            "name": "Make Regular Jump"
+                        },
+                        "graceful_landing": {
+                            "name": "Graceful Landing"
+                        },
+                        "make_regular_jump": {
+                            "name": "Make Regular Jump"
+                        },
+                        "make_beast_jump": {
+                            "name": "Make Beast Jump"
+                        },
+                        "make_double_regular_jump": {
+                            "name": "Make Double Regular Jump"
+                        },
+                        "make_double_beast_jump": {
+                            "name": "Make Double Beast Jump"
+                        },
+                        "reset_values": {
+                            "name": "Reset Values"
+                        }
+                    }
+                },
                 "disables": {
                     "name": "Disables",
                     "disable_sprint": {

@@ -22,6 +22,143 @@ return {
             { "scubamode" }
         )
 
+        local double_jump = features.get("self.movement.jumping.double_jump")
+        local jumping_submenu = movement_submenu:list(
+            lang.translate("menu.self.movement.jumping.name")
+        )
+        local double_jump_submenu = jumping_submenu:list(
+            lang.translate("menu.self.movement.jumping.double_jump.name")
+        )
+        double_jump_submenu:add_feature(
+            double_jump,
+            lang.translate("menu.self.movement.jumping.double_jump.name"),
+            { "doublejump" }
+        )
+
+        -- Everything of the double jump is in this list: the settings go under dividers
+        double_jump_submenu:divider(
+            lang.translate("menu.self.movement.jumping.double_jump.divider.settings.name")
+        )
+        -- Sliders start at the feature's values and write back into it. 0 means infinite / off in the feature
+        double_jump_submenu:click_slider(
+            lang.translate("menu.self.movement.jumping.double_jump.quantity.name"),
+            0, 25, double_jump.quantity, 1,
+            function(value) double_jump.quantity = value end,
+            { "doublejumpquantity" },
+            lang.translate("menu.self.movement.jumping.double_jump.quantity.help")
+        )
+        double_jump_submenu:slider(
+            lang.translate("menu.self.movement.jumping.double_jump.recharge.name"),
+            0, 100, double_jump.recharge, 1,
+            function(value) double_jump.recharge = value end,
+            { "doublejumprecharge" },
+            lang.translate("menu.self.movement.jumping.double_jump.recharge.help")
+        )
+        double_jump_submenu:action(
+            lang.translate("menu.self.movement.jumping.double_jump.reset_values.name"),
+            function() double_jump:reset_values() end,
+            { "doublejumpresetvalues" }
+        )
+
+        double_jump_submenu:divider(
+            lang.translate("menu.self.movement.jumping.double_jump.regular_jump.name")
+        )
+        double_jump_submenu:toggle(
+            lang.translate("menu.self.movement.jumping.double_jump.regular_to_double_beast.name"),
+            function(on) double_jump.regular_to_double_beast = on end,
+            { "doublejumpregulartobeast" },
+            "",
+            double_jump.regular_to_double_beast
+        )
+
+        double_jump_submenu:divider(
+            lang.translate("menu.self.movement.jumping.double_jump.beast_jump.name")
+        )
+        double_jump_submenu:toggle(
+            lang.translate("menu.self.movement.jumping.double_jump.beast_to_double_regular.name"),
+            function(on) double_jump.beast_to_double_regular = on end,
+            { "doublejumpbeasttoregular" },
+            "",
+            double_jump.beast_to_double_regular
+        )
+
+        double_jump_submenu:divider(
+            lang.translate("menu.self.movement.jumping.double_jump.double_regular_jump.name")
+        )
+        double_jump_submenu:slider(
+            lang.translate("menu.self.movement.jumping.double_jump.double_regular_main_force.name"),
+            15, 11900, double_jump.double_regular_main_force, 5,
+            function(value) double_jump.double_regular_main_force = value end,
+            { "doublejumpdoubleregularforce" }
+        )
+        double_jump_submenu:slider(
+            lang.translate("menu.self.movement.jumping.double_jump.double_regular_first_force.name"),
+            15, 11900, double_jump.double_regular_first_force, 5,
+            function(value) double_jump.double_regular_first_force = value end,
+            { "doublejumpdoubleregularfirstforce" }
+        )
+        double_jump_submenu:toggle(
+            lang.translate("menu.self.movement.jumping.double_jump.double_regular_to_beast.name"),
+            function(on) double_jump.double_regular_to_beast = on end,
+            { "doublejumpdoubleregulartobeast" },
+            "",
+            double_jump.double_regular_to_beast
+        )
+        double_jump_submenu:toggle(
+            lang.translate("menu.self.movement.jumping.double_jump.graceful_landing.name"),
+            function(on) double_jump.graceful_landing = on end,
+            { "doublejumpgracefullanding" },
+            "",
+            double_jump.graceful_landing
+        )
+        double_jump_submenu:action(
+            lang.translate("menu.self.movement.jumping.double_jump.make_double_regular_jump.name"),
+            function() double_jump:make_double_regular_jump() end,
+            { "doublejumpmakedoubleregular" }
+        )
+
+        double_jump_submenu:divider(
+            lang.translate("menu.self.movement.jumping.double_jump.double_beast_jump.name")
+        )
+        double_jump_submenu:slider(
+            lang.translate("menu.self.movement.jumping.double_jump.double_beast_main_force.name"),
+            15, 11900, double_jump.double_beast_main_force, 5,
+            function(value) double_jump.double_beast_main_force = value end,
+            { "doublejumpdoublebeastforce" }
+        )
+        double_jump_submenu:slider(
+            lang.translate("menu.self.movement.jumping.double_jump.double_beast_first_force.name"),
+            15, 11900, double_jump.double_beast_first_force, 5,
+            function(value) double_jump.double_beast_first_force = value end,
+            { "doublejumpdoublebeastfirstforce" }
+        )
+        double_jump_submenu:toggle(
+            lang.translate("menu.self.movement.jumping.double_jump.double_beast_to_regular.name"),
+            function(on) double_jump.double_beast_to_regular = on end,
+            { "doublejumpdoublebeasttoregular" },
+            "",
+            double_jump.double_beast_to_regular
+        )
+        double_jump_submenu:action(
+            lang.translate("menu.self.movement.jumping.double_jump.make_double_beast_jump.name"),
+            function() double_jump:make_double_beast_jump() end,
+            { "doublejumpmakedoublebeast" }
+        )
+
+        jumping_submenu:divider(
+            lang.translate("menu.self.movement.jumping.double_jump.divider.miscellaneous.name")
+        )
+        jumping_submenu:action(
+            lang.translate("menu.self.movement.jumping.double_jump.make_regular_jump.name"),
+            function() double_jump:make_regular_jump() end,
+            { "doublejumpmakeregular" }
+        )
+        jumping_submenu:action(
+            lang.translate("menu.self.movement.jumping.double_jump.make_beast_jump.name"),
+            function() double_jump:make_beast_jump() end,
+            { "doublejumpmakebeast" }
+        )
+
         local movement_disables_submenu = movement_submenu:list(
             lang.translate("menu.self.movement.disables.name")
         )

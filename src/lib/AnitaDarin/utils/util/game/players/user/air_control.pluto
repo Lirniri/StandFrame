@@ -22,14 +22,20 @@ module.AIR_CONTROL = Atdar.natives.memory.ped.FALL_FLAG.AIR_CONTROL
 module.DAMP_Z = Atdar.natives.memory.ped.FALL_FLAG.DAMP_Z
 module.BEAST_FALL = Atdar.natives.memory.ped.FALL_FLAG.BEAST_FALL
 
+-- flags: the bits of the steering and the damping; beast_fall: whether the bit of the animation of the beast's fall
+-- (BEAST_FALL) is put on top of them, a setting of its own
 local settings = {
-    flags = Atdar.natives.memory.ped.FALL_FLAG_GRACELAND,
+    flags = module.AIR_CONTROL | module.DAMP_Z,
+    beast_fall = true,
     debug = false,
 }
 
 -- Whether it's on, which run of the tick handler is the wanted one, the bits it put in the fall that goes now (to take
 -- them out again), whether that fall is told in the log yet
-local state = { enabled = false, run = 0, added = 0, in_fall = false }
+local state = { enabled = false, run = 0, added = 0, in_fall = false, fall_start = 0, probe_index = nil }
+
+-- The search for the bit of an animation (probe_bits), nil when it is not on: { seconds, first, last }
+local probe = nil
 
 -- Whether it's on
 function module.is_enabled(): bool
@@ -38,15 +44,74 @@ end
 
 -- Settings
 
--- Which bits are put in the flags of the fall task, 0x11C00 by default as in Stand. The bits of module.AIR_CONTROL,
--- DAMP_Z and BEAST_FALL, one or together (AIR_CONTROL | DAMP_Z)
+-- Which bits are put in the flags of the fall task besides the animation of the beast (set_beast_fall): module.AIR_CONTROL
+-- and DAMP_Z by default, one or together (AIR_CONTROL | DAMP_Z). BEAST_FALL given here is taken out of it: it is
+-- switched with set_beast_fall
 function module.set_flags(flags: int): void
-    settings.flags = flags
+    settings.flags = flags & ~module.BEAST_FALL
+end
+
+-- Whether the fall has the animation of the beast's fall (the arms out, BEAST_FALL, 0x10000 of Stand's 0x11C00), on by
+-- default; off: only the steering and the damping. It can be changed in the middle of a fall: the bit is put or taken out
+function module.set_beast_fall(toggle: bool): void
+    settings.beast_fall = toggle
+end
+
+-- The bits that are put in the fall now
+local function wanted_bits(): int
+
+    if settings.beast_fall then
+        return settings.flags | module.BEAST_FALL
+    end
+
+    return settings.flags
 end
 
 -- Whether the flags before and after are written to the log in each fall
 function module.set_debug(toggle: bool): void
     settings.debug = toggle
+end
+
+-- A way to find what a bit of the fall task does (the animation of the beast's fall did not come with BEAST_FALL): in each
+-- fall from now, one bit of the flags at a time is put on on top of the wanted ones, from first to last, each for
+-- the seconds, and the log says which bit is on at the moment (debug on): fall from high up and watch the animation, the
+-- time of the log line when it changes tells the bit. A bit that is wanted already is skipped. It stops by itself after the last bit
+-- @param seconds How long a bit is on, 1.5 by default
+-- @param first The number of the first bit (0 is 0x1, 16 is 0x10000), 0 by default
+-- @param last The number of the last bit, 31 by default
+function module.probe_bits(seconds: number = 1.5, first: int = 0, last: int = 31): void
+    probe = { seconds = math.max(seconds, 0.2), first = math.max(first, 0), last = math.min(last, 31) }
+    state.probe_index = nil
+end
+
+-- Stops the search for a bit
+function module.stop_probe(): void
+    probe = nil
+    state.probe_index = nil
+end
+
+-- The bit that is the probe's at the moment of this fall, 0 when it is not on or is over
+local function probe_bit(): int
+
+    if probe == nil then
+        return 0
+    end
+
+    local index = probe.first + math.floor((util.current_time_millis() - state.fall_start) / (probe.seconds * 1000))
+
+    if index > probe.last then
+        return 0
+    end
+
+    if index ~= state.probe_index then
+        state.probe_index = index
+
+        local digits = string.format("%X", 1 << index)
+
+        log:debug($"probe: bit {index} (0x{digits}) is on")
+    end
+
+    return 1 << index
 end
 
 -- Get
@@ -70,21 +135,33 @@ local function tick(): void
     if flags == nil then
         state.in_fall = false
         state.added = 0
-        return
-    end
-
-    local wanted = settings.flags
-
-    if flags & wanted == wanted then
+        state.probe_index = nil
         return
     end
 
     if not state.in_fall then
         state.in_fall = true
+        state.fall_start = util.current_time_millis()
 
         if settings.debug then
             log:debug($"fall task found, flags {hex(flags)}")
         end
+    end
+
+    -- The bits that are put in: the wanted ones and the one of the search
+    local wanted = wanted_bits() | probe_bit()
+
+    -- A bit this put in that is not wanted any more (the animation switched off in the fall, the search went on) is taken out
+    local unwanted = state.added & ~wanted
+
+    if unwanted ~= 0 then
+        flags = flags & ~unwanted
+        state.added = state.added & ~unwanted
+        mem_ped.set_fall_flags(ped, flags)
+    end
+
+    if flags & wanted == wanted then
+        return
     end
 
     state.added = state.added | (wanted & ~flags)

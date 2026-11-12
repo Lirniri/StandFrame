@@ -30,7 +30,7 @@ graceland.disable()
 
 The player falls without dying and steers the fall with the stick. It works like this (found by trying in the game):
 
-1. After `ragdoll_distance` metres of a fall (8 by default) the game ragdolls the player.
+1. After `ragdoll_distance` metres of a fall (12 by default) the game ragdolls the player.
 2. While he is ragdolling, `GIVE_PLAYER_RAGDOLL_CONTROL` lets the stick steer the ragdoll.
 3. A ragdoll hitting the ground at fall speed kills. So `landing_time` seconds before the ground (0.5), at the speed it
    has, the ragdoll is ended: the player stands up in the air, keeps his speed, faces where `facing` says (the camera
@@ -38,6 +38,8 @@ The player falls without dying and steers the fall with the stick. It works like
 4. After the touch the protection stays 0.6 s more: the game decides about the landing a moment later.
 5. A ragdoll that hits a wall in the air is ended the same way (`wall_protection`), and the rest of the fall goes without
    a ragdoll, so without steering.
+
+#### Ragdoll
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -47,8 +49,20 @@ The player falls without dying and steers the fall with the stick. It works like
 | `set_landing_time(seconds)` | `0.5` | How long before the ground the ragdoll is ended: 27 m at 55 m/s, 6 m at 12 m/s (0.1 at least) |
 | `set_wall_protection(toggle)` | `true` | A ragdoll that flies into a wall (above 3 m from the ground) is ended there: the player falls the rest without a ragdoll and without damage |
 | `set_facing(mode)` | `"camera"` | Where the player faces when the ragdoll is ended: `"camera"` (where the camera looks), `"start"` (the way he faced when the fall began), `"none"` (any way the ragdoll left him) |
-| `set_flag_protection(toggle)` | `false` | A try: also uses the game's ped flags in a fall (impacts don't ragdoll the player, `NEVER_RAGDOLL` with steering off, the wall seen by `PED_HIT_WALL_LAST_FRAME`). Gives no steering |
 | `set_stuck_ragdoll(ms)` | `1500` | A ragdoll that lies still this long after a landing is ended; `0` - never |
+
+#### No ragdoll
+
+| Setting | Default | What it does |
+|---|---|---|
+| `set_memory_control(toggle)` | `true` | Steers the fall through the flags of the game's fall task (`Atdar.natives.memory.ped`), the way Stand's Graceland does: no ragdoll is needed. It reads the memory by the offsets of a build of the game; off gives the ragdoll steering only |
+| `set_beast_fall(toggle)` | `true` | Puts the flag `BEAST_FALL` of the fall task in the steered fall. In the game it did not show the arms-out animation (found by trying), so the bit is not the one of that animation: `Atdar.util.game.players.user.air_control.probe_bits()` goes through the bits of the flags, one at a time, to find it. Off: the steering and the damping only. Works with `set_memory_control` on, and can be switched in the middle of a fall |
+| `set_flag_protection(toggle)` | `false` | A try: also uses the game's ped flags in a fall (impacts don't ragdoll the player, `NEVER_RAGDOLL` with steering off, the wall seen by `PED_HIT_WALL_LAST_FRAME`). Gives no steering |
+
+#### Common
+
+| Setting | Default | What it does |
+|---|---|---|
 | `set_debug(toggle)` | `false` | One line per fall event in the debug log |
 
 All of them can be called from Call Function (`Atdar.util.game.players.user.graceland.set_ragdoll_distance`).

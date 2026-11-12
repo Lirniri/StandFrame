@@ -10,6 +10,82 @@
                 "scuba_mode": {
                     "name": "Режим акваланга"
                 },
+                "jumping": {
+                    "name": "Прыжки",
+                    "double_jump": {
+                        "name": "Двойной прыжок",
+                        "divider": {
+                            "settings": {
+                                "name": "Настройки"
+                            },
+                            "miscellaneous": {
+                                "name": "Разное"
+                            }
+                        },
+                        "quantity": {
+                            "name": "Количество двойных прыжков",
+                            "help": "0 означает бесконечно"
+                        },
+                        "recharge": {
+                            "name": "Перезарядка",
+                            "help": "0 означает без перезарядки"
+                        },
+                        "regular_jump": {
+                            "name": "Обычный прыжок"
+                        },
+                        "beast_jump": {
+                            "name": "Звериный прыжок"
+                        },
+                        "double_regular_jump": {
+                            "name": "Двойной обычный прыжок"
+                        },
+                        "double_beast_jump": {
+                            "name": "Двойной звериный прыжок"
+                        },
+                        "double_regular_main_force": {
+                            "name": "Основная сила отскока"
+                        },
+                        "double_regular_first_force": {
+                            "name": "Сила отскока при первом прыжке"
+                        },
+                        "double_beast_main_force": {
+                            "name": "Основная сила отскока"
+                        },
+                        "double_beast_first_force": {
+                            "name": "Сила отскока при первом прыжке"
+                        },
+                        "regular_to_double_beast": {
+                            "name": "Сделать двойной звериный прыжок"
+                        },
+                        "beast_to_double_regular": {
+                            "name": "Сделать двойной обычный прыжок"
+                        },
+                        "double_regular_to_beast": {
+                            "name": "Сделать звериный прыжок"
+                        },
+                        "double_beast_to_regular": {
+                            "name": "Сделать обычный прыжок"
+                        },
+                        "graceful_landing": {
+                            "name": "Плавное приземление"
+                        },
+                        "make_regular_jump": {
+                            "name": "Сделать обычный прыжок"
+                        },
+                        "make_beast_jump": {
+                            "name": "Сделать звериный прыжок"
+                        },
+                        "make_double_regular_jump": {
+                            "name": "Сделать двойной обычный прыжок"
+                        },
+                        "make_double_beast_jump": {
+                            "name": "Сделать двойной звериный прыжок"
+                        },
+                        "reset_values": {
+                            "name": "Сбросить значения"
+                        }
+                    }
+                },
                 "disables": {
                     "name": "Отключения",
                     "disable_sprint": {

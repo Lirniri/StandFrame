@@ -1,0 +1,295 @@
+local load = Atdar.loader.load
+
+local Feature = load("features/feature")
+local Logger = load("core/logger")
+
+local log = new Logger("DoubleJump")
+
+-- One recharge unit in ms: recharge = 20 is a pause of one second after each double jump
+local RECHARGE_STEP_MS = 50
+
+-- What a jump key press does in the air, by the kind of jump the ped is in. force is the field with the push,
+-- plain the jump that follows, switched the jump that follows when the field named in switch is on
+local TRANSITIONS = {
+    regular = {
+        force = "double_regular_first_force",
+        plain = "double_regular",
+        switch = "regular_to_double_beast",
+        switched = "double_beast",
+    },
+    beast = {
+        force = "double_beast_first_force",
+        plain = "double_beast",
+        switch = "beast_to_double_regular",
+        switched = "double_regular",
+    },
+    double_regular = {
+        force = "double_regular_main_force",
+        plain = "double_regular",
+        switch = "double_regular_to_beast",
+        switched = "beast",
+    },
+    double_beast = {
+        force = "double_beast_main_force",
+        plain = "double_beast",
+        switch = "double_beast_to_regular",
+        switched = "regular",
+    },
+}
+
+-- The kinds that are a beast jump (the others are a regular jump)
+local BEAST_KINDS = { beast = true, double_beast = true }
+
+-- The kinds that are a double jump: the ones the graceful landing is for
+local DOUBLE_KINDS = { double_regular = true, double_beast = true }
+
+-- A jump in the air after the first one. The kind of the jump the ped is in is kept until it lands, so a press of the
+-- jump key in the air makes the next one (see TRANSITIONS), as many as quantity allows
+local class DoubleJump extends Feature
+    function __construct()
+        parent:__construct({
+            id = "self.movement.jumping.double_jump", kind = "loop"
+        })
+
+        -- Settings
+        self.quantity = 2 -- double jumps in one flight, 0..25, 0 = infinite
+        self.recharge = 20 -- pause after a double jump in units of RECHARGE_STEP_MS (50 ms), 0..100, 0 = no pause
+        self.graceful_landing = true -- graceland is on during a double jump, so the landing doesn't hurt
+
+        -- Settings > forces
+        self.double_regular_main_force = 40 -- 15..11900
+        self.double_regular_first_force = 30 -- the push of the first double jump, made from a plain jump
+        self.double_beast_main_force = 40
+        self.double_beast_first_force = 30
+
+        -- Settings > switches
+        self.regular_to_double_beast = false -- a regular jump continues as a double beast jump
+        self.beast_to_double_regular = false
+        self.double_regular_to_beast = false -- a double regular jump continues as a plain beast jump
+        self.double_beast_to_regular = false
+
+        -- State
+        self.jump_kind = nil -- regular, beast, double_regular or double_beast; nil on the ground
+        self.used = 0 -- double jumps made in this flight
+        self.released = false -- whether the jump key was let go since the last jump, so one press is one jump
+        self.cooldown_until = 0 -- ms, no double jump before it (recharge)
+        self.graceland_on = false -- whether this feature switched graceland on
+    end
+
+    -- Jumps as a plain regular jump
+    function make_regular_jump(): void
+        self:start_jump("regular")
+    end
+
+    -- Jumps as a plain beast jump
+    function make_beast_jump(): void
+        self:start_jump("beast")
+    end
+
+    -- Jumps as a double regular jump, from where the ped is. Only works while the feature is on
+    function make_double_regular_jump(): void
+        self:start_double_jump("double_regular")
+    end
+
+    -- Jumps as a double beast jump, from where the ped is. Only works while the feature is on
+    function make_double_beast_jump(): void
+        self:start_double_jump("double_beast")
+    end
+
+    -- The settings back to their defaults, and the state of the flight cleared
+    function reset_values(): void
+        self.quantity = 2
+        self.recharge = 20
+        self.graceful_landing = true
+        self.double_regular_main_force = 40
+        self.double_regular_first_force = 30
+        self.double_beast_main_force = 40
+        self.double_beast_first_force = 30
+        self.regular_to_double_beast = false
+        self.beast_to_double_regular = false
+        self.double_regular_to_beast = false
+        self.double_beast_to_regular = false
+        self:clear_state()
+    end
+
+    -- Double jumps left in this flight, nil if the quantity is infinite
+    function get_jumps_left(): ?int
+
+        if self.quantity == 0 then
+            return nil
+        end
+
+        return math.max(self.quantity - self.used, 0)
+    end
+
+    -- State
+
+    -- Forgets the flight: the jump kind, the count, the pause. Graceland is given back
+    private function clear_state(): void
+        self.jump_kind = nil
+        self.used = 0
+        self.released = false
+        self.cooldown_until = 0
+        self:sync_graceland()
+    end
+
+    -- Graceland is on while the ped is in a double jump (and the setting is on), off otherwise. Only touched
+    -- when this feature switched it on, so another user of graceland isn't switched off
+    private function sync_graceland(): void
+
+        local graceland = Atdar.util.game.players.user.graceland
+        local wanted = false
+
+        if self.graceful_landing and DOUBLE_KINDS[self.jump_kind] then
+            wanted = true
+        end
+
+        if wanted and not self.graceland_on then
+            graceland.enable()
+            self.graceland_on = true
+            log:debug("graceland on")
+        elseif not wanted and self.graceland_on then
+            graceland.disable()
+            self.graceland_on = false
+            log:debug("graceland off")
+        end
+    end
+
+    -- Jump
+
+    -- Makes the ped jump. The jump kind is only kept while the feature is on, that's what lets a double jump follow
+    private function start_jump(kind: string): void
+
+        local ped = Atdar.natives.player.get_ped_id()
+        local beast = BEAST_KINDS[kind] == true
+
+        if beast then
+            Atdar.natives.entity.ped.task.jump(ped, false, true, true)
+        else
+            Atdar.natives.entity.ped.task.jump(ped, true, false, false)
+        end
+
+        if self.enabled then
+            self.jump_kind = kind
+            self.released = false
+        end
+    end
+
+    -- Stops the ped where it is and jumps, as if it was in a double jump already
+    private function start_double_jump(kind: string): void
+
+        if not self.enabled then
+            log:warn("Double Jump is off")
+            return
+        end
+
+        local n_entity = Atdar.natives.entity
+        local ped = Atdar.natives.player.get_ped_id()
+        local coords = n_entity.get_coords(ped, false, false)
+
+        n_entity.set_coords_no_offset(ped, coords.x, coords.y, coords.z, false, false, false)
+        self:start_jump(kind)
+        self:sync_graceland()
+    end
+
+    -- The press of the jump key in the air: the push, then the jump that follows (TRANSITIONS).
+    -- Refused, with one message per press, when no double jumps are left or the recharge isn't over
+    private function make_next_jump(ped: int): void
+
+        local n_entity = Atdar.natives.entity
+        local rule = TRANSITIONS[self.jump_kind]
+        local now = util.current_time_millis()
+        local next_kind = rule.plain
+
+        if self.quantity > 0 and self.used >= self.quantity then
+            self.released = false
+            log:notify("No double jumps left, land to get them back")
+            return
+        end
+
+        if now < self.cooldown_until then
+            self.released = false
+            log:notify("Double jump is on cooldown!")
+            return
+        end
+
+        if self[rule.switch] then
+            next_kind = rule.switched
+        end
+
+        -- The freeze and the unfreeze in a row stop the fall, so the push isn't eaten by it
+        local forward = n_entity.get_forward_vector(ped)
+
+        n_entity.freeze_position(ped, true)
+        n_entity.freeze_position(ped, false)
+        n_entity.apply_force(ped, 3, forward.x, forward.y, self[rule.force], 0.0, 0.0, 0.0, 0, false, false, true, false, false)
+
+        self:start_jump(next_kind)
+        self.used += 1
+        log:debug($"{self.jump_kind}: double jump {self.used}")
+
+        if self.recharge > 0 then
+            self.cooldown_until = now + self.recharge * RECHARGE_STEP_MS
+        end
+    end
+
+    -- One frame with the ped on its feet or in the air: lands it, finds the first jump, and takes the key press
+    private function update(ped: int): void
+
+        local input = Atdar.natives.input
+        local n_ped = Atdar.natives.entity.ped
+        local beast_jumping = n_ped.is_jumping(ped, true)
+        local jumping = n_ped.is_jumping(ped)
+
+        -- A jump task counts as being in the air: the first frames of a jump may still say on the ground
+        if not Atdar.natives.entity.is_in_air(ped) and not jumping and not beast_jumping then
+            if self.jump_kind ~= nil then
+                log:debug("landed")
+                self:clear_state()
+            end
+            return
+        end
+
+        -- Only a jump makes a double jump possible, a plain fall doesn't. The key is still held from the jump itself
+        if self.jump_kind == nil then
+            if beast_jumping then
+                self.jump_kind = "beast"
+            elseif jumping then
+                self.jump_kind = "regular"
+            else
+                return
+            end
+            self.released = false
+            log:debug($"jump: {self.jump_kind}")
+        end
+
+        if input.is_released(0, input.ACTION.JUMP) then
+            self.released = true
+            return
+        end
+
+        if self.released and input.is_pressed(0, input.ACTION.JUMP) then
+            self:make_next_jump(ped)
+        end
+    end
+
+    function on_tick()
+
+        local n_ped = Atdar.natives.entity.ped
+        local ped = Atdar.natives.player.get_ped_id()
+
+        -- A ragdoll or a parachute has the ped: nothing to do until it's over (the kind stays, graceland may ragdoll it)
+        if n_ped.ragdoll.is_running_task(ped) or n_ped.parachute.get_state(ped) ~= -1 then
+            return
+        end
+
+        self:update(ped)
+        self:sync_graceland()
+    end
+
+    function on_disable()
+        self:clear_state()
+    end
+end
+
+return Atdar.features.add(new DoubleJump())
