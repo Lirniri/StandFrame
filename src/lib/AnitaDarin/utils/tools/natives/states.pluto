@@ -1,0 +1,352 @@
+local Logger = Atdar.loader.load("core/logger")
+local file = Atdar.loader.load("core/filesystem/file")
+
+local log = new Logger("States")
+
+-- Asks every native of the script that tells a state (is_, has_, can_ ... returning bool) about the player,
+-- and shows what differs between two moments: what another script changes, what a fall does to the player.
+-- Only the natives that take nothing, or one handle (ped, entity, player id, vehicle): the ones with an id,
+-- a hash, a float or a vector3 can't be asked about without knowing what to give them.
+--
+-- Atdar.util.game.tools.states.snapshot("before")   -- a moment
+-- Atdar.util.game.tools.states.snapshot("after")
+-- Atdar.util.game.tools.states.diff("before", "after")
+-- Atdar.util.game.tools.states.watch()              -- what changes, as it changes, until unwatch()
+local module = {}
+
+-- A native tells a state if its name starts with one of these
+local PREFIXES = { "is_", "has_", "can_", "does_", "are_", "was_", "should_" }
+
+-- The name of the only parameter of a native -> what it is given: the player's ped, the player's id, his vehicle
+local HANDLES = { ped = "ped", entity = "ped", player_id = "player", vehicle = "vehicle" }
+
+-- How often (ms) watch() asks
+local WATCH_MS = 200
+
+-- A state that changed more often than this while watching is noise (a timer, a blink): it is left out
+local NOISE_FLIPS = 8
+
+-- A line of the log keeps this many names, the rest goes to the next line
+local NAMES_PER_LINE = 12
+
+-- The natives to ask about, found on the first use: { fn, key, handle }, handle is nil for a native that takes
+-- nothing. A native that raised an error once is left out (failed)
+local entries = nil
+
+-- Taken moments by name: { [key] = true } for the states that were true, and the names in the order taken
+local snapshots = {}
+local taken = {}
+
+-- Whether watch() runs, which run of its tick handler is the wanted one, when it asked last, the states it saw
+-- true last time, and how often each changed (for the noise)
+local state = { watching = false, run = 0, last = 0, seen = nil, flips = {} }
+
+-- Whether the name tells a state
+local function is_state_name(name: string): bool
+
+    for _, prefix in ipairs(PREFIXES) do
+        if name:sub(1, #prefix) == prefix then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- The natives of one file of natives/ that tell a state, added to the list. The file is read as text for
+-- the signatures, since the functions don't carry their types; the ones on one line are found. A native
+-- with no return type written is asked too (a value that isn't true counts as false)
+local function collect_file(result: table, path: string, module_path: string): void
+
+    local text = file.read(path)
+
+    if text == nil then
+        return
+    end
+
+    local ok, loaded = pcall(Atdar.loader.load, module_path)
+
+    if not ok or type(loaded) ~= "table" then
+        return
+    end
+
+    for line in text:gmatch("[^\n]+") do
+
+        local name, params, rest = line:match("^function module%.([%w_]+)%(([^)]*)%)(.*)$")
+        local returns = nil
+
+        if rest ~= nil then
+            returns = rest:match("^%s*:%s*([%w_]+)")
+        end
+
+        if name ~= nil and (returns == "bool" or returns == nil) and is_state_name(name) and type(loaded[name]) == "function" then
+
+            local param = params:match("^%s*([%w_]+)%s*:%s*int%s*$")
+
+            if params:match("^%s*$") then
+                table.insert(result, { fn = loaded[name], key = $"{module_path}.{name}", handle = nil })
+            elseif param ~= nil and HANDLES[param] ~= nil then
+                table.insert(result, { fn = loaded[name], key = $"{module_path}.{name}", handle = HANDLES[param] })
+            end
+        end
+    end
+end
+
+-- The list of natives to ask about, built once
+local function collect(): table
+
+    if entries ~= nil then
+        return entries
+    end
+
+    local result = {}
+    local lib = Atdar.filesystem.paths.lib:gsub("\\", "/")
+    local ok, files = pcall(io.listdir, $"{Atdar.filesystem.paths.lib}natives\\", true)
+
+    if ok then
+        for _, path in files do
+
+            local relative = path:gsub("\\", "/")
+
+            if relative:sub(1, #lib) == lib and relative:sub(-6) == ".pluto" and io.isfile(path) then
+                collect_file(result, path, relative:sub(#lib + 1, -7))
+            end
+        end
+    end
+
+    entries = result
+    return entries
+end
+
+-- The handles the natives are asked with: nil for what isn't there (no vehicle: the natives of a vehicle are left out)
+local function get_handles(): table
+
+    local n_player = Atdar.natives.player
+    local ped = n_player.get_ped_id()
+    local vehicle = Atdar.natives.entity.ped.vehicle.get(ped)
+
+    if vehicle == 0 then
+        vehicle = nil
+    end
+
+    return { ped = ped, player = n_player.get_id(), vehicle = vehicle }
+end
+
+-- Asks every native: returns { [key] = true } for the states that are true right now, and how many were asked
+local function scan()
+
+    local result = {}
+    local asked = 0
+    local handles = get_handles()
+
+    for _, entry in ipairs(collect()) do
+
+        local handle = nil
+        local ok = true
+        local value = nil
+
+        if entry.handle ~= nil then
+            handle = handles[entry.handle]
+        end
+
+        if not entry.failed and (entry.handle == nil or handle ~= nil) then
+            asked += 1
+            if handle == nil then
+                ok, value = pcall(entry.fn)
+            else
+                ok, value = pcall(entry.fn, handle)
+            end
+
+            if not ok then
+                entry.failed = true
+            elseif value == true then
+                result[entry.key] = true
+            end
+        end
+    end
+
+    return result, asked
+end
+
+-- The names of a table's keys, sorted, the names of natives shortened: natives/entity/ped.is_x -> entity.ped.is_x
+local function names_of(keys: table): table
+
+    local names = {}
+
+    for key in keys do
+        table.insert(names, (key:gsub("^natives/", ""):gsub("/", ".")))
+    end
+
+    table.sort(names)
+    return names
+end
+
+-- Writes the names under the title, NAMES_PER_LINE to a line
+local function write_names(title: string, names: table): void
+
+    if #names == 0 then
+        return
+    end
+
+    for first = 1, #names, NAMES_PER_LINE do
+        log:debug($"{title}: {table.concat(names, ", ", first, math.min(first + NAMES_PER_LINE - 1, #names))}")
+    end
+end
+
+-- Asks every native now and keeps the answers under the name
+-- @param name Any word; nil - the number of the moment (1, 2, ...)
+function module.snapshot(name: ?string): void
+
+    local result, asked = scan()
+    local count = 0
+
+    name ??= tostring(#taken + 1)
+
+    for _ in result do
+        count += 1
+    end
+
+    if snapshots[name] == nil then
+        table.insert(taken, name)
+    end
+
+    snapshots[name] = result
+    log:debug($"snapshot '{name}': {count} true of {asked} asked")
+end
+
+-- Writes what is true in one moment and not in the other, both ways
+-- @param first A name given to snapshot(); nil - the one before the last
+-- @param second A name given to snapshot(); nil - the last
+function module.diff(first: ?string, second: ?string): void
+
+    first ??= taken[#taken - 1]
+    second ??= taken[#taken]
+
+    local a = first ~= nil ? snapshots[first] : nil
+    local b = second ~= nil ? snapshots[second] : nil
+
+    if a == nil or b == nil then
+        log:debug($"diff: no snapshot '{a == nil ? first : second}', taken: {table.concat(taken, ", ")}")
+        return
+    end
+
+    local only_a = {}
+    local only_b = {}
+
+    for key in a do
+        if not b[key] then
+            only_a[key] = true
+        end
+    end
+
+    for key in b do
+        if not a[key] then
+            only_b[key] = true
+        end
+    end
+
+    write_names($"only in '{first}'", names_of(only_a))
+    write_names($"only in '{second}'", names_of(only_b))
+    log:debug($"diff '{first}' -> '{second}' done")
+end
+
+-- How many natives it asks about, by what they are given
+function module.info(): void
+
+    local counts = { global = 0, ped = 0, player = 0, vehicle = 0 }
+    local failed = 0
+
+    for _, entry in ipairs(collect()) do
+        counts[entry.handle ?? "global"] += 1
+        if entry.failed then
+            failed += 1
+        end
+    end
+
+    log:debug($"states: {#collect()} natives, {counts.global} with nothing, {counts.ped} with the ped, {counts.player} with the player, {counts.vehicle} with the vehicle, {failed} failed")
+end
+
+-- One look of watch(): what became true (+) or false (-) since the last, in one line each
+local function look(): void
+
+    local result = scan()
+    local seen = state.seen
+
+    state.seen = result
+
+    if seen == nil then
+        return
+    end
+
+    local became_true = {}
+    local became_false = {}
+
+    for key in result do
+        if not seen[key] and (state.flips[key] ?? 0) <= NOISE_FLIPS then
+            state.flips[key] = (state.flips[key] ?? 0) + 1
+            became_true[key] = true
+        end
+    end
+
+    for key in seen do
+        if not result[key] and (state.flips[key] ?? 0) <= NOISE_FLIPS then
+            state.flips[key] = (state.flips[key] ?? 0) + 1
+            became_false[key] = true
+        end
+    end
+
+    write_names("+", names_of(became_true))
+    write_names("-", names_of(became_false))
+end
+
+-- Starts asking every WATCH_MS and writes what changed: "+" names became true, "-" names became false.
+-- A state that changes more than NOISE_FLIPS times is left out. Doesn't change anything in the game
+function module.watch(): void
+
+    if state.watching then
+        return
+    end
+
+    state.watching = true
+    state.run += 1
+    state.seen = nil
+    state.flips = {}
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        if not state.watching or state.run ~= run then
+            return false
+        end
+
+        local now = util.current_time_millis()
+
+        if now - state.last < WATCH_MS then
+            return true
+        end
+
+        state.last = now
+
+        local ok, err = pcall(look)
+
+        if not ok then
+            log:error($"watch stopped\n{err}")
+            module.unwatch()
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Stops watch()
+function module.unwatch(): void
+    state.watching = false
+    state.run += 1
+end
+
+-- A stopped script asks nothing more
+util.on_stop(module.unwatch)
+
+return module

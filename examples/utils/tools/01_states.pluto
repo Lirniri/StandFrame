@@ -1,0 +1,33 @@
+-- EXAMPLE: tools.states, what the game says about the player, all at once.
+--
+-- Atdar.util.game.tools.states (lib/AnitaDarin/utils/tools/natives/states.pluto) asks every native of the script
+-- that tells a state (is_, has_, can_, does_, are_, was_, should_) and returns bool: the ones that take nothing or
+-- one handle (the player's ped, his player id, his vehicle). About 480 of them. Then it shows what differs between
+-- two moments: what a script or a menu option changes, what a fall or a jump does to the player.
+-- It changes nothing in the game. Ids, hashes, floats and vector3 can't be asked, they need to know what to give
+
+local states = Atdar.util.game.tools.states
+
+-- How many natives it asks about, by what they are given (the log, debug level)
+states.info()
+
+util.create_thread(function()
+
+    -- Two moments and the difference. A name is any word; without one the moments are numbered 1, 2, ...
+    states.snapshot("before")
+    util.yield(5000)                    -- here: do something in the game, switch an option on
+    states.snapshot("after")
+    states.diff("before", "after")      -- "only in 'before': ..." and "only in 'after': ..." in the log
+
+    -- Without names: the last two moments
+    states.snapshot()
+    util.yield(5000)
+    states.snapshot()
+    states.diff()
+
+    -- Or watch it as it happens: "+" names became true, "-" names became false, every 200 ms.
+    -- A state that changes more than 8 times is noise (a timer) and is left out
+    states.watch()
+    util.yield(15000)
+    states.unwatch()
+end)

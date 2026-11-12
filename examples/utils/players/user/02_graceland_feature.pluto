@@ -1,0 +1,24 @@
+-- EXAMPLE: Graceland as a toggle in the menu. A feature file goes to features/ of a menu pack (see ../../../pack/).
+--
+-- kind = "toggle": on_enable once when the user switches it on, on_disable once when off. graceland keeps its own
+-- tick handler, so a toggle is enough (a loop would only call the same thing every frame).
+-- The settings are read while it runs: a slider in the menu can call graceland.set_ragdoll_distance(value)
+
+local Feature = Atdar.loader.load("features/feature")
+
+local graceland = Atdar.util.game.players.user.graceland
+
+return Atdar.features.add(new Feature({
+    id = "example.graceland",
+    kind = "toggle",
+
+    on_enable = function(self)
+        graceland.set_steering(true)
+        graceland.set_ragdoll_distance(8)
+        graceland.enable()
+    end,
+
+    on_disable = function(self)
+        graceland.disable()
+    end,
+}))

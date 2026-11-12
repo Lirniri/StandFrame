@@ -1,0 +1,11 @@
+-- EXAMPLE: the helpers of a vehicle, Atdar.util.game.entity.vehicle (lib/AnitaDarin/utils/util/game/entity/vehicle.pluto)
+
+local natives = Atdar.natives
+
+local ped = natives.player.get_ped_id()
+
+-- The vehicle the player sits in (0 - none): repaired (damage, dents, engine, tank), fires around it put out
+local vehicle = natives.entity.ped.vehicle.get(ped)
+if vehicle ~= 0 then
+    Atdar.util.game.entity.vehicle.repair(vehicle, true, true)    -- washed clean, engine started
+end

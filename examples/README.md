@@ -15,6 +15,7 @@ English and Russian.
 | [features/](features/) | Features: what the user switches on and off or clicks in the menu |
 | [menu/](menu/) | Menu files: `MenuNode` items, features in the menu, the settings section, module debugging in your own menu, ready-made helpers |
 | [pack/](pack/) | A complete menu pack, `ExamplePack`: info.json, features, menu, translations, copied and loaded as a whole |
+| [utils/](utils/) | What is built on natives in `Atdar.util.game`: Graceland (a fall from any height, steered with the stick), game helpers, `tools.states` |
 
 ## What's where in `Atdar`
 

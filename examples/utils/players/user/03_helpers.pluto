@@ -1,0 +1,31 @@
+-- EXAMPLE: the helpers of the local player, Atdar.util.game.players.user (lib/AnitaDarin/utils/util/game/players/user.pluto).
+--
+-- What several natives do together for the player. Graceland (01_graceland.pluto) is made of them, so they can be used
+-- on their own
+
+local user = Atdar.util.game.players.user
+local natives = Atdar.natives
+
+local ped = natives.player.get_ped_id()
+
+-- Where the left stick points: (stick x, stick y, world x, world y). The stick is relative to the camera; the world
+-- x and y can be compared with an entity's velocity, to see whether it goes where the stick points
+local stick_x, stick_y, world_x, world_y = user.get_move_input()
+local velocity = natives.entity.get_velocity(ped)
+util.log($"stick {stick_x}, {stick_y} -> world {world_x}, {world_y}; velocity {velocity.x}, {velocity.y}")
+
+-- A fall without death and the distance after which the game ragdolls the player. The game forgets both on a
+-- respawn, so it is called every frame while wanted: from a loop, a tick or a tick handler
+local protected = false
+util.create_tick_handler(function()
+    if not protected then
+        return false
+    end
+    user.set_fall_protection(true, 8)     -- nil instead of 8: the ragdoll never starts
+    return true
+end)
+-- protected = true to start it; user.set_fall_protection(false) gives the game's values back
+
+-- Restoring: armor and stamina of the player
+user.restore_armor()
+user.restore_stamina()

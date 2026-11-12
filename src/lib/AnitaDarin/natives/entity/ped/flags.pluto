@@ -7,11 +7,15 @@ module.CONFIG = {
     DROWNS_IN_SINKING_VEHICLE = 4,
     DIES_INSTANTLY_WHEN_SWIMMING = 5,
     IS_SCUBA = 135,
+    IS_IN_THE_AIR = 76,
+    DONT_ACTIVATE_RAGDOLL_FROM_FALLING = 164,
 }
 
 -- Reset flags: cleared by the game every frame, so they're set each tick (SET/GET_PED_RESET_FLAG)
 module.RESET = {
-    -- body
+    IS_JUMPING = 18,
+    IS_LANDING = 19, -- landing after being in the air
+    IS_FALLING = 125, -- pure fall state: no parachuting, no landing
 }
 
 -- Get

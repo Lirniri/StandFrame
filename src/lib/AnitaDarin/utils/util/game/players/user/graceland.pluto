@@ -1,0 +1,471 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Graceland")
+
+-- A fall from any height without dying, and the player steers it with the stick.
+--
+--     local graceland = Atdar.util.game.players.user.graceland
+--
+--     graceland.set_ragdoll_distance(8)    -- the settings, any time, before or after enable()
+--     graceland.enable()
+--     if graceland.is_enabled() then ... end
+--     graceland.disable()
+--
+-- How it works (found by trying, see the notes at the functions): the game ragdolls the player after a fall
+-- of some distance, and GIVE_PLAYER_RAGDOLL_CONTROL lets him steer that ragdoll by the stick. A ragdoll hitting
+-- the ground at fall speed kills, so it is ended above the ground and the player lands on his feet.
+-- With steering off the ragdoll never starts: only the death is off, and there is no air control.
+local module = {}
+
+-- The fall distance (metres) that sets the ragdoll off: far above any height of the map
+local FALL_DISTANCE_NEVER = 10000.0
+
+-- A ragdoll slower than this (m/s) lies still
+local STILL_SPEED = 1.0
+
+-- Lower than this (m above the ground) the ped is on the ground: a ped stands about 1 m above it
+local GROUND_HEIGHT = 2.0
+
+-- A ragdoll that touches something this high (m above the ground) or higher is a hit on a wall, not the landing
+local WALL_MIN_HEIGHT = 3.0
+
+-- A ragdoll that falls slower than this (m/s) isn't ended for the landing: it lands by itself
+local MIN_LANDING_SPEED = 5.0
+
+-- After the ground is reached the protection of the landing stays this long (ms): the game decides about the
+-- landing a moment after the touch, and the fall distance and the ragdoll must not be the usual again by then
+local LAND_HOLD_MS = 600
+
+-- A change of speed between two frames bigger than this (m/s) is a touch: logged right away in debug
+local TOUCH_SPEED_DELTA = 5.0
+
+-- How often (ms) a fall is logged in debug
+local FALL_LOG_MS = 1000
+
+-- The settings, see the set_ functions
+local settings = {
+    steering = true,
+    ragdoll_distance = 8.0,
+    safe_landing = true,
+    landing_time = 0.5,
+    wall_protection = true,
+    facing = "camera",
+    stuck_ragdoll_ms = 1500,
+    debug = false,
+}
+
+-- Whether it's on, which run of the tick handler is the wanted one, whether the ragdoll is blocked (the game
+-- forgets it on a respawn, so it is set again every frame, but only changes are sent), whether the ragdoll of
+-- this fall is ended for the landing or a wall (fall_heading: where the ped faced when the fall began), since when the ped is on the ground after that (ground_since), whether
+-- the ragdoll control is given, when a ragdoll began to lie still; the rest is for the debug log
+local state = {
+    enabled = false, run = 0,
+    blocked = false, landing_done = false, fall_heading = nil, ground_since = nil, control_given = false, still_since = nil,
+    was_ragdoll = false, was_airborne = false, last_fall_log = 0, last_speed = 0.0,
+}
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return state.enabled
+end
+
+-- Settings
+
+-- Whether the player steers a fall: a ragdoll starts after set_ragdoll_distance and the stick steers it, on by
+-- default. Off: no ragdoll in a fall at all, no steering, and no death from it
+function module.set_steering(toggle: bool): void
+    settings.steering = toggle
+end
+
+-- The fall distance (metres) after which the ragdoll starts, 8 by default; used with steering on
+-- @param metres From about 5
+function module.set_ragdoll_distance(metres: number): void
+    settings.ragdoll_distance = metres
+end
+
+-- Whether a ragdoll in a fall is ended above the ground, on by default: the player falls the last metres on his
+-- feet and takes no damage. Off: the ragdoll lands, and a long fall kills
+function module.set_safe_landing(toggle: bool): void
+    settings.safe_landing = toggle
+end
+
+-- When the ragdoll is ended for the landing: this many seconds before the ground at the speed it has (0.5 by
+-- default: at 55 m/s that is 27 m above the ground, at 12 m/s 6 m). The same time for every fall, so a short fall
+-- is ended as well as a long one
+function module.set_landing_time(seconds: number): void
+    settings.landing_time = seconds
+end
+
+-- Whether a ragdoll that flies into a wall (touches something above WALL_MIN_HEIGHT) is ended there, on by default:
+-- the player stands up, and falls the rest of the way without a ragdoll (so without steering) and without damage,
+-- as after a landing, instead of tumbling down the wall. Off: the ragdoll goes on
+function module.set_wall_protection(toggle: bool): void
+    settings.wall_protection = toggle
+end
+
+-- Where the player faces when the ragdoll of a fall is ended (for the landing or a wall): "camera" - where the camera
+-- looks (default), "start" - the way he faced when the fall began, "none" - as the game leaves him: any way,
+-- the ragdoll turned him. The player lands on his feet facing that way
+-- @param mode "camera", "start" or "none"
+function module.set_facing(mode: string): void
+
+    if mode ~= "camera" and mode ~= "start" and mode ~= "none" then
+        log:warn($"set_facing: '{mode}' is not camera, start or none")
+        return
+    end
+
+    settings.facing = mode
+end
+
+-- A ragdoll that lies still this long (ms) after a landing is ended and the player gets up, 1500 by default;
+-- 0 - never
+function module.set_stuck_ragdoll(ms: int): void
+    settings.stuck_ragdoll_ms = ms
+end
+
+-- Whether it writes a fall to the log (debug level, the functions of the logger table below): the state every
+-- FALL_LOG_MS in the air and right away at a ragdoll, a touch, the ground. One line each, "fall rag=0 can=1 ... vel=x,y,z stick=x,y dir=x,y"
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+-- Blocks or gives back the ragdoll once, not every frame
+local function set_ragdoll_blocked(ped: int, blocked: bool): void
+
+    if state.blocked == blocked then
+        return
+    end
+
+    state.blocked = blocked
+    Atdar.natives.entity.ped.ragdoll.set_can(ped, not blocked)
+end
+
+-- A ragdoll that landed and lies still is ended after stuck_ragdoll_ms: the player stands up
+local function end_stuck_ragdoll(ped: int, airborne: bool): void
+
+    if settings.stuck_ragdoll_ms <= 0 then
+        return
+    end
+
+    if airborne or not Atdar.natives.player.is_ragdoll(ped) or Atdar.natives.entity.get_speed(ped) > STILL_SPEED then
+        state.still_since = nil
+        return
+    end
+
+    local now = util.current_time_millis()
+    state.still_since ??= now
+
+    if now - state.still_since >= settings.stuck_ragdoll_ms then
+        Atdar.natives.entity.ped.task.clear(ped, 1)
+        state.still_since = nil
+    end
+end
+
+-- Where the ped should face when its ragdoll is ended, nil for as it comes (set_facing)
+local function get_facing(): ?number
+
+    if settings.facing == "camera" then
+        return Atdar.natives.camera.gameplay.get_rot(2).z
+    end
+
+    if settings.facing == "start" then
+        return state.fall_heading
+    end
+
+    return nil
+end
+
+-- Remembers where the ped faces at the first frame of a fall (not a ragdoll yet), for the "start" facing; forgets it
+-- when the ped is on the ground and the protection of the landing is over
+local function remember_heading(ped: int, airborne: bool): void
+
+    if not airborne then
+        if not state.landing_done then
+            state.fall_heading = nil
+        end
+        return
+    end
+
+    if state.fall_heading == nil and not Atdar.natives.player.is_ragdoll(ped) then
+        state.fall_heading = Atdar.natives.entity.get_heading(ped)
+    end
+end
+
+-- A ragdoll that is about to reach the ground is ended: the player stands up in the air and lands as in a plain
+-- fall, which doesn't hurt. "About to" is landing_time seconds at the speed it has now, so it works for a short
+-- fall too (a ragdoll lands unprotected otherwise). The ragdoll stays blocked until the ground (apply() keeps it).
+-- Ending a ragdoll stops the ped, so the speed it had is given back (ped.end_ragdoll). After that the ped may be
+-- "not in the air" for a frame, and after the touch the game still decides about the landing: the protection ends
+-- only when the ped has been on the ground for LAND_HOLD_MS
+local function land_safely(ped: int, airborne: bool): void
+
+    local n_entity = Atdar.natives.entity
+    local height = n_entity.get_height_above_ground(ped)
+    local now = util.current_time_millis()
+
+    if state.landing_done then
+
+        if airborne or height >= GROUND_HEIGHT then
+            state.ground_since = nil
+            return
+        end
+
+        state.ground_since ??= now
+
+        if now - state.ground_since >= LAND_HOLD_MS then
+            state.landing_done = false
+            state.ground_since = nil
+        end
+
+        return
+    end
+
+    if not airborne or not settings.safe_landing or not Atdar.natives.player.is_ragdoll(ped) then
+        return
+    end
+
+    local fall_speed = -n_entity.get_velocity(ped).z
+
+    if fall_speed < MIN_LANDING_SPEED or height > fall_speed * settings.landing_time then
+        return
+    end
+
+    state.landing_done = true
+    Atdar.util.game.entity.ped.end_ragdoll(ped, get_facing())
+    set_ragdoll_blocked(ped, true)
+    log:debug("ragdoll ended for the landing")
+end
+
+-- A ragdoll that flies into a wall is ended there, the same way as for a landing (the ragdoll stays blocked and the
+-- fall distance is the never one until the ground, see land_safely). A touch of the ground is not it: the ragdoll
+-- is ended before that by land_safely, and below WALL_MIN_HEIGHT it isn't asked
+local function end_on_wall(ped: int, airborne: bool): void
+
+    if not settings.wall_protection or state.landing_done or not airborne then
+        return
+    end
+
+    local n_entity = Atdar.natives.entity
+
+    if not Atdar.natives.player.is_ragdoll(ped) then
+        return
+    end
+
+    if n_entity.get_height_above_ground(ped) < WALL_MIN_HEIGHT or not n_entity.has_collided_with_anything(ped) then
+        return
+    end
+
+    state.landing_done = true
+    Atdar.util.game.entity.ped.end_ragdoll(ped, get_facing())
+    set_ragdoll_blocked(ped, true)
+    log:debug("ragdoll ended: a wall")
+end
+
+-- Debug: what the log functions are, in one table
+
+local logger = {}
+
+-- 1 for true, 0 for false: keeps a log line short
+function logger.bit(value: bool): int
+
+    if value then
+        return 1
+    end
+
+    return 0
+end
+
+-- Writes one line to the debug log. Legend: rag ragdoll, can can_ragdoll (what the game says), cache what graceland
+-- set, fall is_falling, air in the air, h height above the ground, v speed, F L J A the game's flags (pure fall,
+-- landing, jumping, in the air), hp health, vel the velocity, stick the left stick, dir the stick in the world
+-- (compare it with vel)
+function logger.write(event: string, ped: int, airborne: bool): void
+
+    local n_player = Atdar.natives.player
+    local n_entity = Atdar.natives.entity
+    local flags = n_entity.ped.flags
+    local prf = flags.RESET
+    local velocity = n_entity.get_velocity(ped)
+    local stick_x, stick_y, dir_x, dir_y = Atdar.util.game.players.user.get_move_input()
+    local bit = logger.bit
+
+    local line = string.format(
+        "%s rag=%d can=%d cache=%d fall=%d air=%d h=%.0f v=%.1f F%d L%d J%d A%d hp=%d vel=%.1f,%.1f,%.1f stick=%.1f,%.1f dir=%.1f,%.1f",
+        event, bit(n_player.is_ragdoll(ped)), bit(n_player.can_ragdoll(ped)), bit(state.blocked),
+        bit(n_entity.ped.is_falling(ped)), bit(airborne), n_entity.get_height_above_ground(ped), n_entity.get_speed(ped),
+        bit(flags.get_reset(ped, prf.IS_FALLING)), bit(flags.get_reset(ped, prf.IS_LANDING)),
+        bit(flags.get_reset(ped, prf.IS_JUMPING)), bit(flags.get_config(ped, flags.CONFIG.IS_IN_THE_AIR)),
+        n_entity.get_health(ped), velocity.x, velocity.y, velocity.z, stick_x, stick_y, dir_x, dir_y
+    )
+
+    log:debug(line)
+end
+
+-- Decides when to log: every FALL_LOG_MS in the air, and right away when the ragdoll starts or ends, the speed
+-- jumps (a touch), or the ped leaves or reaches the ground
+function logger.update(ped: int, airborne: bool): void
+
+    local ragdoll = Atdar.natives.player.is_ragdoll(ped)
+    local speed = Atdar.natives.entity.get_speed(ped)
+    local changed = ragdoll ~= state.was_ragdoll
+    local air_changed = airborne ~= state.was_airborne
+    local touched = airborne and math.abs(speed - state.last_speed) > TOUCH_SPEED_DELTA
+    local now = util.current_time_millis()
+    local event = "fall"
+
+    state.last_speed = speed
+    state.was_airborne = airborne
+
+    if not changed and not touched and not air_changed and (not airborne or now - state.last_fall_log < FALL_LOG_MS) then
+        return
+    end
+
+    state.was_ragdoll = ragdoll
+    state.last_fall_log = now
+
+    if changed then
+        event = ragdoll ? "RAGDOLL STARTED" : "ragdoll ended"
+    elseif touched then
+        event = "TOUCH"
+    elseif air_changed then
+        event = airborne ? "AIR" : "LAND"
+    end
+
+    logger.write(event, ped, airborne)
+end
+
+-- One frame of it. The game forgets what is set on a respawn, so everything is set again every frame
+local function apply(): void
+
+    local n_player = Atdar.natives.player
+    local n_entity = Atdar.natives.entity
+    local player = n_player.get_id()
+
+    if n_player.is_dead(player) then
+        return
+    end
+
+    local ped = n_player.get_ped_id()
+    local airborne = n_entity.ped.is_falling(ped) or n_entity.is_in_air(ped)
+    local distance = FALL_DISTANCE_NEVER
+
+    remember_heading(ped, airborne)
+    land_safely(ped, airborne)
+    end_on_wall(ped, airborne)
+
+    -- The ragdoll distance counts until the ragdoll is ended for the landing: after it the distance is the never
+    -- one again, or the landing counts as a high fall (the ragdoll distance is small) and kills. The fall's distance
+    -- so far is far below it
+    if settings.steering and not state.landing_done then
+        distance = settings.ragdoll_distance
+    end
+
+    Atdar.util.game.players.user.set_fall_protection(true, distance)
+
+    -- Steering off: a long fall ends in a ragdoll after some time in the air, it can't start while the player is
+    -- in it. Already in a ragdoll (a hit, an explosion) it stays as the game has it. Ended for the landing: it stays
+    -- blocked until the ground
+    if state.landing_done then
+        -- ended for the landing: nothing to change, the ragdoll stays blocked
+    elseif not settings.steering and airborne and not n_player.is_ragdoll(ped) then
+        set_ragdoll_blocked(ped, true)
+    elseif not airborne or settings.steering then
+        set_ragdoll_blocked(ped, false)
+    end
+
+    end_stuck_ragdoll(ped, airborne)
+
+    -- The ragdoll control is on only while the ped is ragdolling, and given or taken once, not every frame
+    if settings.steering then
+        local ragdoll = n_player.is_ragdoll(ped)
+
+        if ragdoll ~= state.control_given then
+            state.control_given = ragdoll
+            n_player.give_ragdoll_control(player, ragdoll)
+        end
+    end
+
+    if settings.debug then
+        logger.update(ped, airborne)
+    end
+end
+
+-- Takes back what apply() set
+local function release(): void
+
+    local n_player = Atdar.natives.player
+    local ped = n_player.get_ped_id()
+
+    Atdar.util.game.players.user.set_fall_protection(false)
+
+    state.blocked = false
+    Atdar.natives.entity.ped.ragdoll.set_can(ped, true)
+
+    -- A ragdoll left over from the fall: the player stands up
+    if n_player.is_ragdoll(ped) then
+        Atdar.natives.entity.ped.task.clear(ped, 1)
+    end
+
+    if state.control_given then
+        state.control_given = false
+        n_player.give_ragdoll_control(n_player.get_id(), false)
+    end
+
+    state.landing_done = false
+    state.fall_heading = nil
+    state.ground_since = nil
+    state.still_since = nil
+    state.was_ragdoll = false
+    state.was_airborne = false
+    state.last_fall_log = 0
+end
+
+-- Actions
+
+-- Switches it on: no death from a fall, no matter the height, and the player steers it (set_steering). A second
+-- call does nothing
+function module.enable(): void
+
+    if state.enabled then
+        return
+    end
+
+    state.enabled = true
+    state.run += 1
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        -- Switched off, or switched on again and a newer handler runs
+        if not state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(apply)
+        if not ok then
+            log:error($"graceland stopped\n{err}")
+            module.disable()
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Switches it off: the fall hurts again and the game ragdolls it as usual
+function module.disable(): void
+
+    if not state.enabled then
+        return
+    end
+
+    state.enabled = false
+    state.run += 1
+    pcall(release)
+end
+
+-- A stopped script leaves no effect on the player
+util.on_stop(module.disable)
+
+return module

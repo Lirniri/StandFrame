@@ -1,0 +1,30 @@
+-- EXAMPLE: Graceland, a fall from any height without dying, steered with the stick.
+--
+-- Atdar.util.game.players.user.graceland (lib/AnitaDarin/utils/util/game/players/user/graceland.pluto).
+-- While it is on, a long fall ragdolls the player after set_ragdoll_distance metres, the stick steers that ragdoll,
+-- and a moment before the ground the ragdoll is ended, so the player lands on his feet and takes no damage.
+-- It switches itself off when the script stops
+
+local graceland = Atdar.util.game.players.user.graceland
+
+-- The settings can be changed any time, before or after enable(). These are the defaults
+graceland.set_steering(true)        -- false: no ragdoll in a fall at all, no death, but no steering either
+graceland.set_ragdoll_distance(8)   -- metres of a fall after which the ragdoll starts (from about 5)
+graceland.set_safe_landing(true)    -- false: the ragdoll lands as it is, and a long fall kills
+graceland.set_landing_time(0.5)     -- seconds before the ground (at the speed it has) the ragdoll is ended
+graceland.set_wall_protection(true) -- false: a ragdoll that hits a wall in the air goes on tumbling
+graceland.set_facing("camera")      -- where he faces when the ragdoll ends: "camera", "start" (as the fall began), "none"
+graceland.set_stuck_ragdoll(1500)   -- ms a ragdoll may lie still after a landing before the player gets up (0 - never)
+graceland.set_debug(false)          -- true: one line per fall event in the debug log, see the README
+
+graceland.enable()
+
+if graceland.is_enabled() then
+    util.log("graceland is on")
+end
+
+-- A second enable() does nothing; disable() gives the game's own fall back
+util.create_thread(function()
+    util.yield(60000)
+    graceland.disable()
+end)

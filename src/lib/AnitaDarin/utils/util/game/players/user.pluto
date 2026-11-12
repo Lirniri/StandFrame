@@ -2,11 +2,55 @@ local module = {}
 
 -- Variables
 
+-- The fall distance (metres) of "never": far above any height of the map
+local FALL_DISTANCE_NEVER = 10000.0
+
+-- The override's value that gives the game's own distance back
+local FALL_DISTANCE_DEFAULT = -1.0
+
 -- State
 
 -- Get
 
+-- The left stick and where it points in the world, as (stick x, stick y, world x, world y). The stick is
+-- relative to the camera (forward is stick y = -1) and the camera's z rotation counts counterclockwise from
+-- north, so the world x and y can be compared with an entity's velocity
+function module.get_move_input()
+
+    local input = Atdar.natives.input
+    local stick_x = input.get_normal(0, 30)
+    local stick_y = input.get_normal(0, 31)
+    local cam = math.rad(Atdar.natives.camera.gameplay.get_rot(2).z)
+    local forward = -stick_y
+
+    return stick_x, stick_y, -math.sin(cam) * forward + math.cos(cam) * stick_x, math.cos(cam) * forward + math.sin(cam) * stick_x
+end
+
 -- Set
+
+-- No death from a fall and the distance after which the game ragdolls the player. The game forgets both on a
+-- respawn, so it is called every frame while wanted. Off gives the game's own values back.
+-- Found by trying: a ragdoll from a fall can be steered with the stick (GIVE_PLAYER_RAGDOLL_CONTROL), but a landing
+-- from a fall longer than the distance kills, ragdoll or not: end the ragdoll above the ground
+-- (ped.end_ragdoll) and call this with no distance again
+-- @param ragdoll_distance Metres of a fall that start the ragdoll; nil - never
+function module.set_fall_protection(toggle: bool, ragdoll_distance: ?number): void
+
+    local n_player = Atdar.natives.player
+    local player = n_player.get_id()
+    local ped = n_player.get_ped_id()
+
+    if not toggle then
+        Atdar.natives.entity.ped.set_disable_high_fall_death(ped, false)
+        n_player.set_fall_distance_to_trigger_ragdoll_override(player, FALL_DISTANCE_DEFAULT)
+        return
+    end
+
+    ragdoll_distance ??= FALL_DISTANCE_NEVER
+
+    Atdar.natives.entity.ped.set_disable_high_fall_death(ped, true)
+    n_player.set_fall_distance_to_trigger_ragdoll_override(player, ragdoll_distance)
+end
 
 -- Actions
 
@@ -57,4 +101,4 @@ end
 --     n_player.movement.set_infinite_sprint_stamina(ped, toggle)
 -- end
 
-return Atdar.loader.auto(module, "utils/game/players/user")
+return Atdar.loader.auto(module, "utils/util/game/players/user")

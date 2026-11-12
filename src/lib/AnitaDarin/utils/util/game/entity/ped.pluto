@@ -1,5 +1,46 @@
 local module = {}
 
+-- Flags above this number don't exist in the game's lists (462 config and 460 reset flags)
+local FLAG_MAX = 470
 
+-- Get
+
+-- The numbers of every flag of the ped that is true right now: { config = {...}, reset = {...} }.
+-- To find what another script sets on a ped, read it with that on and off and compare. A reset flag lasts one
+-- frame, so one set by another script shows only if it was set before this read
+function module.get_set_flags(ped: int): table
+
+    local flags = Atdar.natives.entity.ped.flags
+    local result = { config = {}, reset = {} }
+
+    for flag = 0, FLAG_MAX do
+        if flags.get_config(ped, flag) then
+            table.insert(result.config, flag)
+        end
+        if flags.get_reset(ped, flag) then
+            table.insert(result.reset, flag)
+        end
+    end
+
+    return result
+end
+
+-- Actions
+
+-- Ends a ragdoll where it is: the ped stands up. Clearing the tasks stops the ped, so the speed it had is given
+-- back: it goes on falling (or moving) as before. A ped that stands up from a ragdoll faces any way
+-- @param heading Where it faces after it stands up (degrees, like get_heading); nil - as it comes out
+function module.end_ragdoll(ped: int, heading: ?number): void
+
+    local n_entity = Atdar.natives.entity
+    local velocity = n_entity.get_velocity(ped)
+
+    n_entity.ped.task.clear(ped, 1)
+    n_entity.set_velocity(ped, velocity.x, velocity.y, velocity.z)
+
+    if heading ~= nil then
+        n_entity.set_heading(ped, heading)
+    end
+end
 
 return module

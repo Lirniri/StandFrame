@@ -1,0 +1,19 @@
+-- EXAMPLE: the helpers of a ped, Atdar.util.game.entity.ped (lib/AnitaDarin/utils/util/game/entity/ped.pluto).
+--
+-- They take a ped handle, any ped: the player's own or someone else's
+
+local ped_utils = Atdar.util.game.entity.ped
+local natives = Atdar.natives
+
+local ped = natives.player.get_ped_id()
+
+-- Ends a ragdoll where it is: the ped stands up and keeps the speed it had (ending it alone stops the ped)
+if natives.player.is_ragdoll(ped) then
+    -- A ped that stands up from a ragdoll faces any way: the heading says where (degrees), nil leaves it
+    ped_utils.end_ragdoll(ped, natives.camera.gameplay.get_rot(2).z)    -- facing where the camera looks
+end
+
+-- Every flag of the ped that is true right now: { config = {...}, reset = {...} } (numbers). To find what another
+-- script sets, read it with that on and off and compare; a reset flag lasts one frame
+local flags = ped_utils.get_set_flags(ped)
+util.log($"{#flags.config} config flags and {#flags.reset} reset flags are on")
