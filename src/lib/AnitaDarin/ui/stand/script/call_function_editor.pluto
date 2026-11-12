@@ -248,6 +248,12 @@ local function view_file(parent: table, id: string, name: string|int): void
         local page = 1
         local body = nil
 
+        -- Texts to take out of the lines, to shorten them; typed again, one is shown again
+        field(node:scope(SCOPE), { key = "view.hide" }, function(value)
+            files():hide_text(value)
+            body.rebuild()
+        end)
+
         body = node:section(function()
 
             local data, why = files():read_text(id, page)
@@ -267,6 +273,16 @@ local function view_file(parent: table, id: string, name: string|int): void
                 page = math.min(data.page + 1, data.pages)
                 body.rebuild()
             end })
+
+            local hidden = files():hidden_texts()
+
+            if #hidden > 0 then
+                node:readonly_name({ name = text("view.hidden"):format(table.concat(hidden, ", ")) })
+                node:scope(SCOPE):action({ key = "view.clear_hidden", on_click = function()
+                    files():clear_hidden()
+                    body.rebuild()
+                end })
+            end
 
             node:divider({ name = label("view.divider") })
 

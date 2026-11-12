@@ -191,7 +191,6 @@ local class CallFunction extends Module
                     "_cache",
                     "_loaded",
                     "_last_id",
-                    "_record",
                     "_history",
                 }
             }
@@ -323,7 +322,9 @@ local class CallFunction extends Module
             return
         end
 
-        self:_record(spec)
+        if spec.path ~= nil then
+            self:remember(spec.path(), spec.state)
+        end
 
         util.create_thread(function()
             local given = run(value, owner, args, count)
@@ -338,16 +339,14 @@ local class CallFunction extends Module
 
     -- History
 
-    -- Puts a call at the top of the history: the same function with the same arguments is moved there, not repeated
-    -- @param spec Only a panel that says its function's full path (spec.path) is kept: a function in a table has none
-    function _record(spec: table): void
+    -- Puts a call at the top of the history: the same function with the same arguments is moved there, not repeated.
+    -- Called by what calls a function: Call Function's panels (a function in a table has no path, it isn't kept) and
+    -- the Modules list
+    -- @param path The function's full path ("game.repair_vehicle", "VehicleManager:get" for a module's method)
+    -- @param state What's typed for it: texts (a field per parameter) and args
+    function remember(path: string, state: table): void
 
-        if spec.path == nil then
-            return
-        end
-
-        local state = spec.state
-        local entry = { path = spec.path(), texts = {}, args = state.args }
+        local entry = { path = path, texts = {}, args = state.args }
 
         for key, value in pairs(state.texts or {}) do
             entry.texts[key] = value

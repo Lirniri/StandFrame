@@ -147,6 +147,9 @@ local class FileEditor extends Module
                 }
             }
         })
+
+        -- Texts taken out of the lines of a viewed file, to shorten them (hide_text); kept while the script runs
+        self._hidden = {}
     end
 
     -- @return The file's full path; nil if the id isn't a file of the editor
@@ -399,7 +402,41 @@ local class FileEditor extends Module
         return id
     end
 
+    -- A text to take out of every line shown (so "AniDar" shortens "[AniDar | Menu | INFO]"); the file itself isn't
+    -- changed. The same text typed again shows it again
+    -- @return Whether it's hidden now; false for nothing typed or a text that was shown again
+    function hide_text(typed: string): bool
+
+        local word = trim(typed)
+
+        if word == "" then
+            return false
+        end
+
+        for index, hidden in ipairs(self._hidden) do
+            if hidden == word then
+                table.remove(self._hidden, index)
+                return false
+            end
+        end
+
+        table.insert(self._hidden, word)
+
+        return true
+    end
+
+    -- @return The texts taken out of the lines, in the order they were typed
+    function hidden_texts(): table
+        return self._hidden
+    end
+
+    -- Shows what was hidden again
+    function clear_hidden(): void
+        self._hidden = {}
+    end
+
     -- A text file, a page of its lines (PAGE_LINES each); only for looking, nothing of it is written
+    -- The lines are shown without the texts of hide_text
     -- @param page From 1; past the last one it's the last
     -- @return { lines, page, pages } or nil and why not ("missing", "code" for a file that runs, "big")
     function read_text(id: string, page: int = 1)
@@ -426,7 +463,14 @@ local class FileEditor extends Module
 
         local lines = {}
 
-        for line in (content .. "\n"):gmatch("(.-)\r?\n") do
+        for original in (content .. "\n"):gmatch("(.-)\r?\n") do
+
+            local line = original
+
+            for _, hidden in ipairs(self._hidden) do
+                line = line:gsub(hidden:gsub("%p", "%%%0"), "")
+            end
+
             table.insert(lines, line)
         end
 

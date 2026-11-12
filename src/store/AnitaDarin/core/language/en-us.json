@@ -994,6 +994,9 @@
                     "divider": "Opened From Call Function"
                 },
                 "view": {
+                    "hide": { "name": "Hide Text", "help": "Type a text to take out of every line shown, to shorten them: AniDar. The file isn't changed. Type the same text again to show it" },
+                    "clear_hidden": { "name": "Show Hidden Text", "help": "Shows every text taken out again" },
+                    "hidden": "Hidden: %s",
                     "divider": "Lines",
                     "page": "Page %d of %d",
                     "previous": {
@@ -1012,6 +1015,7 @@
             "pick": {
                 "name": "Pick Function",
                 "help": "Takes the function's name from a list, so it needn't be typed: your short names, the registry, or a module's functions",
+                "empty": "Nothing here yet",
                 "page": "Page %d of %d",
                 "previous": { "name": "Previous Page", "help": "The functions before these" },
                 "next": { "name": "Next Page", "help": "The next functions" },

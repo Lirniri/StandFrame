@@ -258,6 +258,11 @@ function module.call_typed(mod: table, fn: table): void
         return
     end
 
+    -- The call goes into Call Function's history
+    if Atdar.modules.is_running("CallFunction") then
+        Atdar.modules.get("CallFunction"):remember($"{mod.name}:{fn.name}", module.state_of(mod, fn))
+    end
+
     module.call(mod.name, fn, args, count)
 end
 

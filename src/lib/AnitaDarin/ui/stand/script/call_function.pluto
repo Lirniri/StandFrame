@@ -357,7 +357,7 @@ local function build_pick(node: table, pick: function): void
                 local names = sorted_names(source)
 
                 if #names == 0 then
-                    part:readonly_name({ name = label("empty") })
+                    part:readonly_name({ name = label("pick.empty") })
                 end
 
                 paged(part, names, function(into, name)
@@ -376,7 +376,7 @@ local function build_pick(node: table, pick: function): void
                     local names = calls():module_functions(name)
 
                     if #names == 0 then
-                        part:readonly_name({ name = label("empty") })
+                        part:readonly_name({ name = label("pick.empty") })
                     end
 
                     paged(part, names, function(into, path)
@@ -405,13 +405,13 @@ local function build_history(node: table): void
         sub:action({ key = "history.clear", on_click = function()
             calls():clear_history()
             list:clear()
-            list:readonly_name({ name = label("empty") })
+            list:readonly_name({ name = label("pick.empty") })
         end })
 
         list:divider({ name = label("history.divider") })
 
         if #entries == 0 then
-            list:readonly_name({ name = label("empty") })
+            list:readonly_name({ name = label("pick.empty") })
         end
 
         for _, entry in ipairs(entries) do

@@ -31,15 +31,15 @@ local function functions_of(name: string): string
 end
 stand.check(Atdar.modules.has("FileEditor") and Atdar.modules.get("FileEditor"):is_running(), "FileEditor is running")
 stand.check(Atdar.modules.is_system("FileEditor"), "and it's a system module")
-stand.equal(functions_of("FileEditor"), "add_table, add_value, browse, count, create, delete, describe, entries, "
-    .. "is_protected, list, parse_param, parse_value, place_of, places, read, read_text, remove, request_open, set, "
+stand.equal(functions_of("FileEditor"), "add_table, add_value, browse, clear_hidden, count, create, delete, describe, entries, "
+    .. "hidden_texts, hide_text, is_protected, list, parse_param, parse_value, place_of, places, read, read_text, remove, request_open, set, "
     .. "take_request, write",
     "its functions for the Modules list and Call Function; the helpers (_path_of, _file_of) aren't among them")
 stand.check(Atdar.modules.has("CallFunction") and Atdar.modules.get("CallFunction"):is_running(), "CallFunction is running")
 stand.check(Atdar.modules.is_system("CallFunction"), "and it's a system module")
 stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, clear_history, copy_result, "
     .. "describe, describe_entry, expand, forget, history, in_stand, load_saved, log_result, loop_status, main_path, "
-    .. "main_signature, main_target, module_functions, open_in_editor, registered_signature, registry, remove, "
+    .. "main_signature, main_target, module_functions, open_in_editor, registered_signature, registry, remember, remove, "
     .. "repeat_call, set_loop, set_main_name, set_save, short_names, show_guide, shown, signature_of_path, stand_api, "
     .. "start_loop, stop_loop, value_of",
     "its functions; the helpers (_deliver, _read_file, _save_added...) aren't among them")
@@ -1051,11 +1051,16 @@ local core_files = browser:browse("menu/core/language")
 local page_three, why_none = browser:read_text("menu/mypack/long.txt", 9)
 local _, why_code = browser:read_text("menu/mypack/run.pluto")
 local escaped = browser:browse("menu/../user")
+browser:hide_text("line 1")
+local hidden_page = browser:read_text("menu/mypack/long.txt", 1)
 Atdar.filesystem.paths.store = real_store
 stand.equal(table.concat(menu_root.folders, ","), "core,mypack", "menu: the core menu first, then the packs")
 stand.equal(table.concat(pack_files.files, ","), "info.json,long.txt,run.pluto", "a pack's files by name")
 stand.equal(table.concat(core_files.files, ","), "en-us.json", "menu/core is store/core/menu")
 stand.check(page_three.page == 3 and page_three.pages == 3 and #page_three.lines == 15, "a page past the last is the last")
+stand.check(hidden_page.lines[1] == "" and hidden_page.lines[2] == "line 2" and hidden_page.lines[10] == "0",
+    "a hidden text is taken out of the lines shown ('line 10' is cut to '0')")
+stand.check(browser:hide_text("line 1") == false and #browser:hidden_texts() == 0, "the same text again shows it again")
 stand.equal(why_code, "code", "a file that runs isn't opened")
 stand.check(escaped == nil, "a path with .. isn't browsed")
 stand.check(browser:request_open("logs") and not browser:request_open("store/x"), "a link asks for a place of the editor only")
