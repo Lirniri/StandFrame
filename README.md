@@ -59,7 +59,7 @@ configure notifications and command names, and use Load Menu to select or copy a
 | `src/AnitaDarin.pluto` | Launcher; uses its file name to locate the matching library and data folders |
 | `src/lib/AnitaDarin/core/` | Loader, profiles, translations, logging, filesystem, checks, and module management |
 | `src/lib/AnitaDarin/features/` | Feature implementation and registry |
-| `src/lib/AnitaDarin/modules/` | Built-in modules, including `VehicleManager` |
+| `src/lib/AnitaDarin/modules/` | Built-in modules, including `VehicleManager`; `modules/systems/` holds system modules the menus use (`CallFunction`, `FileEditor`), hidden in the Modules list unless Show System Modules is on |
 | `src/lib/AnitaDarin/natives/` | Game native wrappers, grouped by namespace |
 | `src/lib/AnitaDarin/parsers/` | Parsers for colours, JSON, Pluto source, and Stand command names |
 | `src/lib/AnitaDarin/ui/stand/` | Stand menu, settings, profiles, command box, and module debugging |

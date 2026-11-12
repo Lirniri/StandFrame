@@ -1,8 +1,8 @@
 -- lib/AnitaDarin/ui/stand/script/call_function_editor.pluto
 --
--- Debug > Call Function > Files Editor: the JSON files of Call Function (core/call_function and
--- user/call_function in the script's store) as a tree to edit. What it does with the files is in
--- ui/logic/stand/script/call_function_files.
+-- Debug > Files Editor, right under Call Function: the JSON files of Call Function (core/call_function and
+-- user/call_function in the script's store) as a tree to edit. What it does with the files is in the system
+-- module FileEditor (modules/systems/FileEditor); the list is shown only while that module runs.
 --
 --   Files Editor >   Create File (a name; the file is made in user/call_function)
 --                    Files (divider), then a list per file: core/short_name.json, user/short_names.json, ...
@@ -30,9 +30,9 @@ local module = {}
 local SCOPE = "script_menu.call_function.editor"
 local label, text = i18n.scope(SCOPE)
 
--- The file logic (ui/logic/stand/script/call_function_files), loaded when the Files Editor is first opened
+-- The file logic: the FileEditor module, asked for at every use (Reload makes a new one)
 local function files(): table
-    return Atdar.loader.load("ui/logic/stand/script/call_function_files")
+    return Atdar.modules.get("FileEditor")
 end
 
 -- Stand's text fields need a command each: short, unique while the field exists
@@ -71,7 +71,7 @@ end
 -- Saves the file the context belongs to; says so when it can't
 -- @param context { id, data }
 local function save(context: table): void
-    if not files().write(context.id, context.data) then
+    if not files():write(context.id, context.data) then
         log:error(text("not_saved"):format(context.id))
     end
 end
@@ -91,18 +91,18 @@ local ENTRIES_DIVIDER = { params = "params.divider" }
 
 -- Puts the controls of a table and its entries in node (made empty by the caller)
 -- @param context { id, data }: the file, its whole table, for saving
--- @param place The table's place in the file (files.place_of): what can be added to it
+-- @param place The table's place in the file (FileEditor:place_of): what can be added to it
 local function fill_table(node: table, context: table, tbl: table, place: string): void
 
     local ui = node:scope(SCOPE)
     -- The entries, made again after a change
     local entries = nil
     -- The own table of a file with a shape: functions only
-    local shaped_root = place == "root" and files().place_of(context.id, place, "") == "entry"
+    local shaped_root = place == "root" and files():place_of(context.id, place, "") == "entry"
 
     -- A table added (a function, a parameter or an empty one): typed is its name, or the parameter as code
     local function add_table(typed: string): void
-        local ok, why, keys = files().add_table(tbl, typed, context.id, place)
+        local ok, why, keys = files():add_table(tbl, typed, context.id, place)
 
         if not ok then
             warn(why, keys)
@@ -119,7 +119,7 @@ local function fill_table(node: table, context: table, tbl: table, place: string
         field(ui, { key = "add_function" }, add_table)
     else
         field(ui, { key = "add_value" }, function(value)
-            local ok, why, keys = files().add_value(tbl, value, context.id, place)
+            local ok, why, keys = files():add_value(tbl, value, context.id, place)
 
             if not ok then
                 warn(why, keys)
@@ -134,7 +134,7 @@ local function fill_table(node: table, context: table, tbl: table, place: string
     end
 
     field(ui, { key = "remove" }, function(value)
-        if not files().remove(tbl, value) then
+        if not files():remove(tbl, value) then
             log:warn(text("errors.no_entry"):format(value))
             return
         end
@@ -152,7 +152,7 @@ local function fill_table(node: table, context: table, tbl: table, place: string
     -- The entries, as the table is now
     entries = ui:section(function()
 
-        local shown = files().entries(tbl)
+        local shown = files():entries(tbl)
 
         if #shown == 0 then
             ui:readonly_name({ name = label("empty") })
@@ -164,13 +164,13 @@ local function fill_table(node: table, context: table, tbl: table, place: string
             local value = entry.value
 
             if type(value) == "table" then
-                local child_place = files().place_of(context.id, place, key)
+                local child_place = files():place_of(context.id, place, key)
 
-                ui:list({ name = $"{key_text(key)} ({files().count(value)})", help_key = "table",
+                ui:list({ name = $"{key_text(key)} ({files():count(value)})", help_key = "table",
                     fill = |child| -> fill_table(child, context, value, child_place) })
             else
-                field(ui, { name = key_text(key), help_key = "value", default = files().describe(value) }, function(typed)
-                    local ok, why, gone = files().set(tbl, key, typed)
+                field(ui, { name = key_text(key), help_key = "value", default = files():describe(value) }, function(typed)
+                    local ok, why, gone = files():set(tbl, key, typed)
 
                     if not ok then
                         warn(why)
@@ -200,14 +200,14 @@ local function file_list(parent: table, file: table, refresh: function): void
     parent:list({ name = $"{file.area}/{file.name}", help = file.id,
         fill = function(node)
 
-            local context = { id = file.id, data = files().read(file.id) }
+            local context = { id = file.id, data = files():read(file.id) }
 
             if file.protected then
                 node:readonly_name({ name = label("protected") })
             else
                 cancel = select(2, node:scope(SCOPE):confirm({ key = "delete",
                     on_confirm = function()
-                        local ok, why = files().delete(file.id)
+                        local ok, why = files():delete(file.id)
 
                         if not ok then
                             log:warn(text($"errors.{why}"))
@@ -238,17 +238,21 @@ local function file_list(parent: table, file: table, refresh: function): void
     })
 end
 
--- Makes the Files Editor list in node (the Call Function list)
--- @return The Files Editor's list
-function module.build(node: table): table
+-- Whether the FileEditor module is there and running: the list is shown only then
+function module.is_available(): bool
+    return Atdar.modules.is_running("FileEditor")
+end
+
+-- Makes the Files Editor list in node (Debug)
+-- @return The Files Editor's list, and when it's shown: while the FileEditor module runs
+function module.build(node: table)
 
     -- The file lists, made again when a file is made or deleted
     local shown = nil
-
-    return node:list({ name = label("name"), help = label("help"), fill = function(editor)
+    local list = node:list({ name = label("name"), help = label("help"), fill = function(editor)
 
         field(editor:scope(SCOPE), { key = "create" }, function(value)
-            local ok, result = files().create(value)
+            local ok, result = files():create(value)
 
             if not ok then
                 log:warn(text($"create.{result}"))
@@ -262,11 +266,13 @@ function module.build(node: table): table
         editor:divider({ name = label("files.divider") })
 
         shown = editor:section(function()
-            for _, file in ipairs(files().list()) do
+            for _, file in ipairs(files():list()) do
                 file_list(editor, file, || -> shown.rebuild())
             end
         end)
     end })
+
+    return list, module.is_available
 end
 
 return module

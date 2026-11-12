@@ -22,6 +22,11 @@ local function arguments(): table
     return Atdar.loader.load("ui/stand/core/arguments")
 end
 
+-- Debug > Call Function: its panel for a function in a table, loaded when one is first made (it loads this file)
+local function call_function(): table
+    return Atdar.loader.load("ui/stand/script/call_function")
+end
+
 local module = {}
 
 -- For the callers that have this file at hand: the same as the logic's
@@ -232,10 +237,12 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
                         update_result_list(scope)
                     end
                 end })
-        elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on then
+        elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on
+            and call_function().is_available() then
 
             -- A function: a list with the panel of Debug > Call Function (arguments, Call, Call After, Loop, ...),
-            -- without the name and the notice in Stand
+            -- without the name and the notice in Stand. Only while the CallFunction module runs, which calls it:
+            -- else it's a line like the others
             number += 1
             named[item.path] = true
 
@@ -252,7 +259,7 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
 
             lines[item.path] = entry
 
-            panel = Atdar.loader.load("ui/stand/script/call_function").panel(entry, {
+            panel = call_function().panel(entry, {
                 key = id,
                 state = results.fn_state(id),
                 sig = sig,

@@ -149,4 +149,33 @@ stand.clear_logs()
 modules.start()
 stand.check(stand.find_log("dependency cycle: x -> y -> x"), "a cycle is logged")
 
+-- System modules: the ones whose file is in systems\ of a folder load_dir read
+local sys_dir = stand.tmpdir("module_manager_systems")
+io.makedirs($"{sys_dir}systems/Tool")
+stand.write_file($"{sys_dir}plain.pluto", module_file("plain", "", 1))
+stand.write_file($"{sys_dir}systems/Tool/Tool.pluto", module_file("tool", "", 1))
+-- A file that registers nothing (a helper): it runs, adds no module, breaks nothing
+stand.write_file($"{sys_dir}systems/Tool/helper.pluto", "return { x = 1 }\n")
+local names_before = #modules.names()
+stand.equal(modules.load_dir(sys_dir), 3, "the three files ran, the helper too")
+stand.equal(#modules.names() - names_before, 2, "the helper registered no module")
+stand.check(modules.is_system("tool"), "a module in systems\\ is a system one")
+stand.check(not modules.is_system("plain"), "one next to systems\\ isn't")
+stand.check(not modules.is_system("a"), "nor one from another folder")
+stand.check(not modules.is_system("x"), "nor one made in code")
+stand.equal(modules.load_new(), 0, "load_new doesn't run the helper again")
+
+-- is_running by name: false for a module that isn't there
+modules.start_module("tool")
+stand.check(modules.is_running("tool"), "is_running: a running module")
+modules.stop_module("tool")
+stand.check(not modules.is_running("tool"), "a stopped one isn't")
+stand.check(not modules.is_running("no_such_module"), "nor one that isn't there (no error)")
+
+-- hand_over / take_over: what an instance leaves for the next one, taken once
+local handed = { kept = 1 }
+modules.hand_over("tool", handed)
+stand.equal(modules.take_over("tool"), handed, "take_over gives what was handed over")
+stand.equal(modules.take_over("tool"), nil, "only once")
+
 stand.finish()

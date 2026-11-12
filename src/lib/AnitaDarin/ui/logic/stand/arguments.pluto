@@ -41,15 +41,28 @@ local module = {}
 -- Strings under "arguments"
 local text = select(2, i18n.scope("arguments"))
 
--- The files of Debug > Call Function (short names, the signatures of Stand's API); loaded at first use:
--- it loads this file itself
-local function registry(): table
-    return Atdar.loader.load("ui/logic/stand/script/call_function_registry")
+-- The files of Debug > Call Function (short names, the signatures of Stand's API): the system module
+-- CallFunction, asked for at every use (Reload makes a new one)
+-- @return nil while there's no such module (a test that loads none): no short names, no signatures from files
+local function registry(): ?table
+
+    if Atdar.modules == nil or not Atdar.modules.has("CallFunction") then
+        return nil
+    end
+
+    return Atdar.modules.get("CallFunction")
 end
 
 -- A name nothing else has, in an expression: a short name from the files
 local function resolve_name(name: string)
-    return registry().value_of(name)
+
+    local calls = registry()
+
+    if calls == nil then
+        return nil
+    end
+
+    return calls:value_of(name)
 end
 
 -- Types
@@ -305,7 +318,14 @@ function module.call_in(typed: ?string): ?table
         return nil
     end
 
-    local full = registry().expand(path)
+    local calls = registry()
+    local full = path
+
+    -- A call in a field may be a short name whatever Use Short Names says (it is about Function Name and Add)
+    if calls ~= nil then
+        full = calls:expand(path, true)
+    end
+
     local found, fn = path_parser.resolve(full)
 
     if not found or type(fn) ~= "function" then
@@ -314,8 +334,8 @@ function module.call_in(typed: ?string): ?table
 
     local sig = module.signature_of(fn)
 
-    if #sig.params == 0 then
-        local registered = registry().registered_signature(full)
+    if #sig.params == 0 and calls ~= nil then
+        local registered = calls:registered_signature(full)
         if registered ~= nil then
             sig = registered.sig
         end

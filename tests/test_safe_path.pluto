@@ -58,29 +58,31 @@ stand.write_file($"{dir}store/victim.json", "{}")
 Atdar.filesystem = Atdar.filesystem or { paths = Atdar.loader.load("core/filesystem/paths") }
 local real_store = Atdar.filesystem.paths.store
 Atdar.filesystem.paths.store = store
-local files = Atdar.loader.load("ui/logic/stand/script/call_function_files")
+Atdar.modules = Atdar.modules or Atdar.loader.load("core/module_manager")
+Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/")
+local files = Atdar.modules.get("FileEditor")
 
-stand.equal(files.read("user/call_function/mine.json").a, 1, "an id of the editor reads")
-stand.equal(next(files.read("../victim.json")), nil, "an id outside the editor's folders reads as empty")
-stand.equal(next(files.read("user/call_function/../../../victim.json")), nil, "a way up reads as empty too")
+stand.equal(files:read("user/call_function/mine.json").a, 1, "an id of the editor reads")
+stand.equal(next(files:read("../victim.json")), nil, "an id outside the editor's folders reads as empty")
+stand.equal(next(files:read("user/call_function/../../../victim.json")), nil, "a way up reads as empty too")
 
 stand.clear_logs()
-stand.check(not files.write("user/call_function/../../../victim.json", { x = 1 }), "a way up isn't written")
-stand.check(not files.write("core/call_function/x.pluto", { x = 1 }) and not io.exists($"{store}core/call_function/x.pluto"), "only .json files are written")
-stand.check(not files.write("lib/AnitaDarin/core/loader.json", { x = 1 }), "nor a folder of the script's code")
+stand.check(not files:write("user/call_function/../../../victim.json", { x = 1 }), "a way up isn't written")
+stand.check(not files:write("core/call_function/x.pluto", { x = 1 }) and not io.exists($"{store}core/call_function/x.pluto"), "only .json files are written")
+stand.check(not files:write("lib/AnitaDarin/core/loader.json", { x = 1 }), "nor a folder of the script's code")
 stand.check(stand.read_file($"{dir}store/victim.json") == "{}", "the file outside is as it was")
 stand.check(stand.find_log("isn't a file of the editor"), "the refusal is logged")
 
-stand.equal(select(2, files.delete("../victim.json")), "protected", "an id outside can't be deleted")
-stand.equal(select(2, files.delete("user/call_function/../../victim.json")), "protected", "nor by a way up")
-stand.equal(select(2, files.delete("core/call_function/other.json")), "protected", "a file shipped with the script (core) stays")
+stand.equal(select(2, files:delete("../victim.json")), "protected", "an id outside can't be deleted")
+stand.equal(select(2, files:delete("user/call_function/../../victim.json")), "protected", "nor by a way up")
+stand.equal(select(2, files:delete("core/call_function/other.json")), "protected", "a file shipped with the script (core) stays")
 stand.check(io.exists($"{store}core/call_function/other.json") and io.exists($"{dir}store/victim.json"), "and nothing is gone")
-stand.check(files.delete("user/call_function/mine.json") and not io.exists($"{store}user/call_function/mine.json"), "the user's own file is deleted")
+stand.check(files:delete("user/call_function/mine.json") and not io.exists($"{store}user/call_function/mine.json"), "the user's own file is deleted")
 
-stand.equal(select(2, files.create("nul")), "bad_name", "a device name isn't a file name")
-stand.equal(select(2, files.create("../x")), "bad_name", "a typed way up isn't a name")
-stand.equal(select(2, files.create("a b")), "bad_name", "a name with a space isn't one")
-stand.check(files.create("fresh") and io.exists($"{store}user/call_function/fresh.json"), "a good name makes the file")
+stand.equal(select(2, files:create("nul")), "bad_name", "a device name isn't a file name")
+stand.equal(select(2, files:create("../x")), "bad_name", "a typed way up isn't a name")
+stand.equal(select(2, files:create("a b")), "bad_name", "a name with a space isn't one")
+stand.check(files:create("fresh") and io.exists($"{store}user/call_function/fresh.json"), "a good name makes the file")
 Atdar.filesystem.paths.store = real_store
 
 -- ─── A pack's list of copied files can't point out of the script ─────────────

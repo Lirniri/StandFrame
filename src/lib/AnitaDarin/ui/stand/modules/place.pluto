@@ -40,8 +40,21 @@ end
 
 -- Puts an item made after build() under the "Debug" divider's visibility: shown only in debug mode
 -- @param made A MenuItem (or a Stand ref)
-function module.debug_only(made): void
-    item_of(made):shown_when(is_debug)
+-- @param when Also shown only while when() is true (a system module running); set again on live.refresh()
+function module.debug_only(made, when: ?function): void
+
+    if when == nil then
+        item_of(made):shown_when(is_debug)
+        return
+    end
+
+    item_of(made):shown_when(function()
+        if not is_debug() then
+            return false
+        end
+
+        return when() == true
+    end)
 end
 
 -- The list's items, loaded the first time they're needed
@@ -57,7 +70,12 @@ function module.list_in(node: table): table
     local list = nil
 
     list = node:list({ name = label("name"), help = label("help"),
-        on_back = || -> modules_menu().close(list), on_open = || -> modules_menu().open(list) })
+        on_back = function()
+            modules_menu().close(list)
+            -- Debug's items shown while a module runs follow what was started or stopped in it
+            live.refresh()
+        end,
+        on_open = || -> modules_menu().open(list) })
 
     return list
 end
@@ -71,7 +89,8 @@ end
 
 -- The place in the script's settings: the "Debug" divider and the Modules list (shown in debug mode).
 -- before_list: a function(parent), or an array of them, that make items right under the divider, above Modules,
--- each in its order; every one returns its item (or the item's handle), which is shown in debug mode too
+-- each in its order; every one returns its item (or the item's handle), which is shown in debug mode too, and
+-- may return a function after it: the item is then shown only while that function says so as well
 function module.build(parent: table, before_list: ?function|table): void
 
     local makers = before_list
@@ -88,7 +107,10 @@ function module.build(parent: table, before_list: ?function|table): void
     parent:divider({ name = label("debug.divider"), shown_when = is_debug })
 
     for _, make in ipairs(makers or {}) do
-        module.debug_only(make(parent))
+
+        local made, when = make(parent)
+
+        module.debug_only(made, when)
     end
 
     module.list_in(parent):shown_when(is_debug)

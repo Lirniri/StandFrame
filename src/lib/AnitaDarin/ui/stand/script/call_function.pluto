@@ -9,7 +9,9 @@
 --                     Arguments Guide: how to write the arguments, as a notice in Stand
 --                     Settings (divider), Use Short Names, Show Call Time, Show Result On Screen, Result Length On
 --                     Screen, Notice In Stand
---                     Files Editor: the JSON files of Call Function (ui/stand/script/call_function_editor)
+--
+-- Shown only while the CallFunction module runs (Debug's items follow it: ui/stand/modules/place). The Files
+-- Editor is a list of its own right under it (ui/stand/script/call_function_editor).
 --
 -- An added function is named by its number and its path, cut to the last name (PLAYER.PLAYER_PED_ID ->
 -- PLAYER_PED_ID, util.toast -> toast) while Use Short Names is on, then
@@ -34,13 +36,13 @@
 -- (parsers/proglang/pluto/path).
 -- The arguments of the Function Name's panel are one field, read as expressions (parsers/proglang/pluto/args).
 --
--- Only the items are here. Calling, the loops and the list of the functions added are in
--- ui/logic/stand/script/call_function; what a call gave is shown by ui/stand/modules/values.
+-- Only the items are here. Calling, the loops, the list of the functions added and the files are the system
+-- module CallFunction (modules/systems/CallFunction); what a call gave is shown by ui/stand/modules/values.
 -- Strings: core/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
 
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
-local calls = Atdar.loader.load("ui/logic/stand/script/call_function")
+local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
 -- Show Call Time, Show Result On Screen and Result Length On Screen: the loops of a module's functions use them too
 local display = Atdar.loader.load("ui/stand/core/call_display")
 
@@ -53,6 +55,17 @@ local label = i18n.scope(SCOPE)
 -- The strings of the Modules list's function lists, shared: Call After, Call When Opened, Loop
 local LOOP_SCOPE = "modules.loop"
 local mlabel = i18n.scope("modules")
+
+-- The logic: the CallFunction module, asked for at every use (Reload makes a new one)
+local function calls(): table
+    return Atdar.modules.get("CallFunction")
+end
+
+-- Whether there's something to call through: the CallFunction module is there and running. While it isn't,
+-- the Call Function list is hidden and a function in a table of a Value list is only a line
+function module.is_available(): bool
+    return Atdar.modules.is_running("CallFunction")
+end
 
 -- The argument fields and the result lines are loaded when a panel is first made, not with the script's section
 local function arguments(): table
@@ -73,7 +86,7 @@ end
 -- The panel
 
 -- Makes the panel in list, from the Argument on.
--- spec: what the panel calls, as ui/logic/stand/script/call_function describes it (key, state, name, target,
+-- spec: what the panel calls, as the CallFunction module describes it (key, state, name, target,
 -- sig, in_stand), and for the items:
 -- spec.args_command:    the command of the Argument field (Stand's text fields need one); with spec.sig the
 --                       base of the commands of the parameters' fields ("<base>_1", "<base>_rest")
@@ -99,7 +112,7 @@ function module.panel(list: table, spec: table): table
     -- or stopping anything
     state.on_loop = function(kind, every)
         if status ~= nil then
-            status:set_name(calls.status_line(kind, every))
+            status:set_name(call_loop.status_line(kind, every))
         end
         if loop_toggle ~= nil then
             loop_toggle:set_value(kind == "running" or kind == "every")
@@ -109,14 +122,14 @@ function module.panel(list: table, spec: table): table
     -- The cursor on this list (not inside it)
     list:on_focus(function()
         if state.on_focus and not clicks.is_stopping() then
-            calls.call(spec)
+            calls():call(spec)
         end
     end)
 
     -- Typed in an argument's field, with Call After Typing Arguments on
     local function typed(): void
         if state.on_enter then
-            calls.call(spec)
+            calls():call(spec)
         end
     end
 
@@ -172,8 +185,8 @@ function module.panel(list: table, spec: table): table
             name_now = mlabel("loop.call"),
             name_after = mlabel("loop.call_after.name"),
             help = label("call.help"),
-            call = || -> calls.call(spec),
-            call_after = |ms| -> calls.call_after(spec, ms),
+            call = || -> calls():call(spec),
+            call_after = |ms| -> calls():call_after(spec, ms),
         })
 
         state_toggle(loop, "call_on_open", state, "on_open", state.on_open == true)
@@ -184,16 +197,16 @@ function module.panel(list: table, spec: table): table
         state_toggle(loop, "show_result", state, "show_result", state.show_result ~= false)
 
         -- The loop: its status line (as the loop is now), Loop, Loop With Interval
-        status = list:divider({ name = calls.status_line(calls.loop_status(state)) })
+        status = list:divider({ name = call_loop.status_line(calls():loop_status(state)) })
 
         loop_toggle = loop:toggle({ key = "loop", default = state.loop ~= nil, on_change = function(on)
             if not clicks.is_stopping() then
-                calls.set_loop(spec, on)
+                calls():set_loop(spec, on)
             end
         end })
 
         loop:click_slider({ key = "every", min = 100, max = 60000, default = 1000, step = 100, user_only = true,
-            on_click = |ms| -> calls.start_loop(spec, ms) })
+            on_click = |ms| -> calls():start_loop(spec, ms) })
 
         -- What came out: the Variable line, and for a table the Value list under it
         values().add_result_lines(list, spec.key, spec.kept)
@@ -237,15 +250,15 @@ function module.panel(list: table, spec: table): table
     return {
         -- The arguments' fields made again, after the function changed (spec.sig is new)
         rebuild = || -> panel.rebuild(),
-        call = || -> calls.call(spec),
+        call = || -> calls():call(spec),
         opened = function()
             if state.on_open then
-                calls.call(spec)
+                calls():call(spec)
             end
         end,
         name_typed = function()
             if state.on_enter_name then
-                calls.call(spec)
+                calls():call(spec)
             end
         end,
     }
@@ -261,11 +274,11 @@ local show_added = nil
 -- Named with its number in the list, the arguments and the return type
 local function add_item(list: table, entry: table, number: int): void
 
-    local item = calls.describe(entry, number)
+    local item = calls():describe(entry, number)
     local panel = nil
 
     if not item.has_fields then
-        list:action({ name = item.name, help = label("added.button_help"), on_click = || -> calls.call(item.spec) })
+        list:action({ name = item.name, help = label("added.button_help"), on_click = || -> calls():call(item.spec) })
         return
     end
 
@@ -278,17 +291,17 @@ local function build_by_name(node: table): void
 
     local panel = nil
     local spec = nil
-    local state = calls.main_state
+    local state = calls().main_state
     local list = node:list({ key = "by_name", on_open = || -> panel.opened() })
 
     -- With Call After Typing Function on, typing the name calls it (or reads a table or a variable) at once
     list:text_input({ key = "function", commands = { "callfuncname" }, default = state.name or "", user_only = true,
         on_change = function(value)
-        local named, changed = calls.set_main_name(value)
+        local named, changed = calls():set_main_name(value)
 
         -- Another function: its parameters are the fields now (a table or a variable has none: the one field)
         if changed and panel ~= nil then
-            spec.sig = calls.main_signature()
+            spec.sig = calls():main_signature()
             panel.rebuild()
         end
 
@@ -298,14 +311,15 @@ local function build_by_name(node: table): void
     end })
 
     spec = {
-        key = calls.RESULT_KEY,
+        key = calls().RESULT_KEY,
         state = state,
-        sig = calls.main_signature(),
+        sig = calls():main_signature(),
         name = || -> state.name or "",
-        target = calls.main_target,
+        -- (a lambda would give only the first of the three values)
+        target = function() return calls():main_target() end,
         args_command = "callfuncargs",
         with_name = true,
-        in_stand = calls.in_stand,
+        in_stand = || -> calls():in_stand(),
         kept = true,
     }
 
@@ -315,13 +329,13 @@ end
 -- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added
 local function build_functions(node: table): void
 
-    calls.load_saved()
+    calls():load_saved()
 
     local list = node:list({ key = "functions" })
 
     list:text_input({ key = "add", commands = { "addfunc" }, user_only = true, on_change = function(value)
 
-        local entry, number = calls.add(value)
+        local entry, number = calls():add(value)
 
         if entry ~= nil then
             add_item(list, entry, number)
@@ -330,20 +344,20 @@ local function build_functions(node: table): void
 
     -- The number of the function to take out
     list:text_input({ key = "clear", commands = { "clearfunc" }, user_only = true, on_change = function(value)
-        if calls.remove(value) then
+        if calls():remove(value) then
             show_added()
         end
     end })
 
     list:action({ key = "clear_all", on_click = function()
-        if calls.clear_all() then
+        if calls():clear_all() then
             show_added()
         end
     end })
 
-    list:toggle({ key = "save", default = calls.settings.save, on_change = function(on)
+    list:toggle({ key = "save", default = calls().settings.save, on_change = function(on)
         if not clicks.is_stopping() then
-            calls.set_save(on)
+            calls():set_save(on)
         end
     end })
 
@@ -351,7 +365,7 @@ local function build_functions(node: table): void
 
     -- The items of the functions, with the numbers and names they have now; made again by show_added
     local added = list:section(function()
-        for number, entry in ipairs(calls.added()) do
+        for number, entry in ipairs(calls():added()) do
             add_item(list, entry, number)
         end
     end)
@@ -360,26 +374,35 @@ local function build_functions(node: table): void
 end
 
 -- Makes the list in node
--- @return The list's Stand handle (the tests look into it)
-function module.build(node: table): any
+-- @return The list's Stand handle (the tests look into it), nil without the CallFunction module; and when it's
+--         shown: while the module runs
+function module.build(node: table)
 
-    local settings = calls.settings
+    -- Its module's file failed to load (the error is in the log): nothing to call through, the rest of the
+    -- section is still made
+    if not Atdar.modules.has("CallFunction") then
+        return nil
+    end
+
+    -- The switches' defaults; a change goes to calls().settings, asked for then: a reloaded module is a new
+    -- instance with its own
+    local settings = calls().settings
     local list = node:list({ name = label("name"), help = label("help") })
     local ui = list:scope(SCOPE)
 
     build_by_name(ui)
     build_functions(ui)
 
-    ui:action({ key = "guide", on_click = calls.show_guide })
+    ui:action({ key = "guide", on_click = || -> calls():show_guide() })
 
     ui:divider({ name = label("settings.divider") })
 
     ui:toggle({ key = "short_names", default = settings.short_names, on_change = function(on, click_type)
-        if clicks.is_stopping() or settings.short_names == on then
+        if clicks.is_stopping() or calls().settings.short_names == on then
             return
         end
 
-        settings.short_names = on
+        calls().settings.short_names = on
 
         -- The names in the list follow (not while Stand puts the saved state back: the list isn't made then)
         if show_added ~= nil and clicks.is_user_click(click_type) then
@@ -402,13 +425,10 @@ function module.build(node: table): any
     end })
 
     ui:toggle({ key = "stand", default = settings.stand, on_change = function(on)
-        settings.stand = on
+        calls().settings.stand = on
     end })
 
-    -- The JSON files of Call Function (short names, the Stand API, the user's own) as a tree to edit
-    Atdar.loader.load("ui/stand/script/call_function_editor").build(ui)
-
-    return list.handle
+    return list.handle, module.is_available
 end
 
 return module

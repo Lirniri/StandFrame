@@ -37,6 +37,17 @@ local attempted = {}
 -- The folders load_dir read, for load_new to look at again
 local dirs = {}
 
+-- Module name -> what its last instance handed over for the next one (hand_over / take_over)
+local handed = {}
+
+-- The subfolder of a modules folder with the system modules (is_system)
+local SYSTEMS = "systems/"
+
+-- The path with / and in lower case, so paths written either way compare equal
+local function normalized(path: string): string
+    return (path:gsub("\\", "/")):lower()
+end
+
 -- The file's whole text, nil if it can't be read
 local read_text = Atdar.loader.load("core/filesystem/file").read
 
@@ -85,6 +96,41 @@ function module.file_of(name: string): ?string
     return files[name]
 end
 
+-- Whether it's a system module: its file is in systems\ of a folder load_dir read (lib/<script>/modules/systems/),
+-- or load_dir read that systems\ folder itself. The script's own menus use them; the Modules list shows them
+-- only when asked
+-- @return false for a module made in code
+function module.is_system(name: string): bool
+
+    local path = files[name]
+
+    if path == nil then
+        return false
+    end
+
+    local file = normalized(path)
+
+    for _, dir in ipairs(dirs) do
+
+        local root = normalized(dir)
+
+        if root:sub(-1) ~= "/" then
+            root ..= "/"
+        end
+
+        -- A systems\ folder read on its own (the tests load modules/systems\ alone)
+        if root:sub(-#SYSTEMS - 1) ~= $"/{SYSTEMS}" then
+            root ..= SYSTEMS
+        end
+
+        if file:sub(1, #root) == root then
+            return true
+        end
+    end
+
+    return false
+end
+
 -- The text the code running now was read from (the file may be edited since): its line numbers are
 -- the ones debug.getinfo gives for the module's functions
 -- @return nil for a file that isn't a module file or hasn't run
@@ -98,6 +144,34 @@ function module.get(name: string): table
         error($"[Modules] unknown module '{name}'")
     end
     return mod
+end
+
+-- Whether there's such a module and it's running
+function module.is_running(name: string): bool
+
+    local mod = by_name[name]
+
+    if mod == nil then
+        return false
+    end
+
+    return mod:is_running()
+end
+
+-- Keeps data for the module's next instance: its on_stop hands over what Reload (a new instance from its
+-- file) should keep. Lives as long as the script runs; a new start of the script begins without any
+function module.hand_over(name: string, data: table): void
+    handed[name] = data
+end
+
+-- What the module's last instance handed over, taken once (its __construct)
+-- @return nil if nothing was
+function module.take_over(name: string): ?table
+
+    local data = handed[name]
+
+    handed[name] = nil
+    return data
 end
 
 function module.has(name: string): bool

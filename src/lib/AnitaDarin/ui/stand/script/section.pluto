@@ -14,7 +14,8 @@
 --   Debug >         Debug Mode, Load Timing, Reload Natives, ── Logs ──, Logs > (Name In Logs, Keep Logs,
 --                   Write Info At Once, Clear Current Log File, Clear All Log Files), Languages > (Show Keys),
 --                   then at the bottom in debug mode only:
---                   ── Debug ──, Call Function, Modules, Delete Script (asks first)
+--                   ── Debug ──, Options From Menu, Call Function, Files Editor (these two while their system
+--                   modules run), Modules, Delete Script (asks first)
 --
 -- Stand adds every item at the end of its list, so the order of the calls below is the order in the menu.
 -- What the plain buttons do (folders, logs, the feed) is in ui/logic/stand/script/section_actions.
@@ -34,6 +35,7 @@ local user_commands = Atdar.loader.load("ui/stand/script/user_commands")
 local modules_place = Atdar.loader.load("ui/stand/modules/place")
 local updater_menu = Atdar.loader.load("ui/stand/script/updater")
 local call_function = Atdar.loader.load("ui/stand/script/call_function")
+local call_function_editor = Atdar.loader.load("ui/stand/script/call_function_editor")
 
 local log = new Logger("Menu")
 
@@ -258,7 +260,9 @@ function module.build(section: table, opts: table): void
     updater_menu.build(section)
 
     -- Debug
-    local debug = ui:list({ key = "debug" })
+    -- Opened: its items shown while a system module runs (Call Function, Files Editor) look again, the module
+    -- may have stopped or failed since
+    local debug = ui:list({ key = "debug", on_open = || -> live.refresh() })
 
     profile_menu.debug(debug)
 
@@ -270,8 +274,9 @@ function module.build(section: table, opts: table): void
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
-    -- Under the "Debug" divider, shown only in debug mode: Options From Menu, Call Function, Modules; then Delete Script
-    modules_place.build(debug, { options_from_menu, call_function.build })
+    -- Under the "Debug" divider, shown only in debug mode: Options From Menu, Call Function, Files Editor, Modules;
+    -- then Delete Script. Call Function and Files Editor only while their system modules run
+    modules_place.build(debug, { options_from_menu, call_function.build, call_function_editor.build })
     modules_place.debug_only(delete_script(debug))
 
     -- The script's cards and posts in the game's feed, all taken away

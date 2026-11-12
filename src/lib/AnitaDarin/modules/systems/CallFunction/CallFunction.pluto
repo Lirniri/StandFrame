@@ -1,0 +1,958 @@
+-- lib/AnitaDarin/modules/systems/CallFunction/CallFunction.pluto
+--
+-- A system module: what Debug > Call Function does. It calls a function (or reads a table or a variable) by
+-- what a panel says of it, loops it, keeps the list of the functions added, and reads the files of Call
+-- Function: the user's short names, the registry of short names, the signatures of Stand's API and the file
+-- the added functions are saved in. The items are in ui/stand/script/call_function, which gets it by
+-- Atdar.modules.get("CallFunction"); the editor of the files is the FileEditor module.
+--
+--     local calls = Atdar.modules.get("CallFunction")
+--     calls:expand("user_ped")                       -- "players.user_ped", 1: a short name's full path
+--     calls:value_of("user_ped")                     -- the function itself, for an argument typed as user_ped()
+--     calls:registered_signature("util.toast")       -- { sig, returns } of a function that says nothing itself
+--     calls:add("game.repair_vehicle")               -- in the Functions list
+--
+-- A panel is described by a spec (the same table the items are made from):
+--   spec.key      the key the result is kept under (ui/logic/stand/results)
+--   spec.state    a table kept by the caller between buildings: args, texts, on_enter, on_enter_name, on_open,
+--                 on_focus, the loop, and on_loop(kind, every): what the items do when the loop's status changes
+--   spec.name     function() -> the function's name for the notices
+--   spec.target   function() -> found, value, owner: what to call or read (owner: the self of a method)
+--   spec.sig      the function's signature (ui/stand/core/arguments), nil: the arguments are one text (state.args)
+--   spec.in_stand function() -> whether the notices go to Stand, not the game's feed (nil: the feed)
+--
+-- The name is a path from Atdar with dots (game.repair_vehicle, game.some_table). A module's name may come
+-- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get)
+-- (parsers/proglang/pluto/path). A short name alone is looked for in the script's natives too
+-- (get_forward_z -> Atdar.natives.entity.get_forward_z).
+--
+-- The settings, the list of the functions added and what's typed in Call A Function live in the instance.
+-- Reload makes a new one: the old one hands them over as they are (on_stop, Atdar.modules.hand_over), loops
+-- running too; a new start of the script begins empty and reads the saved functions again.
+-- Strings: core/language "script_menu.call_function"; the loop ones are the Modules list's ("modules.loop")
+
+local Module = Atdar.loader.load("core/module")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local i18n = Atdar.loader.load("core/i18n")
+local call_loop = Atdar.loader.load("ui/logic/stand/call_loop")
+
+-- Strings under "script_menu.call_function", and the Modules list's, shared: the loop
+local text = select(2, i18n.scope("script_menu.call_function"))
+local mtext = select(2, i18n.scope("modules"))
+
+-- Longer notices are cut to this many characters
+local MAX_NOTICE_CHARS = 200
+
+-- The user's own short names: store/<script>/user/call_function/short_names.json,
+-- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }
+local SHORT_NAMES_FILE = "user/call_function/short_names.json"
+
+-- The registry of short names, written by hand and shipped with the script: store/<script>/core/call_function/short_name.json,
+--     { "user_vehicle": { "path": "entities.get_user_vehicle_as_handle" } }
+-- The name is what can be typed (with Use Short Names on) for the path. An entry may say the function's
+-- signature itself (params, returns, as in STAND_API_FILE); without them the signature is looked for by the path.
+-- An entry without a path is left out
+local REGISTRY_FILE = "core/call_function/short_name.json"
+
+-- The signatures of Stand's own API (util, entities, menu, ...), written by hand and shipped with the script:
+-- store/<script>/core/call_function/stand_api.json,
+--     { "util.toast": { "params": [ { "name": "text", "type": "string" }, { "name": "bitflags", "type": "?int" } ],
+--                       "returns": "void" } }
+-- Stand's functions are C functions and say nothing of their parameters: this gives their argument fields (name,
+-- type, an optional default as the code would write it) and return type. params [] is a function that takes none
+local STAND_API_FILE = "core/call_function/stand_api.json"
+
+-- The file the functions are saved in while Save Functions is on: store/<script>/user/call_function/saved_functions.json,
+-- { "save": true, "functions": [ "game.repair_vehicle", ... ] }; the paths only, not what's typed in the
+-- fields. Switching Save Functions off leaves the file as it is ("save": false): what to do with it is the
+-- user's choice
+local SAVED_FILE = "user/call_function/saved_functions.json"
+
+-- A file is read again at most once in this many ms: a name is looked for at every call, and a loop calls
+-- every frame. An edit made by hand while the script runs still shows within the second
+local REREAD_MS = 1000
+
+-- The parsers and the argument fields are loaded when a function is first called or added, not with the module
+local function args_parser(): table
+    return Atdar.loader.load("parsers/proglang/pluto/args")
+end
+
+local function path_parser(): table
+    return Atdar.loader.load("parsers/proglang/pluto/path")
+end
+
+local function arguments(): table
+    return Atdar.loader.load("ui/logic/stand/arguments")
+end
+
+-- What calls gave (kept for the lists that show it), and values as text
+local function results(): table
+    return Atdar.loader.load("ui/logic/stand/results")
+end
+
+local function values(): table
+    return Atdar.loader.load("ui/logic/stand/values")
+end
+
+local function store_file(relative: string): table
+    return new JsonFile($"{Atdar.filesystem.paths.store}{relative}")
+end
+
+-- The name for notices and the screen: what's typed without its brackets (get_movement() is get_movement:
+-- the brackets are how the arguments are given, and a notice adds its own)
+local function shown_name(typed: string): string
+    return (path_parser().split(typed))
+end
+
+-- The arguments to call with: from the fields of the parameters when the panel has them (spec.sig), else
+-- what is typed in the Arguments field, or when it's empty what the name has in brackets
+-- @return The arguments, how many there are, and what was wrong
+local function read_args(spec: table, name: string)
+
+    local state = spec.state
+
+    if spec.sig ~= nil then
+        state.texts ??= {}
+        return arguments().read(spec.sig, state.texts)
+    end
+
+    local typed = state.args
+
+    if typed == nil or typed == "" then
+        local _, inline = path_parser().split(name)
+        typed = inline or ""
+    end
+
+    return args_parser().parse(typed)
+end
+
+-- Runs a function with the arguments (the owner first when it's a method), the results packed
+local function run(fn, owner, args: table, count: int): table
+    if owner == nil then
+        return table.pack(pcall(fn, table.unpack(args, 1, count)))
+    end
+
+    return table.pack(pcall(fn, owner, table.unpack(args, 1, count)))
+end
+
+-- Tells the items how the loop is now
+local function show_loop(state: table, kind: string, every: ?int): void
+    if state.on_loop ~= nil then
+        state.on_loop(kind, every)
+    end
+end
+
+-- The loop ended by itself (kind "failed") or was stopped (kind "stopped", the default)
+local function end_loop(state: table, loop_run: table, kind: ?string): void
+    if state.loop ~= loop_run then
+        return
+    end
+
+    state.loop = nil
+    show_loop(state, kind or "stopped")
+end
+
+local class CallFunction extends Module
+
+    function __construct()
+        parent:__construct({
+            name = "CallFunction",
+            debug = {
+                hide = {
+                    "_deliver",
+                    "_read_file",
+                    "_signature_from",
+                    "_save_added",
+                    "_read_saved",
+                    "_write_saved",
+                    "_switch_off_saved",
+                    "_cache",
+                    "_loaded",
+                    "_last_id",
+                }
+            }
+        })
+
+        -- What the instance before this one handed over in its on_stop (a Reload); nothing at the script's start
+        local kept = Atdar.modules.take_over("CallFunction") ?? {}
+
+        -- Settings
+
+        -- Debug > Call Function > Settings: Notice In Stand, Use Short Names (the names in the Functions list and
+        -- the notices are the last part of the path), Save Functions (the list is kept in a file)
+        self.settings = kept.settings ?? { stand = true, short_names = true, save = false }
+
+        -- State
+
+        -- The key the result of the Call A Function list is kept under
+        self.RESULT_KEY = "debug.call_function"
+        -- What is typed in the Call A Function list, kept while the script runs (the menu being built again keeps it)
+        self.main_state = kept.main_state ?? {}
+        -- The functions of the Functions list, in order: { id, path, state }, state as the panel keeps it
+        self._added = kept.added ?? {}
+        -- The number of the last function added: each has its own commands and result, never used twice
+        self._last_id = kept.last_id ?? 0
+        -- Whether the saved functions were put in the list (load_saved); handed over too, so a Reload doesn't
+        -- put them in a second time
+        self._loaded = kept.loaded == true
+        -- The path from store -> { data = the file's table or nil, at = when it was read }
+        self._cache = {}
+    end
+
+    -- A handover left by a Stop is dropped: this instance goes on with its own
+    function on_start(): void
+        Atdar.modules.take_over(self.name)
+    end
+
+    -- Hands the state over to the next instance, for a Reload: the same tables, so the menu, which holds them,
+    -- and the loops, which run on them, go on as they were
+    function on_stop(): void
+        Atdar.modules.hand_over(self.name, {
+            settings = self.settings,
+            main_state = self.main_state,
+            added = self._added,
+            last_id = self._last_id,
+            loaded = self._loaded,
+        })
+    end
+
+    -- Gives the results out: to the lists (the Variable line, the Value list of a table) and as a notice
+    function _deliver(spec: table, given: table, was_call: bool): void
+
+        results().show(spec.key, given)
+
+        local name = shown_name(spec.name())
+        local message = text("done"):format(name)
+
+        if given.n > 1 then
+            message = text("result"):format(name, values().results_text(given))
+        elseif not was_call then
+            message = text("empty"):format(name)
+        end
+
+        -- A long one (a table) is cut: all of it is in the Value list
+        local cut = utf8.offset(message, MAX_NOTICE_CHARS + 1)
+        if cut ~= nil then
+            message = message:sub(1, cut - 1) .. "..."
+        end
+
+        -- In Stand (not the game's feed) when the Notice In Stand setting is on
+        if spec.in_stand ~= nil and spec.in_stand() then
+            self.log:notify(message, "stand")
+            return
+        end
+
+        self.log:notify(message)
+    end
+
+    -- Whether the notices go to Stand (the Notice In Stand setting): a panel's spec.in_stand
+    function in_stand(): bool
+        return self.settings.stand
+    end
+
+    -- Calling
+
+    -- A function is called with the arguments, in a thread of its own (it may wait); anything else
+    -- (a table, a variable) is read. Either way the value is what comes out
+    function call(spec: table): void
+
+        local typed = spec.name()
+        local name = shown_name(typed)
+
+        -- No name: nothing to show, what was there is taken away (the Variable line, the Value list, Table Depth...)
+        if typed == "" then
+            results().clear(spec.key)
+            return
+        end
+
+        -- Looking the name up walks tables and may run into a broken one: an error is a failed call, not a dead script
+        local looked, found, value, owner = pcall(spec.target)
+
+        if not looked then
+            self.log:error(text("failed"):format(name, tostring(found)))
+            return
+        end
+
+        if not found then
+            self.log:warn(text("not_found"):format(name))
+            return
+        end
+
+        if type(value) ~= "function" then
+            self:_deliver(spec, table.pack(true, value), false)
+            return
+        end
+
+        local read, args, count, err = pcall(read_args, spec, typed)
+
+        if not read then
+            self.log:error(text("bad_args"):format(name, tostring(args)))
+            return
+        end
+
+        if err ~= nil then
+            self.log:error(text("bad_args"):format(name, err))
+            return
+        end
+
+        util.create_thread(function()
+            local given = run(value, owner, args, count)
+            if not given[1] then
+                self.log:error(text("failed"):format(name, tostring(given[2])))
+                return
+            end
+
+            self:_deliver(spec, given, true)
+        end)
+    end
+
+    -- Once, after ms; the arguments are worked out then, not now
+    function call_after(spec: table, ms: int): void
+
+        local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+
+        self.log:notify(mtext("loop.call_scheduled"):format(shown_name(spec.name()), ms))
+
+        util.create_thread(function()
+            util.yield(ms)
+            if not clicks.is_stopping() then
+                self:call(spec)
+            end
+        end)
+    end
+
+    -- Loops
+
+    -- @return How the panel's loop is: "running", "every" and its ms, or "stopped"
+    function loop_status(state: table)
+
+        if state.loop == nil then
+            return "stopped", nil
+        end
+
+        if state.loop.every ~= nil then
+            return "every", state.loop.every
+        end
+
+        return "running", nil
+    end
+
+    -- Calls the function every frame (every: nil) or once every `every` ms, until stopped; an error ends it.
+    -- It works like the loop of a module's function: a table or a variable is read, the Variable line follows
+    function start_loop(spec: table, every: ?int): void
+
+        local state = spec.state
+        local typed = spec.name()
+        local name = shown_name(typed)
+        local log = self.log
+
+        if typed == "" then
+            log:warn(text("no_name"))
+            show_loop(state, self:loop_status(state))
+            return
+        end
+
+        local loop_run = { every = every, next = 0, shows_result = || -> state.show_result ~= false }
+        state.loop = loop_run
+
+        if every == nil then
+            show_loop(state, "running")
+            log:notify(mtext("loop.started"):format(name))
+        else
+            show_loop(state, "every", every)
+            log:notify(mtext("loop.started_every"):format(name, every))
+        end
+
+        call_loop.start(loop_run, || -> state.loop == loop_run, function()
+
+            local found, value, owner = spec.target()
+
+            if not found then
+                end_loop(state, loop_run, "failed")
+                log:warn(text("not_found"):format(name))
+                return false
+            end
+
+            if type(value) ~= "function" then
+                local read = table.pack(true, value)
+                loop_run.result = $"{name} -> {values().results_text(read)}"
+                results().show(spec.key, read)
+                return true
+            end
+
+            local args, count, err = read_args(spec, typed)
+            if err ~= nil then
+                end_loop(state, loop_run, "failed")
+                log:error(text("bad_args"):format(name, err))
+                return false
+            end
+
+            -- How long a call takes, on screen (info text), while Show Call Time is on
+            local given = call_loop.timed($"{name}()", || -> run(value, owner, args, count), state.show_time ~= false)
+            if not given[1] then
+                end_loop(state, loop_run, "failed")
+                log:error(text("failed"):format(name, tostring(given[2])))
+                return false
+            end
+
+            -- Tables unpacked, functions as their signatures (describe); a call that gives nothing shows nothing
+            if given.n > 1 then
+                loop_run.result = $"{name} -> {values().results_text(given)}"
+            else
+                loop_run.result = nil
+            end
+
+            results().show(spec.key, given)
+            return true
+        end)
+    end
+
+    function stop_loop(spec: table): void
+
+        local state = spec.state
+
+        if state.loop == nil then
+            self.log:notify(mtext("loop.not_running"):format(shown_name(spec.name())))
+            return
+        end
+
+        end_loop(state, state.loop)
+        self.log:notify(mtext("loop.stopped"):format(shown_name(spec.name())))
+    end
+
+    -- The Loop switch was set by the user: starts a loop that isn't running, stops one that is
+    function set_loop(spec: table, on: bool): void
+
+        local running = spec.state.loop ~= nil
+
+        if on and not running then
+            self:start_loop(spec, nil)
+            return
+        end
+
+        if not on and running then
+            self:stop_loop(spec)
+        end
+    end
+
+    -- Files
+
+    -- @param relative The file's path from the script's store
+    -- @return The file's table; nil when there's no file or it's damaged
+    function _read_file(relative: string): ?table
+
+        local now = util.current_time_millis()
+        local entry = self._cache[relative]
+
+        if entry ~= nil and now - entry.at < REREAD_MS then
+            return entry.data
+        end
+
+        local file = store_file(relative)
+        local data = nil
+
+        if file:exists() then
+            data = file:read()
+        end
+
+        if type(data) ~= "table" then
+            data = nil
+        end
+
+        self._cache[relative] = { data = data, at = now }
+
+        return data
+    end
+
+    -- The files are read from disk at the next use: called by what writes them (the FileEditor module)
+    function forget(): void
+        self._cache = {}
+    end
+
+    -- @return The user's short names, name -> path; empty when there's no file or it isn't an object of texts
+    function short_names(): table
+
+        local names = {}
+
+        for name, path in pairs(self:_read_file(SHORT_NAMES_FILE) or {}) do
+            if type(name) == "string" and type(path) == "string" then
+                names[name] = path
+            end
+        end
+
+        return names
+    end
+
+    -- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or
+    -- it's damaged, and without the entries that have no path
+    function registry(): table
+
+        local entries = {}
+
+        for name, entry in pairs(self:_read_file(REGISTRY_FILE) or {}) do
+            if type(name) == "string" and type(entry) == "table" and type(entry.path) == "string" then
+                entries[name] = entry
+            end
+        end
+
+        return entries
+    end
+
+    -- @return The Stand API file (STAND_API_FILE): path -> { params, returns }; empty when there's no file or it's damaged
+    function stand_api(): table
+        return self:_read_file(STAND_API_FILE) or {}
+    end
+
+    -- Signatures
+
+    -- The params of a file's entry as a signature
+    -- @param owner The entry's name, for the warning
+    -- @return The signature, nil when a parameter is badly written (it's told)
+    function _signature_from(params: table, owner: string): ?table
+
+        local names, types, defaults = {}, {}, {}
+
+        for index, param in ipairs(params) do
+
+            if type(param) ~= "table" or type(param.name) ~= "string" then
+                self.log:warn(text("registry.bad_param"):format(owner, index))
+                return nil
+            end
+
+            table.insert(names, param.name)
+
+            if type(param.type) == "string" then
+                types[param.name] = param.type
+            end
+
+            if type(param.default) == "string" then
+                defaults[param.name] = param.default
+            end
+        end
+
+        return arguments().signature(names, types, false, defaults)
+    end
+
+    -- The signature the files give a function, in place of what the code says: an entry of the registry with
+    -- this path and its own params first, then the Stand API file by the path
+    -- @param path The function's full path
+    -- @return { sig, returns }, nil when no file has its params (or they're badly written)
+    function registered_signature(path: string): ?table
+
+        for name, entry in pairs(self:registry()) do
+            if entry.path == path and type(entry.params) == "table" then
+                local sig = self:_signature_from(entry.params, name)
+                if sig ~= nil then
+                    return { sig = sig, returns = entry.returns }
+                end
+            end
+        end
+
+        local api = self:stand_api()[path]
+
+        if type(api) ~= "table" or type(api.params) ~= "table" then
+            return nil
+        end
+
+        local sig = self:_signature_from(api.params, path)
+
+        if sig == nil then
+            return nil
+        end
+
+        return { sig = sig, returns = api.returns }
+    end
+
+    -- The signature of what a path names: from the code, and for a function that says nothing of its parameters
+    -- (a C function of Stand) from the files
+    -- @return The signature and the return type (either may be nil); nil when the path isn't a function
+    function signature_of_path(path: string)
+
+        local found, value, owner = path_parser().resolve(path)
+
+        if not found or type(value) ~= "function" then
+            return nil, nil
+        end
+
+        local sig = arguments().signature_of(value, owner ~= nil)
+        local returns = Atdar.loader.load("parsers/proglang/pluto/source").return_type(value)
+
+        if #sig.params ~= 0 then
+            return sig, returns
+        end
+
+        local registered = self:registered_signature(path)
+
+        if registered == nil then
+            return sig, returns
+        end
+
+        return registered.sig, returns or registered.returns
+    end
+
+    -- Names
+
+    -- What a typed name means: a path that's there is itself; a short name is the path the user's
+    -- short_names.json gives it, then the registry's, else the first function of that name in Atdar or the
+    -- globals (path.find)
+    -- @param typed The text typed; brackets at its end aren't part of the name
+    -- @param use_short Whether short names are looked for; nil: as Use Short Names says
+    -- @return The full path, and how many functions have the name (1 for a path that's there or in a file, 0 for none)
+    function expand(typed: string, use_short: ?bool)
+
+        local paths = path_parser()
+        local path = paths.split(typed:match("^%s*(.-)%s*$"))
+
+        if use_short == nil then
+            use_short = self.settings.short_names
+        end
+
+        if path == "" then
+            return path, 0
+        end
+
+        if paths.resolve(path) then
+            return path, 1
+        end
+
+        if not use_short then
+            return path, 0
+        end
+
+        local own = self:short_names()[path]
+        if own ~= nil and paths.resolve(own) then
+            return (paths.split(own)), 1
+        end
+
+        local registered = self:registry()[path]
+        if registered ~= nil and paths.resolve(registered.path) then
+            return (paths.split(registered.path)), 1
+        end
+
+        local found = paths.find(path)
+        if #found == 0 then
+            return path, 0
+        end
+
+        return found[1], #found
+    end
+
+    -- What a short name is, for an argument typed with one (user_ped() for players.user_ped()): the files only,
+    -- not a search through every table - an argument is worked out at every call
+    -- @return The value at the name's path; nil when no file has the name
+    function value_of(name: string)
+
+        local path = self:short_names()[name]
+
+        if path == nil then
+            local registered = self:registry()[name]
+            if registered ~= nil then
+                path = registered.path
+            end
+        end
+
+        if path == nil then
+            return nil
+        end
+
+        local found, value = path_parser().resolve(path)
+
+        if not found then
+            return nil
+        end
+
+        return value
+    end
+
+    -- A path as it's shown in the Functions list and the notices
+    function shown(path: string): string
+
+        local paths = path_parser()
+
+        if self.settings.short_names then
+            return paths.short_name(path)
+        end
+
+        return (paths.split(path))
+    end
+
+    -- Call A Function
+
+    -- The full path the Function Name names now. The path worked out when the name was typed is used while it's
+    -- still there: a loop calls at every tick, and a short name's search walks the tables
+    function main_path(): string
+
+        local state = self.main_state
+
+        if state.path ~= nil and state.path ~= "" and path_parser().resolve(state.path) then
+            return state.path
+        end
+
+        return (self:expand(state.name or ""))
+    end
+
+    -- What the Function Name of Call A Function names now: found, value, owner
+    function main_target()
+        return path_parser().resolve(self:main_path())
+    end
+
+    -- The signature of the function the Function Name names now, nil for anything else (a table, a variable, nothing)
+    function main_signature(): ?table
+
+        local sig = self:signature_of_path(self:main_path())
+
+        return sig
+    end
+
+    -- The Function Name was typed; the name taken away takes the result with it, whatever the toggles say
+    -- @return Whether there is a name now, and whether the fields of the arguments must be made again: the name
+    -- is another function than before, so what was typed for the last one doesn't belong to it
+    function set_main_name(value: string)
+
+        local state = self.main_state
+        local path = self:expand(value)
+        local inline = select(2, path_parser().split(value))
+        local changed = path ~= state.path
+        local with_inline = inline ~= nil and inline ~= ""
+
+        state.name = value
+
+        if value == "" then
+            results().clear(self.RESULT_KEY)
+        end
+
+        -- Another function: what was typed for the last one doesn't belong to it
+        if changed then
+            state.path = path
+            state.texts = nil
+            state.args = nil
+        end
+
+        -- Typed as a call, "players.get_position(0)": what's in the brackets fills the fields (the Arguments
+        -- field of a function whose parameters aren't known)
+        if with_inline then
+            local sig = self:main_signature()
+
+            if sig ~= nil then
+                state.texts = arguments().texts_from(sig, inline)
+            else
+                state.args = inline
+            end
+        end
+
+        return value ~= "", changed or with_inline
+    end
+
+    -- Saved functions
+
+    -- @return The saved file's content: save (whether Save Functions was on) and functions (paths); empty without a file
+    function _read_saved(): table
+        return store_file(SAVED_FILE):read() or {}
+    end
+
+    -- Writes the paths of the added functions, with Save Functions on
+    function _write_saved(paths_list: table): void
+        store_file(SAVED_FILE):write({ save = true, functions = paths_list })
+    end
+
+    -- Marks the file as not saving, keeping its functions
+    function _switch_off_saved(): void
+
+        local file = store_file(SAVED_FILE)
+        local data = file:read()
+
+        if data ~= nil then
+            data.save = false
+            file:write(data)
+        end
+    end
+
+    -- Writes the list to the file while Save Functions is on
+    function _save_added(): void
+
+        if not self.settings.save then
+            return
+        end
+
+        local paths_list = {}
+
+        for _, entry in ipairs(self._added) do
+            table.insert(paths_list, entry.path)
+        end
+
+        self:_write_saved(paths_list)
+    end
+
+    -- The Save Functions setting and, when it's on, the functions of the file, put in the list; once, when the
+    -- menu is first made (and again by a new instance: Reload)
+    function load_saved(): void
+
+        if self._loaded then
+            return
+        end
+
+        self._loaded = true
+
+        local data = self:_read_saved()
+
+        self.settings.save = data.save == true
+        if not self.settings.save then
+            return
+        end
+
+        for _, path in ipairs(data.functions or {}) do
+            if type(path) == "string" then
+                self._last_id += 1
+                table.insert(self._added, { id = self._last_id, path = path, state = {} })
+            end
+        end
+    end
+
+    -- Save Functions. On: the list is kept in a file and comes back at the next start; off: the file stays as it
+    -- was, with "save" false, so the next start doesn't use it
+    function set_save(on: bool): void
+
+        if self.settings.save == on then
+            return
+        end
+
+        self.settings.save = on
+
+        if on then
+            self:_save_added()
+            return
+        end
+
+        self:_switch_off_saved()
+    end
+
+    -- The functions added
+
+    -- @return The functions of the Functions list, in order: { id, path, state }
+    function added(): table
+        return self._added
+    end
+
+    -- Adds the function typed (a path or a short name; brackets, if it was typed as a call, aren't part of it)
+    -- @return The entry added and its number in the list; nil when nothing was (it's told why)
+    function add(typed: string)
+
+        local path, matches = self:expand(typed)
+
+        if path == "" then
+            return nil
+        end
+
+        if matches == 0 then
+            self.log:warn(text("not_found"):format(path))
+            return nil
+        end
+
+        if matches > 1 then
+            self.log:notify(text("short_names.many"):format(path, matches))
+        end
+
+        for _, entry in ipairs(self._added) do
+            if entry.path == path then
+                self.log:notify(text("add.already"):format(path))
+                return nil
+            end
+        end
+
+        self._last_id += 1
+
+        local entry = { id = self._last_id, path = path, state = {} }
+
+        table.insert(self._added, entry)
+        self:_save_added()
+        self.log:notify(text("add.done"):format(#self._added, self:shown(path)))
+
+        return entry, #self._added
+    end
+
+    -- Takes out the function with the number typed
+    -- @return Whether one was taken out
+    function remove(typed: string): bool
+
+        local number_text = typed:match("^%s*(.-)%s*$")
+
+        if number_text == "" then
+            return false
+        end
+
+        local number = math.tointeger(tonumber(number_text))
+
+        if number == nil or self._added[number] == nil then
+            self.log:warn(text("clear.none"):format(number_text))
+            return false
+        end
+
+        local entry = table.remove(self._added, number)
+
+        self:_save_added()
+        self.log:notify(text("clear.done"):format(number, self:shown(entry.path)))
+
+        return true
+    end
+
+    -- Takes every function out
+    -- @return Whether there were any
+    function clear_all(): bool
+
+        if #self._added == 0 then
+            return false
+        end
+
+        self._added = {}
+        self:_save_added()
+        self.log:notify(text("clear_all.done"))
+
+        return true
+    end
+
+    -- An added function as its item needs it: its name in the list - "1: PLAYER_PED_ID: int" (no arguments),
+    -- "2: get(handle, ...): bool" (the arguments' names in brackets; the return type when the code or the files
+    -- say one) - and the panel's spec. A function that says nothing of its parameters (a C function of Stand)
+    -- gets them from the files
+    -- @return { name, spec, has_fields }: has_fields - it takes arguments, so it's a list with the panel; without
+    -- them (or for a table or a variable) it's a button
+    function describe(entry: table, number: int): table
+
+        local paths = path_parser()
+        local short = self:shown(entry.path)
+        local sig, returns = self:signature_of_path(entry.path)
+        local has_fields = sig ~= nil and arguments().has_fields(sig)
+        local name = $"{number}: {short}"
+
+        if has_fields then
+            name = $"{name}({arguments().params_text(sig)})"
+        end
+
+        if returns ~= nil then
+            name = $"{name}: {returns}"
+        end
+
+        return {
+            name = name,
+            has_fields = has_fields,
+            spec = {
+                key = $"debug.call_function.{entry.id}",
+                state = entry.state,
+                name = || -> short,
+                -- (a lambda would give only the first of the three values)
+                target = function() return paths.resolve(entry.path) end,
+                args_command = $"addedfunc{entry.id}",
+                sig = sig,
+                in_stand = || -> self:in_stand(),
+            },
+        }
+    end
+
+    -- How to write the arguments, as a notice in Stand (there's room for it there)
+    function show_guide(): void
+        self.log:notify(text("guide.text"), "stand")
+    end
+
+end
+
+return Atdar.modules.add(new CallFunction())

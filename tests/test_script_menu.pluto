@@ -16,6 +16,63 @@ end
 Atdar.filesystem = Atdar.loader.load("utils/filesystem")
 Atdar.profile = Atdar.loader.load("core/profile")
 Atdar.modules = Atdar.loader.load("core/module_manager")
+-- The system modules, loaded before the menu as the bootstrap does: Call Function works through CallFunction,
+-- its Files Editor through FileEditor
+local SYSTEMS_DIR = $"{stand.SRC}lib/AnitaDarin/modules/systems/"
+stand.equal(Atdar.modules.load_dir(SYSTEMS_DIR), 2, "the system modules' folder: two files, CallFunction and FileEditor")
+Atdar.modules.start()
+-- A module's public functions, by name: what the Modules list and Call Function offer
+local function functions_of(name: string): string
+    local names = {}
+    for _, fn in ipairs(Atdar.loader.load("core/module").functions_of(Atdar.modules.get(name))) do
+        table.insert(names, fn.name)
+    end
+    return table.concat(names, ", ")
+end
+stand.check(Atdar.modules.has("FileEditor") and Atdar.modules.get("FileEditor"):is_running(), "FileEditor is running")
+stand.check(Atdar.modules.is_system("FileEditor"), "and it's a system module")
+stand.equal(functions_of("FileEditor"), "add_table, add_value, count, create, delete, describe, entries, "
+    .. "is_protected, list, parse_param, parse_value, place_of, read, remove, set, write",
+    "its functions for the Modules list and Call Function; the helpers (_path_of, _file_of) aren't among them")
+stand.check(Atdar.modules.has("CallFunction") and Atdar.modules.get("CallFunction"):is_running(), "CallFunction is running")
+stand.check(Atdar.modules.is_system("CallFunction"), "and it's a system module")
+stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, describe, expand, forget, "
+    .. "in_stand, load_saved, loop_status, main_path, main_signature, main_target, registered_signature, registry, "
+    .. "remove, set_loop, set_main_name, set_save, short_names, show_guide, shown, signature_of_path, stand_api, "
+    .. "start_loop, stop_loop, value_of",
+    "its functions; the helpers (_deliver, _read_file, _save_added...) aren't among them")
+local hidden = {}
+for _, name in ipairs(Atdar.modules.get("CallFunction").debug.hide) do
+    hidden[name] = true
+end
+for _, fn in ipairs(Atdar.loader.load("core/module").functions_of(Atdar.modules.get("CallFunction"), "internal")) do
+    stand.check(hidden[fn.name], $"{fn.name}: a helper, hidden in the Modules list")
+end
+-- Called through the module itself, without the menu: a path is itself, a short name of the code its full path
+Atdar.test_cf_direct = { deep = { cf_only_here = function(a: int, b: int): int return a + b end } }
+local direct = Atdar.modules.get("CallFunction")
+stand.equal(table.concat({ direct:expand("test_cf_direct.deep.cf_only_here") }, " "), "test_cf_direct.deep.cf_only_here 1",
+    "expand: a path that's there is itself")
+stand.equal(table.concat({ direct:expand("cf_only_here(1, 2)") }, " "), "test_cf_direct.deep.cf_only_here 1",
+    "a short name (brackets left out) is its full path")
+stand.equal(select(2, direct:expand("cf_only_here", false)), 0, "not looked for with use_short false")
+stand.equal(direct:shown("test_cf_direct.deep.cf_only_here"), "cf_only_here", "shown by its last name")
+local direct_sig, direct_returns = direct:signature_of_path("test_cf_direct.deep.cf_only_here")
+stand.check(#direct_sig.params == 2 and direct_returns == "int", "its signature from the code: two params, int")
+local direct_result = nil
+direct:call({
+    key = "test.cf_direct",
+    state = { args = "4, 5" },
+    name = || -> "cf_only_here",
+    target = function()
+        return true, function(a, b)
+            direct_result = Atdar.test_cf_direct.deep.cf_only_here(a, b)
+            return direct_result
+        end
+    end,
+})
+stand.equal(direct_result, 9, "call: the function is called with the arguments typed")
+Atdar.test_cf_direct = nil
 local profile = Atdar.profile
 local i18n = Atdar.loader.load("core/i18n")
 local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
@@ -330,7 +387,7 @@ stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaD
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
     "Debug Mode | Stop After Changes | Load Timing | Reload Natives | Logs | Debug | Options From Menu | Call Function"
-    .. " | Modules | Delete Script", "Debug")
+    .. " | Files Editor | Modules | Delete Script", "Debug: Files Editor right under Call Function")
 -- The divider is called Logs too: the list is the one that opens
 local logs_list
 for _, child in find("Debug").children do
@@ -425,21 +482,23 @@ stand.click(stand.find_item(debug_row, "Reset Name"))
 stand.equal(stand.name_of(debug_row), "debug", "Reset Name gives it back")
 stand.check(not io.exists(script_names), "with no custom names left the file goes")
 
--- At the bottom of Debug, only in debug mode: the Debug divider, Call Function, Modules and Delete Script
+-- At the bottom of Debug, only in debug mode: the Debug divider, Options From Menu, Call Function, Files Editor,
+-- Modules and Delete Script
 local debug_list = find("Debug")
-local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
+local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9],
+    debug_list.children[10], debug_list.children[11] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
     end
     return true
 end
-stand.check(all_visible(false), "Options From Menu, the divider, Call Function, Modules and Delete Script are hidden without debug mode")
+stand.check(all_visible(false), "the divider, Options From Menu, Call Function, Files Editor, Modules and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
-stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Disable Call Time For All | Disable Result On Screen For All | Result Length On Screen | Notice In Stand | Files Editor",
-    "Call Function: two lists, the Arguments Guide, then the settings")
+stand.equal(names_in(call_list), "Call A Function | Functions | Arguments Guide | Settings | Use Short Names | Disable Call Time For All | Disable Result On Screen For All | Result Length On Screen | Notice In Stand",
+    "Call Function: two lists, the Arguments Guide, then the settings; the Files Editor isn't in it")
 -- Arguments Guide: how to write the arguments, as a notice in Stand
 stand.toasts = {}
 stand.click(stand.child(call_list, "Arguments Guide"))
@@ -715,7 +774,7 @@ stand.click(clear_all)
 -- The user's own short names, from store/<script>/user/call_function/short_names.json
 -- The files are read at most once a second (the clock stands still here): forget_files() after each one written
 local function forget_files(): void
-    Atdar.loader.load("ui/logic/stand/script/call_function_registry").forget()
+    Atdar.modules.get("CallFunction"):forget()
 end
 local names_dir = $"{stand.store}AnitaDarin/user/call_function/"
 io.makedirs(names_dir)
@@ -750,9 +809,19 @@ stand.check(not stand.read_file(saved_path):find("test_plain_saved", 1, true), "
 clear_one.on_change("1", 0)
 stand.check(not stand.read_file(saved_path):find("test_saved", 1, true), "Clear is written too")
 add_function.on_change("test_saved", 0)
--- A fresh copy of the list's code, as at the next start: the functions come back from the file
-package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
-package.loaded["AnitaDarin/ui/logic/stand/script/call_function"] = nil
+-- The next start of the script: a fresh copy of the list's code and a new CallFunction from its file, with
+-- nothing handed over (a Reload keeps the state: its on_stop hands it over, dropped here as a new start has none)
+local function restart_call_function(): bool
+    Atdar.modules.stop_module("CallFunction")
+    Atdar.modules.take_over("CallFunction")
+    package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
+    return Atdar.modules.reload_module("CallFunction")
+end
+-- The functions come back from the file
+local before_reload = Atdar.modules.get("CallFunction")
+stand.check(restart_call_function(), "CallFunction made again, as at the next start")
+stand.check(Atdar.modules.get("CallFunction") ~= before_reload and #Atdar.modules.get("CallFunction"):added() == 0,
+    "a new instance: nothing in its list until the menu is made")
 local fresh = Atdar.loader.load("ui/stand/script/call_function")
 local fresh_handle = fresh.build(new MenuNode(stand.root))
 stand.check(stand.find_item(fresh_handle, "1: test_saved(a)") ~= nil, "the functions come back from the file")
@@ -761,8 +830,7 @@ stand.click(stand.child(functions_list, "Save Functions"))
 stand.check(io.exists(saved_path) and stand.read_file(saved_path):find("test_saved", 1, true), "off: the file stays")
 stand.check(stand.read_file(saved_path):find('"save": false', 1, true), "marked as not used")
 -- At the next start with it off: the list isn't taken from the file, the switch is off
-package.loaded["AnitaDarin/ui/stand/script/call_function"] = nil
-package.loaded["AnitaDarin/ui/logic/stand/script/call_function"] = nil
+restart_call_function()
 local off_handle = Atdar.loader.load("ui/stand/script/call_function").build(new MenuNode(stand.root))
 stand.equal(stand.find_item(off_handle, "Save Functions").value, false, "the next start: Save Functions is off")
 stand.check(stand.find_item(off_handle, "test_saved") == nil, "and the file's list isn't used")
@@ -775,7 +843,8 @@ add_function.on_change("test_typed", 0)
 menu.set_value(fields_of(stand.child(functions_list, "1: test_typed(count, name)")).children[2], "6")
 rebuild()
 debug_list = find("Debug")
-debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9], debug_list.children[10] }
+debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9],
+    debug_list.children[10], debug_list.children[11] }
 call_list = stand.find_item(debug_list, "Call Function")
 functions_list = stand.child(call_list, "Functions")
 local rebuilt_item = stand.child(functions_list, "1: test_typed(count, name)")
@@ -881,15 +950,15 @@ forget_files()
 Atdar.test_outer, Atdar.test_inner, Atdar.test_seven = nil, nil, nil
 
 -- The Stand API file: its place is core/call_function/stand_api.json; read as it's written
-local registry_logic = Atdar.loader.load("ui/logic/stand/script/call_function_registry")
-stand.equal(next(registry_logic.stand_api()), nil, "stand_api: no file in the store - empty")
+local registry_logic = Atdar.modules.get("CallFunction")
+stand.equal(next(registry_logic:stand_api()), nil, "stand_api: no file in the store - empty")
 local api_dir = $"{stand.store}AnitaDarin/core/call_function/"
 io.makedirs(api_dir)
 stand.write_file($"{api_dir}stand_api.json", '{"util.toast": {"params": [{"name": "text", "type": "string"}], "returns": "void"},'
     .. ' "test_api_fn": {"params": [{"name": "speed", "type": "float", "default": "1.5"}], "returns": "bool"}}')
 forget_files()
-stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
-stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "read again within a second: the same (kept, not read from disk)")
+stand.equal(registry_logic:stand_api()["util.toast"].returns, "void", "stand_api: the file as written")
+stand.equal(registry_logic:stand_api()["util.toast"].returns, "void", "read again within a second: the same (kept, not read from disk)")
 forget_files()
 -- A function that says nothing of its parameters gets them from the Stand API file, by its path
 Atdar.test_api_fn = function(...) end
@@ -899,9 +968,9 @@ stand.equal(fields_of(stand.child(functions_list, "1: test_api_fn(speed): bool")
 stand.click(clear_all)
 Atdar.test_api_fn = nil
 stand.write_file($"{api_dir}stand_api.json", "{broken")
-stand.equal(registry_logic.stand_api()["util.toast"].returns, "void", "a file changed on disk shows within a second, not at once")
+stand.equal(registry_logic:stand_api()["util.toast"].returns, "void", "a file changed on disk shows within a second, not at once")
 forget_files()
-stand.equal(next(registry_logic.stand_api()), nil, "stand_api: a damaged file - empty")
+stand.equal(next(registry_logic:stand_api()), nil, "stand_api: a damaged file - empty")
 os.remove($"{api_dir}stand_api.json")
 forget_files()
 
@@ -923,12 +992,12 @@ local bare_store = stand.tmpdir("editor_bare_store") .. "AnitaDarin/"
 io.makedirs($"{bare_store}core/call_function")
 stand.write_file($"{bare_store}core/call_function/short_name.json", "{}")
 Atdar.filesystem.paths.store = bare_store
-local bare_files = Atdar.loader.load("ui/logic/stand/script/call_function_files").list()
+local bare_files = Atdar.modules.get("FileEditor"):list()
 Atdar.filesystem.paths.store = real_store
 stand.check(#bare_files == 1 and bare_files[1].id == "core/call_function/short_name.json" and bare_files[1].protected,
     "no user/call_function folder: the core files are listed, nothing fails")
 
-local editor = stand.child(call_list, "Files Editor")
+local editor = stand.child(debug_list, "Files Editor")
 stand.equal(#editor.children, 0, "Files Editor: nothing in it until it's opened")
 stand.click(editor)
 stand.equal(names_in(editor), "Create File | Files | core/short_name.json | core/stand_api.json | user/free.json",
@@ -941,10 +1010,16 @@ stand.click(short_name_list)
 stand.check(stand.child(short_name_list, "Protected file: it can't be deleted") ~= nil and stand.child(short_name_list, "Delete File") == nil,
     "short_name.json can't be deleted: no Delete File, it says it's protected")
 stand.check(stand.child(stand.child(editor, "core/stand_api.json"), "Delete File") == nil, "nor stand_api.json")
-local files_logic = Atdar.loader.load("ui/logic/stand/script/call_function_files")
-local refused, refused_why = files_logic.delete("core/call_function/short_name.json")
+local files_logic = Atdar.modules.get("FileEditor")
+local refused, refused_why = files_logic:delete("core/call_function/short_name.json")
 stand.check(refused == false and refused_why == "protected" and io.exists($"{editor_core}short_name.json"), "the logic refuses to delete short_name.json too, not only the menu")
-stand.equal(select(2, files_logic.delete("core/call_function/stand_api.json")), "protected", "and stand_api.json")
+stand.equal(select(2, files_logic:delete("core/call_function/stand_api.json")), "protected", "and stand_api.json")
+-- A write through the editor shows in Call Function at once: the registry forgets what it read
+stand.equal(next(registry_logic:stand_api()), nil, "stand_api.json as {}: nothing in it")
+stand.check(files_logic:write("core/call_function/stand_api.json", { ["util.yield"] = { params = {}, returns = "void" } }),
+    "written")
+stand.equal(registry_logic:stand_api()["util.yield"].returns, "void", "Call Function reads the new file at once")
+stand.check(files_logic:write("core/call_function/stand_api.json", {}), "and back to {}")
 
 local function stored(name: string): string
     return stand.read_file($"{editor_core}{name}")
@@ -1089,7 +1164,7 @@ stand.back(editor)
 stand.equal(#editor.children, 0, "going back out of the Files Editor removes its items")
 
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
-local modules_list = debug_list.children[9]
+local modules_list = debug_list.children[10]
 stand.click(modules_list)
 stand.check(package.loaded[MODULES_MENU] ~= nil, "opening Modules loads ui/stand/modules/list")
 stand.check(#modules_list.children > 0, "and makes the list's items")
@@ -1141,6 +1216,70 @@ stand.click(stop_item)
 stand.equal(profile.get("stop_on_change"), false, "and off again")
 stand.click(stand.find_item(debug_list, "Debug Mode"))
 stand.check(all_visible(true) and profile.get("debug") == true, "Debug Mode shows them")
+
+-- Call Function and Files Editor are shown only while their system modules run: Stop and Start in the Modules
+-- list hide and show them at once, like the module's own Options divider and Function Call list
+stand.click(modules_list)
+stand.click(stand.child(modules_list, "Show System Modules"))
+local system_list = stand.child(modules_list, "System Modules")
+stand.click(system_list)
+local call_entry = stand.find_item(system_list, "CallFunction")
+local editor_entry = stand.find_item(system_list, "FileEditor")
+local debug_call = stand.find_item(debug_list, "Call Function")
+local debug_editor = stand.child(debug_list, "Files Editor")
+stand.check(debug_call.visible and debug_editor.visible, "both running: Call Function and Files Editor are shown")
+stand.click(stand.child(call_entry, "Stop"))
+stand.check(not debug_call.visible and debug_editor.visible, "CallFunction stopped: Call Function is hidden, Files Editor isn't")
+stand.check(not stand.child(call_entry, "Function Call").visible and not stand.child(call_entry, "Options").visible,
+    "and in its entry the Function Call list and the Options divider")
+stand.check(stand.child(call_entry, "Reload").visible ~= false, "Start, Stop, Reload stay")
+stand.click(stand.child(call_entry, "Start"))
+stand.check(debug_call.visible and stand.child(call_entry, "Function Call").visible, "started again: both are back")
+stand.click(stand.child(editor_entry, "Stop"))
+stand.check(not debug_editor.visible and debug_call.visible, "FileEditor stopped: Files Editor is hidden, Call Function isn't")
+stand.click(stand.child(modules_list, "Stop All"))
+stand.check(not debug_call.visible, "Stop All with the system modules shown: Call Function is hidden too")
+-- Started some other way (not from the list): opening Debug looks again
+Atdar.modules.start_module("CallFunction")
+Atdar.modules.start_module("FileEditor")
+stand.click(debug_list)
+stand.check(debug_call.visible and debug_editor.visible, "opening Debug: both are shown again")
+-- Without CallFunction a function in a table of a Value list is a plain line, not the panel (it calls through it)
+Atdar.modules.stop_module("CallFunction")
+stand.check(not Atdar.loader.load("ui/stand/script/call_function").is_available(), "stopped: Call Function isn't available")
+Atdar.modules.start_module("CallFunction")
+
+-- Reload keeps what CallFunction had: the settings, the functions added, what's typed in Call A Function and a
+-- loop running; the new instance takes the same tables from the old one (its on_stop hands them over)
+Atdar.test_kept = function(a: int) end
+local kept_functions = stand.child(debug_call, "Functions")
+stand.child(kept_functions, "Add").on_change("test_kept", 0)
+stand.click(stand.child(debug_call, "Notice In Stand"))
+local kept_by_name = stand.child(debug_call, "Call A Function")
+menu.set_value(stand.child(kept_by_name, "Function Name"), "test_kept")
+stand.click(stand.child(kept_by_name, "Loop"))
+local kept_before = Atdar.modules.get("CallFunction")
+stand.check(kept_before:loop_status(kept_before.main_state) == "running", "a loop of Call A Function runs")
+stand.click(stand.child(call_entry, "Reload"))
+local kept_after = Atdar.modules.get("CallFunction")
+stand.check(kept_after ~= kept_before and kept_after:is_running(), "Reload: a new instance, running")
+stand.equal(kept_after.settings.stand, false, "the setting is kept (Notice In Stand off)")
+stand.check(#kept_after:added() == 1 and kept_after:added()[1].path == "test_kept", "the function added is kept")
+stand.equal(kept_after.main_state.name, "test_kept", "what's typed in Call A Function is kept")
+stand.equal(kept_after:loop_status(kept_after.main_state), "running", "the loop goes on")
+stand.click(stand.child(kept_by_name, "Loop"))
+stand.equal(kept_after:loop_status(kept_after.main_state), "stopped", "and the menu still stops it")
+stand.check(stand.find_item(kept_functions, "test_kept") ~= nil, "the Functions list still shows it")
+stand.click(stand.child(modules_list, "Reload All"))
+stand.check(Atdar.modules.get("CallFunction") ~= kept_after and #Atdar.modules.get("CallFunction"):added() == 1
+    and Atdar.modules.get("CallFunction").settings.stand == false, "Reload All with the system modules shown keeps it too")
+stand.click(stand.child(kept_functions, "Clear All"))
+stand.click(stand.child(debug_call, "Notice In Stand"))
+menu.set_value(stand.child(kept_by_name, "Function Name"), "")
+Atdar.test_kept = nil
+stand.click(stand.child(modules_list, "Show System Modules"))
+stand.back(system_list)
+stand.back(modules_list)
 
 -- Delete Script is a list with its own confirm button that deletes only on a second click within
 -- 5 seconds. Only the first click happens here: this test runs on the real src folder,

@@ -43,6 +43,9 @@ end
 Atdar.profile = Atdar.loader.load("core/profile")
 Atdar.natives = Atdar.loader.auto({}, "natives")
 Atdar.modules = Atdar.loader.load("core/module_manager")
+-- The script's lib is a temp folder here: its system modules (Call Function's) come from src
+Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/")
+Atdar.modules.start()
 Atdar.features = Atdar.loader.load("features/registry")
 stand.clear_logs()
 Atdar.ui.menu = require($"{Atdar.name}/ui/stand/root")

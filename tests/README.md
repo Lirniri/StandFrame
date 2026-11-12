@@ -25,9 +25,9 @@ What's checked:
 | `test_natives` | natives as functions: `entity`, `ped` and its parts, `vehicle`, `player`, `hud.blip`; the `hud_color` and `feed_picture` tables |
 | `test_feature` | Feature's option checks, hook order, switching off on error, repeated clicks |
 | `test_file_watch` | Stop After Changes: off watches nothing, a written, added or removed file (and the launcher) stops the script, once a second |
-| `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk |
-| `test_modules_menu` | the modules menu: visibility in debug mode, actions, translation |
-| `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming |
+| `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk, system modules (`is_system`), `is_running` by name, `hand_over` / `take_over` across a Reload |
+| `test_modules_menu` | the modules menu: visibility in debug mode, actions, translation, system modules shown only with Show System Modules, Options and Function Call hidden while a module isn't running, a function in a table without `CallFunction` is a plain line |
+| `test_script_menu` | the script's section: layout, language choice, profiles, placeholders, renaming, Call Function and the Files Editor under it (the `CallFunction` and `FileEditor` system modules), each shown only while its module runs, `CallFunction` keeping its state through a Reload |
 | `test_menu_startup` | startup as in bootstrap: copying a pack into the core, loading the built-in menu |
 | `test_menu_utils` | `utils/menu`: colour picker, spoiler; `utils/color`: hex, Stand, game |
 | `test_installer` | renaming the script with its log file open, a name already taken, a folder held open |

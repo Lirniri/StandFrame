@@ -1,0 +1,578 @@
+-- lib/AnitaDarin/modules/systems/FileEditor/FileEditor.pluto
+--
+-- A system module: what Debug > Files Editor (right under Call Function) does with the JSON files of Call Function. The
+-- items are in ui/stand/script/call_function_editor, which gets it by Atdar.modules.get("FileEditor").
+--
+-- The files are the .json ones in store/<script>/core/call_function/ (shipped with the script) and in
+-- store/<script>/user/call_function/ (the user's own). short_name.json and stand_api.json can't be deleted. New
+-- files are made in user/call_function/.
+--
+--     local files = Atdar.modules.get("FileEditor")
+--     files:list()                                -- { { id, name, area, protected } }
+--     local data = files:read(id)                 -- the file's table
+--     files:add_value(data, "name = \"int\"")     -- a value under a name, or at the end of a list
+--     files:write(id, data)                       -- saved
+--
+-- A value in a field is text in quotes (or a bare word: it's text too), a number, true or false; nil takes the
+-- entry away. Tables are made apart (add_table) and opened as lists.
+--
+-- Saving puts the keys in a fixed order (KEY_ORDER first, the rest by name), so a file reads the same after
+-- every change. The two shipped files have a shape (SHAPES): the editor knows what goes where in them (place_of)
+-- and makes a function's entry and a parameter ready-made, instead of leaving every key to be typed right:
+--     root     the file's table: a table per function, by its short name or its path
+--     entry    one function: path, params, returns
+--     params   its parameters, a list
+--     param    one parameter: name, type, default
+--     other    anything in a file without a shape, or deeper than the shape goes
+
+local Module = Atdar.loader.load("core/module")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
+local plain = Atdar.loader.load("core/filesystem/file")
+local safe_path = Atdar.loader.load("core/filesystem/safe_path")
+
+-- Where the files are, from store/<script>/, and what a file's id is: its path from there
+local AREAS = { "core", "user" }
+local FOLDER = "call_function/"
+
+-- The files that can't be deleted (by id)
+local PROTECTED = {
+    ["core/call_function/short_name.json"] = true,
+    ["core/call_function/stand_api.json"] = true,
+}
+
+-- Keys written first in every object of the files, in this order; the rest follow by name
+local KEY_ORDER = { "path", "name", "type", "default", "params", "returns", "save", "functions" }
+
+local KEY_RANK = {}
+for place, key in ipairs(KEY_ORDER) do
+    KEY_RANK[key] = place
+end
+
+-- The files with a shape (by id): the keys a function's entry may have, and what a new entry starts with
+local SHAPES = {
+    ["core/call_function/short_name.json"] = {
+        keys = { "path", "params", "returns" },
+        entry = function() return { path = "" } end,
+    },
+    ["core/call_function/stand_api.json"] = {
+        keys = { "params", "returns" },
+        entry = function() return { params = {}, returns = "" } end,
+    },
+}
+
+-- The keys a parameter may have
+local PARAM_KEYS = { "name", "type", "default" }
+
+local function trim(value: string): string
+    return value:match("^%s*(.-)%s*$")
+end
+
+-- @param area "core" or "user"
+-- @return The folder of the area, from the script's store
+local function folder_of(area: string): string
+    return $"{area}/{FOLDER}"
+end
+
+-- Whether the id is a file of the editor: <area>/call_function/<name>.json and nothing else. An id comes from the
+-- list of files, but what is written and deleted is checked here too, so no id can name another place
+local function is_valid_id(id): bool
+
+    if type(id) ~= "string" then
+        return false
+    end
+
+    local area, name = id:match("^(%a+)/call_function/([^/]+)$")
+
+    if area == nil or (area ~= "core" and area ~= "user") then
+        return false
+    end
+
+    return name:sub(-5) == ".json" and safe_path.is_valid_segment(name)
+end
+
+-- @return A folder or file of the script's store from its path there ("core/call_function/"), with the
+-- separators Windows has; nil if the path isn't a safe one
+local function store_path(relative: string): ?string
+    return (safe_path.resolve(Atdar.filesystem.paths.store, relative))
+end
+
+-- The keys a table of the place may have; nil when it takes any
+local function keys_of(id: string, place: string): ?table
+
+    if place == "entry" then
+        return SHAPES[id].keys
+    end
+
+    if place == "param" then
+        return PARAM_KEYS
+    end
+
+    return nil
+end
+
+-- @return Whether the key may be in a table of the place, and the keys that may ("name, type, default") when not
+local function key_allowed(id: string, place: string, key: string)
+
+    local keys = keys_of(id, place)
+
+    if keys == nil then
+        return true
+    end
+
+    for _, allowed in ipairs(keys) do
+        if allowed == key then
+            return true
+        end
+    end
+
+    return false, table.concat(keys, ", ")
+end
+
+local class FileEditor extends Module
+
+    function __construct()
+        parent:__construct({
+            name = "FileEditor",
+            debug = {
+                hide = {
+                    "_path_of",
+                    "_file_of",
+                }
+            }
+        })
+    end
+
+    -- @return The file's full path; nil if the id isn't a file of the editor
+    function _path_of(id: string): ?string
+
+        if not is_valid_id(id) then
+            self.log:warn($"'{tostring(id)}' isn't a file of the editor, nothing done")
+            return nil
+        end
+
+        return store_path(id)
+    end
+
+    function _file_of(id: string): ?table
+
+        local path = self:_path_of(id)
+
+        if path == nil then
+            return nil
+        end
+
+        return new JsonFile(path, true, KEY_ORDER)
+    end
+
+    -- Files
+
+    function is_protected(id: string): bool
+        return PROTECTED[id] == true
+    end
+
+    -- @return The JSON files, core first, each area by name: { id, name, area, protected }
+    function list(): table
+
+        local found = {}
+
+        for _, area in ipairs(AREAS) do
+
+            local dir = store_path(folder_of(area))
+            local names = {}
+            local listed = {}
+
+            -- Stand's list_files fails on a folder that isn't there (user/call_function, before anything is saved in it)
+            if dir ~= nil and filesystem.is_dir(dir) then
+                listed = filesystem.list_files(dir)
+            end
+
+            for _, path in ipairs(listed) do
+                local name = path:match("([^\\/]+)$")
+                if name ~= nil and name:match("%.json$") then
+                    table.insert(names, name)
+                end
+            end
+
+            table.sort(names)
+
+            for _, name in ipairs(names) do
+                local id = $"{folder_of(area)}{name}"
+                table.insert(found, { id = id, name = name, area = area, protected = self:is_protected(id) })
+            end
+        end
+
+        return found
+    end
+
+    -- @return The file's table; empty when it can't be read
+    function read(id: string): table
+
+        local file = self:_file_of(id)
+
+        if file == nil then
+            return {}
+        end
+
+        local data = file:read()
+
+        if type(data) ~= "table" then
+            return {}
+        end
+
+        return data
+    end
+
+    -- Saves the table, its keys in order; Call Function reads the file again at its next use
+    -- @return Whether it was written
+    function write(id: string, data: table): bool
+
+        local file = self:_file_of(id)
+
+        if file == nil then
+            return false
+        end
+
+        local written = file:write(data)
+
+        -- Without CallFunction (a test that loads FileEditor alone) there's nothing to forget
+        if Atdar.modules.has("CallFunction") then
+            Atdar.modules.get("CallFunction"):forget()
+        end
+
+        return written
+    end
+
+    -- Makes a file in user/call_function/, with {} in it
+    -- @param typed The name typed: letters, digits, _ and -, with or without .json
+    -- @return Whether it was made, and its id or why not ("bad_name", "exists")
+    function create(typed: string)
+
+        local name = (trim(typed):gsub("%.json$", ""))
+
+        -- Letters, digits, _ and -; a name Windows keeps for a device (nul, con...) is no name either
+        if name == "" or name:find("[^%w_%-]") or not safe_path.is_valid_segment($"{name}.json") then
+            return false, "bad_name"
+        end
+
+        local folder = folder_of("user")
+        local id = $"{folder}{name}.json"
+        local path = self:_path_of(id)
+
+        if path == nil then
+            return false, "bad_name"
+        end
+
+        if filesystem.exists(path) then
+            return false, "exists"
+        end
+
+        if not self:_file_of(id):write({}) then
+            return false, "bad_name"
+        end
+
+        return true, id
+    end
+
+    -- Deletes a file (and its backup): only one of the user's own (user/call_function), and not a protected one.
+    -- The files shipped with the script (core/call_function) stay: the updater would bring them back anyway
+    -- @return Whether it was deleted, or why not ("protected", "missing")
+    function delete(id: string)
+
+        if not is_valid_id(id) or self:is_protected(id) or id:sub(1, 5) ~= "user/" then
+            return false, "protected"
+        end
+
+        local path = self:_path_of(id)
+
+        if path == nil or not plain.remove(path) then
+            return false, "missing"
+        end
+
+        plain.remove($"{path}.bak")
+
+        return true
+    end
+
+    -- Places
+
+    -- @param id The file's id
+    -- @param place The place of a table ("root" for the file's own)
+    -- @param key The key of a table inside it
+    -- @return The place of that table: "entry", "params", "param" or "other"
+    function place_of(id: string, place: string, key): string
+
+        if place == "root" and SHAPES[id] ~= nil then
+            return "entry"
+        end
+
+        if place == "entry" and key == "params" then
+            return "params"
+        end
+
+        if place == "params" then
+            return "param"
+        end
+
+        return "other"
+    end
+
+    -- Values
+
+    -- @param value A value of a file: text, number, true, false
+    -- @return It as it's written in a field: text in quotes, the rest as it is
+    function describe(value): string
+        if type(value) == "string" then
+            return '"' .. value .. '"'
+        end
+
+        return tostring(value)
+    end
+
+    -- @param typed What was typed in a field
+    -- @return Whether it's a value, the value (nil for "nil": take it away), and the reason when it isn't ("bad", "one")
+    function parse_value(typed: string)
+
+        local word = trim(typed)
+
+        -- A bare word is text, also when it's a name Lua knows (string, table, function, util, ...)
+        if word:match("^[%a_][%w_]*$") and word ~= "nil" and word ~= "true" and word ~= "false" then
+            return true, word, nil
+        end
+
+        local args, count, err = args_parser.parse(typed)
+
+        if err ~= nil then
+            return false, nil, "bad"
+        end
+
+        if count ~= 1 then
+            return false, nil, "one"
+        end
+
+        local value = args[1]
+        local kind = type(value)
+
+        -- Only what JSON keeps in a field: tables are made apart
+        if value ~= nil and kind ~= "string" and kind ~= "number" and kind ~= "boolean" then
+            return false, nil, "bad"
+        end
+
+        return true, value, nil
+    end
+
+    -- A parameter typed as the code writes one: "handle", "handle: int", "speed: float = 1.5", "on = true"
+    -- @return { name, type, default } (type and default only when written); nil when it doesn't start with a name
+    function parse_param(typed: string): ?table
+
+        local name, rest = typed:match("^%s*([%a_][%w_]*)%s*(.-)%s*$")
+
+        if name == nil then
+            return nil
+        end
+
+        local param = { name = name }
+        local before, default = rest:match("^(.-)%s*=%s*(.*)$")
+
+        if before == nil then
+            before = rest
+        end
+
+        local type_text = before:match("^:%s*(.-)%s*$")
+
+        -- Something that is neither ": type" nor "= default"
+        if before ~= "" and type_text == nil then
+            return nil
+        end
+
+        if type_text ~= nil and type_text ~= "" then
+            param.type = type_text
+        end
+
+        if default ~= nil and default ~= "" then
+            param.default = default
+        end
+
+        return param
+    end
+
+    -- Tables
+
+    -- @return How many entries the table has (the list part and the named ones)
+    function count(tbl: table): int
+
+        local count = 0
+
+        for _ in pairs(tbl) do
+            count += 1
+        end
+
+        return count
+    end
+
+    -- @return The table's entries in the order they're shown and saved: the list part, then the other keys -
+    -- the ones of KEY_ORDER first, the rest by name: { key, value }
+    function entries(tbl: table): table
+
+        local entries = {}
+        local length = #tbl
+        local keys = {}
+
+        for index = 1, length do
+            table.insert(entries, { key = index, value = tbl[index] })
+        end
+
+        for key in pairs(tbl) do
+            if math.type(key) ~= "integer" or key < 1 or key > length then
+                table.insert(keys, key)
+            end
+        end
+
+        table.sort(keys, function(a, b)
+            local rank_a, rank_b = KEY_RANK[a], KEY_RANK[b]
+            if rank_a ~= nil and rank_b ~= nil then
+                return rank_a < rank_b
+            end
+            if rank_a ~= nil or rank_b ~= nil then
+                return rank_a ~= nil
+            end
+            return tostring(a) < tostring(b)
+        end)
+
+        for _, key in ipairs(keys) do
+            table.insert(entries, { key = key, value = tbl[key] })
+        end
+
+        return entries
+    end
+
+    -- Adds a value: "name = value" puts it under the name, "value" alone at the end of the list
+    -- @param id The file's id, and place: the table's place in it (place_of); a file without a shape takes anything
+    -- @return Whether it was added, the reason when not ("bad", "one", "nil", "key", "tables_only"), and for "key"
+    -- the keys that may be there
+    function add_value(tbl: table, typed: string, id: string = "", place: string = "other")
+
+        -- Functions and parameters are tables: a value alone has no place among them
+        if place == "params" or (place == "root" and SHAPES[id] ~= nil) then
+            return false, "tables_only"
+        end
+
+        local name, written = typed:match("^%s*([^=]-)%s*=%s*(.-)%s*$")
+
+        if name == nil or name == "" then
+            name, written = nil, typed
+        end
+
+        if name ~= nil then
+            local allowed, keys = key_allowed(id, place, name)
+            if not allowed then
+                return false, "key", keys
+            end
+        end
+
+        local ok, value, why = self:parse_value(written)
+
+        if not ok then
+            return false, why
+        end
+
+        if value == nil then
+            return false, "nil"
+        end
+
+        if name == nil then
+            table.insert(tbl, value)
+        else
+            tbl[name] = value
+        end
+
+        return true
+    end
+
+    -- Adds a table: under the name typed, or at the end of the list when nothing is typed. In a file with a
+    -- shape it's made ready: a function's entry at the root (path / params / returns), a parameter in params
+    -- (typed as the code writes one: "speed: float = 1.5")
+    -- @param id The file's id, and place: the table's place in it (place_of)
+    -- @return Whether it was added, the reason when not ("name", "param", "key"), and for "key" the keys that may be there
+    function add_table(tbl: table, typed: string, id: string = "", place: string = "other")
+
+        local name = trim(typed)
+
+        if place == "params" then
+            local param = self:parse_param(name)
+            if param == nil then
+                return false, "param"
+            end
+
+            table.insert(tbl, param)
+            return true
+        end
+
+        if place == "root" and SHAPES[id] ~= nil then
+            if name == "" then
+                return false, "name"
+            end
+
+            tbl[name] = SHAPES[id].entry()
+            return true
+        end
+
+        if name == "" then
+            table.insert(tbl, {})
+            return true
+        end
+
+        local allowed, keys = key_allowed(id, place, name)
+        if not allowed then
+            return false, "key", keys
+        end
+
+        tbl[name] = {}
+
+        return true
+    end
+
+    -- Takes an entry away: by its name, or by its number in a list
+    -- @param typed The name or the number
+    -- @return Whether there was such an entry
+    function remove(tbl: table, typed: string): bool
+
+        local key = trim(typed)
+        local number = math.tointeger(tonumber(key))
+
+        if number ~= nil and tbl[number] ~= nil and number >= 1 and number <= #tbl then
+            table.remove(tbl, number)
+            return true
+        end
+
+        if tbl[key] ~= nil then
+            tbl[key] = nil
+            return true
+        end
+
+        return false
+    end
+
+    -- Sets an entry to what was typed in its field
+    -- @return Whether it was done, the reason when not, and whether the entry was taken away (nil typed)
+    function set(tbl: table, key, typed: string)
+
+        local ok, value, why = self:parse_value(typed)
+
+        if not ok then
+            return false, why, false
+        end
+
+        if value == nil and math.type(key) == "integer" and key >= 1 and key <= #tbl then
+            table.remove(tbl, key)
+            return true, nil, true
+        end
+
+        tbl[key] = value
+
+        return true, nil, value == nil
+    end
+
+end
+
+return Atdar.modules.add(new FileEditor())

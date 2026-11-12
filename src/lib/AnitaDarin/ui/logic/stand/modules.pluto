@@ -57,6 +57,44 @@ function module.number_of(name: string): int
     return 0
 end
 
+-- Which modules are listed
+
+-- Whether the list shows the system modules too (Show System Modules). For the session, like the categories
+local show_system = false
+
+function module.shows_system(): bool
+    return show_system
+end
+
+function module.set_show_system(on: bool): void
+    show_system = on
+end
+
+-- Whether the list and Stop All / Reload Changed / Reload All reach the module: a system one only while
+-- shows_system, so the menus' own modules aren't stopped by a click meant for the user's
+function module.is_listed(name: string): bool
+
+    if show_system then
+        return true
+    end
+
+    return not Atdar.modules.is_system(name)
+end
+
+-- @return The names of the modules the list shows, in registration order: system ones only while shows_system
+function module.listed_names(): table
+
+    local names = {}
+
+    for _, name in ipairs(Atdar.modules.names()) do
+        if module.is_listed(name) then
+            table.insert(names, name)
+        end
+    end
+
+    return names
+end
+
 -- "Module 1": how notices name a module, short so they fit the game's feed
 function module.short_name(name: string): string
     return text("entry.short"):format(module.number_of(name))
@@ -476,11 +514,25 @@ function module.run_action(action: string, name: string): void
     ACTIONS[action](name)
 end
 
--- Stops every module; on_tick run by hand and the functions' loops stop too: nothing of the modules keeps running
+-- Stops every listed module; on_tick run by hand and the functions' loops stop too: nothing of them keeps
+-- running. The system modules stop only while shown (is_listed)
 function module.stop_all(): void
-    tick_runs.stop_all()
-    module.stop_loops(nil)
-    Atdar.modules.stop()
+
+    local names = module.listed_names()
+
+    if show_system then
+        tick_runs.stop_all()
+        module.stop_loops(nil)
+        Atdar.modules.stop()
+        log:notify(text("stop_all.done"))
+        return
+    end
+
+    -- The last registered first, like Atdar.modules.stop
+    for i = #names, 1, -1 do
+        ACTIONS.stop(names[i])
+    end
+
     log:notify(text("stop_all.done"))
 end
 
@@ -490,7 +542,7 @@ function module.reload_modules(wanted: function, strings: string): table
 
     local reloaded = {}
 
-    for _, name in ipairs(Atdar.modules.names()) do
+    for _, name in ipairs(module.listed_names()) do
         if wanted(name) then
             ACTIONS.reload(name)
             table.insert(reloaded, name)

@@ -1,8 +1,10 @@
 -- Modules list in the script's settings section, shown only in debug mode: each module a list with its
--- status, deps and error, Start / Restart / Stop / Reload, and under the Functions divider the module's own
--- functions to call by hand (Module.functions_of): a list for each, with a field for every parameter by the type
--- the module's code says for it (ui/stand/core/arguments). Strings live in core/language under "modules".
--- Restart runs the same module again; Reload re-reads its file, so code changes apply
+-- status, deps and error, Start / Restart / Stop / Reload, and under the Options divider the Function Call list
+-- with the module's own functions to call by hand (Module.functions_of): a list for each, with a field for every
+-- parameter by the type the module's code says for it (ui/stand/core/arguments). The Options divider and Function
+-- Call are shown only while the module runs. Strings live in core/language under "modules".
+-- Restart runs the same module again; Reload re-reads its file, so code changes apply. The system modules
+-- (modules/systems, used by the script's menus) are listed only while Show System Modules is on
 --
 -- The list's items are made when it's opened and removed when the user goes back out of it, so nothing
 -- of it is in the menu while no one looks. In the script's settings the list shows in debug mode only; it's
@@ -28,6 +30,7 @@ local arguments = Atdar.loader.load("ui/stand/core/arguments")
 local values = Atdar.loader.load("ui/stand/modules/values")
 -- A module's on_tick run by hand (its on_tick() list)
 local ticks = Atdar.loader.load("ui/stand/modules/ticks")
+local live = Atdar.loader.load("ui/stand/core/live")
 
 local log = new Logger("Modules")
 
@@ -48,7 +51,8 @@ local loop_statuses = {}
 local loop_toggles = {}
 
 -- Statuses also change on their own (a module can fail in its tick), so Refresh and every action
--- update all entries. An item may belong to a section that was already removed: its update does nothing
+-- update all entries. An item may belong to a section that was already removed: its update does nothing.
+-- The items shown while a module runs follow too: its Function Call list, Debug's Call Function
 local function refresh(): void
 
     local modules = Atdar.modules
@@ -67,6 +71,8 @@ local function refresh(): void
             end
         end
     end
+
+    live.refresh()
 end
 
 -- What the on_tick runs need of this list
@@ -350,6 +356,8 @@ local function fill_module(entry: table, name: string): void
 
     local mod = Atdar.modules.get(name)
     local ui = entry:scope("modules")
+    -- Its functions are shown only while it runs: a stopped or failed module has nothing to call them on
+    local running = || -> Atdar.modules.is_running(name)
 
     view.statuses[name] = ui:divider({ name = logic.status_line(mod) })
 
@@ -363,10 +371,11 @@ local function fill_module(entry: table, name: string): void
         end })
     end
 
-    ui:divider({ name = label("options.divider") })
+    -- Nothing else is under it: hidden with the list
+    ui:divider({ name = label("options.divider"), shown_when = running })
 
     -- The module's functions to call by hand, with the toggle that decides how they're laid out
-    local calls = ui:list({ key = "function_call" })
+    local calls = ui:list({ key = "function_call", shown_when = running })
 
     -- Before the functions, so making them again (below) leaves it where it is
     calls:toggle({ key = "no_categories", default = logic.categories_off(name), on_change = function(on)
@@ -403,19 +412,53 @@ local function add_entry(node: table, name: string): void
     fill_module(entry, name)
 end
 
+-- Where a module's list goes: a system module into the System Modules list, made with the first of them
+local function parent_of(node: table, name: string): table
+
+    if not Atdar.modules.is_system(name) then
+        return node
+    end
+
+    if view.system == nil then
+        view.system = node:list({ name = label("system.name"), help = label("system.help"), on_back = refresh,
+            on_open = refresh })
+    end
+
+    return view.system
+end
+
 -- Refresh: the new module files are run and their modules join the end of the list (the list the user is
 -- in isn't made again: Stand doesn't take that cleanly), then every status is updated
 local function refresh_with_new(node: table): void
 
     logic.load_new_files()
 
-    for _, name in ipairs(Atdar.modules.names()) do
+    for _, name in ipairs(logic.listed_names()) do
         if view.entries[name] == nil then
-            add_entry(node, name)
+            add_entry(parent_of(node, name), name)
         end
     end
 
     refresh()
+end
+
+-- The modules' lists, the system ones in a System Modules list of their own only while Show System Modules is on
+local function fill_entries(node: table): void
+
+    local names = logic.listed_names()
+
+    view.entries = {}
+    view.statuses = {}
+    view.sections = {}
+    view.system = nil
+
+    for _, name in ipairs(names) do
+        add_entry(parent_of(node, name), name)
+    end
+
+    if #names == 0 then
+        node:scope("modules"):readonly_name({ name = label("empty") })
+    end
 end
 
 -- The open list's items: actions, then a list per module
@@ -442,20 +485,24 @@ local function fill(node: table): void
 
     ui:action({ key = "reload_all", on_click = || -> reloaded(logic.reload_all()) })
 
+    -- The modules' lists below are made again: the list the user is in stays
+    local entries = nil
+
+    ui:toggle({ key = "show_system", default = logic.shows_system(), on_change = function(on)
+        if clicks.is_stopping() or logic.shows_system() == on then
+            return
+        end
+
+        logic.set_show_system(on)
+        entries.rebuild()
+    end })
+
     ui:divider({ name = label("list.divider") })
 
     -- Files added since the start are run first, so their modules are in the list
     logic.load_new_files()
 
-    local names = Atdar.modules.names()
-
-    for _, name in ipairs(names) do
-        add_entry(node, name)
-    end
-
-    if #names == 0 then
-        ui:readonly_name({ name = label("empty") })
-    end
+    entries = node:section(fill_entries)
 end
 
 -- Going back out: the items go; loops and runs by hand keep going (their Status shows again on opening)

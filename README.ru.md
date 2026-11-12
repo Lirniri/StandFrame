@@ -57,7 +57,7 @@ python build.py clean --all
 | `src/AnitaDarin.pluto` | Файл запуска; по его имени находятся папки библиотеки и данных |
 | `src/lib/AnitaDarin/core/` | Загрузчик, профили, переводы, логирование, файловая система, проверки и менеджер модулей |
 | `src/lib/AnitaDarin/features/` | Реализация фич и их реестр |
-| `src/lib/AnitaDarin/modules/` | Встроенные модули, включая `VehicleManager` |
+| `src/lib/AnitaDarin/modules/` | Встроенные модули, включая `VehicleManager`; в `modules/systems/` системные модули, которыми пользуются меню (`CallFunction`, `FileEditor`), в списке Modules они скрыты, пока не включено «Отображать системные» |
 | `src/lib/AnitaDarin/natives/` | Обёртки игровых нативов, сгруппированные по пространствам имён |
 | `src/lib/AnitaDarin/parsers/` | Парсеры цветов, JSON, исходников Pluto и имён команд Stand |
 | `src/lib/AnitaDarin/ui/stand/` | Меню Stand, настройки, профили, командная строка и отладка модулей |

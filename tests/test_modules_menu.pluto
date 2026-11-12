@@ -119,8 +119,13 @@ stand.equal(stand.name_of(entry_a), "1: a: stopped", "Stop stops the module")
 stand.equal(stand.name_of(entry_b), "2: b: stopped", "and what needs it; the entries are refreshed")
 stand.equal(stops, 1, "b's on_stop ran")
 stand.equal(stand.name_of(entry_a.children[1]), "Status: stopped", "the Status divider follows the module's status")
+stand.equal(names_in(entry_a), "Status: stopped | Start | Restart | Stop | Reload",
+    "stopped: the Options divider and the Function Call list are hidden")
+stand.equal(names_in(entry_b), "Status: stopped | Start | Restart | Stop | Reload", "also in b, stopped with it")
 stand.click(stand.child(entry_b, "Start"))
 stand.equal(stand.name_of(entry_a), "1: a: running", "Start on b starts its dep a too")
+stand.check(names_in(entry_a):find("| Options | Function Call", 1, true) and names_in(entry_b):find("| Options | Function Call", 1, true),
+    "running again: both have them back")
 
 -- ─── Functions: the module's own, a button without parameters, a text field with ─────────────
 
@@ -582,6 +587,12 @@ edit_field.on_change('"b"', 0)
 stand.equal(edited[2], "b", "a value typed in it goes into the table")
 stand.check(stand.find_log('[2]') and stand.find_log('"b"') and not stand.find_log("ERROR"), "and the change is told, the new value in quotes")
 stand.click(stand.child(add_node, "Change Variable Values"))
+-- The panel of a function in a table is Call Function's: it calls through the system module CallFunction,
+-- loaded as the bootstrap does (it and FileEditor are system modules: not listed, the numbers above stay)
+stand.equal(Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/"), 2, "the system modules load")
+-- Only these two: start() would bring back the modules stopped above
+Atdar.modules.start_module("CallFunction")
+Atdar.modules.start_module("FileEditor")
 -- Call Functions In Tables: a function in the table is a list with a field for each parameter it says
 local table_calls = {}
 local with_functions = { go = function(speed: int, note: string) table.insert(table_calls, table.pack(speed, note)) end,
@@ -604,6 +615,15 @@ for _, child in stand.child(vague_list, "Arguments").children do
 end
 stand.check(table.concat(vague_names, " | "):find("Arguments", 1, true), "one that says nothing of its parameters: the one Arguments field")
 stand.click(stand.child(add_node, "Call Functions In Tables"))
+-- Without CallFunction running there's nothing to call through: a function in the table is a plain line
+Atdar.modules.stop_module("CallFunction")
+stand.clear_logs()
+stand.click(stand.child(add_node, "Call Functions In Tables"))
+local plain_go = stand.find_item(stand.find_item(add_node, "Value (2)"), "go")
+stand.check(plain_go ~= nil and plain_go.kind ~= "list", "CallFunction stopped: a function in the table is a line, not a list")
+stand.check(not stand.find_log("ERROR"), "and nothing fails")
+stand.click(stand.child(add_node, "Call Functions In Tables"))
+Atdar.modules.start_module("CallFunction")
 counter.add = function() return { 1, "a", { x = 2 } } end
 stand.frame()
 -- Types in words: a table by what it holds
@@ -803,12 +823,14 @@ for number, name in { "a", "b", "counter", "ticker", "reloader" } do
     stand.equal(stand.name_of(stand.find_item(list, caption)), $"{caption}stopped", $"Stop All stops {name}")
 end
 stand.equal(stand.name_of(entry_b.children[1]), "Status: stopped", "and the Status dividers follow")
+stand.equal(stand.child(entry_b, "Function Call").visible, false, "and the Function Call lists are hidden")
 stand.check(stand.find_log("All modules stopped"), "Stop All is told")
 stand.frame(2)
 stand.equal(ticks, 0, "on_tick run by hand stops too")
 stand.equal(stand.name_of(tick_status), "Status: stopped", "its Status too")
 stand.click(stand.child(entry_b, "Start"))
 stand.equal(stand.name_of(entry_b), "2: b: running", "a module starts again after Stop All")
+stand.equal(stand.child(entry_b, "Function Call").visible, true, "its Function Call list is back")
 
 -- Open Folder opens the copy Stand runs
 stand.click(stand.find_item(list, "Open Folder"))
@@ -1103,5 +1125,65 @@ mix_fields.whole.on_change("3", 4)
 stand.equal(got, nil, "Stand's own change of a field calls nothing")
 mix_fields.whole.on_change("3", 0)
 stand.check(got ~= nil and got[1] == 3, "typing in a field calls the function")
+
+-- ─── System modules: listed only while Show System Modules is on ─────────────
+
+local systems_dir = stand.tmpdir("modules_menu_systems")
+io.makedirs($"{systems_dir}systems/Helper")
+stand.write_file($"{systems_dir}systems/Helper/Helper.pluto",
+    "local Module = Atdar.loader.load('core/module')\nreturn Atdar.modules.add(new Module({ name = 'sys_helper' }))\n")
+Atdar.modules.load_dir(systems_dir)
+Atdar.modules.start()
+stand.check(Atdar.modules.is_system("sys_helper"), "a module from systems\\ is a system one")
+stand.back(list)
+stand.click(list)
+local show_system = stand.child(list, "Show System Modules")
+stand.check(show_system ~= nil and show_system.kind == "toggle" and show_system.value == false,
+    "Show System Modules: a toggle, off at first")
+stand.check(names_in(list):find("Reload All | Show System Modules | Modules | 1: a: ", 1, true),
+    "right under Reload All, above the Modules divider")
+stand.equal(stand.find_item(list, "sys_helper"), nil, "off: the system module isn't listed")
+stand.check(stand.find_item(list, "2: b: ") ~= nil, "the others are")
+stand.equal(stand.child(list, "System Modules"), nil, "off: no System Modules list")
+local count_off = #list.children
+stand.click(show_system)
+local system_list = stand.child(list, "System Modules")
+stand.check(system_list ~= nil and system_list.kind == "list", "on: the System Modules list")
+stand.check(stand.find_item(system_list, "sys_helper") ~= nil, "the system module is in it at once")
+stand.check(stand.find_item(system_list, "CallFunction") ~= nil and stand.find_item(system_list, "FileEditor") ~= nil,
+    "with the script's own system modules (loaded above)")
+stand.equal(#list.children, count_off + 1, "the other entries are made once, not twice: one list more")
+stand.click(show_system)
+stand.equal(stand.find_item(list, "sys_helper"), nil, "off again: gone")
+stand.equal(stand.child(list, "System Modules"), nil, "the System Modules list too")
+stand.equal(#list.children, count_off, "and only it")
+stand.click(stand.child(list, "Refresh"))
+stand.equal(stand.find_item(list, "sys_helper"), nil, "Refresh doesn't bring it back while off")
+stand.click(show_system)
+stand.back(list)
+stand.click(list)
+stand.check(stand.child(list, "Show System Modules").value == true and stand.find_item(list, "sys_helper") ~= nil,
+    "the choice stays when the list is opened again")
+local helper_entry = stand.find_item(list, "sys_helper")
+stand.click(stand.child(helper_entry, "Stop"))
+stand.check(stand.name_of(helper_entry):find("stopped", 1, true), "a system module's entry works like the others")
+Atdar.modules.start_module("sys_helper")
+
+-- Stop All / Reload All reach the system modules only while they're shown
+local helper = Atdar.modules.get("sys_helper")
+stand.click(stand.child(list, "Stop All"))
+stand.equal(helper.status, "stopped", "on: Stop All stops a system module too")
+Atdar.modules.start_module("sys_helper")
+Atdar.modules.start_module("a")
+stand.click(stand.child(list, "Show System Modules"))
+stand.click(stand.child(list, "Stop All"))
+stand.equal(Atdar.modules.get("sys_helper").status, "running", "off: Stop All leaves a system module running")
+stand.equal(Atdar.modules.get("a").status, "stopped", "and stops the others")
+stand.click(stand.child(list, "Reload All"))
+stand.equal(Atdar.modules.get("sys_helper"), helper, "off: Reload All doesn't reload a system module")
+stand.click(stand.child(list, "Show System Modules"))
+stand.click(stand.child(list, "Reload All"))
+stand.check(Atdar.modules.get("sys_helper") ~= helper, "on: Reload All reloads it too")
+stand.click(stand.child(list, "Show System Modules"))
 
 stand.finish()

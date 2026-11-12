@@ -470,20 +470,28 @@
         },
         "stop_all": {
             "name": "Stop All",
-            "help": "Stops every module and every loop started by hand",
+            "help": "Stops every module and every loop started by hand; the system modules only while Show System Modules is on",
             "done": "All modules stopped"
         },
         "reload_changed": {
             "name": "Reload Changed",
-            "help": "Reloads the modules whose files changed since they were loaded (marked \"file changed\")",
+            "help": "Reloads the modules whose files changed since they were loaded (marked \"file changed\"); the system modules only while Show System Modules is on",
             "done": "Modules reloaded: %d",
             "none": "No changed modules"
         },
         "reload_all": {
             "name": "Reload All",
-            "help": "Reloads every module loaded from a file, even if the file didn't change, and starts it",
+            "help": "Reloads every module loaded from a file, even if the file didn't change, and starts it; the system modules only while Show System Modules is on",
             "done": "Modules reloaded: %d",
             "none": "No modules loaded from files"
+        },
+        "system": {
+            "name": "System Modules",
+            "help": "The script's own modules (from modules/systems), which its menus use"
+        },
+        "show_system": {
+            "name": "Show System Modules",
+            "help": "Shows the script's system modules (the ones in modules/systems, which the menus use) in a System Modules list; Stop All and Reload act on them only while it's on"
         },
         "list": {
             "divider": "Modules"
