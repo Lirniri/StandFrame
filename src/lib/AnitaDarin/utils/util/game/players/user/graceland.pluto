@@ -78,6 +78,7 @@ local settings = {
     landing_time = 0.5,
     wall_protection = true,
     flag_protection = false,
+    memory_control = true,
     facing = "camera",
     stuck_ragdoll_ms = 1500,
     debug = false,
@@ -142,6 +143,15 @@ end
 -- IS_STANDING tells the ground with or without this, lower than 4 m: it was seen as 0 in the air, 1 on the ground)
 function module.set_flag_protection(toggle: bool): void
     settings.flag_protection = toggle
+end
+
+-- Whether the fall task of the game is steered through the memory too (air_control: the flags Stand's own Graceland puts
+-- in it, Atdar.memory.ped.set_air_control), on by default: no ragdoll is needed to steer the fall then. It reads the
+-- memory by the offsets of a build of the game (Atdar.memory.task.offsets): if they are wrong nothing is found and
+-- only the ragdoll steering is left, so off is the way back. It is for the plain fall, before the ragdoll starts or
+-- without one (a big set_ragdoll_distance); look at the log with set_debug
+function module.set_memory_control(toggle: bool): void
+    settings.memory_control = toggle
 end
 
 -- Where the player faces when the ragdoll of a fall is ended (for the landing or a wall): "camera" - where the camera
@@ -505,6 +515,20 @@ local function update_frame(): void
     state.last_ms = now
 end
 
+-- Switches the memory steering (air_control) as the setting says, so a change of it is taken at once
+local function sync_air_control(): void
+
+    local air_control = Atdar.util.game.players.user.air_control
+
+    if settings.memory_control then
+        air_control.set_debug(settings.debug)
+        air_control.enable()
+        return
+    end
+
+    air_control.disable()
+end
+
 -- One frame of it. The game forgets what is set on a respawn, so everything is set again every frame
 local function apply(): void
 
@@ -522,6 +546,7 @@ local function apply(): void
 
     sync_ped(ped)
     update_frame()
+    sync_air_control()
     state.airborne = airborne
     remember_heading(ped, airborne)
     land_safely(ped, airborne)
@@ -576,6 +601,7 @@ local function release(): void
     local ped = n_player.get_ped_id()
 
     Atdar.util.game.players.user.set_fall_protection(false)
+    Atdar.util.game.players.user.air_control.disable()
     drop_flags(ped)
 
     state.blocked = false

@@ -3,8 +3,8 @@
 -- sub tasks), and the offsets are those of that source, so they belong to a build of the game: when the game
 -- changes, they are what stops working. They are in module.offsets, change them there without touching the code.
 --
--- Everything is read through guards (a pointer must look like one, the walk is bounded), and nothing is written
--- except by set_fall_flags. If a step doesn't look right, the functions give nil instead of reading further.
+-- Everything is read through guards (a pointer must look like one, the walk is bounded). This file only reads: what is
+-- written to a task is in Atdar.memory.ped. If a step doesn't look right, the functions give nil instead of reading further.
 local module = {}
 
 module.TASK_FALL = 423
@@ -119,32 +119,6 @@ function module.describe(ped: int): string
     end
 
     return table.concat(types, " > ")
-end
-
--- The flags of the fall task of the ped, nil if it doesn't fall in that task
-function module.get_fall_flags(ped: int): ?int
-
-    local task = module.find_task(ped, module.TASK_FALL)
-
-    if task == nil then
-        return nil
-    end
-
-    return memory.read_int(task + module.offsets.fall_flags)
-end
-
--- Sets the flags of the fall task of the ped
--- @return Whether the task was there and the flags were written
-function module.set_fall_flags(ped: int, flags: int): bool
-
-    local task = module.find_task(ped, module.TASK_FALL)
-
-    if task == nil then
-        return false
-    end
-
-    memory.write_int(task + module.offsets.fall_flags, flags)
-    return true
 end
 
 return module

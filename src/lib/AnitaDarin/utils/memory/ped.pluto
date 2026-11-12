@@ -1,0 +1,96 @@
+-- What a ped's tasks hold, read and written in the game's memory, as functions in the way of the natives (the ped is
+-- the first argument). It is not a native: the offsets are those of a build of the game (Atdar.memory.task.offsets),
+-- and when they are wrong the functions do nothing and say so by their result.
+local module = {}
+
+-- The bits of the flags of the fall task (CTaskFall). The names are those of a comment in Stand-OSS, not checked
+-- against the game: 0xC00 is the turn in the air (FF_DisableNMFall + FF_HasAirControl), 0x1000 damps the vertical
+-- speed (FF_DampZVelocity), 0x10000 is the landing of the beast (FF_BeastFall)
+module.FALL_FLAG = {
+    AIR_CONTROL = 0xC00,
+    DAMP_Z = 0x1000,
+    BEAST_FALL = 0x10000,
+}
+
+-- What Stand's Graceland puts in the fall task
+module.FALL_FLAG_GRACELAND = 0x11C00
+
+-- Get
+
+-- The flags of the fall task of the ped, nil if it doesn't fall in that task
+function module.get_fall_flags(ped: int): ?int
+
+    local task = Atdar.memory.task.find_task(ped, Atdar.memory.task.TASK_FALL)
+
+    if task == nil then
+        return nil
+    end
+
+    return memory.read_int(task + Atdar.memory.task.offsets.fall_flags)
+end
+
+-- Set
+
+-- Sets the flags of the fall task of the ped; they last as long as the task does, so a fall needs it once (or each
+-- frame, as the game may set its own bits again)
+-- @return Whether the task was there and the flags were written
+function module.set_fall_flags(ped: int, flags: int): bool
+
+    local task = Atdar.memory.task.find_task(ped, Atdar.memory.task.TASK_FALL)
+
+    if task == nil then
+        return false
+    end
+
+    memory.write_int(task + Atdar.memory.task.offsets.fall_flags, flags)
+    return true
+end
+
+-- Puts the bits in the flags of the fall task, the others stay
+-- @return The flags before, nil if the ped doesn't fall in that task
+function module.add_fall_flags(ped: int, bits: int): ?int
+
+    local flags = module.get_fall_flags(ped)
+
+    if flags == nil then
+        return nil
+    end
+
+    if flags & bits ~= bits then
+        module.set_fall_flags(ped, flags | bits)
+    end
+
+    return flags
+end
+
+-- Takes the bits out of the flags of the fall task, the others stay
+-- @return Whether the task was there
+function module.remove_fall_flags(ped: int, bits: int): bool
+
+    local flags = module.get_fall_flags(ped)
+
+    if flags == nil then
+        return false
+    end
+
+    if flags & bits ~= 0 then
+        module.set_fall_flags(ped, flags & ~bits)
+    end
+
+    return true
+end
+
+-- Steering in a fall without a ragdoll: puts the flags of Stand's Graceland in the fall task (toggle true), or takes
+-- them out (false). Only the fall that goes now: the next fall starts without them
+-- @param bits Which bits, FALL_FLAG_GRACELAND by default
+-- @return Whether the ped falls in that task
+function module.set_air_control(ped: int, toggle: bool, bits: int = module.FALL_FLAG_GRACELAND): bool
+
+    if toggle then
+        return module.add_fall_flags(ped, bits) ~= nil
+    end
+
+    return module.remove_fall_flags(ped, bits)
+end
+
+return module

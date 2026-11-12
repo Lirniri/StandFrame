@@ -13,17 +13,17 @@ local log = new Logger("AirControl")
 --     air.set_flags(air.AIR_CONTROL)   -- only the steering, without the damping and the landing
 --     air.disable()
 --
--- The flags are written from the memory (Atdar.memory.task), once per frame to the fall task of the local player,
+-- The flags are written from the memory (Atdar.memory.ped), once per frame to the fall task of the local player,
 -- where Stand does it on each update of the task: it can be late by a frame. If the offsets of the memory belong to
 -- another build of the game, nothing is found and nothing is written: look at the log (debug) and describe()
 local module = {}
 
-module.AIR_CONTROL = 0xC00
-module.DAMP_Z = 0x1000
-module.BEAST_FALL = 0x10000
+module.AIR_CONTROL = Atdar.memory.ped.FALL_FLAG.AIR_CONTROL
+module.DAMP_Z = Atdar.memory.ped.FALL_FLAG.DAMP_Z
+module.BEAST_FALL = Atdar.memory.ped.FALL_FLAG.BEAST_FALL
 
 local settings = {
-    flags = module.AIR_CONTROL | module.DAMP_Z | module.BEAST_FALL,
+    flags = Atdar.memory.ped.FALL_FLAG_GRACELAND,
     debug = false,
 }
 
@@ -63,9 +63,9 @@ end
 -- One frame
 local function tick(): void
 
-    local task = Atdar.memory.task
+    local mem_ped = Atdar.memory.ped
     local ped = Atdar.natives.player.get_ped_id()
-    local flags = task.get_fall_flags(ped)
+    local flags = mem_ped.get_fall_flags(ped)
 
     if flags == nil then
         state.in_fall = false
@@ -88,7 +88,7 @@ local function tick(): void
     end
 
     state.added = state.added | (wanted & ~flags)
-    task.set_fall_flags(ped, flags | wanted)
+    mem_ped.set_fall_flags(ped, flags | wanted)
 
     if settings.debug then
         log:debug($"flags {hex(flags)} -> {hex(flags | wanted)}")
@@ -98,12 +98,10 @@ end
 -- Takes out the bits it put in the fall that goes on now
 local function release(): void
 
-    local task = Atdar.memory.task
     local ped = Atdar.natives.player.get_ped_id()
-    local flags = task.get_fall_flags(ped)
 
-    if flags ~= nil and state.added ~= 0 then
-        task.set_fall_flags(ped, flags & ~state.added)
+    if state.added ~= 0 then
+        Atdar.memory.ped.remove_fall_flags(ped, state.added)
     end
 
     state.added = 0
