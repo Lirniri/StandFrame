@@ -144,7 +144,9 @@ local class DoubleJump extends Feature
             wanted = true
         end
 
-        if wanted and not self.graceland_on then
+        -- Graceland that is on already is somebody else's (the user's own): it isn't taken over, so it isn't
+        -- switched off at the landing either
+        if wanted and not self.graceland_on and not graceland.is_enabled() then
             graceland.enable()
             self.graceland_on = true
             log:debug("graceland on")
