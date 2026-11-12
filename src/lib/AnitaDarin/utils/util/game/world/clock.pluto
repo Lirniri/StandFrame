@@ -1,0 +1,56 @@
+-- The game's clock, as Stand's Clock commands: set the time, hold it, change how fast it goes.
+--
+--     local clock = Atdar.util.game.world.clock
+--
+--     clock.set(23, 30)           -- the time now (hour, minute, second)
+--     clock.lock(12, 0)           -- the time stays 12:00 until unlock()
+--     clock.unlock()
+--     clock.set_speed(500)        -- a minute of the game takes 500 ms (2000 is the game's own); online it is the session's clock
+--     clock.reset_speed()
+local ticker = Atdar.util.game.players.user.ticker
+
+local module = {}
+
+local locked = { hour = 12, minute = 0, second = 0 }
+
+local function tick(): void
+    Atdar.natives.world.time.set_time(locked.hour, locked.minute, locked.second)
+end
+
+local lock_control = ticker.make("ClockLock", tick)
+
+-- Sets the time now
+function module.set(hour: int, minute: int = 0, second: int = 0): void
+    Atdar.natives.world.time.set_time(hour, minute, second)
+end
+
+-- Holds the time: it is set again every frame, so it stays
+function module.lock(hour: int, minute: int = 0, second: int = 0): void
+    locked.hour = hour
+    locked.minute = minute
+    locked.second = second
+    lock_control.enable()
+end
+
+-- Lets the time go on
+function module.unlock(): void
+    lock_control.disable()
+end
+
+-- Whether the time is held
+function module.is_locked(): bool
+    return lock_control.is_enabled()
+end
+
+-- How long a minute of the game is, in milliseconds (2000 is the game's own): the clock of the session is overridden
+-- @param ms Milliseconds a minute of the game takes, more than 0
+function module.set_speed(ms: int): void
+    Atdar.natives.network.override_clock_rate(ms)
+end
+
+-- The game's own speed back, and the clock of the session
+function module.reset_speed(): void
+    Atdar.natives.network.clear_clock_time_override()
+end
+
+return module

@@ -1,0 +1,44 @@
+-- The damage the player does is multiplied (Stand's Damage): weapons, melee and vehicles each by their own number, put
+-- every frame (the game puts them back when it wants). 1.0 is the game's own; at disable they are 1.0 again.
+--
+--     local damage = Atdar.util.game.players.user.damage
+--
+--     damage.set(10.0)                -- weapons ten times, melee and vehicles as before
+--     damage.set(10.0, 5.0, 2.0)      -- weapons, melee, vehicles
+--     damage.enable()
+--     damage.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local multipliers = { weapon = 1.0, melee = 1.0, vehicle = 1.0 }
+
+local function apply(weapon: float, melee: float, vehicle: float): void
+
+    local n_player = Atdar.natives.player
+    local player = n_player.get_id()
+
+    n_player.weapon.set_weapon_damage_modifier(player, weapon)
+    n_player.weapon.set_melee_weapon_damage_modifier(player, melee, false)
+    n_player.set_vehicle_damage_modifier(player, vehicle)
+end
+
+local function tick(): void
+    apply(multipliers.weapon, multipliers.melee, multipliers.vehicle)
+end
+
+local function release(): void
+    apply(1.0, 1.0, 1.0)
+end
+
+local control = ticker.make("Damage", tick, release)
+
+-- The multipliers, any time: a number left out keeps the one it had
+-- @param weapon The damage of weapons
+-- @param melee The damage of melee
+-- @param vehicle The damage of vehicles
+function control.set(weapon: ?float, melee: ?float, vehicle: ?float): void
+    multipliers.weapon = weapon ?? multipliers.weapon
+    multipliers.melee = melee ?? multipliers.melee
+    multipliers.vehicle = vehicle ?? multipliers.vehicle
+end
+
+return control

@@ -1,0 +1,74 @@
+-- Flying like with a noclip (the core loop of Stand's Levitate): the ped is held still in the air and moved every frame
+-- along the camera: forward with the stick, sideways with it, up with Jump and down with Duck. It faces where the camera
+-- looks. At disable the ped is free again.
+--
+--     local fly = Atdar.util.game.players.user.levitate
+--
+--     fly.set_speed(15.0)      -- metres a second, 10 by default
+--     fly.enable()
+--     fly.disable()
+--
+-- Stand's own has many more settings and a mode for the vehicle: this is the plain flight of the ped.
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The controls of Jump and Duck (INPUT_JUMP, INPUT_DUCK)
+local ACTION_UP = 22
+local ACTION_DOWN = 36
+
+local settings = { speed = 10.0 }
+
+-- The time of the last frame (ms), to move by the time that went
+local last_ms = nil
+
+local function tick(): void
+
+    local n_entity = Atdar.natives.entity
+    local input = Atdar.natives.input
+    local ped = Atdar.natives.player.get_ped_id()
+    local now = util.current_time_millis()
+    local seconds = math.min((now - (last_ms ?? now)) / 1000, 0.1)
+
+    last_ms = now
+
+    local rot = Atdar.natives.camera.gameplay.get_rot(2)
+    local pitch = math.rad(rot.x)
+    local yaw = math.rad(rot.z)
+    local stick_x = input.get_normal(0, 30)
+    local stick_y = input.get_normal(0, 31)
+    local forward = -stick_y
+    local vertical = 0.0
+
+    if input.is_pressed(0, ACTION_UP) then
+        vertical += 1.0
+    end
+
+    if input.is_pressed(0, ACTION_DOWN) then
+        vertical -= 1.0
+    end
+
+    local dx = -math.sin(yaw) * math.cos(pitch) * forward + math.cos(yaw) * stick_x
+    local dy = math.cos(yaw) * math.cos(pitch) * forward + math.sin(yaw) * stick_x
+    local dz = math.sin(pitch) * forward + vertical
+
+    local pos = n_entity.get_coords(ped, false, 0)
+    local step = settings.speed * seconds
+
+    n_entity.freeze_position(ped, true)
+    n_entity.set_heading(ped, rot.z)
+    n_entity.set_coords_no_offset(ped, pos.x + dx * step, pos.y + dy * step, pos.z + dz * step, false, false, false)
+end
+
+local function release(): void
+    last_ms = nil
+    Atdar.natives.entity.freeze_position(Atdar.natives.player.get_ped_id(), false)
+end
+
+local control = ticker.make("Levitate", tick, release)
+
+-- How fast it flies, any time
+-- @param speed Metres a second
+function control.set_speed(speed: float): void
+    settings.speed = speed
+end
+
+return control

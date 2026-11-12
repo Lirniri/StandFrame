@@ -1,0 +1,8 @@
+-- Nobody can drag the player out of a car (Stand's Don't Jack Me): the config flag DONT_DRAG_ME_OUT_CAR (26) is held on
+-- every frame.
+--
+--     local no_jack = Atdar.util.game.players.user.dont_jack_me
+--
+--     no_jack.enable()
+--     no_jack.disable()
+return Atdar.util.game.players.user.ticker.config_flag("DontJackMe", 26)

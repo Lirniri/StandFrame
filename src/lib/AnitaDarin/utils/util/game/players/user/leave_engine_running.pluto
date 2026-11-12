@@ -1,0 +1,8 @@
+-- The engine stays on when the player leaves a vehicle (Stand's Leave Engine Running): the config flag
+-- LEAVE_ENGINE_ON_WHEN_EXITING_VEHICLES (241) is held on every frame.
+--
+--     local running = Atdar.util.game.players.user.leave_engine_running
+--
+--     running.enable()
+--     running.disable()
+return Atdar.util.game.players.user.ticker.config_flag("LeaveEngineRunning", 241)

@@ -1,3 +1,6 @@
 local module = {}
--- body
-return module
+
+-- The things of the world: the clock, the lights, the clouds, the draw distance, the pedestrians, the timecycle.
+-- Each is a file of utils/util/game/world/, for example Atdar.util.game.world.clock
+
+return Atdar.loader.auto(module, "utils/util/game/world")

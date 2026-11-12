@@ -1,0 +1,33 @@
+-- A cloud layer of the game's choice (Stand's Clouds): the cloud hat is loaded every frame and taken away at disable.
+--
+--     local clouds = Atdar.util.game.world.clouds
+--
+--     clouds.set("Cloudy 01.xml")     -- the name of a cloud hat of the game (Contrails, Altostratus, Cirrus, Cumulus ...)
+--     clouds.enable()
+--     clouds.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local hat = { name = "Cloudy 01.xml" }
+
+local function tick(): void
+    Atdar.natives.world.weather.load_cloud_hat(hat.name, 0.0)
+end
+
+local function release(): void
+    Atdar.natives.world.weather.unload_cloud_hat(hat.name, 0.0)
+end
+
+local control = ticker.make("Clouds", tick, release)
+
+-- The cloud hat to load, any time (the one that was loaded is taken away first)
+-- @param name The name of the hat with .xml, as the game has it
+function control.set(name: string): void
+
+    if control.is_enabled() then
+        Atdar.natives.world.weather.unload_cloud_hat(hat.name, 0.0)
+    end
+
+    hat.name = name
+end
+
+return control

@@ -1,0 +1,101 @@
+-- A free camera (a plain version of Stand's Freecam): a scripted camera is made where the gameplay camera is and flies along
+-- where it looks, with the stick (forward, sideways), Jump (up) and Duck (down). The ped stays where it is, held still. At disable the
+-- camera is destroyed and the game's own is back.
+--
+--     local cam = Atdar.util.game.players.user.freecam
+--
+--     cam.set_speed(10.0)      -- metres a second, 10 by default
+--     cam.enable()
+--     cam.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The controls of Jump and Duck (INPUT_JUMP, INPUT_DUCK)
+local ACTION_UP = 22
+local ACTION_DOWN = 36
+
+local settings = { speed = 10.0 }
+
+-- The camera while it is on: { handle, position, rot }, the time of the last frame (ms)
+local state = { cam = nil, last_ms = nil }
+
+-- Makes the camera at the gameplay one
+local function start(): void
+
+    local n_camera = Atdar.natives.camera
+    local position = n_camera.gameplay.get_coord()
+    local rot = n_camera.gameplay.get_rot(2)
+    local handle = n_camera.create("DEFAULT_SCRIPTED_CAMERA", true)
+
+    n_camera.set_coord(handle, position.x, position.y, position.z)
+    n_camera.set_rot(handle, rot.x, rot.y, rot.z, 2)
+    n_camera.render_script_cams(true, false, 0, true, true, 0)
+
+    state.cam = { handle = handle, position = position, rot = rot }
+    state.last_ms = nil
+end
+
+local function tick(): void
+
+    if state.cam == nil then
+        start()
+    end
+
+    local n_camera = Atdar.natives.camera
+    local input = Atdar.natives.input
+    local cam = state.cam
+    local now = util.current_time_millis()
+    local seconds = math.min((now - (state.last_ms ?? now)) / 1000, 0.1)
+
+    state.last_ms = now
+
+    -- The look: the gameplay camera keeps being turned by the mouse, so the free one takes its rotation
+    local rot = n_camera.gameplay.get_rot(2)
+    local pitch = math.rad(rot.x)
+    local yaw = math.rad(rot.z)
+    local forward = -input.get_normal(0, 31)
+    local sideways = input.get_normal(0, 30)
+    local vertical = 0.0
+
+    if input.is_pressed(0, ACTION_UP) then
+        vertical += 1.0
+    end
+
+    if input.is_pressed(0, ACTION_DOWN) then
+        vertical -= 1.0
+    end
+
+    local step = settings.speed * seconds
+    local position = cam.position
+
+    position.x += (-math.sin(yaw) * math.cos(pitch) * forward + math.cos(yaw) * sideways) * step
+    position.y += (math.cos(yaw) * math.cos(pitch) * forward + math.sin(yaw) * sideways) * step
+    position.z += (math.sin(pitch) * forward + vertical) * step
+
+    n_camera.set_coord(cam.handle, position.x, position.y, position.z)
+    n_camera.set_rot(cam.handle, rot.x, rot.y, rot.z, 2)
+    Atdar.natives.entity.freeze_position(Atdar.natives.player.get_ped_id(), true)
+end
+
+local function release(): void
+
+    local n_camera = Atdar.natives.camera
+
+    if state.cam ~= nil then
+        n_camera.render_script_cams(false, false, 0, true, true, 0)
+        n_camera.destroy(state.cam.handle, false)
+    end
+
+    state.cam = nil
+    state.last_ms = nil
+    Atdar.natives.entity.freeze_position(Atdar.natives.player.get_ped_id(), false)
+end
+
+local control = ticker.make("Freecam", tick, release)
+
+-- How fast it flies, any time
+-- @param speed Metres a second
+function control.set_speed(speed: float): void
+    settings.speed = speed
+end
+
+return control

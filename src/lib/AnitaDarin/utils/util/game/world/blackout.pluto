@@ -1,0 +1,18 @@
+-- The lights of the world are off (Stand's Blackout): the artificial lights state is held on every frame and given back
+-- at disable.
+--
+--     local blackout = Atdar.util.game.world.blackout
+--
+--     blackout.enable()
+--     blackout.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local function tick(): void
+    Atdar.natives.visual.light.set_artificial_lights_state(true)
+end
+
+local function release(): void
+    Atdar.natives.visual.light.set_artificial_lights_state(false)
+end
+
+return ticker.make("Blackout", tick, release)

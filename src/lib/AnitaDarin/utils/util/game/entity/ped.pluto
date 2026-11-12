@@ -56,4 +56,37 @@ function module.end_ragdoll(ped: int, heading: ?number): void
     end
 end
 
+-- Plays an animation on the ped: the dictionary is asked for and waited for (so call it from a thread or an action, not
+-- from a tick that must not wait), then the animation starts
+-- @param flags The animation flags of the game (1 plays once, 1 + 16 + 32 loops and holds the upper body, ...), 1 by default
+-- @param duration Milliseconds, -1 (default) is the length of the animation
+-- @return Whether it started: false if the dictionary didn't load in time
+function module.play_animation(ped: int, dictionary: string, animation: string, flags: int = 1, duration: int = -1): bool
+
+    local anim = Atdar.natives.streaming.anim
+
+    anim.request_anim_dict(dictionary)
+
+    local waited = 0
+
+    while not anim.has_anim_dict_loaded(dictionary) do
+
+        if waited >= 2000 then
+            return false
+        end
+
+        util.yield(10)
+        waited += 10
+    end
+
+    Atdar.natives.entity.ped.task.play_anim(ped, dictionary, animation, 8.0, -8.0, duration, flags, 0.0, false, false, false)
+    return true
+end
+
+-- Stops what the ped is playing: the tasks are cleared (the secondary task, which an animation of the upper body is)
+function module.stop_animation(ped: int): void
+    Atdar.natives.entity.ped.task.clear(ped, 2)
+    Atdar.natives.entity.ped.task.clear(ped, 0)
+end
+
 return module

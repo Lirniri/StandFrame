@@ -1,0 +1,22 @@
+-- The player's ped is invisible (Stand's Invisibility): every frame it is hidden, and told to stay visible to the player
+-- himself (so he sees himself in the network session, where the game would hide him as well). Visible again at disable.
+--
+--     local hidden = Atdar.util.game.players.user.invisibility
+--
+--     hidden.enable()
+--     hidden.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local function tick(): void
+
+    local ped = Atdar.natives.player.get_ped_id()
+
+    Atdar.natives.entity.set_visible(ped, false, false)
+    Atdar.natives.network.set_entity_locally_visible(ped)
+end
+
+local function release(): void
+    Atdar.natives.entity.set_visible(Atdar.natives.player.get_ped_id(), true, false)
+end
+
+return ticker.make("Invisibility", tick, release)

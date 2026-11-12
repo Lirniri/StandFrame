@@ -1,0 +1,8 @@
+-- The player swims in the air (Stand's Air Swim): the config flag IS_SWIMMING (65) of the ped is held on every frame, so
+-- the game plays the swim motion where there is no water.
+--
+--     local swim = Atdar.util.game.players.user.air_swim
+--
+--     swim.enable()
+--     swim.disable()
+return Atdar.util.game.players.user.ticker.config_flag("AirSwim", 65)

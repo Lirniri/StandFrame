@@ -1,0 +1,17 @@
+-- Health and armour of the player are kept full (Stand's Auto Heal): every frame the ped that is not dead gets the
+-- most of each.
+--
+--     local heal = Atdar.util.game.players.user.auto_heal
+--
+--     heal.enable()
+--     heal.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local function tick(): void
+    local user = Atdar.util.game.players.user
+
+    user.restore_health()
+    user.restore_armor()
+end
+
+return ticker.make("AutoHeal", tick)

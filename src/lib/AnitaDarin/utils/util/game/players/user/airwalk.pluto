@@ -1,0 +1,47 @@
+-- The player walks on air (Stand's Airwalk): the gravity of the ped is off while it is not ragdolled, and its vertical
+-- speed is zero, so it stays where it is; a jump is the game's own (gravity is back for it). Gravity is given back at
+-- disable.
+--
+--     local airwalk = Atdar.util.game.players.user.airwalk
+--
+--     airwalk.enable()
+--     airwalk.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The task number of a jump (CTaskTypes)
+local TASK_JUMP = 422
+
+-- The config flag IS_STANDING: the ped stands, so it can walk on
+local IS_STANDING = 60
+
+local function set_gravity(ped: int, toggle: bool): void
+    Atdar.natives.entity.set_has_gravity(ped, toggle)
+    Atdar.natives.entity.ped.set_gravity(ped, toggle)
+end
+
+local function tick(): void
+
+    local n_player = Atdar.natives.player
+    local n_entity = Atdar.natives.entity
+    local ped = n_player.get_ped_id()
+
+    if n_player.is_ragdoll(ped) or n_entity.ped.task.get_active(ped, TASK_JUMP) then
+        set_gravity(ped, true)
+        return
+    end
+
+    set_gravity(ped, false)
+    n_entity.ped.flags.set_config(ped, IS_STANDING, true)
+
+    local velocity = n_entity.get_velocity(ped)
+
+    if velocity.z ~= 0 then
+        n_entity.set_velocity(ped, velocity.x, velocity.y, 0.0)
+    end
+end
+
+local function release(): void
+    set_gravity(Atdar.natives.player.get_ped_id(), true)
+end
+
+return ticker.make("Airwalk", tick, release)

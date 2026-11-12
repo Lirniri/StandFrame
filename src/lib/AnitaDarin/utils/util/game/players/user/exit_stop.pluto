@@ -1,0 +1,32 @@
+-- The vehicle stops when the player gets out (Stand's Exit Stop): while the player is leaving a vehicle (the task of the exit
+-- is active) the vehicle's speed is set to 0 every frame, and its rocket boost is stopped.
+--
+--     local stop = Atdar.util.game.players.user.exit_stop
+--
+--     stop.enable()
+--     stop.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The task number of leaving a vehicle (CTaskTypes)
+local TASK_EXIT_VEHICLE = 2
+
+local function tick(): void
+
+    local n_ped = Atdar.natives.entity.ped
+    local ped = Atdar.natives.player.get_ped_id()
+
+    if not n_ped.task.get_active(ped, TASK_EXIT_VEHICLE) then
+        return
+    end
+
+    local vehicle = n_ped.vehicle.get(ped, true)
+
+    if vehicle == 0 then
+        return
+    end
+
+    Atdar.natives.entity.set_velocity(vehicle, 0.0, 0.0, 0.0)
+    Atdar.natives.entity.vehicle.set_rocket_boost_active(vehicle, false)
+end
+
+return ticker.make("ExitStop", tick)

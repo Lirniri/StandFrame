@@ -1,0 +1,37 @@
+-- The ammo of the weapon in hand never ends (Stand's Infinite Ammo): every frame the ammo is filled up to the most the
+-- game lets that weapon hold, and the same is done to the weapons of the vehicle the player drives (a restricted ammo
+-- of -1 is none). No_reload fills the clip at once as well; this fills what is left in reserve.
+--
+--     local ammo = Atdar.util.game.players.user.infinite_ammo
+--
+--     ammo.enable()
+--     ammo.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The weapon slots of a vehicle
+local VEHICLE_WEAPONS = 4
+
+local function tick(): void
+
+    local ped = Atdar.natives.player.get_ped_id()
+    local weapon = Atdar.natives.entity.ped.weapon.get_selected(ped)
+    local buffer = memory.alloc(4)
+
+    -- The most the weapon holds, asked from the game: when it says nothing the weapon has none (fists)
+    if Atdar.natives.weapon.get_max_ammo(ped, weapon, buffer) then
+        Atdar.natives.entity.ped.weapon.add_ammo(ped, weapon, memory.read_int(buffer))
+    end
+
+    local vehicles = Atdar.natives.entity.ped.vehicle
+
+    if vehicles.is_in_any(ped) then
+
+        local vehicle = vehicles.get(ped)
+
+        for index = 0, VEHICLE_WEAPONS - 1 do
+            Atdar.natives.entity.vehicle.set_weapon_restricted_ammo(vehicle, index, -1)
+        end
+    end
+end
+
+return ticker.make("InfiniteAmmo", tick)

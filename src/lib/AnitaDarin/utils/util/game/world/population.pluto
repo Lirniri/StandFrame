@@ -1,0 +1,23 @@
+-- No pedestrians (Stand's Disable Peds): the ped model budget is reduced and the ped population budget is 0 every frame;
+-- at disable the budget is 3 (the game's own) and the budget is not reduced.
+--
+--     local peds = Atdar.util.game.world.population
+--
+--     peds.enable()
+--     peds.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The game's own population budget of peds
+local DEFAULT_BUDGET = 3
+
+local function tick(): void
+    Atdar.natives.streaming.model.set_reduce_ped_budget(true)
+    Atdar.natives.streaming.set_ped_population_budget(0)
+end
+
+local function release(): void
+    Atdar.natives.streaming.model.set_reduce_ped_budget(false)
+    Atdar.natives.streaming.set_ped_population_budget(DEFAULT_BUDGET)
+end
+
+return ticker.make("Population", tick, release)

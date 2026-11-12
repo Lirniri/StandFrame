@@ -1,0 +1,41 @@
+-- The player is drunk (Stand's Drunk Mode): the camera shakes, the ped sways in the very drunk way of walking, the picture
+-- is blurred (the "Drunk" timecycle modifier), the sound is muffled. All of it is put every frame and taken away at disable.
+--
+--     local drunk = Atdar.util.game.players.user.drunk_mode
+--
+--     drunk.enable()
+--     drunk.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local CLIP_SET = "move_m@drunk@verydrunk"
+local SHAKE = "DRUNK_SHAKE"
+local SHAKE_INTENSITY = 2.0
+local TIMECYCLE = "Drunk"
+
+-- The special effect mode of the audio that muffles the sound
+local AUDIO_MODE = 2
+
+local function tick(): void
+
+    local ped = Atdar.natives.player.get_ped_id()
+
+    Atdar.natives.streaming.anim.request_clip_set(CLIP_SET)
+    Atdar.natives.entity.ped.set_movement_clipset(ped, CLIP_SET, 1.0)
+    Atdar.natives.audio.speech.set_ped_is_drunk(ped, true)
+    Atdar.natives.audio.set_special_effect_mode(AUDIO_MODE)
+    Atdar.natives.camera.gameplay.shake(SHAKE, SHAKE_INTENSITY)
+    Atdar.natives.visual.timecycle.set_modifier(TIMECYCLE)
+end
+
+local function release(): void
+
+    local ped = Atdar.natives.player.get_ped_id()
+
+    Atdar.natives.entity.ped.reset_movement_clipset(ped, 0.0)
+    Atdar.natives.audio.speech.set_ped_is_drunk(ped, false)
+    Atdar.natives.audio.set_special_effect_mode(0)
+    Atdar.natives.camera.gameplay.stop_shaking(true)
+    Atdar.natives.visual.timecycle.clear_modifier()
+end
+
+return ticker.make("DrunkMode", tick, release)

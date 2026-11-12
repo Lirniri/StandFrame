@@ -72,4 +72,20 @@ function module.make(name: string, tick: function, release: ?function): table
     return control
 end
 
+-- The control of a function that is only a config flag of the player's ped held on: put every frame (the game or another
+-- script may clear it), taken off at disable
+-- @param flag A number of Atdar.natives.entity.ped.flags.CONFIG
+function module.config_flag(name: string, flag: int): table
+
+    local function tick(): void
+        Atdar.natives.entity.ped.flags.set_config(Atdar.natives.player.get_ped_id(), flag, true)
+    end
+
+    local function release(): void
+        Atdar.natives.entity.ped.flags.set_config(Atdar.natives.player.get_ped_id(), flag, false)
+    end
+
+    return module.make(name, tick, release)
+end
+
 return module

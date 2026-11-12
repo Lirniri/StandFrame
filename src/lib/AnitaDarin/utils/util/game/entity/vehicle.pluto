@@ -60,4 +60,20 @@ function module.repair(vehicle: int,
     return true
 end
 
+-- Stands the vehicle on its wheels again, facing where the camera looks (Stand's Flip): pitch and roll are 0
+-- @return Whether it was flipped (false if it isn't a vehicle in the game)
+function module.flip(vehicle: int): bool
+
+    local n_vehicle = Atdar.natives.entity.vehicle
+
+    if not n_vehicle.does_exist(vehicle) then
+        return false
+    end
+
+    local yaw = Atdar.natives.camera.gameplay.get_rot(2).z
+
+    Atdar.natives.entity.set_rotation(vehicle, 0.0, 0.0, yaw, 2, true)
+    return true
+end
+
 return module

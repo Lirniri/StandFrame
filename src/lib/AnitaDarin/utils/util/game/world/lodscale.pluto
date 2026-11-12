@@ -1,0 +1,25 @@
+-- The draw distance (the LOD scale) of the world (Stand's Lodscale): the game forgets it each frame, so it is
+-- told again every frame.
+--
+--     local lod = Atdar.util.game.world.lodscale
+--
+--     lod.set(3.0)         -- the scale: 1.0 is the game's own
+--     lod.enable()
+--     lod.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local scale = { value = 1.0 }
+
+local function tick(): void
+    Atdar.natives.streaming.override_lodscale_this_frame(scale.value)
+end
+
+local control = ticker.make("Lodscale", tick)
+
+-- The scale, any time
+-- @param value 1.0 is the game's own; more draws farther
+function control.set(value: float): void
+    scale.value = value
+end
+
+return control

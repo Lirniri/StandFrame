@@ -1,0 +1,33 @@
+-- A timecycle modifier held on the screen (Stand's Timecycle Mod): the colour and the look of the whole picture, by
+-- the name the game gives (there are about 960 of them, for example "Drunk", "NG_filmic01", "underwater"). It is set every
+-- frame, as the game takes it off by itself, and cleared at disable.
+--
+--     local look = Atdar.util.game.world.timecycle
+--
+--     look.set("NG_filmic01")
+--     look.enable()
+--     look.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+local modifier = { name = "" }
+
+local function tick(): void
+
+    if modifier.name ~= "" then
+        Atdar.natives.visual.timecycle.set_modifier(modifier.name)
+    end
+end
+
+local function release(): void
+    Atdar.natives.visual.timecycle.clear_modifier()
+end
+
+local control = ticker.make("Timecycle", tick, release)
+
+-- The modifier to hold, any time
+-- @param name The name of a timecycle modifier of the game
+function control.set(name: string): void
+    modifier.name = name
+end
+
+return control

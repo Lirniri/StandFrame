@@ -1,0 +1,41 @@
+-- The rocket boost of the vehicle the player drives is always on (Stand's Auto Boost): every frame the boost of the vehicle
+-- is made active; it is taken off at disable.
+--
+--     local boost = Atdar.util.game.players.user.auto_boost
+--
+--     boost.enable()
+--     boost.disable()
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The vehicle the player is in, nil on foot
+local function current_vehicle(): ?int
+
+    local n_ped = Atdar.natives.entity.ped
+    local ped = Atdar.natives.player.get_ped_id()
+
+    if not n_ped.vehicle.is_in_any(ped) then
+        return nil
+    end
+
+    return n_ped.vehicle.get(ped)
+end
+
+local function tick(): void
+
+    local vehicle = current_vehicle()
+
+    if vehicle ~= nil then
+        Atdar.natives.entity.vehicle.set_rocket_boost_active(vehicle, true)
+    end
+end
+
+local function release(): void
+
+    local vehicle = current_vehicle()
+
+    if vehicle ~= nil then
+        Atdar.natives.entity.vehicle.set_rocket_boost_active(vehicle, false)
+    end
+end
+
+return ticker.make("AutoBoost", tick, release)

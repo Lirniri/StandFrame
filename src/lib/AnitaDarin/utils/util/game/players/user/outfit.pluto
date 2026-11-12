@@ -1,0 +1,148 @@
+local Logger = Atdar.loader.load("core/logger")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local safe_path = Atdar.loader.load("core/filesystem/safe_path")
+
+local log = new Logger("Outfit")
+
+-- What the player's ped wears (the base of Stand's Outfit, Save Outfit and Lock Outfit): the clothes (components) and the
+-- props (hats, glasses, watches) of the ped as a table, put on again, and kept in files.
+--
+--     local outfit = Atdar.util.game.players.user.outfit
+--
+--     local worn = outfit.capture()             -- { components = { [id] = { drawable, texture } }, props = { [id] = { drawable, texture } } }
+--     outfit.apply(worn)                        -- put on again
+--     outfit.save("night")                      -- to store/<script>/user/outfits/night.json: true, or false and why
+--     outfit.load("night")                      -- put on from that file
+--     outfit.list()                             -- the names saved
+--
+-- The ids are those of the game: components 0-11 (head, mask, hair, torso, legs, bags, shoes, accessories, undershirt, armour,
+-- decals, tops), props 0-7 (hat, glasses, ear, watch, bracelet ...). A prop whose drawable is -1 is none.
+local module = {}
+
+local COMPONENT_COUNT = 12
+local PROP_COUNT = 8
+
+-- Where the files are, from store/<script>/
+local FOLDER = "user/outfits/"
+
+-- A table of what the player wears now
+function module.capture(): table
+
+    local appearance = Atdar.natives.entity.ped.appearance
+    local ped = Atdar.natives.player.get_ped_id()
+    local worn = { components = {}, props = {} }
+
+    for id = 0, COMPONENT_COUNT - 1 do
+        worn.components[id] = {
+            drawable = appearance.get_drawable_variation(ped, id),
+            texture = appearance.get_texture_variation(ped, id),
+        }
+    end
+
+    for id = 0, PROP_COUNT - 1 do
+        worn.props[id] = {
+            drawable = appearance.get_prop_index(ped, id, 0),
+            texture = appearance.get_prop_texture_index(ped, id),
+        }
+    end
+
+    return worn
+end
+
+-- Puts the clothes and props of the table on the player's ped
+function module.apply(worn: table): void
+
+    local appearance = Atdar.natives.entity.ped.appearance
+    local ped = Atdar.natives.player.get_ped_id()
+
+    for id, part in pairs(worn.components or {}) do
+        appearance.set_component_variation(ped, tonumber(id), part.drawable, part.texture, 0)
+    end
+
+    for id, part in pairs(worn.props or {}) do
+
+        if part.drawable < 0 then
+            appearance.clear_prop(ped, tonumber(id), 0)
+        else
+            appearance.set_prop_index(ped, tonumber(id), part.drawable, part.texture, true, 0)
+        end
+    end
+end
+
+-- @return The file of the outfit; nil if the name isn't a name (letters, digits, _ and -)
+local function file_of(name: string): ?table
+
+    if type(name) ~= "string" or not name:match("^[%w_%-]+$") then
+        return nil
+    end
+
+    local path = safe_path.resolve(Atdar.filesystem.paths.store, $"{FOLDER}{name}.json")
+
+    if path == nil then
+        return nil
+    end
+
+    return new JsonFile(path, true)
+end
+
+-- Saves what the player wears under the name
+-- @return Whether it was saved, and why not: "name"
+function module.save(name: string)
+
+    local file = file_of(name)
+
+    if file == nil then
+        return false, "name"
+    end
+
+    filesystem.mkdirs(file.path:match("^(.*)[\\/][^\\/]*$") or "")
+
+    return file:write(module.capture())
+end
+
+-- Puts on the outfit saved under the name
+-- @return Whether it was put on, and why not: "name", "missing"
+function module.load(name: string)
+
+    local file = file_of(name)
+
+    if file == nil then
+        return false, "name"
+    end
+
+    local worn = file:read()
+
+    if type(worn) ~= "table" then
+        log:warn($"outfit {name} isn't there")
+        return false, "missing"
+    end
+
+    module.apply(worn)
+    return true
+end
+
+-- The names of the saved outfits, sorted
+function module.list(): table
+
+    local names = {}
+    local folder = safe_path.resolve(Atdar.filesystem.paths.store, FOLDER)
+
+    if folder == nil or not filesystem.is_dir(folder) then
+        return names
+    end
+
+    for _, path in ipairs(filesystem.list_files(folder)) do
+
+        local name = path:match("([^\\/]+)%.json$")
+
+        if name ~= nil then
+            table.insert(names, name)
+        end
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+return module
