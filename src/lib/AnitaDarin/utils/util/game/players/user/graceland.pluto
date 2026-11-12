@@ -15,6 +15,12 @@ local log = new Logger("Graceland")
 -- of some distance, and GIVE_PLAYER_RAGDOLL_CONTROL lets him steer that ragdoll by the stick. A ragdoll hitting
 -- the ground at fall speed kills, so it is ended above the ground and the player lands on his feet.
 -- With steering off the ragdoll never starts: only the death is off, and there is no air control.
+--
+-- Safe against what a simulation of the module on stand-ins for the game found (and what it did not): no ragdoll
+-- is started within 3 m and 3 frames of the ground (it would start and touch the ground in one game step), a new
+-- ragdoll after the landing is ended again, a respawn forgets what was cached, disable() in the air keeps the fall
+-- protected until the ground, set_landing_time and set_ragdoll_distance have a minimum. A single very long frame
+-- (0.5 s or more) near the ground can still kill: no tick can see a frame before it happens.
 local module = {}
 
 -- The fall distance (metres) that sets the ragdoll off: far above any height of the map
@@ -29,7 +35,7 @@ local GROUND_HEIGHT = 2.0
 -- A ragdoll that touches something this high (m above the ground) or higher is a hit on a wall, not the landing
 local WALL_MIN_HEIGHT = 3.0
 
--- With the flag protection the flag IS_STANDING tells the ground too, but only lower than this (m above the ground): the
+-- The flag IS_STANDING tells the ground too, but only lower than this (m above the ground): the
 -- flag was seen as 0 in the air and 1 at the touch of the ground, and the limit keeps a wrong 1 in the air harmless
 local STANDING_MAX_HEIGHT = 4.0
 
@@ -39,6 +45,24 @@ local MIN_LANDING_SPEED = 5.0
 -- After the ground is reached the protection of the landing stays this long (ms): the game decides about the
 -- landing a moment after the touch, and the fall distance and the ragdoll must not be the usual again by then
 local LAND_HOLD_MS = 600
+
+-- set_landing_time below this (s) is raised to it: a ragdoll is ended about a frame before the ground, so a time of a
+-- frame or less ends it too late
+local MIN_LANDING_TIME = 0.1
+
+-- set_ragdoll_distance below this (m) is raised to it: a smaller one counts the landing of an ended ragdoll as a high fall
+local MIN_RAGDOLL_DISTANCE = 5.0
+
+-- Lower than this (m above the ground, plus what the ped falls in 3 frames) a ragdoll is not started any more: it
+-- would start and touch the ground in one game step, with no tick of ours in between to end it
+local NEAR_GROUND_HEIGHT = 3.0
+
+-- A frame longer than this (s) is counted as this long
+local MAX_FRAME_TIME = 1.0
+
+-- Up in the air again after the ground only counts as a new fall when the ped was on the ground this long (ms): a flag
+-- that flickers for a frame is not the ground
+local NEW_FALL_GROUND_MS = 100
 
 -- A change of speed between two frames bigger than this (m/s) is a touch: logged right away in debug
 local TOUCH_SPEED_DELTA = 5.0
@@ -67,6 +91,7 @@ local state = {
     enabled = false, run = 0,
     blocked = false, landing_done = false, flags_saved = nil, fall_heading = nil, ground_since = nil, control_given = false, still_since = nil,
     was_ragdoll = false, was_airborne = false, last_fall_log = 0, last_speed = 0.0,
+    ped = nil, airborne = false, last_ms = nil, frame = 0.0,
 }
 
 -- Whether it's on
@@ -82,10 +107,10 @@ function module.set_steering(toggle: bool): void
     settings.steering = toggle
 end
 
--- The fall distance (metres) after which the ragdoll starts, 8 by default; used with steering on
+-- The fall distance (metres) after which the ragdoll starts, 12 by default; used with steering on
 -- @param metres From about 5
 function module.set_ragdoll_distance(metres: number): void
-    settings.ragdoll_distance = metres
+    settings.ragdoll_distance = math.max(metres, MIN_RAGDOLL_DISTANCE)
 end
 
 -- Whether a ragdoll in a fall is ended above the ground, on by default: the player falls the last metres on his
@@ -98,7 +123,7 @@ end
 -- default: at 55 m/s that is 27 m above the ground, at 12 m/s 6 m). The same time for every fall, so a short fall
 -- is ended as well as a long one
 function module.set_landing_time(seconds: number): void
-    settings.landing_time = seconds
+    settings.landing_time = math.max(seconds, MIN_LANDING_TIME)
 end
 
 -- Whether a ragdoll that flies into a wall (touches something above WALL_MIN_HEIGHT) is ended there, on by default:
@@ -113,8 +138,8 @@ end
 -- and DISABLE_MATERIAL_COLLISION_DAMAGE (reset flags); once per fall the config flags that block a ragdoll from the
 -- hit of a ped, an object or a vehicle, put back as they were on the ground. With steering off also NEVER_RAGDOLL and
 -- the config flag DONT_ACTIVATE_RAGDOLL_FROM_FALLING: no ragdoll in a fall, by the flags instead of by the distance.
--- The wall is also seen by the reset flag PED_HIT_WALL_LAST_FRAME, and the ground by the config flag IS_STANDING
--- (lower than 4 m). The flags give no steering
+-- The wall is also seen by the reset flag PED_HIT_WALL_LAST_FRAME. The flags give no steering. (The config flag
+-- IS_STANDING tells the ground with or without this, lower than 4 m: it was seen as 0 in the air, 1 on the ground)
 function module.set_flag_protection(toggle: bool): void
     settings.flag_protection = toggle
 end
@@ -221,9 +246,24 @@ local function land_safely(ped: int, airborne: bool): void
 
     if state.landing_done then
 
+        -- A new ragdoll in the air (an impact, a respawn) is ended again, the same way
+        if airborne and Atdar.natives.player.is_ragdoll(ped) then
+            state.ground_since = nil
+            Atdar.util.game.entity.ped.end_ragdoll(ped, get_facing())
+            log:debug("a new ragdoll ended")
+            return
+        end
+
+        -- Up again after the ground (a second drop within LAND_HOLD_MS): a new fall, protected from the start
+        if state.ground_since ~= nil and now - state.ground_since >= NEW_FALL_GROUND_MS and airborne and height > GROUND_HEIGHT then
+            state.landing_done = false
+            state.ground_since = nil
+            return
+        end
+
         local grounded = not airborne and height < GROUND_HEIGHT
 
-        if settings.flag_protection and height < STANDING_MAX_HEIGHT then
+        if height < STANDING_MAX_HEIGHT then
             local flags = Atdar.natives.entity.ped.flags
             grounded = grounded or flags.get_config(ped, flags.CONFIG.IS_STANDING)
         end
@@ -249,7 +289,10 @@ local function land_safely(ped: int, airborne: bool): void
 
     local fall_speed = -n_entity.get_velocity(ped).z
 
-    if fall_speed < MIN_LANDING_SPEED or height > fall_speed * settings.landing_time then
+    -- Long frames (a slow game) move the ped further between two ticks: the margin is at least two frames
+    local margin = math.max(settings.landing_time, state.frame * 2)
+
+    if fall_speed < MIN_LANDING_SPEED or height > fall_speed * margin then
         return
     end
 
@@ -429,6 +472,39 @@ function logger.update(ped: int, airborne: bool): void
     logger.write(event, ped, airborne)
 end
 
+-- A new ped handle (a respawn): what was cached about the old ped, the block, the control, the saved flags and the
+-- landing, is not true for the new one
+local function sync_ped(ped: int): void
+
+    if state.ped == ped then
+        return
+    end
+
+    if state.ped ~= nil then
+        state.blocked = false
+        state.control_given = false
+        state.flags_saved = nil
+        state.landing_done = false
+        state.fall_heading = nil
+        state.ground_since = nil
+        state.still_since = nil
+    end
+
+    state.ped = ped
+end
+
+-- How long the last frame was (s), for the margins that grow with a slow game
+local function update_frame(): void
+
+    local now = util.current_time_millis()
+
+    if state.last_ms ~= nil then
+        state.frame = math.min((now - state.last_ms) / 1000, MAX_FRAME_TIME)
+    end
+
+    state.last_ms = now
+end
+
 -- One frame of it. The game forgets what is set on a respawn, so everything is set again every frame
 local function apply(): void
 
@@ -444,14 +520,21 @@ local function apply(): void
     local airborne = n_entity.ped.is_falling(ped) or n_entity.is_in_air(ped)
     local distance = FALL_DISTANCE_NEVER
 
+    sync_ped(ped)
+    update_frame()
+    state.airborne = airborne
     remember_heading(ped, airborne)
     land_safely(ped, airborne)
     end_on_wall(ped, airborne)
 
+    -- Near the ground a ragdoll that has not started is not started any more (see NEAR_GROUND_HEIGHT)
+    local near_ground = airborne and
+        n_entity.get_height_above_ground(ped) < NEAR_GROUND_HEIGHT - n_entity.get_velocity(ped).z * state.frame * 3
+
     -- The ragdoll distance counts until the ragdoll is ended for the landing: after it the distance is the never
     -- one again, or the landing counts as a high fall (the ragdoll distance is small) and kills. The fall's distance
     -- so far is far below it
-    if settings.steering and not state.landing_done then
+    if settings.steering and not state.landing_done and not near_ground then
         distance = settings.ragdoll_distance
     end
 
@@ -515,6 +598,49 @@ local function release(): void
     state.was_ragdoll = false
     state.was_airborne = false
     state.last_fall_log = 0
+    state.ped = nil
+    state.airborne = false
+    state.last_ms = nil
+    state.frame = 0.0
+end
+
+-- One frame of the wind-down after disable() in the air: the fall stays protected until the ground (never distance,
+-- ragdoll blocked and ended again), then everything is given back. Switching off in the air would otherwise leave the
+-- game's own fall distance and ragdoll to a fall already far past them
+-- @return Whether it goes on
+local function wind_down(): bool
+
+    local n_player = Atdar.natives.player
+    local n_entity = Atdar.natives.entity
+    local player = n_player.get_id()
+
+    if n_player.is_dead(player) then
+        release()
+        return false
+    end
+
+    local ped = n_player.get_ped_id()
+    local airborne = n_entity.ped.is_falling(ped) or n_entity.is_in_air(ped)
+
+    sync_ped(ped)
+    update_frame()
+    land_safely(ped, airborne)
+
+    if not state.landing_done then
+        release()
+        return false
+    end
+
+    Atdar.util.game.players.user.set_fall_protection(true, FALL_DISTANCE_NEVER)
+    set_ragdoll_blocked(ped, true)
+    return true
+end
+
+-- Switches off at once, in the air or not
+local function stop_now(): void
+    state.enabled = false
+    state.run += 1
+    pcall(release)
 end
 
 -- Actions
@@ -529,6 +655,7 @@ function module.enable(): void
 
     state.enabled = true
     state.run += 1
+    state.last_ms = nil
 
     local run = state.run
 
@@ -542,7 +669,7 @@ function module.enable(): void
         local ok, err = pcall(apply)
         if not ok then
             log:error($"graceland stopped\n{err}")
-            module.disable()
+            stop_now()
             return false
         end
 
@@ -557,12 +684,38 @@ function module.disable(): void
         return
     end
 
+    -- In the air: protected until the ground first (wind_down)
+    if not state.airborne then
+        stop_now()
+        return
+    end
+
     state.enabled = false
     state.run += 1
-    pcall(release)
+    state.landing_done = true
+    state.ground_since = nil
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        -- Switched on again (a newer handler runs) or off again
+        if state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, result = pcall(wind_down)
+        if not ok then
+            log:error($"graceland wind-down stopped\n{result}")
+            stop_now()
+            return false
+        end
+
+        return result
+    end)
 end
 
--- A stopped script leaves no effect on the player
-util.on_stop(module.disable)
+-- A stopped script leaves no effect on the player: its tick handlers stop too, so no wind-down here
+util.on_stop(stop_now)
 
 return module

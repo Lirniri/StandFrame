@@ -1,0 +1,150 @@
+-- The tasks of a ped read from the game's memory: there is no native that gives a task itself, only whether it is
+-- active. The way to it follows Stand-OSS (CPed -> CPedIntelligence -> task manager -> task tree -> the task and its
+-- sub tasks), and the offsets are those of that source, so they belong to a build of the game: when the game
+-- changes, they are what stops working. They are in module.offsets, change them there without touching the code.
+--
+-- Everything is read through guards (a pointer must look like one, the walk is bounded), and nothing is written
+-- except by set_fall_flags. If a step doesn't look right, the functions give nil instead of reading further.
+local module = {}
+
+module.TASK_FALL = 423
+
+module.offsets = {
+    ped_intelligence = 0x10A0,   -- CPed: the CPedIntelligence pointer
+    task_manager = 0x368,        -- CPedIntelligence: the CPedTaskManager, which starts with a vtable
+    trees = 0x8,                 -- CPedTaskManager: the array of task tree pointers, 0 is the primary tree
+    active_priority = 0x10,      -- aiTaskTree: the priority that is active, -1 when none
+    tasks = 0x20,                -- aiTaskTree: the array of the root task of each priority
+    sub_task = 0x20,             -- aiTask: the task it runs inside of itself
+    type_id = 0x34,              -- aiTask: the number of the task (CTaskTypes)
+    fall_flags = 0x180,          -- CTaskFall: the flags
+}
+
+local MAX_PRIORITY = 4
+local MAX_DEPTH = 32
+local MIN_POINTER = 0x10000
+local MAX_POINTER = 0x7FFFFFFFFFFF
+
+-- Whether the number can be a pointer to read: nil, 0 and a small number cannot
+local function is_pointer(value: any): bool
+    return type(value) == "number" and value >= MIN_POINTER and value <= MAX_POINTER
+end
+
+-- The root task of the active priority of the primary tree of the ped. nil if a step is wrong
+local function get_root(ped: int): ?int
+    local offsets = module.offsets
+    local pointer = Atdar.memory.handle_to_pointer(ped)
+
+    if pointer == nil then
+        return nil
+    end
+
+    local intelligence = memory.read_long(pointer + offsets.ped_intelligence)
+    if not is_pointer(intelligence) then
+        return nil
+    end
+
+    local tree = memory.read_long(intelligence + offsets.task_manager + offsets.trees)
+    if not is_pointer(tree) then
+        return nil
+    end
+
+    local priority = memory.read_int(tree + offsets.active_priority)
+    if priority < 0 or priority > MAX_PRIORITY then
+        return nil
+    end
+
+    local root = memory.read_long(tree + offsets.tasks + priority * 8)
+    if not is_pointer(root) then
+        return nil
+    end
+
+    return root
+end
+
+-- Get
+
+-- The number of a task that is read from the memory (CTaskTypes), nil if it is not a pointer
+function module.get_type(task: int): ?int
+
+    if not is_pointer(task) then
+        return nil
+    end
+
+    return memory.read_short(task + module.offsets.type_id) & 0xFFFF
+end
+
+-- The pointer to the task of the type that runs on the ped now, in the active priority of its primary tree or in
+-- a sub task of it. nil if there is none, or if the way to it doesn't look right
+function module.find_task(ped: int, task_type: int): ?int
+
+    local task = get_root(ped)
+
+    for _ = 1, MAX_DEPTH do
+
+        if not is_pointer(task) then
+            return nil
+        end
+
+        if module.get_type(task) == task_type then
+            return task
+        end
+
+        task = memory.read_long(task + module.offsets.sub_task)
+    end
+
+    return nil
+end
+
+-- The numbers of the tasks of the active priority of the ped, from the root to the deepest, as text. It is what to
+-- read to see that the offsets are right: in a fall 423 (TASK_FALL) is in it, and "no tree" is a wrong offset
+function module.describe(ped: int): string
+
+    local task = get_root(ped)
+
+    if task == nil then
+        return "no tree"
+    end
+
+    local types = {}
+
+    for _ = 1, MAX_DEPTH do
+
+        if not is_pointer(task) then
+            break
+        end
+
+        table.insert(types, tostring(module.get_type(task)))
+        task = memory.read_long(task + module.offsets.sub_task)
+    end
+
+    return table.concat(types, " > ")
+end
+
+-- The flags of the fall task of the ped, nil if it doesn't fall in that task
+function module.get_fall_flags(ped: int): ?int
+
+    local task = module.find_task(ped, module.TASK_FALL)
+
+    if task == nil then
+        return nil
+    end
+
+    return memory.read_int(task + module.offsets.fall_flags)
+end
+
+-- Sets the flags of the fall task of the ped
+-- @return Whether the task was there and the flags were written
+function module.set_fall_flags(ped: int, flags: int): bool
+
+    local task = module.find_task(ped, module.TASK_FALL)
+
+    if task == nil then
+        return false
+    end
+
+    memory.write_int(task + module.offsets.fall_flags, flags)
+    return true
+end
+
+return module

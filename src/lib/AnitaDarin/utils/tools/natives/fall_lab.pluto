@@ -37,6 +37,13 @@ local NOISE_FLIPS = 4
 local LAND_MS = 300
 local MAX_ARM_MS = 40000
 
+-- The number of the last task of the game to ask about (the tasks are numbered from 0, about 530 of them)
+local TASK_MAX = 600
+
+-- What arm() looks at in a fall, see the set_ functions: how often (ms, 0 - every frame), how often a flag or a task
+-- may change before it is noise (0 - never noise), whether the active tasks of the ped are watched
+local probe = { check_ms = FLAG_CHECK_MS, noise = NOISE_FLIPS, tasks = true }
+
 local GRAVITY = 9.81
 local TERMINAL_SPEED = 70.0
 
@@ -501,6 +508,10 @@ local flag_names = nil
 
 local function name_of(kind: string, id: int): string
 
+    if kind == "tasks" then
+        return tostring(id)
+    end
+
     if flag_names == nil then
 
         local flags = Atdar.natives.entity.ped.flags
@@ -609,11 +620,32 @@ end
 
 local arm_state = { armed = false, run = 0, loop = false }
 
--- The flags of the player's ped that are true now as sets: { config = { [id] = true }, reset = { [id] = true } }
+-- The tasks of the game that are active on the ped as a set { [number] = true }: a new task, or one that went, at
+-- the moment something is switched on shows here (the numbers are the game's CTaskTypes)
+local function tasks_set(ped: int): table
+
+    local task = Atdar.natives.entity.ped.task
+    local set = {}
+
+    for id = 0, TASK_MAX do
+        if task.get_active(ped, id) then
+            set[id] = true
+        end
+    end
+
+    return set
+end
+
+-- The flags of the player's ped that are true now, and its active tasks, as sets:
+-- { config = { [id] = true }, reset = { [id] = true }, tasks = { [number] = true } }
 local function flags_set(ped: int): table
 
     local flags = Atdar.util.game.entity.ped.get_set_flags(ped)
-    local set = { config = {}, reset = {} }
+    local set = { config = {}, reset = {}, tasks = {} }
+
+    if probe.tasks then
+        set.tasks = tasks_set(ped)
+    end
 
     for _, id in ipairs(flags.config) do
         set.config[id] = true
@@ -626,19 +658,19 @@ local function flags_set(ped: int): table
     return set
 end
 
--- Writes what changed in the flags since the last look, with the time of the fall: "+" became true, "-" false.
--- A flag that changes more than NOISE_FLIPS times is left out
+-- Writes what changed in the flags and the tasks since the last look, with the time of the fall: "+" became true
+-- (active), "-" false. A flag or a task that changes more than the noise limit times is left out (set_noise_flips)
 local function report_changes(before: table, now: table, ms: int, flips: table): void
 
     local plus = {}
     local minus = {}
 
-    for _, kind in { "config", "reset" } do
+    for _, kind in { "config", "reset", "tasks" } do
 
         for id in now[kind] do
             if not before[kind][id] then
                 flips[kind .. id] = (flips[kind .. id] ?? 0) + 1
-                if flips[kind .. id] <= NOISE_FLIPS then
+                if probe.noise == 0 or flips[kind .. id] <= probe.noise then
                     table.insert(plus, kind .. " " .. name_of(kind, id))
                 end
             end
@@ -647,7 +679,7 @@ local function report_changes(before: table, now: table, ms: int, flips: table):
         for id in before[kind] do
             if not now[kind][id] then
                 flips[kind .. id] = (flips[kind .. id] ?? 0) + 1
-                if flips[kind .. id] <= NOISE_FLIPS then
+                if probe.noise == 0 or flips[kind .. id] <= probe.noise then
                     table.insert(minus, kind .. " " .. name_of(kind, id))
                 end
             end
@@ -661,6 +693,23 @@ local function report_changes(before: table, now: table, ms: int, flips: table):
     if #minus > 0 then
         log:debug(string.format("%.2f s flags -: %s", ms / 1000.0, table.concat(minus, ", ")))
     end
+end
+
+-- How often (ms) arm() looks at the flags and the tasks of the ped in a fall, 100 by default; 0 - every frame, which
+-- catches a flag that is on for one frame (about 1500 native calls a frame: for a debug run)
+function module.set_flag_check_ms(ms: int): void
+    probe.check_ms = ms
+end
+
+-- How many times a flag or a task may change in a fall before arm() leaves it out as noise (a timer, a blink), 4 by
+-- default; 0 - never left out: a flag that another script blinks on purpose is seen then
+function module.set_noise_flips(times: int): void
+    probe.noise = times
+end
+
+-- Whether arm() also watches the active tasks of the ped (the numbers of the game's CTaskTypes), on by default
+function module.set_watch_tasks(toggle: bool): void
+    probe.tasks = toggle
 end
 
 -- The easy way to catch a moment in a fall, with nothing to press in time: call it once, then jump (or step off a
@@ -683,7 +732,7 @@ function module.arm(): void
         air_speed = 0.0, touch_ms = nil, speed_before = 0.0,
     }
 
-    log:debug("armed: jump, and switch the other feature on in the air")
+    log:debug($"armed: jump, and switch the other feature on in the air (looking every {probe.check_ms} ms, noise limit {probe.noise}, tasks {probe.tasks})")
 
     util.create_tick_handler(function()
 
@@ -712,7 +761,7 @@ function module.arm(): void
 
             table.insert(session.frames, sample(ms))
 
-            if now - session.last_check >= FLAG_CHECK_MS then
+            if now - session.last_check >= probe.check_ms then
                 local current = flags_set(ped)
 
                 report_changes(session.previous, current, ms, session.flips)

@@ -9,6 +9,12 @@ local lab = Atdar.util.game.tools.fall_lab
 -- without a ragdoll it records every frame and watches the ped's flags; what changes in the air (another feature
 -- switched on there, say) is written with the time of the fall, and after the landing the summary follows, by windows
 -- of half a second: the "along the stick" column changes where the steering begins. One fall, then it is disarmed
+-- To catch what another feature does at the moment it is switched on in the air, look at every frame and leave nothing
+-- out as noise: a flag it sets for one frame, or blinks on purpose, shows then. The tasks of the ped are watched too
+-- ("tasks 107 +" is a task of the game that became active, the numbers are its CTaskTypes)
+lab.set_flag_check_ms(0)      -- default 100: how often (ms) the flags and the tasks are looked at, 0 - every frame
+lab.set_noise_flips(0)        -- default 4: how many times a flag may change before it is left out, 0 - never
+lab.set_watch_tasks(true)     -- default true
 lab.arm()
 -- lab.arm_loop()         -- the same, but for every fall in a row ("fall 1", "fall 2", ...) until disarm()
 -- lab.disarm()           -- cancels it, before the fall or after the last one
