@@ -248,6 +248,11 @@ local class CallFunction extends Module
 
         results().show(spec.key, given)
 
+        -- A table opened in its list (spec.silent): what's in it is there, no notice of it
+        if spec.silent then
+            return
+        end
+
         local name = shown_name(spec.name())
         local message = text("done"):format(name)
 
@@ -286,7 +291,7 @@ local class CallFunction extends Module
         local typed = spec.name()
         local name = shown_name(typed)
 
-        -- No name: nothing to show, what was there is taken away (the Variable line, the Value list, Table Depth...)
+        -- No name: nothing to show, what was there is taken away (the Variable line, the Value list)
         if typed == "" then
             results().clear(spec.key)
             return
@@ -1103,15 +1108,23 @@ local class CallFunction extends Module
     -- "2: get(handle, ...): bool" (the arguments' names in brackets; the return type when the code or the files
     -- say one) - and the panel's spec. A function that says nothing of its parameters (a C function of Stand)
     -- gets them from the files
-    -- @return { name, spec, has_fields }: has_fields - it takes arguments, so it's a list with the panel; without
-    -- them (or for a table or a variable) it's a button
+    -- @return { name, spec, has_fields, is_table }: has_fields - it takes arguments, so it's a list with the panel;
+    -- is_table - it's a list with what's in the table; without them (a function without arguments, a variable) it's
+    -- a button
     function describe(entry: table, number: int): table
 
         local paths = path_parser()
         local short = self:shown(entry.path)
         local sig, returns = self:signature_of_path(entry.path)
         local has_fields = sig ~= nil and arguments().has_fields(sig)
+        local found, value = paths.resolve(entry.path)
+        local is_table = found and type(value) == "table"
         local name = $"{number}: {short}"
+
+        -- A table is named with its braces, as it's typed to open it: util{}
+        if is_table then
+            name ..= "{}"
+        end
 
         if has_fields then
             name = $"{name}({arguments().params_text(sig)})"
@@ -1124,10 +1137,12 @@ local class CallFunction extends Module
         return {
             name = name,
             has_fields = has_fields,
+            is_table = is_table,
             spec = {
                 key = $"debug.call_function.{entry.id}",
                 state = entry.state,
                 path = || -> entry.path,
+                silent = is_table,
                 name = || -> short,
                 -- (a lambda would give only the first of the three values)
                 target = function() return paths.resolve(entry.path) end,

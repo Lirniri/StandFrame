@@ -532,6 +532,18 @@ stand.equal(#history_cf:history(), 0, "Clear History forgets the calls")
 stand.back(history_list)
 Atdar.test_cf_history = nil
 
+-- A table added with braces, or an item of one by its key: the entry is a table list, named with {}
+Atdar.test_tbl_fn = { list = { { name = "x" } }, a = 1 }
+local table_cf = Atdar.modules.get("CallFunction")
+local table_entry = table_cf:add("test_tbl_fn{}")
+local table_item = table_cf:describe(table_entry, 7)
+stand.check(table_item.is_table and table_item.name:sub(-2) == "{}" and table_item.spec.silent, "a table in Functions: a list, named with {}, read without a notice")
+table_cf:remove(tostring(#table_cf:added()))
+local key_entry = table_cf:add("test_tbl_fn.list[1]{}")
+stand.check(key_entry ~= nil and table_cf:describe(key_entry, 7).is_table, "an item of a table by its key in brackets")
+table_cf:remove(tostring(#table_cf:added()))
+Atdar.test_tbl_fn = nil
+
 -- Pick Function: the lists of names
 local pick_list = stand.child(stand.child(call_list, "Call A Function"), "Pick Function")
 stand.click(pick_list)
@@ -591,23 +603,19 @@ stand.equal(by_name_text(), "Arguments", "another function with no parameters kn
 function_name.on_change("test_fields", 0)
 stand.equal(stand.child(args_list(), "Number").value, "0", "back to the first: its fields start fresh, what was typed for the other isn't kept")
 Atdar.test_fields = nil
--- A table result: the table settings are made at the end, right under the Value list; a plain one takes them away
+-- A table result: the Value list with what's in it; no settings of how it's shown
 Atdar.test_table = function() return { 1, 2 } end
 Atdar.test_plain_value = function() return 5 end
 function_name.on_change("test_table", 0)
 stand.click(call_button)
 stand.frame()
-local by_name_names = {}
-for _, child in by_name.children do
-    table.insert(by_name_names, stand.name_of(child))
-end
-stand.equal(table.concat(by_name_names, " | ", #by_name_names - 3),
-    "Value (2) | Table Depth | Call Functions In Tables | Change Variable Values",
-    "a table result: Table Depth, Call Functions In Tables and Change Variable Values are the last items, under the Value list")
+stand.check(stand.find_item(by_name, "Value (2)") ~= nil, "a table result: the Value list with how many entries it has")
+stand.equal(stand.find_item(by_name, "Table Depth"), nil, "no Table Depth")
+stand.equal(stand.find_item(by_name, "Call Functions In Tables"), nil, "no Call Functions In Tables")
+stand.equal(stand.find_item(by_name, "Change Variable Values"), nil, "no Change Variable Values")
 function_name.on_change("test_plain_value", 0)
 stand.click(call_button)
 stand.frame()
-stand.equal(stand.child(by_name, "Table Depth"), nil, "a plain result: the table settings are gone")
 Atdar.test_table, Atdar.test_plain_value = nil, nil
 function_name.on_change("", 0)
 

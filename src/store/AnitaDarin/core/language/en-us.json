@@ -627,18 +627,6 @@
                 "failed": "error"
             },
             "status_line": "Loop Status: %s",
-            "call_in_tables": {
-                "name": "Call Functions In Tables",
-                "help": "The functions in the Value list become lists with the same menu as Call Function, except the name and the notice in Stand"
-            },
-            "edit_in_tables": {
-                "name": "Change Variable Values",
-                "help": "The values in the Value list (not functions or tables) become fields: type a new expression (5, true, \"text\", v3.new(1, 2, 3), nil) and it's written to the table"
-            },
-            "table_depth": {
-                "name": "Table Depth",
-                "help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables makes a great many items"
-            },
             "result_line": "Variable: %s",
             "result_list": "Value (%d)",
             "no_result": "—"
@@ -1124,6 +1112,7 @@
             },
             "added": {
                 "help": "A field for each argument by the type the code says, then Call, Call After, Loop...",
+                "table_help": "Opens the table: what is in it is a list, a value is a field to type a new one, a function is a list to call",
                 "button_help": "Calls the function; a table or a variable is read. What it gives is in the notice"
             },
             "call": {

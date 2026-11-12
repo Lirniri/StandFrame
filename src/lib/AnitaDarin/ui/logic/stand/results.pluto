@@ -1,8 +1,7 @@
 -- lib/AnitaDarin/ui/logic/stand/results.pluto
 -- What calls gave, remembered by key ("<module>.<function>", "debug.call_function.3"): the text for the Variable
--- line, the type, the table or the userdata's value, and how the table is shown (how deep, whether its
--- functions can be called and its values changed). Anything that calls a function gives its results here
--- (show); the lists that show them (ui/stand/modules/values) are told when a key's result changed (on_change).
+-- line, the type, the table or the userdata's value, and how deep its table is made as lists. Anything that calls
+-- a function gives its results here (show); the lists that show them (ui/stand/modules/values) are told when a key's result changed (on_change).
 -- Kept while the script runs, so a list made again shows what its function gave last.
 -- Strings: core/language "modules"
 
@@ -22,9 +21,6 @@ local MAX_RESULT_CHARS = 60
 -- key -> what it gave last: { text = "147462" or nil for nothing, types = "integer, string",
 -- tbl = the table when it gave one table, detail = a userdata's value when it gave one userdata }
 local last = {}
-
--- key -> how its table is shown: { depth, call, edit }
-local shown = {}
 
 -- Called with the key whose result changed
 local listeners = {}
@@ -117,38 +113,9 @@ function module.line(key: string): string
     return text("loop.result_line"):format(value)
 end
 
--- How a table is shown
-
-local function shown_of(key: string): table
-    shown[key] ??= {}
-    return shown[key]
-end
-
--- @return How deep tables inside the key's table open as lists
+-- @return How deep tables inside the key's table are made as lists; deeper ones are lines
 function module.depth(key: string): int
-    return shown_of(key).depth or values.MAX_VARIABLE_DEPTH
-end
-
-function module.set_depth(key: string, depth: int): void
-    shown_of(key).depth = depth
-end
-
--- @return Whether the functions in the key's table are lists to call (Call Functions In Tables)
-function module.call_in_tables(key: string): bool
-    return shown_of(key).call == true
-end
-
-function module.set_call_in_tables(key: string, on: bool): void
-    shown_of(key).call = on
-end
-
--- @return Whether the other values in the key's table are fields to change them in (Change Variable Values)
-function module.edit_in_tables(key: string): bool
-    return shown_of(key).edit == true
-end
-
-function module.set_edit_in_tables(key: string, on: bool): void
-    shown_of(key).edit = on
+    return values.MAX_VARIABLE_DEPTH
 end
 
 -- The key's table as items to show, in menu order (values.collect_variable): its entries down to the depth
@@ -174,7 +141,7 @@ function module.items(key: string)
             table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
             break
         end
-        values.collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, shown_of(key).depth, tbl,
+        values.collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, values.MAX_VARIABLE_DEPTH, tbl,
             entry.raw_key)
     end
 

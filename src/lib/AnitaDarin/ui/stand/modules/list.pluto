@@ -137,48 +137,6 @@ local function arguments_list(node: table, mod: table, fn: table, state: table):
     end)
 end
 
--- Table Depth, Call Functions In Tables, Change Variable Values: made at the end of the function's list
--- while its last result is a table, right under the Value list
--- @return A function that takes them away
-local function table_settings(ui: table, key: string)
-
-    local items = {}
-
-    -- A saved state Stand puts back isn't made into a new list at once (items can't be made then)
-    table.insert(items, ui:slider({ key = "loop.table_depth", min = 1, max = 8, default = values.result_depth(key),
-        step = 1, on_change = function(depth, previous, click_type)
-            if clicks.is_stopping() then
-                return
-            end
-
-            values.set_result_depth(key, depth, not clicks.is_user_click(click_type))
-        end }))
-
-    table.insert(items, ui:toggle({ key = "loop.call_in_tables", default = values.call_in_tables(key),
-        on_change = function(on, click_type)
-            if clicks.is_stopping() then
-                return
-            end
-
-            values.set_call_in_tables(key, on, not clicks.is_user_click(click_type))
-        end }))
-
-    table.insert(items, ui:toggle({ key = "loop.edit_in_tables", default = values.edit_in_tables(key),
-        on_change = function(on, click_type)
-            if clicks.is_stopping() then
-                return
-            end
-
-            values.set_edit_in_tables(key, on, not clicks.is_user_click(click_type))
-        end }))
-
-    return function()
-        for _, item in ipairs(items) do
-            item:remove()
-        end
-    end
-end
-
 -- A function of the module: a list of its arguments (when it has parameters), Call Settings, Call, Call After,
 -- Call When Opened / Hovered, the loop's status, Loop, Loop With Interval, then what it gave
 local function function_list(entry: table, mod: table, fn: table): void
@@ -269,7 +227,6 @@ local function function_list(entry: table, mod: table, fn: table): void
     -- The table settings, while the last result is a table, at the end: right under the Value list.
     -- How deep a table it gave opens in the Value list, the functions in the table become lists with the
     -- panel of Debug > Call Function, the other values become fields to type a new value in
-    values.bind_depth_items(key, || -> table_settings(ui, key))
 end
 
 -- The Module Functions list (its Variables, then a list per function of the module, as logic.layout puts

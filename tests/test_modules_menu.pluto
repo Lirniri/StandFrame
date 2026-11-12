@@ -155,9 +155,12 @@ stand.equal(stand.child(variables, "count").value, "0", "a value as it is")
 stand.equal(stand.child(variables, "label").value, '"main"', "a text in quotes")
 local vehicles_node = stand.child(variables, "vehicles (3)")
 stand.equal(vehicles_node.kind, "list", "a table field is a list")
-stand.equal(values_in(stand.child(variables, "items (2)")), "[1]: 1 | [2]: 2", "a list's entries by index")
+stand.click(stand.child(variables, "items (2)"))
+stand.equal(values_in(stand.child(variables, "items (2)")), "[1]: 1 | [2]: 2", "a list's entries by index, made when it's opened")
+stand.click(vehicles_node)
 stand.equal(names_in(vehicles_node), "[158214] | [169734] | nested (1)", "other keys sorted, tables inside are lists too")
 stand.equal(stand.child(vehicles_node, "[158214]").value, "true", "each entry with its value")
+stand.click(stand.child(vehicles_node, "nested (1)"))
 stand.equal(stand.child(stand.child(vehicles_node, "nested (1)"), "x").value, "1", "down into a table inside")
 -- While it's open: a changed value changes in place, a new entry makes the list again
 local count_line = stand.child(variables, "count")
@@ -562,31 +565,22 @@ stand.equal(stand.debug_texts[#stand.debug_texts], 'counter.add(amount, note) ->
 -- A table it gave: its entries in the Value list under Variable
 local value_list = stand.find_item(add_node, "Value (3)")
 stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
-stand.equal(names_in(value_list), "[1] | [2] | [3] (1)", "its entries, a table inside as a list")
-stand.equal(stand.child(value_list, "[2]").value, '"a"', "each with its value")
+stand.equal(names_in(value_list), '[1]: 1 | [2]: "a" | [3] (1)', "its entries: a value is a field with it, a table inside a list")
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table", "a table of mixed kinds: just table")
--- The table settings come with a table result, as the last items: right under the Value list
-local function tail_of(node, count: int): string
-    local names = {}
-    for i = #node.children - count + 1, #node.children do
-        table.insert(names, stand.name_of(node.children[i]))
-    end
-    return table.concat(names, " | ")
-end
-stand.equal(tail_of(add_node, 4), "Value (3) | Table Depth | Call Functions In Tables | Change Variable Values",
-    "a table result: Table Depth, Call Functions In Tables and Change Variable Values are right under the Value list, the last items")
+-- No settings to find: a table is opened as it is, its functions are lists and its values fields
+stand.equal(stand.find_item(add_node, "Table Depth"), nil, "a table result: no Table Depth")
+stand.equal(stand.find_item(add_node, "Call Functions In Tables"), nil, "no Call Functions In Tables")
+stand.equal(stand.find_item(add_node, "Change Variable Values"), nil, "no Change Variable Values")
 -- Change Variable Values: the values in the table are fields; a value typed is put into the table and told
 local edited = { 1, "a" }
 counter.add = function() return edited end
 stand.frame()
-stand.click(stand.child(add_node, "Change Variable Values"))
 local edit_field = stand.find_item(stand.find_item(add_node, "Value (2)"), '[2]: "a"')
-stand.check(edit_field ~= nil and edit_field.kind ~= "readonly", "Change Variable Values: a value is a field")
+stand.check(edit_field ~= nil and edit_field.kind ~= "readonly", "a value in a table is a field")
 stand.clear_logs()
 edit_field.on_change('"b"', 0)
 stand.equal(edited[2], "b", "a value typed in it goes into the table")
 stand.check(stand.find_log('[2]') and stand.find_log('"b"') and not stand.find_log("ERROR"), "and the change is told, the new value in quotes")
-stand.click(stand.child(add_node, "Change Variable Values"))
 -- The panel of a function in a table is Call Function's: it calls through the system module CallFunction,
 -- loaded as the bootstrap does (it and FileEditor are system modules: not listed, the numbers above stay)
 stand.equal(Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/"), 2, "the system modules load")
@@ -599,9 +593,10 @@ local with_functions = { go = function(speed: int, note: string) table.insert(ta
     vague = function(...) end }
 counter.add = function() return with_functions end
 stand.frame()
-stand.click(stand.child(add_node, "Call Functions In Tables"))
 local go_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "go: function(speed, note)")
-stand.check(go_list ~= nil and go_list.kind == "list", "Call Functions In Tables: a function in the table is a list")
+stand.check(go_list ~= nil and go_list.kind == "list", "a function in the table is a list")
+stand.equal(#go_list.children, 0, "its panel is made when it's opened")
+stand.click(go_list)
 local go_names = {}
 for _, child in stand.child(go_list, "Arguments").children do
     table.insert(go_names, stand.name_of(child))
@@ -609,20 +604,20 @@ end
 local go_text = table.concat(go_names, " | ")
 stand.check(go_text:find("speed | Number | note | Text", 1, true), "with a field for each of its parameters")
 local vague_list = stand.find_item(stand.find_item(add_node, "Value (2)"), "vague: function(...)")
+stand.click(vague_list)
 local vague_names = {}
 for _, child in stand.child(vague_list, "Arguments").children do
     table.insert(vague_names, stand.name_of(child))
 end
 stand.check(table.concat(vague_names, " | "):find("Arguments", 1, true), "one that says nothing of its parameters: the one Arguments field")
-stand.click(stand.child(add_node, "Call Functions In Tables"))
 -- Without CallFunction running there's nothing to call through: a function in the table is a plain line
 Atdar.modules.stop_module("CallFunction")
 stand.clear_logs()
-stand.click(stand.child(add_node, "Call Functions In Tables"))
-local plain_go = stand.find_item(stand.find_item(add_node, "Value (2)"), "go")
+counter.add = function() return { go = with_functions.go, vague = with_functions.vague, more = 1 } end
+stand.frame()
+local plain_go = stand.find_item(stand.find_item(add_node, "Value (3)"), "go")
 stand.check(plain_go ~= nil and plain_go.kind ~= "list", "CallFunction stopped: a function in the table is a line, not a list")
 stand.check(not stand.find_log("ERROR"), "and nothing fails")
-stand.click(stand.child(add_node, "Call Functions In Tables"))
 Atdar.modules.start_module("CallFunction")
 counter.add = function() return { 1, "a", { x = 2 } } end
 stand.frame()
@@ -643,7 +638,6 @@ stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: e
 counter.add = function() return 2.5 end
 stand.frame()
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "a plain value: the value, no type")
-stand.equal(stand.child(add_node, "Table Depth"), nil, "no table any more: the table settings are gone")
 stand.equal(stand.name_of(add_node.children[#add_node.children]), "Value (0)", "and the Value list is the last item")
 -- A userdata it gave (Stand's vectors): its name on the Variable line, its value on a line right under.
 -- Stand's v3 isn't in the test: an open file with a vector's fields and name does

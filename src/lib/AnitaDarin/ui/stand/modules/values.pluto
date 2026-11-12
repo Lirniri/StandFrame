@@ -33,9 +33,6 @@ local module = {}
 module.describe = logic.describe
 module.results_text = logic.results_text
 module.show_result = results.show
-module.result_depth = results.depth
-module.call_in_tables = results.call_in_tables
-module.edit_in_tables = results.edit_in_tables
 
 -- Strings under "modules"
 local label, text = i18n.scope("modules")
@@ -46,41 +43,15 @@ local label, text = i18n.scope("modules")
 --   result_lines   the Variable line
 --   detail_lines   the line under it with a userdata's value, hidden while the result isn't one
 --   result_tables  the Value list: { list, shape, texts, lines, named }
---   depth_items    Table Depth, Call Functions In Tables, Change Variable Values: { build = function() -> remove,
---                  remove = function or nil }. Made while the result is a table and taken away when it isn't.
---                  Made at the end of the list, so they're right under the Value list: Stand puts an item
---                  that is shown again at the end of its list, wherever it was made
 local result_lines = {}
 local detail_lines = {}
 local result_tables = {}
-local depth_items = {}
 
 -- The keys whose lines belong to a list outside Modules (Debug > Call Function): forget_lines leaves them
 local kept_keys = {}
 
 -- Makes the Value list show the key's table; set below, with the Variables list it builds like
 local update_result_list
-
-local function show_depth_items(key: string): void
-
-    local entry = depth_items[key]
-
-    if entry == nil then
-        return
-    end
-
-    local on = results.table_of(key) ~= nil
-
-    if on and entry.remove == nil then
-        entry.remove = entry.build()
-        return
-    end
-
-    if not on and entry.remove ~= nil then
-        pcall(entry.remove)
-        entry.remove = nil
-    end
-end
 
 -- The line under Variable with a userdata's value: there while the last result is one
 local function show_detail(key: string): void
@@ -105,7 +76,6 @@ results.on_change(function(key: string)
     local line = result_lines[key]
 
     update_result_list(key)
-    show_depth_items(key)
     show_detail(key)
 
     if line == nil then
@@ -116,45 +86,6 @@ results.on_change(function(key: string)
         log:debug($"{key}: Variable line not updated")
     end
 end)
-
--- The Value list made again for a table setting changed by the user. Not for a saved state Stand puts back
--- while the script starts (quiet): items can't be made there, the list is made again with the next result.
--- In a thread of its own: items can't be made inside the callback of a setting either
-local function setting_changed(key: string, quiet: ?bool): void
-    if quiet then
-        return
-    end
-
-    util.create_thread(function()
-        update_result_list(key)
-    end)
-end
-
--- How deep tables inside tables open as lists in the Value list of key
-function module.set_result_depth(key: string, depth: int, quiet: ?bool): void
-    results.set_depth(key, depth)
-    setting_changed(key, quiet)
-end
-
--- Call Functions In Tables for key's Value list: the functions in it become lists to open, with their
--- arguments and Call
-function module.set_call_in_tables(key: string, on: bool, quiet: ?bool): void
-    results.set_call_in_tables(key, on)
-    setting_changed(key, quiet)
-end
-
--- Change Variable Values for key's Value list: the values in it become fields to type a new value in
-function module.set_edit_in_tables(key: string, on: bool, quiet: ?bool): void
-    results.set_edit_in_tables(key, on)
-    setting_changed(key, quiet)
-end
-
--- The items of the table settings of key's list: build() makes them at the end of the list and returns a
--- function that takes them away; they exist only while the last result is a table
-function module.bind_depth_items(key: string, build): void
-    depth_items[key] = { build = build }
-    show_depth_items(key)
-end
 
 -- A function's Variable line, the line of a userdata's value and its Value list, made in its list (node)
 -- @param kept The lines belong to a list outside Modules (Debug > Call Function), so forget_lines leaves them
@@ -180,19 +111,17 @@ end
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
 
-    local lines, details, tables, depth = {}, {}, {}, {}
+    local lines, details, tables = {}, {}, {}
 
     for key in pairs(kept_keys) do
         lines[key] = result_lines[key]
         details[key] = detail_lines[key]
         tables[key] = result_tables[key]
-        depth[key] = depth_items[key]
     end
 
     result_lines = lines
     detail_lines = details
     result_tables = tables
-    depth_items = depth
 end
 
 -- Variables: a table's entries and a module's fields
@@ -202,8 +131,8 @@ local VARIABLES_REFRESH_MS = 250
 
 -- Makes the items in list
 -- scope: the key of the Value list the items are for (nil - the module's Variables: all lines are read only)
--- call_on: Call Functions In Tables - the functions are lists to call
--- edit_on: Change Variable Values - the other values are fields to type a new value in
+-- call_on: the functions are lists to call (with the panel, made when opened)
+-- edit_on: the other values are fields to type a new value in
 -- @return path -> the item of each line, to change its value later; and the set of paths whose name carries
 --         the value ("name: value"), which is changed with it
 local function build_variables(list: table, items: table, scope: ?string, call_on: ?bool, edit_on: ?bool): table
@@ -216,70 +145,101 @@ local function build_variables(list: table, items: table, scope: ?string, call_o
         return lines, named
     end
 
-    local nodes = { [""] = list }
+    -- The items by the list they belong to: a table's entries are made when its list is opened, and gone when it's
+    -- left, so a big table costs only the level that's open
+    local children = {}
     local number = 0
 
     for _, item in ipairs(items) do
+        children[item.parent] ??= {}
+        table.insert(children[item.parent], item)
+    end
 
-        local parent = nodes[item.parent]
+    -- Makes the entries of the list at parent_path in node
+    local function make(node: table, parent_path: string): void
 
-        if item.kind == "list" then
-            nodes[item.path] = parent:list({ name = item.name })
-        elseif item.kind == "line" and item.holder ~= nil and not item.is_function and edit_on then
+        for _, item in ipairs(children[parent_path] or {}) do
 
-            -- A value: a field with it typed as an expression (5, true, "text", v3.new(1, 2, 3), nil)
-            number += 1
-            named[item.path] = true
-            lines[item.path] = parent:text_input({ name = $"{item.name}: {item.text}", help = label("edit.help"),
-                commands = { $"tablevaredit{results.scope_number(scope)}_{number}" }, default = item.text,
-                user_only = true, on_change = function(value)
-                    if results.edit(item, value) then
-                        update_result_list(scope)
-                    end
-                end })
-        elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on
-            and call_function().is_available() then
+            if item.kind == "list" then
 
-            -- A function: a list with the panel of Debug > Call Function (arguments, Call, Call After, Loop, ...),
-            -- without the name and the notice in Stand. Only while the CallFunction module runs, which calls it:
-            -- else it's a line like the others
-            number += 1
-            named[item.path] = true
+                local path = item.path
 
-            local id = $"{scope}{item.path}"
-            local panel = nil
-            -- A field for each parameter the code says (nil for a function that says nothing: one Arguments field)
-            local sig = arguments().signature_of(item.holder[item.raw_key])
-            local entry = parent:list({ name = $"{item.name}: {item.text}", help = label("loop.help"),
-                on_open = function()
-                    if panel ~= nil then
-                        panel.opened()
-                    end
-                end })
+                node:list({ name = item.name,
+                    fill = |inner| -> make(inner, path),
+                    on_back = function()
+                        -- What was made in it is gone: its lines aren't changed any more
+                        for line_path in pairs(lines) do
+                            if line_path:sub(1, #path + 1) == $"{path}/" then
+                                lines[line_path] = nil
+                                named[line_path] = nil
+                            end
+                        end
+                    end })
+            elseif item.kind == "line" and item.holder ~= nil and not item.is_function and edit_on then
 
-            lines[item.path] = entry
+                -- A value: a field with it typed as an expression (5, true, "text", v3.new(1, 2, 3), nil)
+                number += 1
+                named[item.path] = true
+                lines[item.path] = node:text_input({ name = $"{item.name}: {item.text}", help = label("edit.help"),
+                    commands = { $"tablevaredit{results.scope_number(scope)}_{number}" }, default = item.text,
+                    user_only = true, on_change = function(value)
+                        if results.edit(item, value) then
+                            update_result_list(scope)
+                        end
+                    end })
+            elseif item.kind == "line" and item.holder ~= nil and item.is_function and call_on
+                and call_function().is_available() then
 
-            panel = call_function().panel(entry, {
-                key = id,
-                state = results.fn_state(id),
-                sig = sig,
-                name = || -> item.name,
-                -- The function as it is in its table now; a plain call, without self
-                target = function()
-                    local fn = item.holder[item.raw_key]
-                    if type(fn) ~= "function" then
-                        return false
-                    end
-                    return true, fn
-                end,
-                args_command = $"tablefnargs{results.scope_number(scope)}_{number}",
-            })
-        elseif item.kind == "line" then
-            lines[item.path] = parent:readonly({ name = item.name, value = item.text })
-        else
-            parent:readonly_name({ name = item.name })
+                -- A function: a list with the panel of Debug > Call Function (arguments, Call, Call After, Loop, ...),
+                -- without the name and the notice in Stand. The panel is made when the list is opened. Only while
+                -- the CallFunction module runs, which calls it: else it's a line like the others
+                number += 1
+                named[item.path] = true
+
+                local id = $"{scope}{item.path}"
+                local panel = nil
+                local args_command = $"tablefnargs{results.scope_number(scope)}_{number}"
+                local entry = nil
+
+                entry = node:list({ name = $"{item.name}: {item.text}", help = label("loop.help"),
+                    fill = function(inner)
+                        panel = call_function().panel(inner, {
+                            key = id,
+                            state = results.fn_state(id),
+                            -- A field for each parameter the code says (nil for a function that says nothing: one
+                            -- Arguments field)
+                            sig = arguments().signature_of(item.holder[item.raw_key]),
+                            name = || -> item.name,
+                            -- The function as it is in its table now; a plain call, without self
+                            target = function()
+                                local fn = item.holder[item.raw_key]
+                                if type(fn) ~= "function" then
+                                    return false
+                                end
+                                return true, fn
+                            end,
+                            args_command = args_command,
+                        })
+                    end,
+                    on_open = function()
+                        if panel ~= nil then
+                            panel.opened()
+                        end
+                    end,
+                    on_back = function()
+                        panel = nil
+                    end })
+
+                lines[item.path] = entry
+            elseif item.kind == "line" then
+                lines[item.path] = node:readonly({ name = item.name, value = item.text })
+            else
+                node:readonly_name({ name = item.name })
+            end
         end
     end
+
+    make(list, "")
 
     return lines, named
 end
@@ -320,9 +280,8 @@ update_result_list = function(key)
     shown.list:set_visible(true)
     shown.list:set_name(text("loop.result_list"):format(count))
 
-    -- With Call Functions In Tables / Change Variable Values on, the lines are lists or fields: another shape
-    local call_on = results.call_in_tables(key)
-    local edit_on = results.edit_in_tables(key)
+        local call_on = true
+    local edit_on = true
     local shape = logic.shape_of(items)
 
     if call_on then

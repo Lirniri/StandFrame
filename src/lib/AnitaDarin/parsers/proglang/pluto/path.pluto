@@ -14,6 +14,8 @@
 -- (game.repair_vehicle; a module's name may come first: VehicleManager.get). The script has tables named like
 -- Stand's (Atdar.util, Atdar.menu): those are reached with Atdar in front (Atdar.util.hash), plain util is Stand's.
 -- With a colon the function is a method of what's before it (VehicleManager:get).
+-- An item of a table is named by its key in square brackets, a number or a text: Atdar.util.hash["x"], some.list[1].name.
+-- Braces at the end ask for the table to be opened to see what's in it: Atdar.util{} (see split).
 
 -- A value of the wrong kind is the caller's mistake (core/check); text that can't be read isn't one -
 -- that's what a parser is for
@@ -22,8 +24,8 @@ local expect = Atdar.loader.load("core/check").expecter("parsers/proglang/pluto/
 local module = {}
 
 -- The value one step down a path: a module of the manager at the root, else a field
-local function step(current, key: string)
-    if current == Atdar and Atdar.modules ~= nil and Atdar.modules.has(key) then
+local function step(current, key)
+    if current == Atdar and type(key) == "string" and Atdar.modules ~= nil and Atdar.modules.has(key) then
         return Atdar.modules.get(key)
     end
     if type(current) ~= "table" then
@@ -36,8 +38,65 @@ local function step(current, key: string)
     return value
 end
 
--- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them)
--- @return The path, and the text in the brackets
+-- The keys of a path in order, a name or a [key] each: "a.b[1].c" -> a, b, 1, c; a ["text"] key may have dots in it
+-- @return The keys; nil when a bracket isn't closed or is empty
+local function keys_of(path: string): ?table
+
+    local keys = {}
+    local index = 1
+
+    while index <= #path do
+
+        local char = path:sub(index, index)
+
+        if char == "." then
+            index += 1
+        elseif char == "[" then
+
+            -- A quoted key may have a ] in it: the closing one is the first after the closing quote
+            local from = index + 1
+            local quote = path:match("^%s*([\"'])", from)
+
+            if quote ~= nil then
+                local open = path:find(quote, from, true)
+                from = (path:find(quote, open + 1, true) or open) + 1
+            end
+
+            local close = path:find("]", from, true)
+
+            if close == nil then
+                return nil
+            end
+
+            local inner = path:sub(index + 1, close - 1):match("^%s*(.-)%s*$")
+            local text = inner:match("^\"(.*)\"$") or inner:match("^'(.*)'$")
+
+            if inner == "" then
+                return nil
+            elseif text ~= nil then
+                table.insert(keys, text)
+            elseif inner:match("^%-?%d+$") then
+                table.insert(keys, math.tointeger(tonumber(inner)))
+            else
+                table.insert(keys, inner)
+            end
+
+            index = close + 1
+        else
+
+            local word = path:match("^[^%.%[]+", index)
+
+            table.insert(keys, word)
+            index += #word
+        end
+    end
+
+    return keys
+end
+
+-- "PLAYER.PLAYER_PED_ID()" and "game.set_speed(5)" -> the path and what is in the brackets (nil without them);
+-- "Atdar.util{}" -> the path without the braces, and that the table is asked to be opened
+-- @return The path, the text in the brackets, and true when it ended with {} (nothing more otherwise)
 function module.split(name: string)
     
     expect("split", "name", name, "string")
@@ -45,6 +104,13 @@ function module.split(name: string)
     local path, inline = name:match("^(.-)%s*%((.*)%)%s*$")
 
     if path == nil then
+
+        local table_path = name:match("^(.-)%s*{%s*}%s*$")
+
+        if table_path ~= nil then
+            return table_path, nil, true
+        end
+
         return name, nil
     end
 
@@ -68,9 +134,15 @@ function module.resolve(typed: string)
         method = path:sub(colon + 1)
     end
 
+    local keys = keys_of(owner_path)
+
+    if keys == nil then
+        return false
+    end
+
     local current = Atdar
     local first = true
-    for key in owner_path:gmatch("[^%.]+") do
+    for _, key in ipairs(keys) do
         local was_first = first
         first = false
         -- "Atdar.name" is the same as "name"
@@ -79,7 +151,7 @@ function module.resolve(typed: string)
         end
         local next_value = nil
         -- The first word: a global of Stand (util, menu, entities, ...) before the script's own table of that name
-        if was_first then
+        if was_first and type(key) == "string" then
             next_value = _G[key]
         end
         if next_value == nil then

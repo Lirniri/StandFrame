@@ -22,14 +22,14 @@
 -- the number of one out; the numbers follow the order of the list.
 --
 -- The panel (module.panel) is the same in every list that calls a function: this one, and the functions
--- found in a table of a Value list (Call Functions In Tables, ui/stand/modules/values):
+-- found in a table of a Value list (ui/stand/modules/values):
 --
 --   in the order of a function in the Modules list:
 --   Call After Typing Function (Call A Function only), Arguments, Call After Typing Arguments,
 --   Call, Call After (ms), Call When Opened, Call When Hovered,
---   the Variable line and, for a table, the Value list, then Table Depth, Call Functions In Tables,
---   Change Variable Values (these three while the result is a table), the Loop Status line,
---   Loop, Loop With Interval
+--   the Loop Status line, Loop, Loop With Interval, then the Variable line and, for a table, the Value list:
+--   a table inside is a list made when it's opened, a function in it a list with this same panel, a value a
+--   field to type a new one in (no settings to switch on)
 --
 -- The name is a path from Atdar with dots (game.repair_vehicle, game.some_table). A module's name may come
 -- first (VehicleManager.get); with a colon the function is called as a method (VehicleManager:get)
@@ -210,41 +210,6 @@ function module.panel(list: table, spec: table): table
 
         -- What came out: the Variable line, and for a table the Value list under it
         values().add_result_lines(list, spec.key, spec.kept)
-
-        -- Table Depth, Call Functions In Tables and Change Variable Values: made while the result is a table, at
-        -- the end of the list, right under the Value list. Stand puts the saved state of these back while they're
-        -- made: then it's only remembered (quiet)
-        values().bind_depth_items(spec.key, function()
-
-            local depth = loop:slider({ key = "table_depth", min = 1, max = 8,
-                default = values().result_depth(spec.key), on_change = function(value, previous, click_type)
-                if not clicks.is_stopping() then
-                    values().set_result_depth(spec.key, value, not clicks.is_user_click(click_type))
-                end
-            end })
-
-            -- The functions in the table become lists with the same panel
-            local in_tables = loop:toggle({ key = "call_in_tables", default = values().call_in_tables(spec.key),
-                on_change = function(on, click_type)
-                if not clicks.is_stopping() then
-                    values().set_call_in_tables(spec.key, on, not clicks.is_user_click(click_type))
-                end
-            end })
-
-            -- The other values in the table become fields to type a new value in
-            local edit = loop:toggle({ key = "edit_in_tables", default = values().edit_in_tables(spec.key),
-                on_change = function(on, click_type)
-                if not clicks.is_stopping() then
-                    values().set_edit_in_tables(spec.key, on, not clicks.is_user_click(click_type))
-                end
-            end })
-
-            return function()
-                depth:remove()
-                in_tables:remove()
-                edit:remove()
-            end
-        end)
     end)
 
     return {
@@ -276,6 +241,14 @@ local function add_item(list: table, entry: table, number: int): void
 
     local item = calls():describe(entry, number)
     local panel = nil
+
+    -- A table: a list with what's in it, read when it's opened. The entries are made as it's opened, level by level
+    if item.is_table then
+        list:list({ name = item.name, help = label("added.table_help"),
+            fill = |node| -> values().add_result_lines(node, item.spec.key, true),
+            on_open = || -> calls():call(item.spec) })
+        return
+    end
 
     if not item.has_fields then
         list:action({ name = item.name, help = label("added.button_help"), on_click = || -> calls():call(item.spec) })
