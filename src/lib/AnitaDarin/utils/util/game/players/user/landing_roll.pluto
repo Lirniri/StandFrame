@@ -1,0 +1,150 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("LandingRoll")
+
+-- A roll at the landing: the game rolls a player who lands with a direction held, and the roll softens the landing
+-- (found by hand: it saved the player on a small height, and was seen after a fall of about 120 m). This holds the
+-- direction for him, a moment before the ground and a little after it.
+--
+--     local roll = Atdar.util.game.players.user.landing_roll
+--
+--     roll.enable()
+--     roll.set_time(0.4)        -- the seconds before the ground (at the speed of the fall) the key is pressed from
+--     roll.disable()
+--
+-- It works for the local player in a plain fall and does nothing if he holds the stick himself. Whether the roll
+-- happens is the game's: a push forward at the touch of the ground is what tells it (fall_lab writes that)
+local module = {}
+
+-- A fall slower than this (m/s down) isn't helped: it lands by itself
+local MIN_FALL_SPEED = 8.0
+
+-- A stick held further than this is the player's own direction: nothing is pressed for him
+local STICK_OWN = 0.2
+
+local settings = {
+    time = 0.4,
+    hold_ms = 600,
+    min_speed = MIN_FALL_SPEED,
+    action = nil, -- nil: the forward key (Atdar.natives.input.ACTION.MOVE_UP_ONLY)
+}
+
+-- Whether it's on, which run of the tick handler is the wanted one, until when (ms) the key is pressed, whether
+-- that press is told in the log yet
+local state = { enabled = false, run = 0, until_ms = 0, logged = false }
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return state.enabled
+end
+
+-- Settings
+
+-- How long before the ground (seconds, at the speed the fall has) the key starts to be pressed, 0.4 by default
+-- @param seconds From about 0.2: a roll is not started in less
+function module.set_time(seconds: number): void
+    settings.time = seconds
+end
+
+-- How long (ms) the key is held, from the start of it, 600 by default: past the touch of the ground, because the
+-- game decides about the landing a moment after it
+function module.set_hold(ms: int): void
+    settings.hold_ms = ms
+end
+
+-- A fall slower than this (m/s down) isn't helped, 8 by default
+function module.set_min_speed(speed: number): void
+    settings.min_speed = speed
+end
+
+-- Which control is pressed, one of Atdar.natives.input.ACTION; nil - the forward key (default)
+-- @param action For example ACTION.MOVE_UP_ONLY, ACTION.MOVE_LEFT_ONLY
+function module.set_action(action: ?int): void
+    settings.action = action
+end
+
+-- One frame
+local function tick(): void
+
+    local n_player = Atdar.natives.player
+    local n_entity = Atdar.natives.entity
+    local input = Atdar.natives.input
+    local ped = n_player.get_ped_id()
+    local now = util.current_time_millis()
+
+    if n_player.is_dead(n_player.get_id()) then
+        return
+    end
+
+    if Atdar.util.game.entity.ped.is_plain_falling(ped) then
+
+        local fall_speed = -n_entity.get_velocity(ped).z
+        local height = n_entity.get_height_above_ground(ped)
+
+        if fall_speed >= settings.min_speed and height <= fall_speed * settings.time and now >= state.until_ms then
+            state.until_ms = now + settings.hold_ms
+            state.logged = false
+        end
+    end
+
+    if now >= state.until_ms then
+        return
+    end
+
+    local stick_x, stick_y = Atdar.util.game.players.user.get_move_input()
+
+    if math.sqrt(stick_x ^ 2 + stick_y ^ 2) > STICK_OWN then
+        return
+    end
+
+    if not state.logged then
+        state.logged = true
+        log:debug("the key is pressed for the roll")
+    end
+
+    input.press_next_frame(settings.action ?? input.ACTION.MOVE_UP_ONLY)
+end
+
+-- Actions
+
+-- Switches it on. A second call does nothing
+function module.enable(): void
+
+    if state.enabled then
+        return
+    end
+
+    state.enabled = true
+    state.run += 1
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        if not state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(tick)
+
+        if not ok then
+            log:error($"landing roll stopped\n{err}")
+            state.enabled = false
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Switches it off
+function module.disable(): void
+    state.enabled = false
+    state.run += 1
+    state.until_ms = 0
+end
+
+-- A stopped script presses nothing
+util.on_stop(module.disable)
+
+return module

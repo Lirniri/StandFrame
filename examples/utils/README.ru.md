@@ -12,10 +12,11 @@
 | `players/user/01_graceland.pluto` | `Atdar.util.game.players.user.graceland`: `enable`, `disable`, `is_enabled` и все настройки |
 | `players/user/02_graceland_feature.pluto` | Graceland как переключатель-фича в меню |
 | `players/user/03_helpers.pluto` | Из чего собран Graceland: стик в мире, защита от падения, восстановление брони и выносливости |
+| `players/user/04_landing_roll.pluto` | `landing_roll`: держит игроку направление перед землёй, чтобы игра сделала перекат; кирпичики, из которых он собран (`natives.input.ACTION`, `press_next_frame`, `ped.is_plain_falling`, `entity.get_horizontal_speed`) |
 | `entity/01_ped.pluto` | `entity.ped`: выход из ragdoll с сохранением скорости, включённые флаги педа (любого) |
 | `entity/02_vehicle.pluto` | `entity.vehicle`: ремонт транспорта |
 | `tools/01_states.pluto` | `Atdar.util.game.tools.states`: опрашивает все нативы `is_` / `has_` / `can_` и показывает, что изменилось |
-| `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: лаборатория управления падением без ragdoll: `arm()`, который сам ловит падение (покадровая запись со сводкой по окнам времени и изменения флагов педа в воздухе), флаги педа до и после момента, способы управления для проб |
+| `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: лаборатория управления падением без ragdoll: `arm()` / `arm_loop()`, которые сами ловят падение (или каждое падение подряд) (покадровая запись со сводкой по окнам времени и изменения флагов педа в воздухе), флаги педа до и после момента, способы управления для проб, помощь с перекатом (клавиша вперёд перед землёй) |
 
 ## Graceland: падение с любой высоты
 

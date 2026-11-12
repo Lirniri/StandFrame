@@ -5,6 +5,19 @@ local FLAG_MAX = 470
 
 -- Get
 
+-- Whether the ped is in a plain fall: falling, and neither in a ragdoll nor in a vehicle. A fall with a parachute is
+-- the game's IS_PED_FALLING false, so it is not one. What a steered fall and a landing are judged in
+function module.is_plain_falling(ped: int): bool
+
+    local n_ped = Atdar.natives.entity.ped
+
+    if not n_ped.is_falling(ped) then
+        return false
+    end
+
+    return not Atdar.natives.player.is_ragdoll(ped) and not n_ped.vehicle.is_in_any(ped)
+end
+
 -- The numbers of every flag of the ped that is true right now: { config = {...}, reset = {...} }.
 -- To find what another script sets on a ped, read it with that on and off and compare. A reset flag lasts one
 -- frame, so one set by another script shows only if it was set before this read

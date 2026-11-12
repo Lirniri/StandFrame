@@ -1,5 +1,20 @@
 local module = {}
 
+-- The numbers of the game's controls (INPUT_*) the script uses, for the functions below. The move ones are the
+-- axes of the stick (the left / right and the up / down, -1 .. 1) and the single keys (W, S, A, D)
+module.ACTION = {
+    LOOK_LR = 1,
+    LOOK_UD = 2,
+    SPRINT = 21,
+    JUMP = 22,
+    MOVE_LR = 30,
+    MOVE_UD = 31,
+    MOVE_UP_ONLY = 32,
+    MOVE_DOWN_ONLY = 33,
+    MOVE_LEFT_ONLY = 34,
+    MOVE_RIGHT_ONLY = 35,
+}
+
 -- State
 
 function module.is_enabled(control: int, action: int): bool
@@ -142,6 +157,15 @@ end
 
 -- This is for simulating player input
 function module.set_value_next_frame(control: int, action: int, value: float): bool
+    return PAD.SET_CONTROL_VALUE_NEXT_FRAME(control, action, value)
+end
+
+-- Presses a control of the player in the next frame, as if he did (set_value_next_frame): a key is held by calling
+-- this every frame. Does nothing for a control the game has disabled
+-- @param action One of ACTION, for example ACTION.MOVE_UP_ONLY
+-- @param value 0 - 1, a key is 1.0 (default)
+-- @param control The group of controls, 0 is the player's (default)
+function module.press_next_frame(action: int, value: float = 1.0, control: int = 0): bool
     return PAD.SET_CONTROL_VALUE_NEXT_FRAME(control, action, value)
 end
 

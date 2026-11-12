@@ -1,0 +1,39 @@
+-- EXAMPLE: the landing roll, Atdar.util.game.players.user.landing_roll.
+--
+-- The game rolls a player who lands with a direction held, and the roll softens the landing. This module holds that
+-- direction for him a moment before the ground and a little after it (the forward key by default), in a plain fall,
+-- and only if he does not hold the stick himself. It is built on two small pieces that can be used on their own:
+--   Atdar.natives.input.ACTION / press_next_frame        the names of the game's controls, a press in the next frame
+--   Atdar.util.game.entity.ped.is_plain_falling(ped)     falling, and not in a ragdoll or a vehicle
+--   Atdar.util.game.entity.get_horizontal_speed(entity)  the speed sideways, not up or down
+
+local roll = Atdar.util.game.players.user.landing_roll
+
+roll.set_time(0.4)            -- the seconds before the ground (at the speed of the fall) the key starts to be pressed
+roll.set_hold(600)            -- how long (ms) it is held, from the start: past the touch of the ground
+roll.set_min_speed(8)         -- a fall slower than this (m/s down) isn't helped
+roll.set_action(nil)          -- nil: the forward key; or one of Atdar.natives.input.ACTION
+
+roll.enable()
+
+if roll.is_enabled() then
+    util.log("the landing roll is on")
+end
+
+-- The pieces on their own: press a key of the player in the next frame, and hold it by doing that every frame
+-- (here the forward key for 2 seconds)
+local input = Atdar.natives.input
+local until_ms = util.current_time_millis() + 2000
+
+util.create_tick_handler(function()
+    input.press_next_frame(input.ACTION.MOVE_UP_ONLY)
+    return util.current_time_millis() < until_ms
+end)
+
+-- Whether the local player is in a plain fall, and how fast he moves sideways
+local ped = Atdar.natives.player.get_ped_id()
+if Atdar.util.game.entity.ped.is_plain_falling(ped) then
+    util.log($"falling, {Atdar.util.game.entity.get_horizontal_speed(ped)} m/s sideways")
+end
+
+roll.disable()

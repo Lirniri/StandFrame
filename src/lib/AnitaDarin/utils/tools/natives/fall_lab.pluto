@@ -83,6 +83,21 @@ function module.set_raw_step(step: int): void
     settings.raw_step = step
 end
 
+-- Whether start() presses the forward key a moment before the ground, off by default. A try: the game rolls a player
+-- who lands with a direction held (found by hand on a small height, and it saved the player), so this holds one for
+-- him: the roll instead of a hit. The key is not pressed if the player holds the stick himself. Look at the landing
+-- of every fall that arm() writes ("landing rolling"), on small and on big heights
+function module.set_roll_assist(toggle: bool): void
+
+    local roll = Atdar.util.game.players.user.landing_roll
+
+    if toggle then
+        roll.enable()
+    else
+        roll.disable()
+    end
+end
+
 -- Steering
 
 -- Forgets the speed the modes keep
@@ -163,7 +178,6 @@ end
 local function tick(): void
 
     local n_player = Atdar.natives.player
-    local n_ped = Atdar.natives.entity.ped
     local ped = n_player.get_ped_id()
 
     if n_player.is_dead(n_player.get_id()) then
@@ -172,7 +186,7 @@ local function tick(): void
 
     Atdar.util.game.players.user.set_fall_protection(true)
 
-    local falling = n_ped.is_falling(ped) and not n_player.is_ragdoll(ped) and not n_ped.vehicle.is_in_any(ped)
+    local falling = Atdar.util.game.entity.ped.is_plain_falling(ped)
 
     if not falling then
         forget()
@@ -593,7 +607,7 @@ end
 
 -- Arm
 
-local arm_state = { armed = false, run = 0 }
+local arm_state = { armed = false, run = 0, loop = false }
 
 -- The flags of the player's ped that are true now as sets: { config = { [id] = true }, reset = { [id] = true } }
 local function flags_set(ped: int): table
@@ -664,7 +678,10 @@ function module.arm(): void
     arm_state.run += 1
 
     local run = arm_state.run
-    local session = { waiting = true, frames = {}, started = 0, last_check = 0, previous = nil, flips = {}, out_since = nil }
+    local session = {
+        waiting = true, frames = {}, started = 0, last_check = 0, previous = nil, flips = {}, out_since = nil, number = 1,
+        air_speed = 0.0, touch_ms = nil, speed_before = 0.0,
+    }
 
     log:debug("armed: jump, and switch the other feature on in the air")
 
@@ -676,11 +693,9 @@ function module.arm(): void
 
         local ok, err = pcall(function()
 
-            local n_player = Atdar.natives.player
-            local n_ped = Atdar.natives.entity.ped
-            local ped = n_player.get_ped_id()
+            local ped = Atdar.natives.player.get_ped_id()
             local now = util.current_time_millis()
-            local falling = n_ped.is_falling(ped) and not n_player.is_ragdoll(ped) and not n_ped.vehicle.is_in_any(ped)
+            local falling = Atdar.util.game.entity.ped.is_plain_falling(ped)
 
             if session.waiting then
                 if falling then
@@ -688,7 +703,7 @@ function module.arm(): void
                     session.started = now
                     session.last_check = now
                     session.previous = flags_set(ped)
-                    log:debug("the fall began: recording")
+                    log:debug($"fall {session.number}: the fall began, recording")
                 end
                 return
             end
@@ -707,15 +722,61 @@ function module.arm(): void
 
             if falling then
                 session.out_since = nil
+
+                session.air_speed = Atdar.util.game.entity.get_horizontal_speed(ped)
             else
                 session.out_since ??= now
+
+                -- The touch of the ground: the horizontal speed of the last frame in the air, to compare with after it
+                if session.touch_ms == nil then
+                    session.touch_ms = ms
+                    session.speed_before = session.air_speed
+                end
             end
 
             if (session.out_since ~= nil and now - session.out_since >= LAND_MS) or ms >= MAX_ARM_MS then
                 state.frames = session.frames
-                arm_state.armed = false
-                log:debug("the fall ended")
+                log:debug($"fall {session.number}: the fall ended")
                 module.dump()
+
+                -- A roll pushes the ped forward at the landing: the horizontal speed after the touch against before it.
+                -- (The parachute landing native is not filled for a plain fall: it said "not told" every time)
+                local after = 0.0
+
+                for i = #session.frames, 1, -1 do
+
+                    local frame = session.frames[i]
+
+                    if session.touch_ms == nil or frame.t < session.touch_ms then
+                        break
+                    end
+
+                    after = math.max(after, math.sqrt(frame.vx ^ 2 + frame.vy ^ 2))
+                end
+
+                local verdict = "no push"
+
+                if after > session.speed_before + 3.0 then
+                    verdict = "pushed forward, like a roll"
+                end
+
+                log:debug(string.format("fall %d: landing, horizontal speed %.1f -> %.1f m/s (%s)",
+                    session.number, session.speed_before, after, verdict))
+
+                if arm_state.loop then
+                    session.number += 1
+                    session.waiting = true
+                    session.frames = {}
+                    session.previous = nil
+                    session.flips = {}
+                    session.out_since = nil
+                    session.air_speed = 0.0
+                    session.touch_ms = nil
+                    session.speed_before = 0.0
+                    log:debug($"armed again: fall {session.number}")
+                else
+                    arm_state.armed = false
+                end
             end
         end)
 
@@ -728,9 +789,17 @@ function module.arm(): void
     end)
 end
 
--- Cancels arm() before the fall
+-- Like arm(), but it does not stop after one fall: each fall gets its summary (numbered, "fall 1", "fall 2") and
+-- the next one is waited for, until disarm(). Jump as many times as you like
+function module.arm_loop(): void
+    arm_state.loop = true
+    module.arm()
+end
+
+-- Cancels arm() and arm_loop(): before the fall, or after the last one. A fall that goes on is not written
 function module.disarm(): void
     arm_state.armed = false
+    arm_state.loop = false
     arm_state.run += 1
 end
 

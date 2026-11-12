@@ -10,7 +10,8 @@ local lab = Atdar.util.game.tools.fall_lab
 -- switched on there, say) is written with the time of the fall, and after the landing the summary follows, by windows
 -- of half a second: the "along the stick" column changes where the steering begins. One fall, then it is disarmed
 lab.arm()
--- lab.disarm()           -- cancels it before the fall
+-- lab.arm_loop()         -- the same, but for every fall in a row ("fall 1", "fall 2", ...) until disarm()
+-- lab.disarm()           -- cancels it, before the fall or after the last one
 
 -- 1. A fall frame by frame, with a summary. Works for any fall: ours, or what another script does (Stand's own
 -- feature). Call it, jump, hold the stick in the air; after the time the summary is in the log: the speed, the
@@ -32,3 +33,12 @@ lab.set_air_control(20, 25)           -- m/s per second the stick adds, and the 
 lab.start()
 -- ... jump, hold the stick; the numbers: lab.record(4)
 lab.stop()
+
+-- 4. The roll assist is Atdar.util.game.players.user.landing_roll (04_landing_roll.pluto), switched on and off here:
+-- the game rolls a player who lands with a direction held, and that saves him; with this on the forward key is pressed
+-- for him a moment before the ground (not if he holds the stick himself). arm() / arm_loop() write the landing of every
+-- fall: the horizontal speed before and after the touch ("pushed forward, like a roll" or "no push")
+lab.set_roll_assist(true)
+lab.set_mode("none")                  -- no steering, only the protection and the roll
+lab.start()
+lab.arm_loop()

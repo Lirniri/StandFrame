@@ -12,10 +12,11 @@ him only, it takes his id and his ped), `entity/` is `Atdar.util.game.entity`, `
 | `players/user/01_graceland.pluto` | `Atdar.util.game.players.user.graceland`: `enable`, `disable`, `is_enabled` and every setting |
 | `players/user/02_graceland_feature.pluto` | Graceland as a toggle feature in a menu |
 | `players/user/03_helpers.pluto` | What Graceland is made of: the stick in the world, fall protection, restoring armor and stamina |
+| `players/user/04_landing_roll.pluto` | `landing_roll`: holds a direction for the player before the ground so the game rolls him; the pieces it is built on (`natives.input.ACTION`, `press_next_frame`, `ped.is_plain_falling`, `entity.get_horizontal_speed`) |
 | `entity/01_ped.pluto` | `entity.ped`: ending a ragdoll with the speed kept, a ped's flags that are on (any ped) |
 | `entity/02_vehicle.pluto` | `entity.vehicle`: repairing a vehicle |
 | `tools/01_states.pluto` | `Atdar.util.game.tools.states`: asks every `is_` / `has_` / `can_` native and shows what changed |
-| `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: a laboratory for steering a fall without a ragdoll: `arm()` that catches a fall by itself (a frame-by-frame record with a summary by windows of time, and the changes in the ped's flags in the air), the ped's flags before and after a moment, the ways to steer to try |
+| `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: a laboratory for steering a fall without a ragdoll: `arm()` / `arm_loop()` that catch a fall (or every fall in a row) by themselves (a frame-by-frame record with a summary by windows of time, and the changes in the ped's flags in the air), the ped's flags before and after a moment, the ways to steer to try, the roll assist (the forward key pressed before the ground) |
 
 ## Graceland: a fall from any height
 

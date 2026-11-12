@@ -1,3 +1,14 @@
 local module = {}
--- body
+
+-- Get
+
+-- How fast the entity moves sideways (not up or down), m/s. The fall of a ped is judged by it: the vertical speed
+-- is the gravity's, the horizontal one is what is steered
+function module.get_horizontal_speed(entity: int): float
+
+    local velocity = Atdar.natives.entity.get_velocity(entity)
+
+    return math.sqrt(velocity.x ^ 2 + velocity.y ^ 2)
+end
+
 return Atdar.loader.auto(module, "utils/util/game/entity")
