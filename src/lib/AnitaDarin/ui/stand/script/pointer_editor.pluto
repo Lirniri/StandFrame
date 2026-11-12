@@ -1,0 +1,259 @@
+-- lib/AnitaDarin/ui/stand/script/pointer_editor.pluto
+--
+-- Debug > Pointer Editor, right above Delete Script: the places in the game's memory that are found by a signature
+-- (Atdar.natives.memory.pointers) as a list to edit. What it does is in the system module PointerEditor
+-- (modules/systems/PointerEditor); the list is shown only while that module runs.
+--
+--   Pointer Editor >   Add Pointer (name = pattern: "roll = 48 8B ?? ?? 89")
+--                      Scan All, Read Bytes (an address, or a pointer's name, and how many: "roll, 16")
+--                      Pointers (divider), then a list per pointer
+--   a pointer >        its state and address, Pattern, Kind (address / rip / offset), At, Size, Extra, Scan, Remove
+--
+-- A pointer made here is kept in the script's store and stored again at every start. One that something else
+-- stored (the script itself) is shown with its state and can be scanned, but not changed. Every change is
+-- saved at once; the lists are made when they are opened and made again after a change.
+-- Strings: core/language "script_menu.pointer_editor"
+
+local i18n = Atdar.loader.load("core/i18n")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("PointerEditor")
+
+local module = {}
+
+local SCOPE = "script_menu.pointer_editor"
+local label, text = i18n.scope(SCOPE)
+
+-- The kinds of a pointer, in the order they are offered
+local KINDS = { "address", "rip", "offset" }
+
+-- The logic: the PointerEditor module, asked for at every use (Reload makes a new one)
+local function editor(): table
+    return Atdar.modules.get("PointerEditor")
+end
+
+-- Stand's text fields need a command each: short, unique while the field exists
+local command_number = 0
+
+local function next_command(): string
+    command_number += 1
+
+    return $"pointeredit{command_number}"
+end
+
+-- A text field of the editor; not one of the found commands (its command isn't tracked)
+-- @param opts The item's options: key (or name and help), default (what's in it)
+-- @param on_typed function(value) the user typed in it
+local function field(node: table, opts: table, on_typed: function): table
+
+    opts.commands = { next_command() }
+    opts.track = false
+    opts.user_only = true
+    opts.on_change = |value| -> on_typed(value)
+
+    return node:text_input(opts)
+end
+
+-- The status of a pointer (core/language "status.<key>") by what the module says
+local STATUS_KEY = { ["found"] = "found", ["not found"] = "not_found", ["not searched"] = "not_searched" }
+
+-- @return The value as text: an address in hex, a dash for nil
+local function hex(value): string
+
+    if value == nil then
+        return "-"
+    end
+
+    local digits = string.format("%X", value)
+
+    return $"0x{digits}"
+end
+
+-- Says why a change was refused
+local function warn(why: string): void
+    log:warn(text($"errors.{why}"))
+end
+
+-- One pointer: its state, the fields and the buttons
+-- @param refresh function() the list of pointers is made again (a pointer went, or its state changed)
+local function pointer_list(parent: table, name: string, refresh: function): void
+
+    local gone = false
+    local cancel = nil
+
+    parent:list({ name = name, help = label("pointer.help"), fill = function(node)
+
+        local ui = node:scope(SCOPE)
+        local info = nil
+        local state = nil
+
+        for _, entry in ipairs(editor():list()) do
+            if entry.name == name then
+                info = entry
+            end
+        end
+
+        if info == nil then
+            node:readonly_name({ name = label("errors.missing") })
+            return
+        end
+
+        -- What the pointer is now: shown at the top, made again after a scan
+        state = node:section(function()
+
+            local current = nil
+
+            for _, entry in ipairs(editor():list()) do
+                if entry.name == name then
+                    current = entry
+                end
+            end
+
+            if current == nil then
+                return
+            end
+
+            local key = STATUS_KEY[current.status] or "not_searched"
+
+            node:readonly_name({ name = text($"status.{key}"):format(hex(current.value)) })
+        end)
+
+        ui:action({ key = "scan", on_click = function()
+
+            local value = editor():scan(name)
+
+            if value == nil then
+                log:warn(text("scan.not_found"):format(name))
+            else
+                log:notify(text("scan.found"):format(name, hex(value)))
+            end
+
+            state.rebuild()
+        end })
+
+        if not info.own then
+            node:readonly_name({ name = label("not_own") })
+            return
+        end
+
+        -- A change is saved by the module, and the status goes back to not searched
+        local function change(what: string, value): void
+
+            local ok, why = editor():set(name, what, value)
+
+            if not ok then
+                warn(why)
+            end
+
+            state.rebuild()
+        end
+
+        field(ui, { key = "pattern", default = info.pattern }, |value| -> change("pattern", value))
+
+        ui:list_action({ key = "kind", options = KINDS, on_select = function(index: int)
+            change("kind", KINDS[index])
+        end })
+
+        field(ui, { key = "at", default = tostring(info.at) }, |value| -> change("at", value))
+        field(ui, { key = "size", default = tostring(info.size) }, |value| -> change("size", value))
+        field(ui, { key = "extra", default = tostring(info.extra) }, |value| -> change("extra", value))
+
+        cancel = select(2, ui:confirm({ key = "remove",
+            on_confirm = function()
+                editor():remove(name)
+                gone = true
+                node:clear()
+                log:notify(text("remove.done"):format(name))
+            end,
+            on_first = || -> log:warn(text("remove.warning"):format(name)),
+        }))
+    end,
+    on_back = function()
+        if cancel ~= nil then
+            cancel()
+        end
+
+        if gone then
+            refresh()
+        end
+    end })
+end
+
+-- Whether the PointerEditor module is there and running: the list is shown only then
+function module.is_available(): bool
+    return Atdar.modules.is_running("PointerEditor")
+end
+
+-- Makes the Pointer Editor list in node (Debug)
+-- @return The Pointer Editor's list, and when it's shown: while the PointerEditor module runs
+function module.build(node: table)
+
+    local shown = nil
+
+    local list = node:list({ name = label("name"), help = label("help"), fill = function(pointers)
+
+        local ui = pointers:scope(SCOPE)
+
+        -- "name = pattern"
+        field(ui, { key = "add" }, function(value)
+
+            local name, pattern = value:match("^%s*([^=]-)%s*=%s*(.-)%s*$")
+
+            if name == nil then
+                warn("add")
+                return
+            end
+
+            local ok, why = editor():add(name, pattern)
+
+            if not ok then
+                warn(why)
+                return
+            end
+
+            log:notify(text("add.done"):format(name))
+            shown.rebuild()
+        end)
+
+        ui:action({ key = "scan_all", on_click = function()
+
+            local found, count = editor():scan_all()
+
+            log:notify(text("scan_all.done"):format(found, count))
+            shown.rebuild()
+        end })
+
+        -- "address or name": 16 bytes, "address or name, count": that many
+        field(ui, { key = "read" }, function(value)
+
+            local where, count = value:match("^%s*([^,]-)%s*,%s*(%d+)%s*$")
+            local bytes = editor():read_bytes(where or value, tonumber(count) or 16)
+
+            if bytes == nil then
+                warn("bytes")
+                return
+            end
+
+            log:notify(bytes)
+        end)
+
+        pointers:divider({ name = label("pointers.divider") })
+
+        shown = pointers:section(function()
+
+            local entries = editor():list()
+
+            if #entries == 0 then
+                pointers:readonly_name({ name = label("empty") })
+            end
+
+            for _, entry in ipairs(entries) do
+                pointer_list(pointers, entry.name, || -> shown.rebuild())
+            end
+        end)
+    end })
+
+    return list, module.is_available
+end
+
+return module

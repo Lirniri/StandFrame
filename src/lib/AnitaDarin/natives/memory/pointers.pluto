@@ -1,0 +1,156 @@
+-- Named places in the game's memory found by a signature, like STORE_POINTER of Stand-OSS: say once how to find a
+-- place (store), ask for it by name (get): it is searched on the first ask and kept, so the scan is not repeated.
+-- A place that was not found is kept as not found too, rescan tries it again (after the game has loaded more, for
+-- example). Nothing is known to be found in the game yet: get gives nil then, and says so in the log.
+--
+--     local pointers = Atdar.natives.memory.pointers
+--
+--     pointers.store("roll_check", "48 8B ?? ?? 89 ?? ??", "address")
+--     local address = pointers.get("roll_check")    -- nil when there is no such place
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("MemoryPointers")
+
+local module = {}
+
+-- How a place is read out of what the pattern found
+module.KIND = {
+    ADDRESS = "address", -- where the pattern is
+    RIP = "rip",         -- where the call or lea found by the pattern points
+    OFFSET = "offset",   -- a number in the instruction (the offset of a field), not an address
+}
+
+-- The entries by name: { pattern, kind, at, size, extra, value, searched }
+local entries = {}
+
+-- Set
+
+-- Says how to find a place; a place stored again under the name is forgotten and searched anew
+-- @param kind One of module.KIND, "address" by default
+-- @param at Bytes from the start of the pattern to the number (RIP, OFFSET)
+-- @param size For OFFSET: 4 (default) or 1
+-- @param extra For RIP: the bytes that follow the number in the instruction
+function module.store(name: string, pattern: string, kind: string = module.KIND.ADDRESS, at: int = 0, size: int = 4, extra: int = 0): void
+    entries[name] = { pattern = pattern, kind = kind, at = at, size = size, extra = extra, value = nil, searched = false }
+end
+
+-- Puts a place in by hand (found some other way): get gives it back without a search
+function module.set(name: string, value: int): void
+    entries[name] = { pattern = "", kind = module.KIND.ADDRESS, at = 0, size = 4, extra = 0, value = value, searched = true }
+end
+
+-- Get
+
+-- Whether the name is stored
+function module.has(name: string): bool
+    return entries[name] ~= nil
+end
+
+-- The place by the name: searched on the first ask, then kept. nil if it is not stored, or the pattern is not found
+function module.get(name: string): ?int
+
+    local entry = entries[name]
+
+    if entry == nil then
+        log:warn($"{name}: not stored")
+        return nil
+    end
+
+    if entry.searched then
+        return entry.value
+    end
+
+    local scan = Atdar.natives.memory.scan
+
+    entry.searched = true
+
+    if entry.kind == module.KIND.RIP then
+        entry.value = scan.read_rip(entry.pattern, entry.at, entry.extra)
+    elseif entry.kind == module.KIND.OFFSET then
+        entry.value = scan.read_offset(entry.pattern, entry.at, entry.size)
+    else
+        entry.value = scan.find(entry.pattern)
+    end
+
+    if entry.value == nil then
+        log:warn($"{name}: the pattern is not found")
+    else
+        log:debug($"{name}: found")
+    end
+
+    return entry.value
+end
+
+-- Searches the place again, even if it was found or not found before
+function module.rescan(name: string): ?int
+
+    local entry = entries[name]
+
+    if entry == nil then
+        return nil
+    end
+
+    entry.searched = false
+    return module.get(name)
+end
+
+-- What is stored under the name (a copy): { pattern, kind, at, size, extra, value, searched }, nil if it is not stored
+function module.info(name: string): ?table
+
+    local entry = entries[name]
+
+    if entry == nil then
+        return nil
+    end
+
+    return {
+        pattern = entry.pattern, kind = entry.kind, at = entry.at, size = entry.size, extra = entry.extra,
+        value = entry.value, searched = entry.searched,
+    }
+end
+
+-- The names that are stored, sorted
+function module.names(): table
+
+    local names = {}
+
+    for name in pairs(entries) do
+        table.insert(names, name)
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+-- The names that are stored with whether each is found, searched by now or not: { name = "found" | "not found" |
+-- "not searched" }, to see what a script has to work with
+function module.list(): table
+
+    local result = {}
+
+    for name, entry in pairs(entries) do
+        if not entry.searched then
+            result[name] = "not searched"
+        elseif entry.value == nil then
+            result[name] = "not found"
+        else
+            result[name] = "found"
+        end
+    end
+
+    return result
+end
+
+-- Forgets one name, or all of them
+function module.clear(name: ?string): void
+
+    if name ~= nil then
+        entries[name] = nil
+        return
+    end
+
+    entries = {}
+end
+
+return module

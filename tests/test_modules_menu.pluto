@@ -591,7 +591,7 @@ stand.equal(edited[2], "b", "a value typed in it goes into the table")
 stand.check(stand.find_log('[2]') and stand.find_log('"b"') and not stand.find_log("ERROR"), "and the change is told, the new value in quotes")
 -- The panel of a function in a table is Call Function's: it calls through the system module CallFunction,
 -- loaded as the bootstrap does (it and FileEditor are system modules: not listed, the numbers above stay)
-stand.equal(Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/"), 2, "the system modules load")
+stand.equal(Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/"), 3, "the system modules load")
 -- Only these two: start() would bring back the modules stopped above
 Atdar.modules.start_module("CallFunction")
 Atdar.modules.start_module("FileEditor")

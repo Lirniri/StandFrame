@@ -1201,6 +1201,82 @@
             "done": "%s: done",
             "result": "%s -> %s"
         },
+        "pointer_editor": {
+            "name": "Pointer Editor",
+            "help": "Places in the game's memory that are found by a signature (a pattern of bytes). The ones made here are kept and stored again at every start",
+            "empty": "No pointers yet",
+            "pointers": {
+                "divider": "Pointers"
+            },
+            "not_own": "Stored by the script itself: it can be scanned, not changed here",
+            "add": {
+                "name": "Add Pointer",
+                "help": "name = pattern, for example roll = 48 8B ?? ?? 89. The pattern is bytes in hex with a space between, ?? is any byte",
+                "done": "%s added"
+            },
+            "scan_all": {
+                "name": "Scan All",
+                "help": "Searches every pointer again",
+                "done": "%d of %d pointers found"
+            },
+            "read": {
+                "name": "Read Bytes",
+                "help": "An address (0x7FF...) or the name of a found pointer, and how many bytes after a comma: roll, 16. The bytes are written as a pattern"
+            },
+            "pointer": {
+                "help": "A pointer: open it to scan it and to see or change how it is found"
+            },
+            "status": {
+                "found": "Found: %s",
+                "not_found": "Not found (%s)",
+                "not_searched": "Not searched yet (%s)"
+            },
+            "scan": {
+                "name": "Scan",
+                "help": "Searches the pattern in the game's memory now",
+                "found": "%s found: %s",
+                "not_found": "%s: the pattern is not found"
+            },
+            "pattern": {
+                "name": "Pattern",
+                "help": "Bytes in hex with a space between, ?? or ? for any byte: 48 8B ?? ?? 89"
+            },
+            "kind": {
+                "name": "Kind",
+                "help": "What is taken from the place found: address (where it is), rip (where a call or lea there points), offset (a number in the instruction)"
+            },
+            "at": {
+                "name": "At",
+                "help": "Bytes from the start of the pattern to the number (rip, offset)"
+            },
+            "size": {
+                "name": "Size",
+                "help": "The number is 4 bytes (default) or 1 byte (offset)"
+            },
+            "extra": {
+                "name": "Extra",
+                "help": "Bytes that follow the number in the instruction (rip)"
+            },
+            "remove": {
+                "name": "Remove",
+                "again": "Click Again To Remove",
+                "help": "Takes this pointer away. Click twice within 5 seconds",
+                "warning": "Remove %s? Click again within 5 seconds",
+                "done": "%s removed"
+            },
+            "errors": {
+                "add": "Type it as name = pattern",
+                "name": "A name has letters, digits and _, and starts with a letter",
+                "pattern": "A pattern is bytes in hex with a space between (48 8B), ?? is any byte",
+                "exists": "There is a pointer with this name already",
+                "missing": "There is no such pointer here",
+                "field": "This field doesn't exist",
+                "kind": "A kind is address, rip or offset",
+                "number": "A number, 0 or more, is needed",
+                "size": "The size is 1 or 4",
+                "bytes": "That is not an address, nor a pointer that is found"
+            }
+        },
         "delete_script": {
             "name": "Delete Script",
             "help": "Deletes the script from Stand's Lua Scripts. Opens a list with the confirm button",

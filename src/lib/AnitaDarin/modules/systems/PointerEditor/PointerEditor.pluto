@@ -1,0 +1,303 @@
+-- lib/AnitaDarin/modules/systems/PointerEditor/PointerEditor.pluto
+--
+-- A system module: what Debug > Pointer Editor does with the places in the game's memory that are found by a signature
+-- (Atdar.natives.memory.pointers). The items are in ui/stand/script/pointer_editor, which gets it by
+-- Atdar.modules.get("PointerEditor").
+--
+-- A pointer is a name and how to find it: a pattern of bytes ("48 8B ?? ?? 89"), what to take from the place it
+-- is found at (address, rip, offset) and where in the pattern the number is (at, size, extra). The pointers made here
+-- are kept in store/<script>/user/pointers.json and stored again at every start, so a pattern that was worked out once
+-- stays. Whether one is found is up to the game: nothing is searched until it is asked for (scan) or something uses it.
+--
+--     local editor = Atdar.modules.get("PointerEditor")
+--     editor:add("roll", "48 8B ?? ?? 89")             -- true, or false and why ("name", "pattern", "exists")
+--     editor:set("roll", "kind", "offset")             -- "pattern", "kind", "at", "size" or "extra"
+--     editor:scan("roll")                              -- the address, nil if the pattern is not found
+--     editor:list()                                    -- { { name, pattern, kind, at, size, extra, status, value } }
+--     editor:remove("roll")
+
+local Module = Atdar.loader.load("core/module")
+local JsonFile = Atdar.loader.load("core/filesystem/json/file")
+local safe_path = Atdar.loader.load("core/filesystem/safe_path")
+
+-- The file the pointers are kept in, from store/<script>/
+local FILE = "user/pointers.json"
+
+-- The fields of a pointer, in the order they are written, and which of them are numbers
+local KEY_ORDER = { "pattern", "kind", "at", "size", "extra" }
+local NUMBER_FIELDS = { at = true, size = true, extra = true }
+
+-- The most bytes read_bytes shows
+local MAX_BYTES = 64
+
+local function trim(value: string): string
+    return value:match("^%s*(.-)%s*$")
+end
+
+-- Whether it is a pattern: bytes in hex of two digits, with a space between, ?? or ? for any byte
+local function is_pattern(pattern: string): bool
+
+    if trim(pattern) == "" then
+        return false
+    end
+
+    for token in pattern:gmatch("%S+") do
+        if not token:match("^%x%x$") and token ~= "?" and token ~= "??" then
+            return false
+        end
+    end
+
+    return true
+end
+
+-- Whether it can be a name: letters, digits and _, and it starts with a letter
+local function is_name(name: string): bool
+    return name:match("^%a[%w_]*$") ~= nil
+end
+
+local class PointerEditor extends Module
+
+    function __construct()
+        parent:__construct({
+            name = "PointerEditor",
+            debug = {
+                hide = {
+                    "_file",
+                    "_save",
+                    "_load",
+                }
+            }
+        })
+
+        -- The names made here (the pointers that something else stored are not the editor's to save or remove)
+        self._own = {}
+    end
+
+    function on_start()
+        self:_load()
+    end
+
+    -- @return The file the pointers are kept in; nil if the path isn't a safe one
+    function _file(): ?table
+
+        local path = safe_path.resolve(Atdar.filesystem.paths.store, FILE)
+
+        if path == nil then
+            return nil
+        end
+
+        return new JsonFile(path, true, KEY_ORDER)
+    end
+
+    -- Stores what the file holds
+    function _load(): void
+
+        local file = self:_file()
+
+        if file == nil then
+            return
+        end
+
+        local data = file:read()
+
+        if type(data) ~= "table" then
+            return
+        end
+
+        local pointers = Atdar.natives.memory.pointers
+
+        for name, entry in pairs(data) do
+
+            if type(name) == "string" and is_name(name) and type(entry) == "table" and type(entry.pattern) == "string" then
+                pointers.store(name, entry.pattern, entry.kind or pointers.KIND.ADDRESS, entry.at or 0, entry.size or 4, entry.extra or 0)
+                self._own[name] = true
+            end
+        end
+    end
+
+    -- Writes the pointers made here to the file
+    -- @return Whether it was written
+    function _save(): bool
+
+        local file = self:_file()
+
+        if file == nil then
+            return false
+        end
+
+        local pointers = Atdar.natives.memory.pointers
+        local data = {}
+
+        for name in pairs(self._own) do
+
+            local info = pointers.info(name)
+
+            if info ~= nil then
+                data[name] = { pattern = info.pattern, kind = info.kind, at = info.at, size = info.size, extra = info.extra }
+            end
+        end
+
+        filesystem.mkdirs(file.path:match("^(.*)[\\/][^\\/]*$") or "")
+
+        return file:write(data)
+    end
+
+    -- Pointers
+
+    -- @return The pointers by name: { name, pattern, kind, at, size, extra, status ("found", "not found", "not
+    -- searched"), value (the address or the number, nil when not found), own (made here) }
+    function list(): table
+
+        local pointers = Atdar.natives.memory.pointers
+        local statuses = pointers.list()
+        local found = {}
+
+        for _, name in ipairs(pointers.names()) do
+
+            local info = pointers.info(name)
+
+            table.insert(found, {
+                name = name, pattern = info.pattern, kind = info.kind, at = info.at, size = info.size,
+                extra = info.extra, status = statuses[name], value = info.value, own = self._own[name] == true,
+            })
+        end
+
+        return found
+    end
+
+    -- Makes a pointer: an address one, to change with set
+    -- @return Whether it was made, and why not: "name" (letters, digits, _), "pattern" (hex bytes and ??), "exists"
+    function add(name: string, pattern: string)
+
+        name = trim(name)
+
+        if not is_name(name) then
+            return false, "name"
+        end
+
+        if not is_pattern(pattern) then
+            return false, "pattern"
+        end
+
+        local pointers = Atdar.natives.memory.pointers
+
+        if pointers.has(name) then
+            return false, "exists"
+        end
+
+        pointers.store(name, trim(pattern))
+        self._own[name] = true
+        self:_save()
+
+        return true
+    end
+
+    -- Changes one field of a pointer made here, and forgets what was found by the old one
+    -- @param field "pattern", "kind" (address, rip or offset), "at", "size" (1 or 4) or "extra"
+    -- @return Whether it was changed, and why not: "missing", "field", "pattern", "kind", "number", "size"
+    function set(name: string, field: string, value)
+
+        if not self._own[name] then
+            return false, "missing"
+        end
+
+        local pointers = Atdar.natives.memory.pointers
+        local info = pointers.info(name)
+
+        if info == nil then
+            return false, "missing"
+        end
+
+        if field == "pattern" then
+            if type(value) ~= "string" or not is_pattern(value) then
+                return false, "pattern"
+            end
+            info.pattern = trim(value)
+        elseif field == "kind" then
+            local kinds = pointers.KIND
+            if value ~= kinds.ADDRESS and value ~= kinds.RIP and value ~= kinds.OFFSET then
+                return false, "kind"
+            end
+            info.kind = value
+        elseif NUMBER_FIELDS[field] then
+            local number = math.tointeger(tonumber(value))
+            if number == nil or number < 0 then
+                return false, "number"
+            end
+            if field == "size" and number ~= 1 and number ~= 4 then
+                return false, "size"
+            end
+            info[field] = number
+        else
+            return false, "field"
+        end
+
+        pointers.store(name, info.pattern, info.kind, info.at, info.size, info.extra)
+        self:_save()
+
+        return true
+    end
+
+    -- Takes a pointer made here away
+    -- @return Whether it was there
+    function remove(name: string): bool
+
+        if not self._own[name] then
+            return false
+        end
+
+        self._own[name] = nil
+        Atdar.natives.memory.pointers.clear(name)
+        self:_save()
+
+        return true
+    end
+
+    -- Searches the pointer again
+    -- @return The address (or the number, for an offset), nil if it is not stored or the pattern is not found
+    function scan(name: string): ?int
+        return Atdar.natives.memory.pointers.rescan(name)
+    end
+
+    -- Searches every pointer again
+    -- @return How many were found, and how many there are
+    function scan_all()
+
+        local pointers = Atdar.natives.memory.pointers
+        local names = pointers.names()
+        local count = 0
+
+        for _, name in ipairs(names) do
+            if pointers.rescan(name) ~= nil then
+                count += 1
+            end
+        end
+
+        return count, #names
+    end
+
+    -- Bytes
+
+    -- @param where An address as a number, or text: 0x7FF.., the digits in hex, or the name of a pointer that is found
+    -- @return The bytes as a pattern ("48 8B 81"), nil when the address isn't one or the name isn't found
+    function read_bytes(where, count: int = 16): ?string
+
+        local address = nil
+
+        if type(where) == "number" then
+            address = where
+        elseif type(where) == "string" then
+            local typed = trim(where)
+
+            address = Atdar.natives.memory.pointers.get(typed) or tonumber((typed:gsub("^0[xX]", "")), 16)
+        end
+
+        if address == nil or address < 0x10000 then
+            return nil
+        end
+
+        return Atdar.natives.memory.scan.get_bytes(address, math.min(math.max(count, 1), MAX_BYTES))
+    end
+end
+
+return Atdar.modules.add(new PointerEditor())

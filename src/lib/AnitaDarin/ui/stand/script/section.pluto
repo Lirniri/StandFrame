@@ -36,6 +36,7 @@ local modules_place = Atdar.loader.load("ui/stand/modules/place")
 local updater_menu = Atdar.loader.load("ui/stand/script/updater")
 local call_function = Atdar.loader.load("ui/stand/script/call_function")
 local call_function_editor = Atdar.loader.load("ui/stand/script/call_function_editor")
+local pointer_editor = Atdar.loader.load("ui/stand/script/pointer_editor")
 
 local log = new Logger("Menu")
 
@@ -274,9 +275,11 @@ function module.build(section: table, opts: table): void
     profile_menu.log_info_at_once(logs)
     clear_logs(logs)
 
-    -- Under the "Debug" divider, shown only in debug mode: Options From Menu, Call Function, Files Editor, Modules;
-    -- then Delete Script. Call Function and Files Editor only while their system modules run
+    -- Under the "Debug" divider, shown only in debug mode: Options From Menu, Call Function, Files Editor, Modules,
+    -- Pointer Editor; then Delete Script. Call Function, Files Editor and Pointer Editor only while their system
+    -- modules run
     modules_place.build(debug, { options_from_menu, call_function.build, call_function_editor.build })
+    modules_place.debug_only(pointer_editor.build(debug))
     modules_place.debug_only(delete_script(debug))
 
     -- The script's cards and posts in the game's feed, all taken away

@@ -19,7 +19,7 @@ Atdar.modules = Atdar.loader.load("core/module_manager")
 -- The system modules, loaded before the menu as the bootstrap does: Call Function works through CallFunction,
 -- its Files Editor through FileEditor
 local SYSTEMS_DIR = $"{stand.SRC}lib/AnitaDarin/modules/systems/"
-stand.equal(Atdar.modules.load_dir(SYSTEMS_DIR), 2, "the system modules' folder: two files, CallFunction and FileEditor")
+stand.equal(Atdar.modules.load_dir(SYSTEMS_DIR), 3, "the system modules' folder: three files, CallFunction, FileEditor and PointerEditor")
 Atdar.modules.start()
 -- A module's public functions, by name: what the Modules list and Call Function offer
 local function functions_of(name: string): string
@@ -35,6 +35,35 @@ stand.equal(functions_of("FileEditor"), "add_table, add_value, browse, clear_hid
     .. "hidden_texts, hide_text, is_protected, list, parse_param, parse_value, place_of, places, read, read_text, remove, request_open, set, "
     .. "take_request, write",
     "its functions for the Modules list and Call Function; the helpers (_path_of, _file_of) aren't among them")
+stand.check(Atdar.modules.has("PointerEditor") and Atdar.modules.get("PointerEditor"):is_running(), "PointerEditor is running")
+stand.check(Atdar.modules.is_system("PointerEditor"), "and it's a system module")
+stand.equal(functions_of("PointerEditor"), "add, list, read_bytes, remove, scan, scan_all, set",
+    "its functions for the Modules list and Call Function; the helpers (_file, _save, _load) aren't among them")
+do
+    -- The editor works on the store of pointers in the natives, which this test has not loaded
+    Atdar.natives = Atdar.natives or Atdar.loader.auto({}, "natives")
+    local pointer_editor = Atdar.modules.get("PointerEditor")
+
+    stand.equal(select(2, pointer_editor:add("1bad", "48 8B")), "name", "a name starts with a letter")
+    stand.equal(select(2, pointer_editor:add("roll", "zz 8B")), "pattern", "a pattern is hex bytes")
+    stand.equal(select(2, pointer_editor:add("roll", "")), "pattern", "and not empty")
+    stand.check(pointer_editor:add("roll", "48 8B ?? ?? 89"), "a pointer is added")
+    stand.equal(select(2, pointer_editor:add("roll", "48 8B")), "exists", "the same name twice is refused")
+    stand.check(Atdar.natives.memory.pointers.has("roll"), "it is in the store of pointers")
+    stand.equal(pointer_editor:list()[1].kind, "address", "an address one at first")
+    stand.check(pointer_editor:set("roll", "kind", "offset"), "its kind is changed")
+    stand.check(pointer_editor:set("roll", "at", "3"), "and the place of the number")
+    stand.equal(select(2, pointer_editor:set("roll", "size", "3")), "size", "a size is 1 or 4")
+    stand.equal(select(2, pointer_editor:set("roll", "kind", "far")), "kind", "a kind is one of three")
+    stand.equal(select(2, pointer_editor:set("roll", "name", "x")), "field", "a name isn't a field to change")
+    stand.equal(select(2, pointer_editor:set("other", "at", "1")), "missing", "a pointer that isn't there isn't changed")
+    stand.equal(pointer_editor:list()[1].at, 3, "the change is in the list")
+    stand.equal(pointer_editor:list()[1].status, "not searched", "it isn't searched until it is asked for")
+    stand.equal(pointer_editor:read_bytes("nothing", 4), nil, "bytes of what is no address are nil")
+    stand.check(pointer_editor:remove("roll"), "a pointer is removed")
+    stand.check(not Atdar.natives.memory.pointers.has("roll"), "and it is out of the store")
+    stand.check(not pointer_editor:remove("roll"), "the second time there is nothing to remove")
+end
 stand.check(Atdar.modules.has("CallFunction") and Atdar.modules.get("CallFunction"):is_running(), "CallFunction is running")
 stand.check(Atdar.modules.is_system("CallFunction"), "and it's a system module")
 stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, clear_history, copy_result, "
@@ -389,7 +418,7 @@ stand.equal(opened("Open Resource Folder"), $"open_folder {resources_root}AnitaD
 stand.check(io.isdir($"{resources_root}AnitaDarin"), "and it was made before opening")
 stand.equal(names_in(find("Debug")),
     "Debug Mode | Stop After Changes | Load Timing | Reload Natives | Logs | Debug | Options From Menu | Call Function"
-    .. " | Files Editor | Modules | Delete Script", "Debug: Files Editor right under Call Function")
+    .. " | Files Editor | Modules | Pointer Editor | Delete Script", "Debug: Files Editor right under Call Function, Pointer Editor above Delete Script")
 -- The divider is called Logs too: the list is the one that opens
 local logs_list
 for _, child in find("Debug").children do
@@ -488,14 +517,14 @@ stand.check(not io.exists(script_names), "with no custom names left the file goe
 -- Modules and Delete Script
 local debug_list = find("Debug")
 local debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9],
-    debug_list.children[10], debug_list.children[11] }
+    debug_list.children[10], debug_list.children[11], debug_list.children[12] }
 local function all_visible(on)
     for _, it in debug_only do
         if it.visible ~= on then return false end
     end
     return true
 end
-stand.check(all_visible(false), "the divider, Options From Menu, Call Function, Files Editor, Modules and Delete Script are hidden without debug mode")
+stand.check(all_visible(false), "the divider, Options From Menu, Call Function, Files Editor, Modules, Pointer Editor and Delete Script are hidden without debug mode")
 stand.check(stand.find_item(debug_list, "Load Timing").visible, "Load Timing shows without debug mode")
 -- Call Function: Call A Function, Functions, then the Settings divider with Notice In Stand
 local call_list = stand.find_item(debug_list, "Call Function")
@@ -889,7 +918,7 @@ menu.set_value(fields_of(stand.child(functions_list, "1: test_typed(count, name)
 rebuild()
 debug_list = find("Debug")
 debug_only = { debug_list.children[6], debug_list.children[7], debug_list.children[8], debug_list.children[9],
-    debug_list.children[10], debug_list.children[11] }
+    debug_list.children[10], debug_list.children[11], debug_list.children[12] }
 call_list = stand.find_item(debug_list, "Call Function")
 functions_list = stand.child(call_list, "Functions")
 local rebuilt_item = stand.child(functions_list, "1: test_typed(count, name)")
@@ -1313,6 +1342,27 @@ os.remove($"{editor_user}short_name.json")
 os.remove($"{editor_user}short_name.json.bak")
 stand.back(editor)
 stand.equal(#editor.children, 0, "going back out of the Files Editor removes its items")
+
+-- Pointer Editor, right above Delete Script: Add Pointer, Scan All, Read Bytes, then a list per pointer
+local pointer_node = stand.child(debug_list, "Pointer Editor")
+stand.equal(#pointer_node.children, 0, "Pointer Editor: nothing in it until it's opened")
+stand.click(pointer_node)
+stand.equal(names_in(pointer_node), "Add Pointer | Scan All | Read Bytes | Pointers | No pointers yet", "Pointer Editor opened: its tools, and no pointers yet")
+stand.child(pointer_node, "Add Pointer").on_change("roll", 0)
+stand.equal(names_in(pointer_node), "Add Pointer | Scan All | Read Bytes | Pointers | No pointers yet", "name = pattern: a name alone adds nothing")
+stand.child(pointer_node, "Add Pointer").on_change("roll = 48 8B ?? 89", 0)
+stand.equal(names_in(pointer_node), "Add Pointer | Scan All | Read Bytes | Pointers | roll", "a pointer is added: a list of its own")
+local roll_node = stand.child(pointer_node, "roll")
+stand.click(roll_node)
+stand.check(stand.child(roll_node, "Pattern") ~= nil and stand.child(roll_node, "Kind") ~= nil and stand.child(roll_node, "Scan") ~= nil
+    and stand.child(roll_node, "Remove") ~= nil, "a pointer: Pattern, Kind, Scan and Remove")
+stand.check(stand.child(roll_node, "Not searched yet (-)") ~= nil, "a pointer is not searched until Scan")
+stand.child(roll_node, "Pattern").on_change("48 8B", 0)
+stand.equal(Atdar.modules.get("PointerEditor"):list()[1].pattern, "48 8B", "a pattern typed in its field is kept")
+stand.back(roll_node)
+stand.back(pointer_node)
+stand.equal(#pointer_node.children, 0, "going back out of the Pointer Editor removes its items")
+Atdar.modules.get("PointerEditor"):remove("roll")
 
 -- Opening Modules loads its items' file, then; going back out empties the list, the file stays loaded
 local modules_list = debug_list.children[10]
