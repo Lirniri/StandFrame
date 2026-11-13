@@ -31,14 +31,7 @@ local log = new Logger("JsonFile")
 
 -- Whether the table is written as a JSON array: only the numbers 1..n as keys (an empty one is too)
 local function is_array(value: table): bool
-
-    local count = 0
-
-    for _ in pairs(value) do
-        count += 1
-    end
-
-    return count == #value
+    return table.isarray(value)
 end
 
 -- The keys of an object in the order they're written: the ones in rank first (by their rank), the rest by name
@@ -50,6 +43,12 @@ local function sorted_keys(value: table, rank: table): table
         if key ~= "__order" then
             table.insert(keys, tostring(key))
         end
+    end
+
+    -- No key has a rank: plain by-name order, no comparator
+    if next(rank) == nil then
+        table.sort(keys)
+        return keys
     end
 
     table.sort(keys, function(a, b)

@@ -237,9 +237,7 @@ local kept = {}
 -- is loaded again, for state that must not be lost (e.g. the feed posts the script made)
 -- Example: local state = Atdar.loader.keep("natives/visual/hud/thefeed")
 function module.keep(name: string): table
-    if kept[name] == nil then
-        kept[name] = {}
-    end
+    kept[name] ??= {}
     return kept[name]
 end
 

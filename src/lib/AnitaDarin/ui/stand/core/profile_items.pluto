@@ -130,7 +130,7 @@ local HANDLER_OF = {
 -- The full string key of a part under the item's scope
 local function scoped(item: table, key: string): string
 
-    local prefix = item.parent ~= nil and item.parent.scope_prefix or nil
+    local prefix = item.parent?.scope_prefix
 
     if prefix == nil then
         return key

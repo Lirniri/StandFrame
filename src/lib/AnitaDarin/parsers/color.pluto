@@ -17,15 +17,19 @@ function module.hex(text: string): ?table
         return nil
     end
 
+    local number = tonumber(digits, 16)
     local alpha = 1.0
+
+    -- RRGGBBAA: the alpha is the lowest byte, the colour the three above it
     if #digits == 8 then
-        alpha = tonumber(digits:sub(7, 8), 16) / 255
+        alpha = (number & 0xFF) / 255
+        number = number >> 8
     end
 
     return {
-        r = tonumber(digits:sub(1, 2), 16) / 255,
-        g = tonumber(digits:sub(3, 4), 16) / 255,
-        b = tonumber(digits:sub(5, 6), 16) / 255,
+        r = ((number >> 16) & 0xFF) / 255,
+        g = ((number >> 8) & 0xFF) / 255,
+        b = (number & 0xFF) / 255,
         a = alpha,
     }
 end

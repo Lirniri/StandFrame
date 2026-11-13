@@ -58,7 +58,7 @@ local dependents = {}
 -- Adds the module to the dependents index
 local function index_deps(mod: table): void
     for _, dep in ipairs(mod.deps) do
-        dependents[dep] = dependents[dep] or {}
+        dependents[dep] ??= {}
         dependents[dep][mod.name] = true
     end
 end
@@ -350,11 +350,10 @@ function module.stop_module(name: string): void
     end
 end
 
+-- Adds the .pluto files under dir and its subfolders to out; one recursive listing instead of a look at every entry
 local function collect_pluto_files(dir: string, out: table): void
-    for _, path in ipairs(filesystem.list_files(dir)) do
-        if filesystem.is_dir(path) then
-            collect_pluto_files($"{path}\\", out)
-        elseif path:match("%.pluto$") then
+    for _, path in io.listdir(dir, true) do
+        if path:endswith(".pluto") and io.isfile(path) then
             table.insert(out, path)
         end
     end

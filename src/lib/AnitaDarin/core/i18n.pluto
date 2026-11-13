@@ -662,7 +662,7 @@ end
 -- The folder of the script's own strings, where a translation's main file goes
 function module.base_dir(): ?string
     local first = sources[1]
-    return first and first.dir or nil
+    return first?.dir
 end
 
 -- fn() runs after the shown language changed: labels follow by themselves, texts from text() don't

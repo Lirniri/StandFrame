@@ -62,7 +62,7 @@ function module.build(list: table, spec: table): void
         end
 
         local call = spec.on_reshape ~= nil and index ~= "rest" and module.call_in(value) or nil
-        local path = call and call.path or nil
+        local path = call?.path
 
         if whole or path ~= calls[index] then
             spec.on_reshape()
@@ -131,7 +131,7 @@ function module.build(list: table, spec: table): void
         end
 
         local call = spec.on_reshape ~= nil and module.call_in(texts[i]) or nil
-        calls[i] = call and call.path or nil
+        calls[i] = call?.path
 
         list:divider({ name = param.name })
         if call ~= nil then

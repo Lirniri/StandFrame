@@ -13,14 +13,13 @@ local module = {}
 -- @param binary Read as it is ("rb"); otherwise as text, Windows' \r\n given as \n
 -- @return The whole content, or nil if the file can't be opened
 function module.read(path: string, binary: bool = false): ?string
-    local handle = io.open(path, binary ? "rb" : "r")
+    local handle <close> = io.open(path, binary ? "rb" : "r")
     if handle == nil then
         return nil
     end
 
-    -- A read that fails (a file locked half way, a disk error) must not leave the handle open
-    local ok, content = pcall(handle.read, handle, "*a")
-    handle:close()
+    -- A read that fails (a file locked half way, a disk error): <close> still closes the handle
+    local ok, content = pcall(handle.read, handle, "a")
 
     if not ok then
         return nil

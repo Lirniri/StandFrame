@@ -146,9 +146,9 @@ Module = class
         -- Set at every start: the first tick still to skip
         self._skip_tick = false
 
-        self.on_start = opts.on_start or self.on_start
-        self.on_stop = opts.on_stop or self.on_stop
-        self.on_tick = opts.on_tick or self.on_tick
+        self.on_start = opts.on_start ?? self.on_start
+        self.on_stop = opts.on_stop ?? self.on_stop
+        self.on_tick = opts.on_tick ?? self.on_tick
     end
 
     -- Runs a hook and catches its errors
@@ -381,7 +381,7 @@ function Module.functions_of(instance: table, kind: string = "public"): table
     table.sort(list, |a, b| -> a.name < b.name)
 
     if type(first) == "table" then
-        functions_cache[first] = functions_cache[first] or {}
+        functions_cache[first] ??= {}
         functions_cache[first][kind] = list
     end
 

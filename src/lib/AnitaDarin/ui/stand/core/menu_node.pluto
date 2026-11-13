@@ -204,7 +204,7 @@ MenuNode = class
         self.parent = parent
         self.kind = "list"
         self.muted = 0
-        self.scope_prefix = parent ~= nil and parent.scope_prefix or nil
+        self.scope_prefix = parent?.scope_prefix
         self.children = {} -- MenuItems and MenuNodes, in the order they were made
         self.sublists = {}
         self.toggles = {} -- items of loop and toggle features: switched off before they're deleted

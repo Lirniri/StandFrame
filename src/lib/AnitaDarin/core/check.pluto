@@ -12,6 +12,9 @@
 -- Lua's debug library as it was at load: a module that assigns a global `debug` by mistake doesn't break it
 local debug = debug
 
+-- This file's source, the same for every validator: its own lines are never the caller's mistake
+local own = debug.getinfo(1, "S").source
+
 local module = {}
 
 -- "a, b or c": the allowed values for a message; a set ({ a = true }) is sorted, a list kept in its order
@@ -64,7 +67,6 @@ function module.validator(label: string): table
 
     -- The file that checks its options: its own lines aren't the caller's mistake
     local checker = debug.getinfo(2, "S").source
-    local own = debug.getinfo(1, "S").source
     local v = {}
 
     function v.fail(message: string): void
