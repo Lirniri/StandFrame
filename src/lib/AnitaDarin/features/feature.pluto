@@ -95,9 +95,10 @@ Feature = class
     -- @return Whether the hook finished without an error
     private function call_hook(name: string): bool
 
-        local overridden = self[name] ~= Feature[name]
-
         if name ~= "on_tick" then -- on_tick runs every frame, would flood the log
+
+            local overridden = self[name] ~= Feature[name]
+
             log:debug($"{self.id}: {name} ({overridden ? "overridden" : "default"})")
         end
 

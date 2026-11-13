@@ -55,6 +55,28 @@ local USER_FOLDERS = { profiles = true, logs = true, commands = true, user = tru
 
 -- ─── Paths ───────────────────────────────────────────────────────────────────
 
+-- Project name -> { [root] = "<root>/<project>/" }, what a manifest path of the project starts with. Made
+-- once per project: every path of a release is compared with them
+local prefixes = {}
+
+local function prefixes_of(project: string): table
+
+    local found = prefixes[project]
+
+    if found ~= nil then
+        return found
+    end
+
+    found = {}
+    for _, root in ipairs(ROOTS) do
+        found[root] = $"{root}/{project}/"
+    end
+
+    prefixes[project] = found
+
+    return found
+end
+
 -- opts over DEFAULTS, plus name (the script's, project if not given) and scripts_dir (Lua Scripts)
 local function options(opts: ?table): table
     local o = {}
@@ -83,9 +105,11 @@ function module.target_of(path: string, o: table): ?string
         return $"{o.scripts_dir}{o.name}.pluto"
     end
     
+    local starts = prefixes_of(o.project)
+
     for _, root in ipairs(ROOTS) do
-        local prefix = $"{root}/{o.project}/"
-        if path:sub(1, #prefix) == prefix and #path > #prefix then
+        local prefix = starts[root]
+        if path:startswith(prefix) and #path > #prefix then
             local rest = path:sub(#prefix + 1):gsub("/", "\\")
             return $"{o.scripts_dir}{root}\\{o.name}\\{rest}"
         end
@@ -98,9 +122,9 @@ end
 -- replaced or removed. "store/AnitaDarin/config.json", "store/AnitaDarin/profiles/main.json"
 function module.is_user_data(path: string, project: string): bool
     
-    local prefix = $"store/{project}/"
+    local prefix = prefixes_of(project).store
     
-    if path:sub(1, #prefix) ~= prefix then
+    if not path:startswith(prefix) then
         return false
     end
     
@@ -123,7 +147,8 @@ end
 -- @param path Its manifest path (the extension tells text from binary)
 function module.hash(path: string, content: string): string
     local extension = path:match("%.([^./]+)$")
-    if extension == nil or not BINARY[extension:lower()] then
+    -- Looked for first: gsub copies the whole text even when it has no \r to take out
+    if (extension == nil or not BINARY[extension:lower()]) and content:find("\r", 1, true) then
         content = content:gsub("\r\n", "\n")
     end
     return crypto.sha256(content)

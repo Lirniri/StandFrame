@@ -37,7 +37,7 @@ end
 local SCRIPTS_DIR = filesystem.scripts_dir()
 
 local function shorten(what: string): string
-    if what:sub(1, #SCRIPTS_DIR) == SCRIPTS_DIR then
+    if what:startswith(SCRIPTS_DIR) then
         return what:sub(#SCRIPTS_DIR + 1)
     end
     return what
@@ -140,9 +140,21 @@ end
 -- Names of the files module.load got, so reload doesn't have to walk the whole package.loaded
 local loaded_names = {}
 
+-- Path -> what its file returned and its name in require's cache, so a file already loaded costs a few lookups:
+-- many functions ask for their file on every call
+local cache = {}
+local cache_names = {}
+
 -- Requires lib/AnitaDarin/<path>. On error logs it with the file that asked for it and returns
 -- an empty table, so one broken file doesn't take down the whole section
 function module.load(path: string): table
+
+    local hit = cache[path]
+
+    -- Still the one require has: a file forgotten there (reload, package.loaded[name] = nil) is loaded again
+    if hit ~= nil and package.loaded[cache_names[path]] == hit then
+        return hit
+    end
 
     local name = $"{Atdar.name}/{path}"
     local ok, result = timed_require(path, name)
@@ -159,6 +171,9 @@ function module.load(path: string): table
         log:warn($"'{path}' did not return a table")
         return {}
     end
+
+    cache[path] = result
+    cache_names[path] = name
 
     return result
 end
@@ -253,10 +268,17 @@ function module.reload(tbl: table, base: string): int
 
     -- Only the files module.load knows, not all of package.loaded; one a file required itself isn't forgotten
     for name in pairs(loaded_names) do
-        if name:sub(1, #prefix) == prefix then
+        if name:startswith(prefix) then
             package.loaded[name] = nil
             loaded_names[name] = nil
             forgotten += 1
+        end
+    end
+
+    for path in pairs(cache) do
+        if path:startswith($"{base}/") then
+            cache[path] = nil
+            cache_names[path] = nil
         end
     end
 

@@ -48,6 +48,53 @@ local function normalized(path: string): string
     return (path:gsub("\\", "/")):lower()
 end
 
+-- The systems\ folder of each folder load_dir read, normalized and ending in /: what a system module's file
+-- starts with. Made when the folder is read, so is_system only compares
+local system_roots = {}
+
+-- Module file -> whether it's under one of system_roots (is_system). Emptied when load_dir reads a new folder
+local system_files = {}
+
+-- @return The systems folder of dir, as system_roots keeps it
+local function system_root(dir: string): string
+
+    local root = normalized(dir)
+
+    if not root:endswith("/") then
+        root ..= "/"
+    end
+
+    -- A systems\ folder read on its own (the tests load modules/systems\ alone)
+    if not root:endswith($"/{SYSTEMS}") then
+        root ..= SYSTEMS
+    end
+
+    return root
+end
+
+-- Module file -> its stamp (stamp_of) when its text was last seen to be the loaded one: while the stamp
+-- stays, file_changed doesn't read the file
+local same_stamp = {}
+
+-- The file's write time and size, as core/file_watch stamps a file
+-- @return nil when it can't be told or can't be trusted: the file was written this very second, and another
+-- write in the same second (of the same size) would leave the same stamp
+local function stamp_of(path: string): ?string
+
+    local ok_time, written = pcall(io.writetime, path)
+    local ok_size, size = pcall(io.filesize, path)
+
+    if not ok_time or not ok_size or type(written) ~= "number" then
+        return nil
+    end
+
+    if written >= os.time() then
+        return nil
+    end
+
+    return $"{written}:{size}"
+end
+
 -- The file's whole text, nil if it can't be read
 local read_text = Atdar.loader.load("core/filesystem/file").read
 
@@ -108,27 +155,25 @@ function module.is_system(name: string): bool
         return false
     end
 
+    local known = system_files[path]
+
+    if known ~= nil then
+        return known
+    end
+
     local file = normalized(path)
+    local found = false
 
-    for _, dir in ipairs(dirs) do
-
-        local root = normalized(dir)
-
-        if root:sub(-1) ~= "/" then
-            root ..= "/"
-        end
-
-        -- A systems\ folder read on its own (the tests load modules/systems\ alone)
-        if root:sub(-#SYSTEMS - 1) ~= $"/{SYSTEMS}" then
-            root ..= SYSTEMS
-        end
-
-        if file:sub(1, #root) == root then
-            return true
+    for _, root in ipairs(system_roots) do
+        if file:startswith(root) then
+            found = true
+            break
         end
     end
 
-    return false
+    system_files[path] = found
+
+    return found
 end
 
 -- The text the code running now was read from (the file may be edited since): its line numbers are
@@ -249,7 +294,8 @@ local function create_tick_handler(): void
 
     util.create_tick_handler(function()
         for _, mod in ipairs(started) do
-            if mod:is_running() and mod:has_tick() then
+            -- Fields, not is_running() and has_tick(): this runs for every module every frame
+            if mod.status == "running" and mod._ticks then
                 mod:tick()
             end
         end
@@ -386,18 +432,37 @@ local function run_file(path: string): bool
 
     -- Only code that ran: after a failed reload the old code runs, and the file still differs from it
     loaded_text[path] = text
+    same_stamp[path] = nil
     return true
 end
 
 -- Whether the module's file differs from what its running code was read from (edited or synced since,
--- so Reload would run something new). Reads the file: meant for the menu, not for every frame
+-- so Reload would run something new). The file is read only when its write time or size isn't the one it had
+-- when its text was last compared: a file written again with the same text (a sync, a build) still isn't
+-- changed. Meant for the menu, not for every frame
 -- @return false for a module made in code (no file)
 function module.file_changed(name: string): bool
+
     local path = files[name]
+
     if path == nil then
         return false
     end
-    return read_text(path) ~= loaded_text[path]
+
+    local stamp = stamp_of(path)
+
+    if stamp ~= nil and stamp == same_stamp[path] then
+        return false
+    end
+
+    if read_text(path) ~= loaded_text[path] then
+        same_stamp[path] = nil
+        return true
+    end
+
+    same_stamp[path] = stamp
+
+    return false
 end
 
 -- Runs every module file in dir and its subfolders; a broken file skips only itself
@@ -416,6 +481,8 @@ function module.load_dir(dir: string): int
 
     if not known then
         table.insert(dirs, dir)
+        table.insert(system_roots, system_root(dir))
+        system_files = {}
     end
     local paths = {}
     collect_pluto_files(dir, paths)
