@@ -242,12 +242,7 @@ return {
             { "resetstamina" }
         )
 
-
-        self_menu:add_feature(
-            features.get("self.godmode"),
-            lang.translate("menu.self.godmode.name"),
-            { "godmode" }
-        )
+        -- Self
         self_menu:add_feature(
             features.get("self.half_godmode"),
             lang.translate("menu.self.half_godmode.name"),

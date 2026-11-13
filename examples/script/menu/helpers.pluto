@@ -48,6 +48,6 @@ return {
             { list = "More", items = {
                 { readonly_name = "Inside More" },
             } },
-        }, "examples/menu/helpers")
+        }, "examples/script/menu/helpers")
     end,
 }

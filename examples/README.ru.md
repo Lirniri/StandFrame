@@ -9,12 +9,39 @@
 
 | Папка | Что внутри |
 |---|---|
-| [basics/](basics/README.ru.md) | Основа, которая нужна везде: лог и уведомления, профиль, переводы, JSON-файлы, нативы, проверки, парсеры и цвета |
-| [modules/](modules/README.ru.md) | Модули: внутренние части скрипта, которые он запускает сам (без пункта в меню) |
-| [features/](features/README.ru.md) | Фичи: то, что пользователь включает, выключает или нажимает в меню |
-| [menu/](menu/README.ru.md) | Файлы меню: пункты `MenuNode`, фичи в меню, раздел настроек, отладка модулей в своём меню, готовые помощники |
-| [pack/](pack/README.ru.md) | Полный пакет меню `ExamplePack`: info.json, фичи, меню, переводы — копируется и загружается целиком |
-| [utils/](utils/README.ru.md) | Что построено на нативах в `Atdar.util.game`: Graceland (падение с любой высоты, управление стиком), функции игрока (`auto_heal`, `levitate`, `freecam` ...), мир (часы, облака, timecycle), помощники игры, `tools.states` |
+| [basics/](script/basics/README.ru.md) | Основа, которая нужна везде: лог и уведомления, профиль, переводы, JSON-файлы, нативы, проверки, парсеры и цвета |
+| [modules/](script/modules/README.ru.md) | Модули: внутренние части скрипта, которые он запускает сам (без пункта в меню) |
+| [features/](script/features/README.ru.md) | Фичи: то, что пользователь включает, выключает или нажимает в меню |
+| [menu/](script/menu/README.ru.md) | Файлы меню: пункты `MenuNode`, фичи в меню, раздел настроек, отладка модулей в своём меню, готовые помощники |
+| [pack/](script/pack/README.ru.md) | Полный пакет меню `ExamplePack`: info.json, фичи, меню, переводы — копируется и загружается целиком |
+| [utils/](script/utils/README.ru.md) | Что построено на нативах в `Atdar.util.game`: Graceland (падение с любой высоты, управление стиком), функции игрока (`auto_heal`, `levitate`, `freecam` ...), мир (часы, облака, timecycle), помощники игры, `tools.states` |
+
+## Уроки
+
+Пошаговые уроки с разбором настоящего кода движка. В каждом — краткая теория, сравнение с обычным Lua,
+фрагменты из StandFrame с путями к файлам и задания «Попробуй сам». Уроки написаны на русском.
+
+### Язык Pluto в сравнении с Lua 5.4 — [programing/](programing/)
+
+| Урок | О чём |
+|---|---|
+| [1. Pluto против обычного Lua](programing/01-lua-vs-pluto-syntax.md) | Таблица отличий; `$"..."`, типы в сигнатурах, `??`, `?.`, `+=`, `?:`, `<close>` на коде `core/loader` и `core/i18n` |
+| [2. ООП и система типов](programing/02-oop-classes-and-types.md) | Метатаблицы против `class`; устройство `Feature` и `Module`; проверки `core/check` |
+| [3. Стандартная библиотека Pluto и парсеры](programing/03-pluto-stdlib-and-parsers.md) | `pluto:json`, `pluto:crypto`, `io.listdir`, `startswith`; парсеры `json`, `color`, `source`; как работает Call Function |
+
+### Движок StandFrame — [script/](script/)
+
+| Урок | О чём |
+|---|---|
+| [1. Точка входа и архитектура ядра](script/01-engine-architecture-and-entry.md) | Лаунчер, порядок запуска в bootstrap, загрузчик `core/loader`, общая схема |
+| [2. Модули и жизненный цикл](script/02-modules-and-lifecycle.md) | Модуль таблицей и классом, зависимости, статусы, тики, горячая перезагрузка, `file_watch` |
+| [3. Фичи и построение меню Stand](script/03-features-and-stand-ui.md) | Три вида фич, реестр, `MenuNode` и `MenuItem`, `menu_builder`, отладчик модулей |
+| [4. Создание собственных Menu Packs](script/04-creating-menu-packs.md) | Устройство пакета, загрузка и выгрузка, изоляция ресурсов, свой пакет по шагам |
+| [5. Данные, локализация и команды](script/05-profiles-i18n-and-commands.md) | `JsonFile`, профили с автосохранением, переводы и ленивая загрузка языков, лог, команды Stand |
+| [6. Тестирование на стабах Stand API](script/06-testing-with-stand-stubs.md) | Раннер `tests/run.py`, заглушка `tests/stand.pluto`, как писать свои тесты |
+
+С чего начать: если Pluto вам в новинку — с уроков `programing/`; если язык знаком — сразу с `script/`.
+Готовые файлы-примеры, на которые ссылаются уроки, лежат в папках из таблицы выше.
 
 ## Что где лежит в `Atdar`
 

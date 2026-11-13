@@ -10,12 +10,40 @@ English and Russian.
 
 | Folder | What's inside |
 |---|---|
-| [basics/](basics/) | The foundation needed everywhere: log and notifications, profile, translations, JSON files, natives, checks, parsers and colours |
-| [modules/](modules/) | Modules: internal parts of the script that it starts by itself (no menu item) |
-| [features/](features/) | Features: what the user switches on and off or clicks in the menu |
-| [menu/](menu/) | Menu files: `MenuNode` items, features in the menu, the settings section, module debugging in your own menu, ready-made helpers |
-| [pack/](pack/) | A complete menu pack, `ExamplePack`: info.json, features, menu, translations, copied and loaded as a whole |
-| [utils/](utils/) | What is built on natives in `Atdar.util.game`: Graceland (a fall from any height, steered with the stick), the player's functions (`auto_heal`, `levitate`, `freecam` ...), the world (clock, clouds, timecycle), game helpers, `tools.states` |
+| [basics/](script/basics/) | The foundation needed everywhere: log and notifications, profile, translations, JSON files, natives, checks, parsers and colours |
+| [modules/](script/modules/) | Modules: internal parts of the script that it starts by itself (no menu item) |
+| [features/](script/features/) | Features: what the user switches on and off or clicks in the menu |
+| [menu/](script/menu/) | Menu files: `MenuNode` items, features in the menu, the settings section, module debugging in your own menu, ready-made helpers |
+| [pack/](script/pack/) | A complete menu pack, `ExamplePack`: info.json, features, menu, translations, copied and loaded as a whole |
+| [utils/](script/utils/) | What is built on natives in `Atdar.util.game`: Graceland (a fall from any height, steered with the stick), the player's functions (`auto_heal`, `levitate`, `freecam` ...), the world (clock, clouds, timecycle), game helpers, `tools.states` |
+
+## Lessons
+
+Step-by-step lessons that walk through the engine's real code. Each has a short theory part, a comparison with
+plain Lua, fragments of StandFrame with the paths of their files, and "Try it yourself" tasks.
+The lessons are written in Russian.
+
+### The Pluto language compared with Lua 5.4 — [programing/](programing/)
+
+| Lesson | What it covers |
+|---|---|
+| [1. Pluto against plain Lua](programing/01-lua-vs-pluto-syntax.md) | A table of the differences; `$"..."`, type hints, `??`, `?.`, `+=`, `?:`, `<close>` on the code of `core/loader` and `core/i18n` |
+| [2. OOP and the type system](programing/02-oop-classes-and-types.md) | Metatables against `class`; how `Feature` and `Module` are built; the checks of `core/check` |
+| [3. Pluto's standard library and the parsers](programing/03-pluto-stdlib-and-parsers.md) | `pluto:json`, `pluto:crypto`, `io.listdir`, `startswith`; the `json`, `color` and `source` parsers; how Call Function works |
+
+### The StandFrame engine — [script/](script/)
+
+| Lesson | What it covers |
+|---|---|
+| [1. The entry point and the core's architecture](script/01-engine-architecture-and-entry.md) | The launcher, the start order in bootstrap, the loader `core/loader`, the overall scheme |
+| [2. Modules and their life cycle](script/02-modules-and-lifecycle.md) | A module as a table and as a class, dependencies, statuses, ticks, hot reload, `file_watch` |
+| [3. Features and building Stand's menu](script/03-features-and-stand-ui.md) | The three kinds of features, the registry, `MenuNode` and `MenuItem`, `menu_builder`, the modules debugger |
+| [4. Making your own menu packs](script/04-creating-menu-packs.md) | What a pack is made of, loading and unloading, how its resources are kept apart, a pack of your own step by step |
+| [5. Data, translations and commands](script/05-profiles-i18n-and-commands.md) | `JsonFile`, profiles with autosave, translations and lazy loading of languages, the log, Stand's commands |
+| [6. Testing on stubs of Stand's API](script/06-testing-with-stand-stubs.md) | The runner `tests/run.py`, the stub `tests/stand.pluto`, how to write tests of your own |
+
+Where to start: with `programing/` if Pluto is new to you, straight with `script/` if you know the language.
+The ready example files the lessons point to are in the folders of the table above.
 
 ## What's where in `Atdar`
 

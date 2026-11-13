@@ -16,7 +16,7 @@ Atdar.debug = true
 
 -- ─── modules/ ────────────────────────────────────────────────────────────────
 
-stand.equal(modules.load_dir($"{stand.ROOT}/examples/modules/"), 7, "all seven module examples load")
+stand.equal(modules.load_dir($"{stand.ROOT}/examples/script/modules/"), 7, "all seven module examples load")
 modules.start()
 for _, name in { "example.basic", "example.clock", "example.session_watch", "example.reporter", "example.counter",
         "example.garage", "example.greeter" } do
@@ -87,7 +87,7 @@ _G.PLAYER = {
     PLAYER_ID = || -> 0,
     PLAYER_PED_ID = || -> 1,
 }
-stand.equal(run_files($"{stand.ROOT}/examples/features/"), 4, "all four feature examples load")
+stand.equal(run_files($"{stand.ROOT}/examples/script/features/"), 4, "all four feature examples load")
 local features = Atdar.features
 local kinds = {}
 for _, id in { "example.heal", "example.no_wanted", "example.infinite_stamina", "example.regeneration" } do
@@ -102,7 +102,7 @@ stand.equal(wanted_max, 5, "off, the old maximum is back")
 
 -- ─── pack/ExamplePack ────────────────────────────────────────────────────────
 
-local pack_dir = $"{stand.ROOT}/examples/pack/ExamplePack/"
+local pack_dir = $"{stand.ROOT}/examples/script/pack/ExamplePack/"
 stand.equal(run_files($"{pack_dir}features/"), 2, "the pack's features load")
 Atdar.loader.load("core/i18n").add_source($"{pack_dir}language/")
 local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
@@ -118,7 +118,7 @@ stand.check(stand.find_item(pack_root.handle, "Settings") ~= nil, "and its Setti
 -- ─── basics/ ─────────────────────────────────────────────────────────────────
 
 local function run_example(name: string)
-    return assert(loadfile($"{stand.ROOT}/examples/{name}.pluto"))()
+    return assert(loadfile($"{stand.ROOT}/examples/script/{name}.pluto"))()
 end
 
 stand.clear_logs()
@@ -146,7 +146,7 @@ stand.check(stand.find_log("not a colour: nil"), "from_hex of something else")
 
 -- The natives examples need the game; every function they call has to exist
 for _, name in { "05_natives", "08_natives_more", "09_natives_all" } do
-    local text = stand.read_file($"{stand.ROOT}/examples/basics/{name}.pluto")
+    local text = stand.read_file($"{stand.ROOT}/examples/script/basics/{name}.pluto")
     local calls = 0
     for chain in text:gmatch("natives%.([%w_%.]+)%(") do
         local target = Atdar.natives
