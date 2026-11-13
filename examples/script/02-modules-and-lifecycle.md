@@ -55,7 +55,7 @@ end
 return Atdar.modules.add(new Reporter())
 ```
 
-Опции модуля: `name` (обязательное, уникальное), `deps`, хуки `on_start` / `on_stop` / `on_tick`,
+Опции модуля: `name` (у модуля из файла это `id` его манифеста, можно не писать), `deps`, хуки `on_start` / `on_stop` / `on_tick`,
 `skip_first_tick` и `debug` (как модуль показан в меню отладки). Неизвестная опция — ошибка при создании:
 конструктор проверяет таблицу через `core/check`.
 
@@ -82,33 +82,41 @@ end
 конструктор `Module`: `start`, `stop`, `tick`, `fail`, `is_running` и `has_tick` «запечатаны», и наследник,
 который их переопределил, получит ошибку `must not override tick()`. Переопределяются только хуки `on_*`.
 
-## Регистрация: файл регистрирует себя сам
+## Регистрация: манифест и ленивая загрузка
 
-Файл модуля заканчивается строкой `return Atdar.modules.add(...)`. Менеджер запускает каждый `.pluto` из папки
-модулей, и запущенный файл сам кладёт модуль в реестр:
+Менеджер ищет модули по манифестам: `info.json` в папке модуля или `<имя>.info.json` рядом с одиночным файлом
+(поля и раскладки описаны в [modules/README.ru.md](modules/README.ru.md)). `load_dir` только читает манифесты:
+код модулей при этом не исполняется. Для каждого манифеста создаётся заготовка, `Module` с данными из манифеста
+и `loaded = false`:
 
 ```pluto
-function module.add(mod: table): table
-    local name = mod.name
-    if type(name) ~= "string" then
-        error("[Modules] a module needs a name, create it with new Module({ name = ... })")
-    end
-    if by_name[name] then
-        error($"[Modules] module '{name}' is already registered")
-    end
-    by_name[name] = mod
-    table.insert(order, mod)
-    index_deps(mod)
-    files[name] = loading_file
+local stand_in = new Module({ name = id })
+
+stand_in.loaded = false
+stand_in:_apply_manifest(manifest)
+```
+
+Файл модуля запускается при первом старте модуля и заканчивается строкой `return Atdar.modules.add(...)`.
+Пока файл выполняется, менеджер помнит его манифест (`loading`), и `add` ставит настоящий модуль на место заготовки:
+
+```pluto
+if manifest ~= nil then
+    mod:_apply_manifest(manifest)
+    mod.system = is_system_manifest(manifest)
+end
+
+if current ~= nil then
+    replace(current, mod)
     return mod
 end
 ```
 
-Менеджер запоминает три вещи: модуль по имени (`by_name`), порядок регистрации (`order`) и файл, из которого
-модуль пришёл (`files`) — он понадобится для перезагрузки. `loading_file` выставляет `run_file`, пока
-выполняется файл.
+Менеджер хранит модуль по имени (`by_name`), порядок регистрации (`order`), файл точки входа (`files`) и манифест
+(`manifests`): последние два нужны для перезагрузки.
 
-Сломанный файл не мешает остальным: `load_dir` запускает каждый через `pcall` и пишет ошибку в лог.
+Сломанный манифест (битый JSON, неверное поле, нет файла точки входа, занятый `id`) не мешает остальным: ошибка
+пишется в лог, модуль пропускается. Файл, который упал при запуске, оставляет заготовку в статусе `failed`
+с причиной в `mod.error`.
 
 ## Статусы
 

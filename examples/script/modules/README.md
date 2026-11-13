@@ -17,10 +17,49 @@ What the user switches on and off in the menu is a `Feature`, not a module (see 
 
 ## Running them
 
-1. Copy the files you want to `src/lib/AnitaDarin/modules/`. Each module is best in its own folder:
-   `modules/Counter/Counter.pluto`. `04_deps.pluto` needs `02_class.pluto` alongside it.
+1. Copy the files you want to `src/lib/AnitaDarin/modules/`, each with its manifest (`01_basic.pluto` and
+   `01_basic.info.json`). A module is best in its own folder: `modules/Counter/info.json` and its file.
+   `04_deps` needs `02_class` alongside it.
 2. `python build.py sync` copies the project to Stand.
 3. Restart the script in Stand. Modules from the `modules` folder load and start at startup.
+
+## The manifest: info.json
+
+The script finds a module by its manifest, not by where its file lies: a module can be in a folder of its own or
+among other files, at any depth under `modules/`. A `.pluto` file without a manifest is not a module and is never run.
+
+| Layout | Manifest | Entry when `"entry"` isn't set |
+|---|---|---|
+| A folder | `my_module/info.json` | `main.pluto`, or `init.pluto` when there's no main |
+| A single file | `my_module.info.json` | `my_module.pluto` next to it |
+
+```json
+{
+    "id": "example.reporter",
+    "name": "Example: Reporter",
+    "version": "1.0.0",
+    "author": "You",
+    "entry": "04_deps.pluto",
+    "enabled": true,
+    "system": false,
+    "dependencies": ["example.clock"]
+}
+```
+
+| Field | What it is |
+|---|---|
+| `id` | Required. The module's name everywhere: `Atdar.modules.get(id)`, `dependencies`, `self.name` |
+| `name` | How it's shown; the `id` when not set |
+| `version`, `author` | Text, optional |
+| `entry` | The module's `.pluto` file, a path from the manifest's folder |
+| `enabled` | `false`: registered, but not started by itself (Start in the menu, or a module that needs it, starts it) |
+| `system` | `true`: a system module, listed only with "Show System Modules" |
+| `dependencies` | The ids of the modules it needs; they start first. `deps` in the code are added to these |
+
+Reading the manifests runs no code: the module's file runs when the module is first started. The file may leave
+`name` out (`new Module({ ... })`), it's the manifest's `id`; a `name` that differs from the `id` is an error.
+A manifest with broken JSON, a wrong or unknown field, a missing entry file or an `id` that's already taken is logged
+and skipped, the other modules still load.
 
 ## The module debug menu
 

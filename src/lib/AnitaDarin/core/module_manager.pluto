@@ -3,10 +3,17 @@
 -- Keeps the script's modules (core/module): starts them in dependency order, ticks the ones that tick
 -- and stops them in reverse order when the script stops. Available as Atdar.modules.
 --
--- A module file registers itself, like a feature file:
---     return Atdar.modules.add(new Module({ name = "players", on_tick = function(self) ... end }))
+-- A module on disk is found by its manifest (core/module_manifest: info.json or <name>.info.json), wherever it
+-- lies under a folder load_dir reads. Reading the manifests runs no module code: each gets a stand-in, a Module
+-- made from the manifest alone (loaded = false). The module's file runs when the module is first started,
+-- and registers the real module in the stand-in's place:
+--     return Atdar.modules.add(new Module({ on_tick = function(self) ... end }))
+-- A .pluto file without a manifest isn't a module: it's never run from here.
+-- A module made in code (no file) is added the same way, with a name: new Module({ name = "players" })
 
 local Logger = Atdar.loader.load("core/logger")
+local Module = Atdar.loader.load("core/module")
+local manifest_reader = Atdar.loader.load("core/module_manifest")
 
 local log = new Logger("Modules")
 
@@ -21,17 +28,23 @@ local order = {}
 local started = {}
 local tick_handler_created = false
 
--- Module name -> the file that registered it, so reload_module() can run it again
+-- Module name -> its file (the manifest's entry), so reload_module() can run it again
 local files = {}
 
--- The file run_file() is running right now; add() records it for the modules the file registers
-local loading_file = nil
+-- Module name -> its manifest (core/module_manifest.read)
+local manifests = {}
+
+-- Manifest file -> the name of the module registered from it; load_dir and load_new skip these
+local manifest_paths = {}
+
+-- The manifest whose file run_entry() is running right now; add() takes the module the file registers for it
+local loading = nil
 
 -- Module file -> its text as it was when the code running now was read from it (file_changed)
 local loaded_text = {}
 
--- Module file -> its text when it was run last, even if it failed (load_new doesn't run a broken file again
--- until it changes)
+-- Module file -> its text when it was run last, even if it failed (file_changed: a failed module whose file
+-- was edited since is worth another try)
 local attempted = {}
 
 -- The folders load_dir read, for load_new to look at again
@@ -48,12 +61,9 @@ local function normalized(path: string): string
     return (path:gsub("\\", "/")):lower()
 end
 
--- The systems\ folder of each folder load_dir read, normalized and ending in /: what a system module's file
--- starts with. Made when the folder is read, so is_system only compares
+-- The systems\ folder of each folder load_dir read, normalized and ending in /: what a system module's manifest
+-- starts with
 local system_roots = {}
-
--- Module file -> whether it's under one of system_roots (is_system). Emptied when load_dir reads a new folder
-local system_files = {}
 
 -- @return The systems folder of dir, as system_roots keeps it
 local function system_root(dir: string): string
@@ -72,7 +82,25 @@ local function system_root(dir: string): string
     return root
 end
 
--- Module file -> its stamp (stamp_of) when its text was last seen to be the loaded one: while the stamp
+-- Whether the manifest makes a system module: it says so, or it's under one of system_roots
+local function is_system_manifest(manifest: table): bool
+
+    local file = normalized(manifest.path)
+
+    if manifest.system then
+        return true
+    end
+
+    for _, root in ipairs(system_roots) do
+        if file:startswith(root) then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- File -> its stamp (stamp_of) when its text was last seen to be the one in use: while the stamp
 -- stays, file_changed doesn't read the file
 local same_stamp = {}
 
@@ -123,57 +151,91 @@ local function unindex_deps(mod: table): void
     end
 end
 
-function module.add(mod: table): table
-    local name = mod.name
-    if type(name) ~= "string" then
-        error("[Modules] a module needs a name, create it with new Module({ name = ... })")
-    end
-    if by_name[name] then
-        error($"[Modules] module '{name}' is already registered")
-    end
-    by_name[name] = mod
-    table.insert(order, mod)
-    index_deps(mod)
-    files[name] = loading_file
-    return mod
-end
+-- Puts the module where its stand-in was: the same place in the order, the deps indexed again
+local function replace(old: table, fresh: table): void
 
--- The file the module was registered from, nil for one made in code (not by load_dir)
-function module.file_of(name: string): ?string
-    return files[name]
-end
-
--- Whether it's a system module: its file is in systems\ of a folder load_dir read (lib/<script>/modules/systems/),
--- or load_dir read that systems\ folder itself. The script's own menus use them; the Modules list shows them
--- only when asked
--- @return false for a module made in code
-function module.is_system(name: string): bool
-
-    local path = files[name]
-
-    if path == nil then
-        return false
-    end
-
-    local known = system_files[path]
-
-    if known ~= nil then
-        return known
-    end
-
-    local file = normalized(path)
-    local found = false
-
-    for _, root in ipairs(system_roots) do
-        if file:startswith(root) then
-            found = true
+    for i, other in ipairs(order) do
+        if other == old then
+            order[i] = fresh
             break
         end
     end
 
-    system_files[path] = found
+    unindex_deps(old)
+    by_name[fresh.name] = fresh
+    index_deps(fresh)
+end
 
-    return found
+-- Registers a module. Called by a module's file while it runs for its manifest, the module takes what the manifest
+-- says and the place of its stand-in; called by other code, it's a module made in code
+function module.add(mod: table): table
+
+    local name = mod.name
+    local manifest = loading
+    local current = by_name[name]
+
+    if type(name) ~= "string" then
+        error("[Modules] a module needs a name, create it with new Module({ name = ... })")
+    end
+
+    if manifest ~= nil and name ~= manifest.id then
+        error($"[Modules] the file of module '{manifest.id}' registers '{name}': the name must be the manifest's id")
+    end
+
+    if current ~= nil and (manifest == nil or current.loaded) then
+        error($"[Modules] module '{name}' is already registered")
+    end
+
+    if manifest ~= nil then
+        mod:_apply_manifest(manifest)
+        mod.system = is_system_manifest(manifest)
+    end
+
+    if current ~= nil then
+        replace(current, mod)
+        return mod
+    end
+
+    by_name[name] = mod
+    table.insert(order, mod)
+    index_deps(mod)
+    files[name] = manifest?.entry
+    return mod
+end
+
+-- The id of the module whose file is running right now, nil outside of one: a Module made without a name takes it
+function module.loading_id(): ?string
+    return loading?.id
+end
+
+-- The module's file (its manifest's entry), nil for one made in code (not by load_dir)
+function module.file_of(name: string): ?string
+    return files[name]
+end
+
+-- The module's manifest as core/module_manifest read it, nil for one made in code. Don't change it
+function module.manifest_of(name: string): ?table
+    return manifests[name]
+end
+
+-- The folder of the module's manifest, ending in a slash; nil for one made in code
+function module.folder_of(name: string): ?string
+    return manifests[name]?.dir
+end
+
+-- Whether it's a system module: its manifest says "system": true, or lies in systems\ of a folder load_dir read
+-- (lib/<script>/modules/systems/), or load_dir read that systems\ folder itself. The script's own menus use them;
+-- the Modules list shows them only when asked
+-- @return false for a module made in code
+function module.is_system(name: string): bool
+
+    local mod = by_name[name]
+
+    if mod == nil then
+        return false
+    end
+
+    return mod.system == true
 end
 
 -- The text the code running now was read from (the file may be edited since): its line numbers are
@@ -232,7 +294,68 @@ function module.names(): table
     return names
 end
 
--- Starts the module's deps first.
+-- Runs a module's file for its manifest: what it registers (add) is that manifest's module
+-- @return Whether it ran without errors, and the error when it didn't
+local function run_entry(manifest: table)
+
+    local path = manifest.entry
+    local text = read_text(path)
+
+    attempted[path] = text
+
+    -- Timed (loader.report): compiling and running the file, with the lib files it loads
+    local ok, err = Atdar.loader.measure(path, function()
+        local chunk, load_err = loadfile(path)
+        if not chunk then
+            return false, load_err
+        end
+
+        -- Put back after: a module's file may start another module, whose file runs inside this one
+        local outer = loading
+
+        loading = manifest
+        local run_ok, run_err = pcall(chunk)
+        loading = outer
+        return run_ok, run_err
+    end)
+
+    if not ok then
+        return false, tostring(err)
+    end
+
+    -- Only code that ran: after a failed reload the old code runs, and the file still differs from it
+    loaded_text[path] = text
+    same_stamp[path] = nil
+    return true
+end
+
+-- Runs the file of a module that's still a stand-in. A file that fails or registers nothing marks the stand-in
+-- failed; Start tries it again
+-- @return The module the file registered, nil if there's none
+local function load_module(stand_in: table): ?table
+
+    local manifest = manifests[stand_in.name]
+    local ok, err = run_entry(manifest)
+    local fresh = by_name[stand_in.name]
+
+    if ok and fresh ~= stand_in then
+        return fresh
+    end
+
+    -- Registered, then failed: not a module to keep
+    if fresh ~= stand_in then
+        replace(fresh, stand_in)
+    end
+
+    if ok then
+        err = "the file didn't register the module (Atdar.modules.add)"
+    end
+
+    stand_in:fail($"{manifest.entry} failed\n{err}")
+    return nil
+end
+
+-- Loads the module's file if it hasn't run yet, then starts the module's deps first.
 -- chain: names being started right now, in order; a name met twice is a dependency cycle
 local function start_one(mod: table, chain: table): bool
     if mod.status == "running" then
@@ -255,6 +378,13 @@ local function start_one(mod: table, chain: table): bool
             table.insert(cycle, mod.name)
 
             log:error($"dependency cycle: {table.concat(cycle, ' -> ')}")
+            return false
+        end
+    end
+
+    if not mod.loaded then
+        mod = load_module(mod)
+        if mod == nil then
             return false
         end
     end
@@ -304,12 +434,21 @@ local function create_tick_handler(): void
 end
 
 -- Starts every registered module that isn't running yet; can be called again after more modules are added.
--- A module whose dep is missing or failed is marked failed, the others still start
+-- A module whose dep is missing or failed is marked failed, the others still start. One whose manifest says
+-- "enabled": false is left alone, unless a module that starts needs it
 -- @return Number of running modules
 function module.start(): int
-    for _, mod in ipairs(order) do
-        start_one(mod, {})
+
+    -- By name: a stand-in is replaced in the order while its file runs
+    for _, name in ipairs(module.names()) do
+
+        local mod = by_name[name]
+
+        if mod ~= nil and mod.enabled then
+            start_one(mod, {})
+        end
     end
+
     create_tick_handler()
 
     local running = 0
@@ -396,58 +535,9 @@ function module.stop_module(name: string): void
     end
 end
 
--- Adds the .pluto files under dir and its subfolders to out; one recursive listing instead of a look at every entry
-local function collect_pluto_files(dir: string, out: table): void
-    for _, path in io.listdir(dir, true) do
-        if path:endswith(".pluto") and io.isfile(path) then
-            table.insert(out, path)
-        end
-    end
-end
-
--- Runs one module file; the modules it registers remember it for reload_module()
--- @return Whether it ran without errors
-local function run_file(path: string): bool
-
-    local text = read_text(path)
-    attempted[path] = text
-
-    -- Timed (loader.report): compiling and running the file, with the lib files it loads
-    local ok, err = Atdar.loader.measure(path, function()
-        local chunk, load_err = loadfile(path)
-        if not chunk then
-            return false, load_err
-        end
-
-        loading_file = path
-        local run_ok, run_err = pcall(chunk)
-        loading_file = nil
-        return run_ok, run_err
-    end)
-
-    if not ok then
-        log:error($"module file failed: {path}\n{err}")
-        return false
-    end
-
-    -- Only code that ran: after a failed reload the old code runs, and the file still differs from it
-    loaded_text[path] = text
-    same_stamp[path] = nil
-    return true
-end
-
--- Whether the module's file differs from what its running code was read from (edited or synced since,
--- so Reload would run something new). The file is read only when its write time or size isn't the one it had
--- when its text was last compared: a file written again with the same text (a sync, a build) still isn't
--- changed. Meant for the menu, not for every frame
--- @return false for a module made in code (no file)
-function module.file_changed(name: string): bool
-
-    local path = files[name]
-
-    if path == nil then
-        return false
-    end
+-- Whether the file's text isn't `text` any more. The file is read only when its write time or size isn't the one
+-- it had when it was last compared: a file written again with the same text (a sync, a build) still isn't changed
+local function differs(path: string, text: ?string): bool
 
     local stamp = stamp_of(path)
 
@@ -455,7 +545,7 @@ function module.file_changed(name: string): bool
         return false
     end
 
-    if read_text(path) ~= loaded_text[path] then
+    if read_text(path) ~= text then
         same_stamp[path] = nil
         return true
     end
@@ -465,8 +555,82 @@ function module.file_changed(name: string): bool
     return false
 end
 
--- Runs every module file in dir and its subfolders; a broken file skips only itself
--- @return Number of files that ran without errors
+-- Whether the module's file or its manifest differs from what's in use (edited or synced since, so Reload would
+-- run something new). For a module whose file failed and never ran: whether the file was edited since that try.
+-- Meant for the menu, not for every frame
+-- @return false for a module made in code (no file) and for one whose file hasn't been run yet
+function module.file_changed(name: string): bool
+
+    local path = files[name]
+    local manifest = manifests[name]
+
+    if path == nil or manifest == nil then
+        return false
+    end
+
+    local text = loaded_text[path] or attempted[path]
+
+    if text == nil then
+        return false
+    end
+
+    return differs(path, text) or differs(manifest.path, manifest.text)
+end
+
+-- Reads a manifest and registers its module as a stand-in; the module's file isn't run. A manifest that can't be
+-- used (broken JSON, a wrong field, no entry file) or names a module that's already there is logged and skipped
+-- @return Whether the module was registered
+local function register(path: string): bool
+
+    local manifest, why = manifest_reader.read(path)
+
+    if manifest == nil then
+        log:error($"module manifest skipped: {path}\n{why}")
+        return false
+    end
+
+    local id = manifest.id
+
+    if by_name[id] ~= nil then
+        log:warn($"module '{id}' is already registered, the duplicate is skipped: {path}")
+        return false
+    end
+
+    local stand_in = new Module({ name = id })
+
+    stand_in.loaded = false
+    stand_in:_apply_manifest(manifest)
+    stand_in.system = is_system_manifest(manifest)
+
+    manifests[id] = manifest
+    manifest_paths[path] = id
+    same_stamp[path] = nil
+    by_name[id] = stand_in
+    table.insert(order, stand_in)
+    index_deps(stand_in)
+    files[id] = manifest.entry
+
+    return true
+end
+
+-- Registers the modules whose manifests are under dir, the ones not registered yet
+-- @return How many were registered
+local function register_dir(dir: string): int
+
+    local registered = 0
+
+    for _, path in ipairs(manifest_reader.find(dir)) do
+        if manifest_paths[path] == nil and register(path) then
+            registered += 1
+        end
+    end
+
+    return registered
+end
+
+-- Registers the module of every manifest in dir and its subfolders, without running the modules' files; a broken
+-- manifest skips only itself
+-- @return Number of modules registered
 function module.load_dir(dir: string): int
     if not filesystem.is_dir(dir) then
         return 0
@@ -482,51 +646,30 @@ function module.load_dir(dir: string): int
     if not known then
         table.insert(dirs, dir)
         table.insert(system_roots, system_root(dir))
-        system_files = {}
-    end
-    local paths = {}
-    collect_pluto_files(dir, paths)
-    table.sort(paths)
-
-    local loaded = 0
-    for _, path in ipairs(paths) do
-        if run_file(path) then
-            loaded += 1
-        end
     end
 
-    return loaded
+    return register_dir(dir)
 end
 
--- Runs the files that came into the folders load_dir read since (a new module file, or one that failed
--- before and was changed), then starts the modules they registered
--- @return How many modules the new files registered
+-- Registers the modules whose manifests came into the folders load_dir read since (a new one, or one that
+-- couldn't be used before), then starts them
+-- @return How many modules were registered
 function module.load_new(): int
 
     local before = #order
 
     for _, dir in ipairs(dirs) do
-
-        local paths = {}
-        collect_pluto_files(dir, paths)
-        table.sort(paths)
-
-        for _, path in ipairs(paths) do
-
-            local seen = attempted[path]
-
-            -- Never run, or failed before and edited since
-            if seen == nil or (loaded_text[path] == nil and read_text(path) ~= seen) then
-                run_file(path)
-            end
-        end
+        register_dir(dir)
     end
 
-    local added = #order - before
+    local names = module.names()
+    local added = #names - before
 
     -- Only the new ones: start() would also bring back the modules stopped by hand (Stop All)
-    for i = before + 1, #order do
-        module.start_module(order[i].name)
+    for i = before + 1, #names do
+        if by_name[names[i]].enabled then
+            module.start_module(names[i])
+        end
     end
 
     return added
@@ -557,7 +700,27 @@ local function unregister(mod: table): int
     return index
 end
 
--- Runs the module's file again, so changes in its code apply without restarting the script.
+-- The module's manifest read again, for a reload. One that can't be used any more, or has another id now
+-- (a new id is a new module: it needs a restart of the script), is logged and the one in use stays
+local function manifest_again(name: string): table
+
+    local current = manifests[name]
+    local fresh, why = manifest_reader.read(current.path)
+
+    if fresh == nil then
+        log:warn($"'{name}': its manifest can't be used, the one read before stays: {current.path}\n{why}")
+        return current
+    end
+
+    if fresh.id ~= name then
+        log:warn($"'{name}': its manifest has the id '{fresh.id}' now, the one read before stays: {current.path}")
+        return current
+    end
+
+    return fresh
+end
+
+-- Reads the module's manifest and runs its file again, so changes in them apply without restarting the script.
 -- Modules that need it are stopped for the reload and started again after.
 -- If the new code fails to load, the old module is put back and started again.
 -- Only the module's own file is re-read: lib files it loads stay as they are (require caches them)
@@ -565,11 +728,26 @@ end
 function module.reload_module(name: string): bool
 
     local old = module.get(name)
-    local path = files[name]
+    local previous = manifests[name]
 
-    if not path then
+    if previous == nil then
         log:warn($"'{name}' wasn't loaded from a file, can't reload it")
         return false
+    end
+
+    local manifest = manifest_again(name)
+
+    -- Its file never ran: there's no old code to keep, the manifest is taken and the module started
+    if not old.loaded then
+        unindex_deps(old)
+        old.deps = {}
+        old:_apply_manifest(manifest)
+        old.system = is_system_manifest(manifest)
+        index_deps(old)
+        manifests[name] = manifest
+        files[name] = manifest.entry
+        same_stamp[manifest.path] = nil
+        return module.start_module(name)
     end
 
     -- Dependents that were running, to start them again once the module is back
@@ -583,22 +761,29 @@ function module.reload_module(name: string): bool
     module.stop_module(name)
     local index = unregister(old)
 
-    local ok = run_file(path)
+    local ok, err = run_entry(manifest)
     local fresh = by_name[name]
     local reloaded = ok and fresh ~= nil
     if not reloaded then
         if fresh then
             unregister(fresh)
-        elseif ok then
-            log:error($"{path} didn't register '{name}' again")
         end
+
+        if ok then
+            log:error($"{manifest.entry} didn't register '{name}' again")
+        else
+            log:error($"module file failed: {manifest.entry}\n{err}")
+        end
+
         log:warn($"'{name}' not reloaded, the old version is back")
-        register_at(old, index, path)
+        register_at(old, index, previous.entry)
     else
         -- The file registered it at the end; move it back to where it was
         unregister(fresh)
-        register_at(fresh, index, path)
-        log:info($"'{name}' reloaded from {path}")
+        register_at(fresh, index, manifest.entry)
+        manifests[name] = manifest
+        same_stamp[manifest.path] = nil
+        log:info($"'{name}' reloaded from {manifest.entry}")
     end
 
     local running = module.start_module(name)
@@ -606,7 +791,7 @@ function module.reload_module(name: string): bool
     for _, dep_name in ipairs(restart) do
         module.start_module(dep_name)
     end
-    
+
     return reloaded and running
 end
 

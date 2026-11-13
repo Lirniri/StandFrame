@@ -1,6 +1,7 @@
 -- EXAMPLE 4: a module that needs another one (example.clock from 02_class.pluto).
 --
--- deps = { "example.clock" } means: start after example.clock. File order doesn't matter.
+-- "dependencies": ["example.clock"] in the manifest (04_deps.info.json) means: start after example.clock.
+-- deps = { "example.clock" } here says the same in code; the two lists are joined. File order doesn't matter.
 -- If example.clock is missing or failed, this module is marked failed and doesn't start;
 -- the other modules still start. Stopping example.clock from the menu stops this one first.
 --

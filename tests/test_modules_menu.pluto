@@ -43,6 +43,7 @@ local function reloader_file(functions: string): string
 end
 stand.write_file($"{reload_dir}reloader.pluto",
     reloader_file("    function one() return 1 end\n    function old_field(x) return x end"))
+stand.write_manifest(reload_dir, "reloader", "reloader")
 Atdar.modules.load_dir(reload_dir)
 Atdar.modules.start()
 
@@ -765,9 +766,11 @@ stand.click(reloader_entry)
 stand.back(reloader_entry)
 stand.equal(stand.name_of(reloader_entry), "5: reloader: running", "and the mark goes when it's as loaded again")
 
--- A file added to the modules folder after the start: Refresh runs it and its module joins the list
+-- A module added to the modules folder after the start: Refresh registers it and it joins the list.
+-- Its file leaves the name out: it's the manifest's id
 stand.write_file($"{reload_dir}newcomer.pluto",
-    "local Module = Atdar.loader.load('core/module')\nreturn Atdar.modules.add(new Module({ name = 'newcomer' }))\n")
+    "local Module = Atdar.loader.load('core/module')\nreturn Atdar.modules.add(new Module({}))\n")
+stand.write_manifest(reload_dir, "newcomer", "newcomer")
 stand.check(stand.find_item(list, "newcomer") == nil, "a new file's module isn't there before Refresh")
 stand.clear_logs()
 stand.click(stand.child(list, "Refresh"))
@@ -1001,11 +1004,20 @@ stand.check(stand.child(stand.child(stand.child(garage_entry, "Function Call"), 
 local talker_dir = stand.tmpdir("modules_menu_talker")
 stand.write_file($"{talker_dir}talker.pluto", "local Module = Atdar.loader.load('core/module')\n"
     .. "return Atdar.modules.add(new Module({ name = 'talker' }))\n")
+stand.write_manifest(talker_dir, "talker", "talker", ', "name": "Talker Module", "version": "1.4.0", "author": "Tester"')
 io.makedirs($"{talker_dir}language")
 stand.write_file($"{talker_dir}language/en-us.json", '{"hello": "Hello", "refresh": {"name": "Not the script\'s"}}')
 stand.write_file($"{talker_dir}language/ru-ru.json", '{"hello": "Привет"}')
 Atdar.modules.load_dir(talker_dir)
 local talker = Atdar.modules.get("talker")
+-- Its help shows what the manifest says, before it ever ran; a module made in code has none of those lines
+local modules_logic = Atdar.loader.load("ui/logic/stand/modules")
+stand.equal(modules_logic.help(talker), "Talker Module\nVersion: 1.4.0\nAuthor: Tester\nNeeds: none\nNo on_tick",
+    "help: the manifest's name, version and author on top")
+talker.enabled = false
+stand.check(modules_logic.help(talker):find("Author: Tester\nAutostart is off\nNeeds: none", 1, true), "enabled: false is told")
+talker.enabled = true
+stand.equal(modules_logic.help(Atdar.modules.get("a")):match("^[^\n]+"), "Needs: none", "a module made in code: its help as before")
 stand.equal(talker:text("hello", "Hi"), "Hello", "self:text: the module's own string")
 stand.equal(talker:text("missing", "Fallback"), "Fallback", "a key it doesn't have: the English given")
 stand.language = "ru"
@@ -1139,6 +1151,7 @@ local systems_dir = stand.tmpdir("modules_menu_systems")
 io.makedirs($"{systems_dir}systems/Helper")
 stand.write_file($"{systems_dir}systems/Helper/Helper.pluto",
     "local Module = Atdar.loader.load('core/module')\nreturn Atdar.modules.add(new Module({ name = 'sys_helper' }))\n")
+stand.write_file($"{systems_dir}systems/Helper/info.json", '{"id": "sys_helper", "entry": "Helper.pluto"}')
 Atdar.modules.load_dir(systems_dir)
 Atdar.modules.start()
 stand.check(Atdar.modules.is_system("sys_helper"), "a module from systems\\ is a system one")

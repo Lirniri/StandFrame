@@ -1,0 +1,9 @@
+{
+    "id": "PointerEditor",
+    "name": "Pointer Editor",
+    "version": "0.1.0",
+    "entry": "PointerEditor.pluto",
+    "enabled": true,
+    "system": true,
+    "dependencies": []
+}

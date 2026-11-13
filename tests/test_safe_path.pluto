@@ -60,6 +60,8 @@ local real_store = Atdar.filesystem.paths.store
 Atdar.filesystem.paths.store = store
 Atdar.modules = Atdar.modules or Atdar.loader.load("core/module_manager")
 Atdar.modules.load_dir($"{stand.SRC}lib/AnitaDarin/modules/systems/")
+-- Started: a module read from its manifest is only a stand-in until then
+Atdar.modules.start_module("FileEditor")
 local files = Atdar.modules.get("FileEditor")
 
 stand.equal(files:read("user/call_function/mine.json").a, 1, "an id of the editor reads")
