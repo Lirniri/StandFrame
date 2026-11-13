@@ -6,9 +6,10 @@
 --
 --   Pointer Editor >   Add Pointer (name = pattern: "roll = 48 8B ?? ?? 89")
 --                      Scan All, Read Bytes (an address, or a pointer's name, and how many: "roll, 16")
+--                      Read Value ("roll, 0x8": the int there), Pointer Chain ("roll, 0x8, 0x10A0, 0x280")
 --                      Pointers (divider), then a list per pointer
 --   a pointer >        Settings > (Pattern, Kind (address / rip / offset), At, Size, Extra, Remove), Scan,
---                      a divider and below it what was found
+--                      a divider and below it what was found, the delete buttons and Copy Code
 --
 -- A pointer made here is kept in the script's store and stored again at every start. One that something else
 -- stored (the script itself) is shown with its state and can be scanned, but not changed. Every change is
@@ -75,6 +76,9 @@ local function hex(value): string
 
     return $"0x{digits}"
 end
+
+-- The topics of the instruction, in the order of the list (core/language "guide.<topic>")
+local GUIDE_TOPICS = { "add", "setup", "scan", "bytes", "value", "chain", "code" }
 
 -- Says why a change was refused
 local function warn(why: string): void
@@ -201,6 +205,28 @@ local function pointer_list(parent: table, name: string, refresh: function): voi
             state.rebuild()
         end })
 
+        -- Copy Code: the code that finds the pointer, in the clipboard (or in the log without a clipboard function)
+        local function copy_code_button(): void
+            node:action({ name = label("copy_code.name"), help = label("copy_code.help"), on_click = function()
+
+                local code = editor():get_code(name)
+
+                if code == nil then
+                    warn("missing")
+                    return
+                end
+
+                if util.copy_to_clipboard == nil then
+                    log:info(code)
+                    log:warn(text("copy_code.unavailable"))
+                    return
+                end
+
+                util.copy_to_clipboard(code)
+                log:notify(text("copy_code.done"))
+            end })
+        end
+
         -- What was found, section by section, and the buttons that take it away: made again after a scan or a change
         state = node:section(function()
 
@@ -227,6 +253,7 @@ local function pointer_list(parent: table, name: string, refresh: function): voi
             end
 
             if #scans == 0 then
+                copy_code_button()
                 return
             end
 
@@ -268,6 +295,8 @@ local function pointer_list(parent: table, name: string, refresh: function): voi
                 editor():delete_past(name)
                 state.rebuild()
             end })
+
+            copy_code_button()
         end)
     end,
     on_back = function()
@@ -334,6 +363,60 @@ function module.build(node: table)
 
             log:notify(bytes)
         end)
+
+        -- "address or name": its int at offset 0, "address or name, offset": at that offset (0x.. or decimal)
+        field(ui, { key = "read_value" }, function(value)
+
+            local where, offset_text = value:match("^%s*([^,]-)%s*,%s*(%S+)%s*$")
+            local offset = tonumber(offset_text or 0)
+            local found = nil
+
+            if offset ~= nil then
+                found = editor():read_value(where or value:match("^%s*(.-)%s*$"), offset)
+            end
+
+            if found == nil then
+                warn("bytes")
+                return
+            end
+
+            log:notify(text("read_value.done"):format(where or value, hex(found.offset), tostring(found.value), hex(found.value)))
+        end)
+
+        -- "name, hop, hop, ..., last": the whole text goes to the module, one line per step is shown
+        field(ui, { key = "chain" }, function(value)
+
+            local result = editor():read_chain(value)
+            local lines = {}
+
+            for index, step in ipairs(result.steps) do
+                if step.is_int then
+                    lines[#lines + 1] = text("chain.int"):format(step.label, tostring(step.value))
+                elseif index == 1 then
+                    lines[#lines + 1] = text("chain.first"):format(step.label, hex(step.address))
+                else
+                    lines[#lines + 1] = text("chain.hop"):format(step.label, hex(step.address))
+                end
+            end
+
+            if result.error ~= nil then
+                lines[#lines + 1] = text($"errors.{result.error}"):format(result.failed_at or 0)
+            end
+
+            log:notify(table.concat(lines, "\n"))
+        end)
+
+        -- The instruction: a list with a topic for each tool, each one sends a message with an example (ped_factory) to Stand's
+        -- notifications, whatever the profile says for the others
+        pointers:list({ name = label("guide.name"), help = label("guide.help"), fill = function(guide)
+
+            for _, topic in ipairs(GUIDE_TOPICS) do
+                guide:action({
+                    name = label($"guide.{topic}.name"), help = label("guide.item_help"),
+                    on_click = || -> log:notify(text($"guide.{topic}.text"), "stand"),
+                })
+            end
+        end })
 
         pointers:divider({ name = label("pointers.divider") })
 

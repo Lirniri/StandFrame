@@ -1223,6 +1223,57 @@
                 "name": "Read Bytes",
                 "help": "An address (0x7FF...) or the name of a found pointer, and how many bytes after a comma: roll, 16. The bytes are written as a pattern"
             },
+            "read_value": {
+                "name": "Read Value",
+                "help": "The int at an address or a found pointer plus an offset, as: ped_factory, 0x8. The offset is hex (0x8) or decimal and can be left out",
+                "done": "%s+%s: int %s (%s)"
+            },
+            "chain": {
+                "name": "Pointer Chain",
+                "help": "Follows pointers: ped_factory, 0x8, 0x10A0, 0x280. The first is a name or an address, then offsets; all but the last are hops, the last is read as an int",
+                "first": "%s = %s",
+                "hop": "%s -> %s",
+                "int": "%s = int %s"
+            },
+            "copy_code": {
+                "name": "Copy Code",
+                "help": "Puts the code that finds this pointer in the clipboard",
+                "done": "Code copied",
+                "unavailable": "This Stand has no clipboard function: the code is in the log"
+            },
+            "guide": {
+                "name": "Instruction",
+                "help": "How to use the editor, step by step, with ped_factory as the example: each topic sends a message",
+                "item_help": "Sends the message with the example",
+                "add": {
+                    "name": "Add Pointer",
+                    "text": "Type in the Add Pointer field: ped_factory = 48 8B 05 ? ? ? ? 48 83 78 08 00 74 EB 48 8B 0D. A name, an equals sign, then the pattern (bytes in hex, ? is any byte)"
+                },
+                "setup": {
+                    "name": "Set Up The Pointer",
+                    "text": "Open ped_factory > Settings: Kind = rip, At = 3, Size = 4, Extra = 0. Kind says what the pointer gives, At is where the number is in the pattern"
+                },
+                "scan": {
+                    "name": "Scan",
+                    "text": "Press Scan in ped_factory: the rip section shows the address of the CPedFactory variable, the address section shows where the pattern was found"
+                },
+                "bytes": {
+                    "name": "Read Bytes",
+                    "text": "In Read Bytes type: ped_factory, 16. It gives 16 bytes at the found address, written as a pattern"
+                },
+                "value": {
+                    "name": "Read Value",
+                    "text": "In Read Value type: ped_factory, 0x8. It gives the int at the found address plus 0x8. The offset is optional (0x.. or decimal)"
+                },
+                "chain": {
+                    "name": "Pointer Chain",
+                    "text": "In Pointer Chain type: ped_factory, 0x8, 0x10A0, 0x280. The first is a name or an address, then the offsets: all but the last are hops (a pointer is read there), the last is read as an int"
+                },
+                "code": {
+                    "name": "Copy Code",
+                    "text": "At the end of a pointer's page press Copy Code: the line pointers.store(...) with its settings goes to the clipboard, ready for the code"
+                }
+            },
             "pointer": {
                 "help": "A pointer: open it to scan it and to see or change how it is found"
             },
@@ -1304,7 +1355,10 @@
                 "kind": "A kind is address, rip or offset",
                 "number": "A number, 0 or more, is needed",
                 "size": "The size is 1 or 4",
-                "bytes": "That is not an address, nor a pointer that is found"
+                "bytes": "That is not an address, nor a pointer that is found",
+                "bad_spec": "Type it as: name or address, then offsets (ped_factory, 0x8, 0x280)",
+                "not_found": "The first one is not an address, nor a pointer that is found",
+                "bad_pointer": "Step %d: there is no readable pointer there"
             }
         },
         "delete_script": {

@@ -1,0 +1,102 @@
+-- modules/systems/PointerEditor, the logic without the menu: read_bytes, read_value, read_chain, get_code,
+-- on a fake memory (a table of addresses) instead of the game's
+local stand = require("stand")
+stand.boot()
+Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.modules = Atdar.loader.load("core/module_manager")
+
+-- The fake memory: the 64-bit values and the ints by address, a byte of an address is its low byte
+local fake = { longs = {}, ints = {} }
+_G.memory = {
+    read_long = |address| -> fake.longs[address] or 0,
+    read_int = |address| -> fake.ints[address] or 0,
+    read_byte = |address| -> (fake.ints[address] or 0) & 0xFF,
+}
+
+local pointers = Atdar.natives.memory.pointers
+local editor = Atdar.loader.load("modules/systems/PointerEditor/PointerEditor")
+
+-- A chain: ped_factory is at 0x100000, there is 0x200000 stored, +0x8 gives 0x300000, +0x10A0 gives 0x400000, +0x280 is 328
+pointers.set("ped_factory", 0x100000)
+fake.longs[0x100000] = 0x200000
+fake.longs[0x200008] = 0x300000
+fake.longs[0x3010A0] = 0x400000
+fake.ints[0x400280] = 328
+fake.ints[0x500000] = -5
+
+-- ─── read_bytes ──────────────────────────────────────────────────────────────
+
+fake.ints[0x600000] = 0x48
+fake.ints[0x600001] = 0x8B
+stand.equal(editor:read_bytes(0x600000, 2), "48 8B", "read_bytes: an address as a number")
+stand.equal(editor:read_bytes("0x600000", 2), "48 8B", "an address as 0x text")
+stand.equal(editor:read_bytes("600000", 2), "48 8B", "an address as hex digits")
+stand.equal(editor:read_bytes("ped_factory", 1), "00", "a name of a found pointer")
+stand.equal(editor:read_bytes(0x100, 2), nil, "a small number isn't an address")
+stand.equal(editor:read_bytes(nil, 2), nil, "nil isn't one")
+stand.equal(editor:read_bytes("nothing_here", 2), nil, "an unknown name isn't one")
+stand.equal(#editor:read_bytes(0x600000, 1000):split(" "), 64, "at most 64 bytes")
+
+-- ─── read_value ──────────────────────────────────────────────────────────────
+
+local result = editor:read_value(0x500000)
+stand.check(result ~= nil and result.address == 0x500000 and result.offset == 0 and result.value == -5, "read_value: the int at the address")
+result = editor:read_value("0x400000", 0x280)
+stand.check(result ~= nil and result.address == 0x400000 and result.offset == 0x280 and result.value == 328, "with an offset, by text")
+stand.equal(editor:read_value("ped_factory").address, 0x100000, "by the name of a pointer")
+stand.equal(editor:read_value(0x100), nil, "a small number gives nil")
+stand.equal(editor:read_value(nil), nil, "and nil")
+stand.equal(editor:read_value("nothing_here"), nil, "and an unknown name")
+
+-- ─── read_chain ──────────────────────────────────────────────────────────────
+
+result = editor:read_chain("ped_factory, 0x8, 0x10A0, 0x280")
+stand.equal(result.error, nil, "read_chain: no error on a good chain")
+stand.equal(#result.steps, 5, "five steps: the start, the first hop, two hops and the int")
+stand.check(result.steps[1].label == "ped_factory" and result.steps[1].address == 0x100000, "the start is the address of the variable")
+stand.check(result.steps[2].label == "->" and result.steps[2].address == 0x200000, "then the first hop")
+stand.check(result.steps[3].label == "+0x8" and result.steps[3].address == 0x300000, "then +0x8")
+stand.check(result.steps[4].label == "+0x10A0" and result.steps[4].address == 0x400000, "then +0x10A0")
+stand.check(result.steps[5].label == "+0x280" and result.steps[5].value == 328 and result.steps[5].is_int == true, "the last offset is the int")
+
+result = editor:read_chain("0x100000, 8, 4256, 640")
+stand.check(result.error == nil and #result.steps == 5 and result.steps[5].value == 328, "an address to start with, offsets in decimal")
+
+result = editor:read_chain("ped_factory")
+stand.check(result.error == nil and #result.steps == 2 and result.steps[2].address == 0x200000, "only the first one is just the first hop")
+
+result = editor:read_chain("ped_factory, 0x8")
+stand.check(result.error == nil and #result.steps == 3 and result.steps[3].is_int == true and result.steps[3].value == 0, "one offset is the int at the first hop plus it")
+
+fake.longs[0x3010A0] = 0x50
+result = editor:read_chain("ped_factory, 0x8, 0x10A0, 0x280")
+stand.equal(result.error, "bad_pointer", "a hop that isn't a pointer stops the chain")
+stand.equal(result.failed_at, 4, "failed_at is its step")
+stand.equal(#result.steps, 4, "the steps end at it")
+fake.longs[0x3010A0] = 0x400000
+
+fake.longs[0x100000] = 0
+result = editor:read_chain("ped_factory, 0x8")
+stand.check(result.error == "bad_pointer" and result.failed_at == 2 and #result.steps == 2, "the first hop can be the bad one")
+fake.longs[0x100000] = 0x200000
+
+stand.equal(editor:read_chain("").error, "bad_spec", "an empty text is a bad spec")
+stand.equal(editor:read_chain("ped_factory, zz").error, "bad_spec", "an offset that isn't a number")
+stand.equal(editor:read_chain("ped_factory, , 0x8").error, "bad_spec", "an empty element")
+stand.equal(editor:read_chain("ped_factory, -8").error, "bad_spec", "a negative offset")
+stand.equal(editor:read_chain("nothing_here, 0x8").error, "not_found", "an unknown start is not_found")
+stand.equal(#editor:read_chain("nothing_here").steps, 0, "and has no steps")
+
+-- ─── get_code ────────────────────────────────────────────────────────────────
+
+pointers.store("by_address", "48 8B 05 ? ? ? ?")
+stand.equal(editor:get_code("by_address"), 'pointers.store("by_address", "48 8B 05 ? ? ? ?", pointers.KIND.ADDRESS)', "get_code: an address one leaves at, size and extra out")
+pointers.store("by_rip", "48 8B 05 ? ? ? ? 48 83 78 08 00", pointers.KIND.RIP, 3, 4, 0)
+stand.equal(editor:get_code("by_rip"), 'pointers.store("by_rip", "48 8B 05 ? ? ? ? 48 83 78 08 00", pointers.KIND.RIP, 3, 4, 0)', "a rip one has them all")
+pointers.store("by_offset", "48 8B 81 ?? ?? 00 00", pointers.KIND.OFFSET, 3, 1, 2)
+stand.equal(editor:get_code("by_offset"), 'pointers.store("by_offset", "48 8B 81 ?? ?? 00 00", pointers.KIND.OFFSET, 3, 1, 2)', "an offset one too")
+pointers.store("quoted", 'a"b\\c')
+stand.equal(editor:get_code("quoted"), 'pointers.store("quoted", "a\\"b\\\\c", pointers.KIND.ADDRESS)', "quotes and backslashes are escaped")
+stand.equal(editor:get_code("not_stored"), nil, "a name that isn't stored gives nil")
+
+stand.finish()

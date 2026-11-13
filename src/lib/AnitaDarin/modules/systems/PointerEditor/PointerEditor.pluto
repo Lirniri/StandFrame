@@ -30,6 +30,15 @@ local NUMBER_FIELDS = { at = true, size = true, extra = true }
 -- The most bytes read_bytes shows
 local MAX_BYTES = 64
 
+-- What a pointer in read_chain can be: nil, 0 and a small number cannot, nor one above the user space
+local MIN_POINTER = 0x10000
+local MAX_POINTER = 0x7FFFFFFFFFFF
+
+-- How read_value reads a number, by the name of its type. Only int for now: float, long and byte go here
+local READERS = {
+    int = |address| -> memory.read_int(address),
+}
+
 local function trim(value: string): string
     return value:match("^%s*(.-)%s*$")
 end
@@ -55,6 +64,30 @@ local function is_name(name: string): bool
     return name:match("^%a[%w_]*$") ~= nil
 end
 
+-- Whether the number can be a pointer to read
+local function is_pointer(value: any): bool
+    return type(value) == "number" and value >= MIN_POINTER and value <= MAX_POINTER
+end
+
+-- An offset typed as 0x.. (hex) or in decimal, nil if it is neither
+local function parse_offset(text: string): ?int
+
+    if text:match("^0[xX]%x+$") then
+        return math.tointeger(tonumber(text))
+    end
+
+    if text:match("^%d+$") then
+        return math.tointeger(tonumber(text))
+    end
+
+    return nil
+end
+
+-- Escapes a text to stand between quotes in Lua code
+local function quote(text: string): string
+    return '"' .. (text:gsub('[\\"]', "\\%0")) .. '"'
+end
+
 local class PointerEditor extends Module
 
     function __construct()
@@ -65,6 +98,7 @@ local class PointerEditor extends Module
                     "_file",
                     "_save",
                     "_load",
+                    "_resolve",
                 }
             }
         })
@@ -273,6 +307,21 @@ local class PointerEditor extends Module
         local previous = self._current[name]
         local value = pointers.rescan(name)
         local info = pointers.info(name)
+        local values = nil
+
+        if info ~= nil and value ~= nil then
+            values = Atdar.natives.memory.scan.read_all(info.pattern, info.at, info.size, info.extra)
+        end
+
+        -- The same as the last scan (the same settings and the same places): there is nothing new to keep, and no number is spent
+        local same = previous ~= nil and values ~= nil and previous.pattern == info.pattern and previous.kind == info.kind
+            and previous.at == info.at and previous.size == info.size and previous.extra == info.extra
+            and previous.values.address == values.address and previous.values.rip == values.rip
+            and previous.values.offset == values.offset
+
+        if same then
+            return value
+        end
 
         if previous ~= nil then
             local history = self._history[name] or {}
@@ -283,12 +332,12 @@ local class PointerEditor extends Module
 
         self._current[name] = nil
 
-        if info ~= nil and value ~= nil then
+        if values ~= nil then
             self._ids[name] = (self._ids[name] or 0) + 1
 
             self._current[name] = {
                 id = self._ids[name], pattern = info.pattern, kind = info.kind, at = info.at, size = info.size, extra = info.extra,
-                values = Atdar.natives.memory.scan.read_all(info.pattern, info.at, info.size, info.extra),
+                values = values,
             }
         end
 
@@ -391,9 +440,10 @@ local class PointerEditor extends Module
 
     -- Bytes
 
+    -- The address of what was typed, the same for every function that reads
     -- @param where An address as a number, or text: 0x7FF.., the digits in hex, or the name of a pointer that is found
-    -- @return The bytes as a pattern ("48 8B 81"), nil when the address isn't one or the name isn't found
-    function read_bytes(where, count: int = 16): ?string
+    -- @return The address, nil when it isn't one (nil, below 0x10000) or the name isn't found
+    function _resolve(where): ?int
 
         local address = nil
 
@@ -405,11 +455,137 @@ local class PointerEditor extends Module
             address = Atdar.natives.memory.pointers.get(typed) or tonumber((typed:gsub("^0[xX]", "")), 16)
         end
 
-        if address == nil or address < 0x10000 then
+        if address == nil or address < MIN_POINTER then
+            return nil
+        end
+
+        return address
+    end
+
+    -- @param where An address as a number, or text: 0x7FF.., the digits in hex, or the name of a pointer that is found
+    -- @return The bytes as a pattern ("48 8B 81"), nil when the address isn't one or the name isn't found
+    function read_bytes(where, count: int = 16): ?string
+
+        local address = self:_resolve(where)
+
+        if address == nil then
             return nil
         end
 
         return Atdar.natives.memory.scan.get_bytes(address, math.min(math.max(count, 1), MAX_BYTES))
+    end
+
+    -- Reads a signed 32-bit int at the address plus the offset
+    -- @param where As in read_bytes
+    -- @return { address, offset, value }, nil when the address isn't one or the name isn't found
+    function read_value(where, offset: int = 0): ?table
+
+        local kind = "int"
+        local address = self:_resolve(where)
+
+        if address == nil then
+            return nil
+        end
+
+        return { address = address, offset = offset, value = READERS[kind](address + offset) }
+    end
+
+    -- Follows a chain typed as "ped_factory, 0x8, 0x10A0, 0x280": a pointer name or an address, then offsets in hex (0x..) or
+    -- decimal. The first one is the address of a variable, so one hop comes first (the pointer stored there), every offset
+    -- but the last is a hop (the pointer at the place plus the offset), and the last is read as an int
+    -- @return { steps = { { label, address } .. { label, value, is_int = true } }, error, failed_at }. error is nil, "bad_spec"
+    -- (the text), "not_found" (the first one isn't an address) or "bad_pointer" (a hop gave something that isn't a pointer: the
+    -- steps stop at it, failed_at is its number)
+    function read_chain(spec: string): table
+
+        local parts = {}
+        local offsets = {}
+        local steps = {}
+
+        for part in (spec .. ","):gmatch("([^,]*),") do
+            table.insert(parts, trim(part))
+        end
+
+        for index = 2, #parts do
+
+            local offset = parse_offset(parts[index])
+
+            if offset == nil then
+                return { steps = steps, error = "bad_spec" }
+            end
+
+            table.insert(offsets, offset)
+        end
+
+        if parts[1] == "" then
+            return { steps = steps, error = "bad_spec" }
+        end
+
+        local address = self:_resolve(parts[1])
+
+        if address == nil then
+            return { steps = steps, error = "not_found" }
+        end
+
+        table.insert(steps, { label = parts[1], address = address })
+
+        local current = memory.read_long(address)
+
+        table.insert(steps, { label = "->", address = current })
+
+        if not is_pointer(current) then
+            return { steps = steps, error = "bad_pointer", failed_at = #steps }
+        end
+
+        for index, offset in ipairs(offsets) do
+
+            local label = $"+0x{string.format("%X", offset)}"
+
+            if index == #offsets then
+                table.insert(steps, { label = label, value = memory.read_int(current + offset), is_int = true })
+                break
+            end
+
+            current = memory.read_long(current + offset)
+
+            table.insert(steps, { label = label, address = current })
+
+            if not is_pointer(current) then
+                return { steps = steps, error = "bad_pointer", failed_at = #steps }
+            end
+        end
+
+        return { steps = steps }
+    end
+
+    -- Code
+
+    -- The line that stores the pointer again as it is now, to put in a script
+    -- @return The line, nil if the name isn't stored. For an address one the at, size and extra are left out
+    function get_code(name: string): ?string
+
+        local pointers = Atdar.natives.memory.pointers
+        local info = pointers.info(name)
+
+        if info == nil then
+            return nil
+        end
+
+        local kind = "ADDRESS"
+
+        if info.kind == pointers.KIND.RIP then
+            kind = "RIP"
+        elseif info.kind == pointers.KIND.OFFSET then
+            kind = "OFFSET"
+        end
+
+        local line = $"pointers.store({quote(name)}, {quote(info.pattern)}, pointers.KIND.{kind}"
+
+        if kind == "ADDRESS" then
+            return line .. ")"
+        end
+
+        return line .. $", {info.at}, {info.size}, {info.extra})"
     end
 end
 
