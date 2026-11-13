@@ -17,62 +17,111 @@ local expect = Atdar.loader.load("core/check").expecter("parsers/proglang/pluto/
 
 local module = {}
 
--- File path -> { text = the text, lines = its lines }; split again only when the text is another
+-- File path -> { text = the text, starts = where each of its lines starts in it, false with no text }.
+-- The lines aren't cut out: a header needs a few of them, so a file costs one number a line, not one string.
+-- Looked through again only when the text is another
 local source_lines = {}
+
+local CARRIAGE_RETURN = 13
 
 -- The lines a function's line numbers belong to. A module file: the text its running code was read
 -- from (core/module_manager), so an edit or a Reload never leaves them pointing at other lines. Any
 -- other file (the lib's, not changed while the script runs): read from disk once
--- @return The lines, or false if there's no text
+-- @return { text, starts } (line_at reads a line of it), or false if there's no text
 local function lines_of(path: string)
     local text = Atdar.modules ~= nil and Atdar.modules.loaded_text_of(path) or nil
     local cached = source_lines[path]
 
-    if text == nil and cached ~= nil then
-        return cached.lines
-    end
-
-    if cached ~= nil and cached.text == text then
-        return cached.lines
+    if cached ~= nil and (text == nil or cached.text == text) then
+        if not cached.starts then
+            return false
+        end
+        return cached
     end
 
     if text == nil then
         text = Atdar.loader.load("core/filesystem/file").read(path)
     end
 
-    local lines = false
-    if text ~= nil then
-        lines = {}
-        for line in (text .. "\n"):gmatch("([^\n]*)\n") do
-            table.insert(lines, (line:gsub("\r$", "")))
-        end
+    local found = { text = text, starts = false }
+    source_lines[path] = found
+
+    if text == nil then
+        return false
     end
 
-    source_lines[path] = { text = text, lines = lines }
-    return lines
+    local starts = { 1 }
+    local position = 1
+
+    while true do
+
+        local at = text:find("\n", position, true)
+
+        if at == nil then
+            break
+        end
+
+        position = at + 1
+        table.insert(starts, position)
+    end
+
+    found.starts = starts
+    return found
 end
+
+-- One line of what lines_of gave, without its line break (\n or \r\n)
+local function line_at(source: table, index: int): string
+
+    local text = source.text
+    local next_start = source.starts[index + 1]
+    local last = #text
+
+    if next_start ~= nil then
+        last = next_start - 2
+    end
+
+    if last >= 1 and text:byte(last) == CARRIAGE_RETURN then
+        last -= 1
+    end
+
+    return text:sub(source.starts[index], last)
+end
+
+-- Function -> { inside, rest, before }, what header_of found for it. A function's header never changes (a
+-- reloaded module has new functions), and return_type, param_types and param_defaults all ask for the same
+-- one. Weak: a function that's gone takes its entry
+local headers = setmetatable({}, { __mode = "k" })
 
 -- A function's header as written: the parameters in brackets and what follows them ("(a: int, b) : bool").
 -- The header may take a few lines
 -- @return The parameters' text without the brackets, the text after them, and the text before "function" on
 -- its line; nil if the source can't be found (lambdas and C functions have none)
 local function header_of(fn)
+
+    local known = headers[fn]
+
+    if known ~= nil then
+        return known[1], known[2], known[3]
+    end
+
     local info = debug.getinfo(fn, "S")
     if info.what ~= "Lua" or info.source:sub(1, 1) ~= "@" or info.linedefined < 1 then
         return nil
     end
 
-    local lines = lines_of(info.source:sub(2))
-    if not lines then
+    local source = lines_of(info.source:sub(2))
+    if not source then
         return nil
     end
 
     local joined = ""
-    for i = info.linedefined, math.min(info.linedefined + 5, #lines) do
-        joined ..= lines[i] .. " "
+    for i = info.linedefined, math.min(info.linedefined + 5, #source.starts) do
+        joined ..= line_at(source, i) .. " "
         local before, inside, rest = joined:match("^(.-)function[^(]*(%b())(.*)")
         if inside ~= nil then
-            return inside:sub(2, -2), rest, before
+            inside = inside:sub(2, -2)
+            headers[fn] = { inside, rest, before }
+            return inside, rest, before
         end
     end
 
@@ -114,19 +163,20 @@ local function split_params(text: string): table
     local pieces = {}
     local depth, quote, start = 0, nil, 1
 
+    -- Characters as their codes (string.byte): 34 ", 39 ', 40 (, 41 ), 44 the comma, 91 [, 93 ], 123 {, 125 }
     for i = 1, #text do
-        local c = text:sub(i, i)
+        local c = text:byte(i)
         if quote ~= nil then
             if c == quote then
                 quote = nil
             end
-        elseif c == '"' or c == "'" then
+        elseif c == 34 or c == 39 then
             quote = c
-        elseif c == "(" or c == "{" or c == "[" then
+        elseif c == 40 or c == 123 or c == 91 then
             depth += 1
-        elseif c == ")" or c == "}" or c == "]" then
+        elseif c == 41 or c == 125 or c == 93 then
             depth -= 1
-        elseif c == "," and depth == 0 then
+        elseif c == 44 and depth == 0 then
             table.insert(pieces, text:sub(start, i - 1))
             start = i + 1
         end
