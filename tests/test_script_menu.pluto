@@ -37,7 +37,7 @@ stand.equal(functions_of("FileEditor"), "add_table, add_value, browse, clear_hid
     "its functions for the Modules list and Call Function; the helpers (_path_of, _file_of) aren't among them")
 stand.check(Atdar.modules.has("PointerEditor") and Atdar.modules.get("PointerEditor"):is_running(), "PointerEditor is running")
 stand.check(Atdar.modules.is_system("PointerEditor"), "and it's a system module")
-stand.equal(functions_of("PointerEditor"), "add, list, read_bytes, remove, scan, scan_all, set",
+stand.equal(functions_of("PointerEditor"), "add, delete_all, delete_past, delete_result, get_history, get_scans, get_values, list, read_bytes, remove, scan, scan_all, set",
     "its functions for the Modules list and Call Function; the helpers (_file, _save, _load) aren't among them")
 do
     -- The editor works on the store of pointers in the natives, which this test has not loaded
@@ -48,6 +48,8 @@ do
     stand.equal(select(2, pointer_editor:add("roll", "zz 8B")), "pattern", "a pattern is hex bytes")
     stand.equal(select(2, pointer_editor:add("roll", "")), "pattern", "and not empty")
     stand.check(pointer_editor:add("roll", "48 8B ?? ?? 89"), "a pointer is added")
+stand.equal(#pointer_editor:get_history("roll"), 0, "a pointer that wasn't scanned has no history")
+stand.equal(pointer_editor:get_values("roll"), nil, "and no values")
     stand.equal(select(2, pointer_editor:add("roll", "48 8B")), "exists", "the same name twice is refused")
     stand.check(Atdar.natives.memory.pointers.has("roll"), "it is in the store of pointers")
     stand.equal(pointer_editor:list()[1].kind, "address", "an address one at first")
@@ -1363,11 +1365,14 @@ stand.child(pointer_node, "Add Pointer").on_change("roll = 48 8B ?? 89", 0)
 stand.equal(names_in(pointer_node), "Add Pointer | Scan All | Read Bytes | Pointers | roll", "a pointer is added: a list of its own")
 local roll_node = stand.child(pointer_node, "roll")
 stand.click(roll_node)
-stand.check(stand.child(roll_node, "Pattern") ~= nil and stand.child(roll_node, "Kind") ~= nil and stand.child(roll_node, "Scan") ~= nil
-    and stand.child(roll_node, "Remove") ~= nil, "a pointer: Pattern, Kind, Scan and Remove")
-stand.check(stand.child(roll_node, "Not searched yet (-)") ~= nil, "a pointer is not searched until Scan")
-stand.child(roll_node, "Pattern").on_change("48 8B", 0)
+stand.equal(names_in(roll_node), "Settings | Scan | Not searched yet (-)", "a pointer: Settings on top, then Scan, and the state while there are no results")
+local roll_settings = stand.child(roll_node, "Settings")
+stand.click(roll_settings)
+stand.check(stand.child(roll_settings, "Pattern") ~= nil and stand.child(roll_settings, "Kind") ~= nil
+    and stand.child(roll_settings, "Remove") ~= nil, "its Settings: Pattern, Kind and Remove")
+stand.child(roll_settings, "Pattern").on_change("48 8B", 0)
 stand.equal(Atdar.modules.get("PointerEditor"):list()[1].pattern, "48 8B", "a pattern typed in its field is kept")
+stand.back(roll_settings)
 stand.back(roll_node)
 stand.back(pointer_node)
 stand.equal(#pointer_node.children, 0, "going back out of the Pointer Editor removes its items")

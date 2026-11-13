@@ -71,6 +71,15 @@ local class PointerEditor extends Module
 
         -- The names made here (the pointers that something else stored are not the editor's to save or remove)
         self._own = {}
+
+        -- The last scan of a name: { pattern, kind, at, size, extra (how it was found), values = { address, rip, offset } }
+        self._current = {}
+
+        -- The scans before it, the newest first: the same entries as _current. They stay until the script restarts
+        self._history = {}
+
+        -- The number the last scan of a name got (every found scan has one, to tell it in the lists)
+        self._ids = {}
     end
 
     function on_start()
@@ -247,16 +256,120 @@ local class PointerEditor extends Module
         end
 
         self._own[name] = nil
+        self._current[name] = nil
+        self._history[name] = nil
+        self._ids[name] = nil
         Atdar.natives.memory.pointers.clear(name)
         self:_save()
 
         return true
     end
 
-    -- Searches the pointer again
+    -- Searches the pointer again, and keeps what it gives as each kind (get_values). The scan before it goes to the history
     -- @return The address (or the number, for an offset), nil if it is not stored or the pattern is not found
     function scan(name: string): ?int
-        return Atdar.natives.memory.pointers.rescan(name)
+
+        local pointers = Atdar.natives.memory.pointers
+        local previous = self._current[name]
+        local value = pointers.rescan(name)
+        local info = pointers.info(name)
+
+        if previous ~= nil then
+            local history = self._history[name] or {}
+
+            table.insert(history, 1, previous)
+            self._history[name] = history
+        end
+
+        self._current[name] = nil
+
+        if info ~= nil and value ~= nil then
+            self._ids[name] = (self._ids[name] or 0) + 1
+
+            self._current[name] = {
+                id = self._ids[name], pattern = info.pattern, kind = info.kind, at = info.at, size = info.size, extra = info.extra,
+                values = Atdar.natives.memory.scan.read_all(info.pattern, info.at, info.size, info.extra),
+            }
+        end
+
+        return value
+    end
+
+    -- What the last scan of the pointer gave as each kind
+    -- @return { address, rip, offset }, nil if it wasn't scanned here, or the pattern was not found
+    function get_values(name: string): ?table
+
+        local current = self._current[name]
+
+        if current == nil then
+            return nil
+        end
+
+        return current.values
+    end
+
+    -- The scans before the last one, the newest first: { id, pattern, kind, at, size, extra, values = { address, rip, offset } }
+    function get_history(name: string): table
+        return self._history[name] or {}
+    end
+
+    -- Every scan that found something, the newest first: the last one (when it found something) and the history
+    function get_scans(name: string): table
+
+        local scans = {}
+        local current = self._current[name]
+
+        if current ~= nil then
+            table.insert(scans, current)
+        end
+
+        for _, entry in ipairs(self._history[name] or {}) do
+            table.insert(scans, entry)
+        end
+
+        return scans
+    end
+
+    -- Takes the newest scan away: the one before it is the last then
+    -- @return Whether there was one
+    function delete_result(name: string): bool
+
+        local history = self._history[name] or {}
+
+        if self._current[name] == nil and #history == 0 then
+            return false
+        end
+
+        if self._current[name] ~= nil then
+            self._current[name] = table.remove(history, 1)
+        else
+            table.remove(history, 1)
+        end
+
+        self._history[name] = history
+
+        return true
+    end
+
+    -- Takes every scan away, the last one and the history, and the numbering starts again
+    function delete_all(name: string): void
+        self._current[name] = nil
+        self._history[name] = nil
+        self._ids[name] = nil
+    end
+
+    -- Takes the history away, the last scan stays and is the first one again (its number is 1)
+    function delete_past(name: string): void
+
+        self._history[name] = nil
+
+        if self._current[name] == nil then
+            self._ids[name] = nil
+            return
+        end
+
+        self._current[name].id = 1
+        self._ids[name] = 1
     end
 
     -- Searches every pointer again
@@ -268,7 +381,7 @@ local class PointerEditor extends Module
         local count = 0
 
         for _, name in ipairs(names) do
-            if pointers.rescan(name) ~= nil then
+            if self:scan(name) ~= nil then
                 count += 1
             end
         end

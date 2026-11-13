@@ -7,7 +7,8 @@
 --   Pointer Editor >   Add Pointer (name = pattern: "roll = 48 8B ?? ?? 89")
 --                      Scan All, Read Bytes (an address, or a pointer's name, and how many: "roll, 16")
 --                      Pointers (divider), then a list per pointer
---   a pointer >        its state and address, Pattern, Kind (address / rip / offset), At, Size, Extra, Scan, Remove
+--   a pointer >        Settings > (Pattern, Kind (address / rip / offset), At, Size, Extra, Remove), Scan,
+--                      a divider and below it what was found
 --
 -- A pointer made here is kept in the script's store and stored again at every start. One that something else
 -- stored (the script itself) is shown with its state and can be scanned, but not changed. Every change is
@@ -64,6 +65,12 @@ local function hex(value): string
         return "-"
     end
 
+    if value < 0 then
+        local digits = string.format("%X", -value)
+
+        return $"-0x{digits}"
+    end
+
     local digits = string.format("%X", value)
 
     return $"0x{digits}"
@@ -74,7 +81,43 @@ local function warn(why: string): void
     log:warn(text($"errors.{why}"))
 end
 
--- One pointer: its state, the fields and the buttons
+-- How many scans are shown as lines in each section (the last one and the ones before it); the rest are in a list
+local SHOWN_ROWS = 4
+
+-- How a scan was made, for the ones that are not the last: "(At 3, Size 1)". Size, Extra and Kind only when they are
+-- not the default
+local function settings_note(entry: table): string
+
+    local extras = ""
+
+    if entry.size ~= 4 then
+        extras = extras .. text("history.size"):format(entry.size)
+    end
+
+    if entry.extra ~= 0 then
+        extras = extras .. text("history.extra"):format(entry.extra)
+    end
+
+    if entry.kind ~= "address" then
+        extras = extras .. text("history.kind"):format(entry.kind)
+    end
+
+    return text("history.note"):format(entry.at, extras)
+end
+
+-- One scan in a section as a line: "4: 0x7FF6A8120F48", and how it was made when it isn't the last scan
+local function result_line(entry: table, kind: string, is_last: bool): string
+
+    local line = text("results.row"):format(entry.id, hex(entry.values[kind]))
+
+    if is_last then
+        return line
+    end
+
+    return line .. " " .. settings_note(entry)
+end
+
+-- One pointer: the settings on top, then Scan, and below the divider what was found
 -- @param refresh function() the list of pointers is made again (a pointer went, or its state changed)
 local function pointer_list(parent: table, name: string, refresh: function): void
 
@@ -98,25 +141,52 @@ local function pointer_list(parent: table, name: string, refresh: function): voi
             return
         end
 
-        -- What the pointer is now: shown at the top, made again after a scan
-        state = node:section(function()
+        -- A change is saved by the module, and the status goes back to not searched
+        local function change(what: string, value): void
 
-            local current = nil
+            local ok, why = editor():set(name, what, value)
 
-            for _, entry in ipairs(editor():list()) do
-                if entry.name == name then
-                    current = entry
+            if not ok then
+                warn(why)
+            end
+
+            state.rebuild()
+        end
+
+        -- The settings on top: they are set once, then Scan is what is used
+        if info.own then
+            node:list({ name = label("settings.name"), help = label("settings.help"), fill = function(settings)
+
+                local settings_ui = settings:scope(SCOPE)
+
+                field(settings_ui, { key = "pattern", default = info.pattern }, |value| -> change("pattern", value))
+
+                settings_ui:list_action({ key = "kind", options = KINDS, on_select = function(index: int)
+                    change("kind", KINDS[index])
+                end })
+
+                field(settings_ui, { key = "at", default = tostring(info.at) }, |value| -> change("at", value))
+                field(settings_ui, { key = "size", default = tostring(info.size) }, |value| -> change("size", value))
+                field(settings_ui, { key = "extra", default = tostring(info.extra) }, |value| -> change("extra", value))
+
+                cancel = select(2, settings_ui:confirm({ key = "remove",
+                    on_confirm = function()
+                        editor():remove(name)
+                        gone = true
+                        node:clear()
+                        log:notify(text("remove.done"):format(name))
+                    end,
+                    on_first = || -> log:warn(text("remove.warning"):format(name)),
+                }))
+            end,
+            on_back = function()
+                if cancel ~= nil then
+                    cancel()
                 end
-            end
-
-            if current == nil then
-                return
-            end
-
-            local key = STATUS_KEY[current.status] or "not_searched"
-
-            node:readonly_name({ name = text($"status.{key}"):format(hex(current.value)) })
-        end)
+            end })
+        else
+            node:readonly_name({ name = label("not_own") })
+        end
 
         ui:action({ key = "scan", on_click = function()
 
@@ -131,48 +201,76 @@ local function pointer_list(parent: table, name: string, refresh: function): voi
             state.rebuild()
         end })
 
-        if not info.own then
-            node:readonly_name({ name = label("not_own") })
-            return
-        end
+        -- What was found, section by section, and the buttons that take it away: made again after a scan or a change
+        state = node:section(function()
 
-        -- A change is saved by the module, and the status goes back to not searched
-        local function change(what: string, value): void
+            local current = nil
 
-            local ok, why = editor():set(name, what, value)
-
-            if not ok then
-                warn(why)
+            for _, entry in ipairs(editor():list()) do
+                if entry.name == name then
+                    current = entry
+                end
             end
 
-            state.rebuild()
-        end
+            if current == nil then
+                return
+            end
 
-        field(ui, { key = "pattern", default = info.pattern }, |value| -> change("pattern", value))
+            local values = editor():get_values(name)
+            local scans = editor():get_scans(name)
 
-        ui:list_action({ key = "kind", options = KINDS, on_select = function(index: int)
-            change("kind", KINDS[index])
-        end })
+            -- The last scan found nothing, or there was none: the state
+            if values == nil then
+                local key = STATUS_KEY[current.status] or "not_searched"
 
-        field(ui, { key = "at", default = tostring(info.at) }, |value| -> change("at", value))
-        field(ui, { key = "size", default = tostring(info.size) }, |value| -> change("size", value))
-        field(ui, { key = "extra", default = tostring(info.extra) }, |value| -> change("extra", value))
+                node:readonly_name({ name = text($"status.{key}"):format(hex(current.value)) })
+            end
 
-        cancel = select(2, ui:confirm({ key = "remove",
-            on_confirm = function()
-                editor():remove(name)
-                gone = true
-                node:clear()
-                log:notify(text("remove.done"):format(name))
-            end,
-            on_first = || -> log:warn(text("remove.warning"):format(name)),
-        }))
+            if #scans == 0 then
+                return
+            end
+
+            -- A section for each kind of the value; the one the pointer gives (its Kind) is marked
+            for _, kind in ipairs(KINDS) do
+
+                local title = text($"results.{kind}")
+
+                if kind == current.kind then
+                    title = title .. text("results.used")
+                end
+
+                node:divider({ name = title })
+
+                for index = 1, math.min(#scans, SHOWN_ROWS) do
+                    node:readonly_name({ name = result_line(scans[index], kind, index == 1 and values ~= nil) })
+                end
+
+                if #scans > SHOWN_ROWS then
+                    node:list({ name = label("history.more"), fill = function(more)
+                        for index = SHOWN_ROWS + 1, #scans do
+                            more:readonly_name({ name = result_line(scans[index], kind, false) })
+                        end
+                    end })
+                end
+            end
+
+            node:action({ name = label("delete_one.name"), help = label("delete_one.help"), on_click = function()
+                editor():delete_result(name)
+                state.rebuild()
+            end })
+
+            node:action({ name = label("delete_all.name"), help = label("delete_all.help"), on_click = function()
+                editor():delete_all(name)
+                state.rebuild()
+            end })
+
+            node:action({ name = label("delete_past.name"), help = label("delete_past.help"), on_click = function()
+                editor():delete_past(name)
+                state.rebuild()
+            end })
+        end)
     end,
     on_back = function()
-        if cancel ~= nil then
-            cancel()
-        end
-
         if gone then
             refresh()
         end

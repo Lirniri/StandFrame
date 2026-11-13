@@ -1226,6 +1226,36 @@
             "pointer": {
                 "help": "A pointer: open it to scan it and to see or change how it is found"
             },
+            "settings": {
+                "name": "Settings",
+                "help": "How the pointer is found: the pattern, what is taken from the place found, and Remove"
+            },
+            "results": {
+                "address": "address",
+                "rip": "rip",
+                "offset": "offset",
+                "used": " (used)",
+                "row": "%d: %s"
+            },
+            "history": {
+                "more": "More",
+                "note": "(At %d%s)",
+                "size": ", Size %d",
+                "extra": ", Extra %d",
+                "kind": ", %s"
+            },
+            "delete_one": {
+                "name": "Delete Result",
+                "help": "Takes the last result away: the one before it is the last then"
+            },
+            "delete_all": {
+                "name": "Delete Results Above",
+                "help": "Takes all the results above away, the last one and the ones before it. The numbers start again"
+            },
+            "delete_past": {
+                "name": "Delete Past Results",
+                "help": "Takes the results before the last one away; the last one stays"
+            },
             "status": {
                 "found": "Found: %s",
                 "not_found": "Not found (%s)",

@@ -54,6 +54,32 @@ function module.read_rip(pattern: string, at: int, extra: int = 0): ?int
     return address + at + 4 + extra + memory.read_int(address + at)
 end
 
+-- What the pattern gives as each kind of a pointer at once (see natives.memory.pointers.KIND), from one search: where the
+-- pattern is, where the call or lea at "at" points (as read_rip), and the number at "at" (as read_offset)
+-- @return { address, rip, offset }, nil if the pattern is not found
+function module.read_all(pattern: string, at: int = 0, size: int = 4, extra: int = 0): ?table
+
+    local address = module.find(pattern)
+
+    if address == nil then
+        return nil
+    end
+
+    local number = nil
+
+    if size == 1 then
+        number = memory.read_byte(address + at) & 0xFF
+    else
+        number = memory.read_int(address + at)
+    end
+
+    return {
+        address = address,
+        rip = address + at + 4 + extra + memory.read_int(address + at),
+        offset = number,
+    }
+end
+
 -- The bytes at the address as text in the form of a pattern ("48 8B 81 A0 10 00 00"), to see what code is there and to
 -- make a pattern of it
 function module.get_bytes(address: int, count: int): string
