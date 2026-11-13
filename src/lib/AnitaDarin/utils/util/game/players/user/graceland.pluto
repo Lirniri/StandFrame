@@ -548,13 +548,15 @@ local function update_frame(): void
 end
 
 -- Switches the memory steering of the fall task (the air_control module) as the settings say, so a change of them is
--- taken at once. It is the steering of the fall without a ragdoll, so it works only with steering off (with steering on
--- the ragdoll is what the stick steers, see is_ragdoll_steered)
-local function sync_air_control(): void
+-- taken at once. It is the steering of the fall without a ragdoll: with steering off always, with steering on only
+-- in the air after the ragdoll was ended (landing_done: the ragdoll distance had worked, so it was a ragdoll), where
+-- the ragdoll control can't steer any more. A fall that never ragdolled gets nothing
+local function sync_air_control(airborne: bool): void
 
     local air_control = Atdar.util.game.players.user.air_control
+    local after_ragdoll = settings.steering and state.landing_done and airborne
 
-    if settings.air_control and not settings.steering then
+    if settings.air_control and (not settings.steering or after_ragdoll) then
         air_control.set_debug(settings.debug)
         air_control.set_beast_fall(settings.beast_fall)
         air_control.enable()
@@ -581,7 +583,7 @@ local function apply(): void
 
     sync_ped(ped)
     update_frame()
-    sync_air_control()
+    sync_air_control(airborne)
     state.airborne = airborne
     remember_heading(ped, airborne)
     land_safely(ped, airborne)
