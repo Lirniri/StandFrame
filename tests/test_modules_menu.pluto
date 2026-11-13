@@ -149,19 +149,19 @@ local function values_in(node)
 end
 counter.vehicles = { [158214] = true, [169734] = true, nested = { x = 1 } }
 stand.click(variables)
-stand.equal(names_in(variables), "count | items (2) | label | vehicles (3)",
+stand.equal(names_in(variables), "count | items{}: (2) | label | vehicles{}: (3)",
     "Variables: the module's own fields, sorted; a table is a list named with how many entries it has")
 stand.equal(stand.child(variables, "count").value, "0", "a value as it is")
 stand.equal(stand.child(variables, "label").value, '"main"', "a text in quotes")
-local vehicles_node = stand.child(variables, "vehicles (3)")
+local vehicles_node = stand.child(variables, "vehicles{}: (3)")
 stand.equal(vehicles_node.kind, "list", "a table field is a list")
-stand.click(stand.child(variables, "items (2)"))
-stand.equal(values_in(stand.child(variables, "items (2)")), "[1]: 1 | [2]: 2", "a list's entries by index, made when it's opened")
+stand.click(stand.child(variables, "items{}: (2)"))
+stand.equal(values_in(stand.child(variables, "items{}: (2)")), "[1]: 1 | [2]: 2", "a list's entries by index, made when it's opened")
 stand.click(vehicles_node)
-stand.equal(names_in(vehicles_node), "[158214] | [169734] | nested (1)", "other keys sorted, tables inside are lists too")
+stand.equal(names_in(vehicles_node), "[158214] | [169734] | nested{}: (1)", "other keys sorted, tables inside are lists too")
 stand.equal(stand.child(vehicles_node, "[158214]").value, "true", "each entry with its value")
-stand.click(stand.child(vehicles_node, "nested (1)"))
-stand.equal(stand.child(stand.child(vehicles_node, "nested (1)"), "x").value, "1", "down into a table inside")
+stand.click(stand.child(vehicles_node, "nested{}: (1)"))
+stand.equal(stand.child(stand.child(vehicles_node, "nested{}: (1)"), "x").value, "1", "down into a table inside")
 -- While it's open: a changed value changes in place, a new entry makes the list again
 local count_line = stand.child(variables, "count")
 counter.count = 3
@@ -172,7 +172,7 @@ stand.equal(stand.child(variables, "count"), count_line, "in place: the same lin
 counter.vehicles[200000] = true
 stand.clock += 300
 stand.frame()
-stand.check(stand.child(variables, "vehicles (4)") ~= nil, "an entry that came: the list is made again")
+stand.check(stand.child(variables, "vehicles{}: (4)") ~= nil, "an entry that came: the list is made again")
 stand.back(variables)
 counter.count = 9
 stand.clock += 300
@@ -573,7 +573,7 @@ stand.equal(stand.debug_texts[#stand.debug_texts], 'counter.add(amount, note) ->
 -- A table it gave: its entries in the Value list under Variable
 local value_list = stand.find_item(add_node, "Value (3)")
 stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
-stand.equal(names_in(value_list), '[1]: 1 | [2]: "a" | [3] (1)', "its entries: a value is a field with it, a table inside a list")
+stand.equal(names_in(value_list), '[1]: 1 | [2]: "a" | [3]{}: (1)', "its entries: a value is a field with it, a table inside a list")
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table", "a table of mixed kinds: just table")
 -- No settings to find: a table is opened as it is, its functions are lists and its values fields
 stand.equal(stand.find_item(add_node, "Table Depth"), nil, "a table result: no Table Depth")
