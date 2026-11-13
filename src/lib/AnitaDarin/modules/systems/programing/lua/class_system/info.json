@@ -1,0 +1,9 @@
+{
+    "id": "lua_class_system",
+    "name": "Lua Class System",
+    "version": "0.1.1",
+    "entry": "main.pluto",
+    "enabled": true,
+    "system": true,
+    "dependencies": []
+}
