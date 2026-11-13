@@ -1,0 +1,9 @@
+{
+    "id": "VehicleManager",
+    "name": "Vehicle Manager",
+    "version": "0.1.0",
+    "entry": "VehicleManager.pluto",
+    "enabled": true,
+    "system": false,
+    "dependencies": []
+}

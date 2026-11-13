@@ -1,0 +1,189 @@
+-- lib/AnitaDarin/core/module_manifest.pluto
+--
+-- A module's manifest: the JSON file that says what the module is, read by core/module_manager without
+-- running the module's code. Two ways to lay a module out:
+--
+--     my_module/info.json          a folder: the entry is "main.pluto", or "init.pluto" when there's no main
+--     my_module.info.json          a single file among others: the entry is my_module.pluto next to it
+--
+-- The fields:
+--     id            string, required: the module's name everywhere (Atdar.modules.get(id), dependencies)
+--     name          string: how it's shown, the id when not set
+--     version       string
+--     author        string
+--     entry         string: the module's .pluto file, a path from the manifest's folder
+--     enabled       boolean, true when not set: false - registered, but not started by itself
+--     system        boolean, false when not set: a system module (the ones in systems\ are too)
+--     dependencies  list of ids: the modules it needs, started before it
+--
+-- A field of the wrong type or one not listed here is an error: a typo shows at once
+
+local check = Atdar.loader.load("core/check")
+local json_parser = Atdar.loader.load("parsers/json")
+local safe_path = Atdar.loader.load("core/filesystem/safe_path")
+local read_text = Atdar.loader.load("core/filesystem/file").read
+
+local module = {}
+
+-- A folder's manifest; a single file's ends with a dot and this
+local FILE_NAME = "info.json"
+
+-- Each field and the type it must be
+local FIELDS = {
+    id = "string",
+    name = "string",
+    version = "string",
+    author = "string",
+    entry = "string",
+    enabled = "boolean",
+    system = "boolean",
+    dependencies = "table",
+}
+
+-- The entries tried for a folder's manifest without "entry", in this order
+local FOLDER_ENTRIES = { "main.pluto", "init.pluto" }
+
+-- Is
+
+-- Whether the file is a manifest by its name: info.json or <name>.info.json
+function module.is_manifest(path: string): bool
+
+    local file_name = (path:match("([^/\\]+)$") or ""):lower()
+
+    return file_name == FILE_NAME or file_name:endswith($".{FILE_NAME}")
+end
+
+-- Read
+
+-- The checks of the fields; an error with the label in front when one is wrong
+local function validate(v: table, data: table): void
+
+    for key, value in pairs(data) do
+        v.known("fields", key, FIELDS)
+        v.kind(key, value, FIELDS[key])
+    end
+
+    v.non_empty("id", data.id)
+
+    if data.entry ~= nil then
+        v.non_empty("entry", data.entry)
+    end
+
+    local count = 0
+
+    for _ in pairs(data.dependencies or {}) do
+        count += 1
+    end
+
+    if count ~= #(data.dependencies or {}) then
+        v.fail("dependencies must be a list of ids")
+    end
+
+    for i, dep in ipairs(data.dependencies or {}) do
+        v.non_empty($"dependencies[{i}]", dep)
+    end
+end
+
+-- The entry's path from the manifest's folder: the one written, or the default for the manifest's kind
+-- @return nil and why not when there's no such file
+local function entry_of(dir: string, file_name: string, entry: ?string)
+
+    local candidates = { entry }
+
+    if entry == nil and file_name:lower() == FILE_NAME then
+        candidates = FOLDER_ENTRIES
+    elseif entry == nil then
+        candidates = { file_name:sub(1, #file_name - #FILE_NAME - 1) .. ".pluto" }
+    end
+
+    for _, candidate in ipairs(candidates) do
+
+        local inside, why = safe_path.resolve(dir, candidate)
+
+        if inside == nil then
+            return nil, $"entry '{candidate}': {why}"
+        end
+
+        if io.isfile(dir .. candidate) then
+            return dir .. candidate
+        end
+    end
+
+    return nil, $"entry not found: {table.concat(candidates, ' or ')}"
+end
+
+-- Reads and checks a manifest. The module's code isn't run, only its entry is looked for on disk
+-- @return The manifest: { id, name, version, author, entry (full path), enabled, system, dependencies,
+-- path (the manifest's), dir (its folder, ending in a slash), text (as read) }; or nil and why not
+function module.read(path: string)
+
+    local text = read_text(path)
+
+    if text == nil then
+        return nil, "can't be read"
+    end
+
+    local data = json_parser.decode(text)
+
+    if type(data) ~= "table" or (#data > 0) then
+        return nil, "isn't a JSON object"
+    end
+
+    local label = "[Module manifest]"
+    local ok, err = pcall(validate, check.validator(label), data)
+
+    if not ok then
+        -- Without the file and line in front: they point into this file, not at the manifest
+        local message = tostring(err)
+        local at = message:find(label, 1, true)
+        return nil, message:sub((at or 1) + (at and #label + 1 or 0))
+    end
+
+    local dir = path:match("^(.*[/\\])") or ""
+    local file_name = path:sub(#dir + 1)
+    local entry, why = entry_of(dir, file_name, data.entry)
+
+    if entry == nil then
+        return nil, why
+    end
+
+    local dependencies = {}
+
+    for _, dep in ipairs(data.dependencies or {}) do
+        table.insert(dependencies, dep)
+    end
+
+    return {
+        id = data.id,
+        name = data.name or data.id,
+        version = data.version,
+        author = data.author,
+        entry = entry,
+        enabled = data.enabled ~= false,
+        system = data.system == true,
+        dependencies = dependencies,
+        path = path,
+        dir = dir,
+        text = text,
+    }
+end
+
+-- Find
+
+-- @return The manifests under dir and its subfolders, their paths sorted
+function module.find(dir: string): table
+
+    local paths = {}
+
+    for _, path in io.listdir(dir, true) do
+        if module.is_manifest(path) and io.isfile(path) then
+            table.insert(paths, path)
+        end
+    end
+
+    table.sort(paths)
+
+    return paths
+end
+
+return module

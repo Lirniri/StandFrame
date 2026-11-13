@@ -1,4 +1,4 @@
--- modules/systems/PointerEditor, the logic without the menu: read_bytes, read_value, read_chain, get_code,
+-- modules/systems/Stand/ui/PointerEditor, the logic without the menu: read_bytes, read_value, read_chain, get_code,
 -- on a fake memory (a table of addresses) instead of the game's
 local stand = require("stand")
 stand.boot()
@@ -14,7 +14,7 @@ _G.memory = {
 }
 
 local pointers = Atdar.natives.memory.pointers
-local editor = Atdar.loader.load("modules/systems/PointerEditor/PointerEditor")
+local editor = Atdar.loader.load("modules/systems/Stand/ui/PointerEditor/PointerEditor")
 
 -- A chain: ped_factory is at 0x100000, there is 0x200000 stored, +0x8 gives 0x300000, +0x10A0 gives 0x400000, +0x280 is 328
 pointers.set("ped_factory", 0x100000)

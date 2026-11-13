@@ -1,0 +1,9 @@
+{
+    "id": "FileEditor",
+    "name": "File Editor",
+    "version": "0.1.0",
+    "entry": "FileEditor.pluto",
+    "enabled": true,
+    "system": true,
+    "dependencies": []
+}

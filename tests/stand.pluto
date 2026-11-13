@@ -81,6 +81,12 @@ function stand.write_file(path: string, text: string): void
     file:close()
 end
 
+-- Writes a module's manifest for a single file: <dir><stem>.info.json, its entry <dir><stem>.pluto
+-- @param more More fields, as JSON after the id: ', "dependencies": ["a"]'
+function stand.write_manifest(dir: string, stem: string, id: string, more: string = ""): void
+    stand.write_file($"{dir}{stem}.info.json", '{"id": "' .. id .. '"' .. more .. "}")
+end
+
 function stand.read_file(path: string): ?string
     local file = io.open(path, "r")
     if not file then

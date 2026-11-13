@@ -7,6 +7,12 @@
 -- Made like a Feature: new Module({ name = ..., deps = {...}, on_start = fn, on_stop = fn, on_tick = fn })
 -- or `local class X extends Module` with parent:__construct({ name = ..., deps = {...} }) and on_* overrides.
 --
+-- A module on disk has a manifest (core/module_manifest: info.json or <name>.info.json) and its file runs only
+-- when the module is first started. Its name is the manifest's id, so the file may leave `name` out; deps written
+-- in the file are added to the manifest's dependencies. What the manifest says is on the instance:
+--     self.id (= self.name), self.display_name, self.version, self.author, self.system, self.enabled
+-- self.loaded is false while the file hasn't run yet (the manager keeps a stand-in made from the manifest)
+--
 -- debug = { ... } (optional): how the module shows in Settings > Debug > Modules (ui/stand/modules/list):
 --     functions = { add_vehicle = { help = "...", params = { handle = "..." }, args = "...", live = false } },
 --     groups = { { name = "Getting", functions = { "get_handle", "get_handles" } }, ... },
@@ -90,6 +96,11 @@ end
 -- The errors point at the new Module({ ... }) or parent:__construct({ ... }) that wrote the options
 local function validate_opts(opts: table): void
 
+    -- A file run for its manifest may leave the name out: it's the manifest's id
+    if opts.name == nil and Atdar.modules ~= nil then
+        opts.name = Atdar.modules.loading_id()
+    end
+
     check.validator("[Module]").non_empty("name", opts.name)
 
     local v = check.validator($"[Module '{opts.name}']")
@@ -121,10 +132,19 @@ Module = class
 
     function __construct(opts: table)
         class_utils.fix_index(self)
-        class_utils.construct.check_sealed(self, Module, SEALED, $"Module '{opts.name}'")
         validate_opts(opts)
+        class_utils.construct.check_sealed(self, Module, SEALED, $"Module '{opts.name}'")
 
         self.name = opts.name
+
+        -- Manifest (core/module_manifest); a module made in code keeps these
+        self.id = opts.name
+        self.display_name = opts.name
+        self.version = nil
+        self.author = nil
+        self.system = false
+        self.enabled = true -- false: not started by itself
+        self.loaded = true -- false for the manager's stand-in, until the module's file runs
 
         -- Own copy: a table shared between instances would change for all of them
         self.deps = {}
@@ -166,6 +186,29 @@ Module = class
 
     function is_running(): bool
         return self.status == "running"
+    end
+
+    -- Puts what the manifest says on the instance; the manifest's dependencies come before the deps written in code
+    function _apply_manifest(manifest: table): void
+
+        local deps = {}
+        local seen = {}
+
+        for _, list in ipairs({ manifest.dependencies, self.deps }) do
+            for _, dep in ipairs(list) do
+                if not seen[dep] then
+                    seen[dep] = true
+                    table.insert(deps, dep)
+                end
+            end
+        end
+
+        self.deps = deps
+        self.display_name = manifest.name
+        self.version = manifest.version
+        self.author = manifest.author
+        self.system = manifest.system
+        self.enabled = manifest.enabled
     end
 
     -- The manager skips modules that don't tick, so they cost nothing per frame
@@ -240,14 +283,10 @@ Module = class
         return Atdar.modules.get(name)
     end
 
-    -- The folder of the module's file, ending in a slash (lib/<script>/modules/VehicleManager/), or nil
+    -- The folder of the module's manifest, ending in a slash (lib/<script>/modules/VehicleManager/), or nil
     -- for a module made in code. It's the copy Stand runs: build.py rebuild and clean remove what's there
     function folder(): ?string
-        local path = Atdar.modules.file_of(self.name)
-        if path == nil then
-            return nil
-        end
-        return path:match("^(.*[/\\])")
+        return Atdar.modules.folder_of(self.name)
     end
 
     -- The module's own translations: <its folder>/language/<code>.json (en-us.json, ru-ru.json...), read the

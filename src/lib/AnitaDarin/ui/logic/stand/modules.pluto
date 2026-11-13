@@ -122,14 +122,31 @@ function module.status_line(mod: table): string
     return text("entry.status_line"):format(text($"status.{mod.status}"))
 end
 
--- A module's help: what it depends on, whether it ticks, its error
+-- A module's help: what its manifest says (the shown name when it isn't the id, version, author, autostart off),
+-- what it depends on, whether it ticks, its error
 function module.help(mod: table): string
 
     local deps = #mod.deps > 0 ? table.concat(mod.deps, ", ") : text("entry.no_deps")
-    local lines = {
-        text("entry.deps"):format(deps),
-        text(mod:has_tick() ? "entry.ticks" : "entry.no_tick"),
-    }
+    local lines = {}
+
+    if mod.display_name ~= nil and mod.display_name ~= mod.name then
+        table.insert(lines, mod.display_name)
+    end
+
+    if mod.version ~= nil then
+        table.insert(lines, text("entry.version"):format(mod.version))
+    end
+
+    if mod.author ~= nil then
+        table.insert(lines, text("entry.author"):format(mod.author))
+    end
+
+    if mod.enabled == false then
+        table.insert(lines, text("entry.disabled"))
+    end
+
+    table.insert(lines, text("entry.deps"):format(deps))
+    table.insert(lines, text(mod:has_tick() ? "entry.ticks" : "entry.no_tick"))
 
     if mod.error then
         table.insert(lines, text("entry.error"):format(mod.error))

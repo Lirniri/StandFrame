@@ -1,0 +1,7 @@
+{
+    "id": "example.greeter",
+    "name": "Example: Greeter",
+    "version": "1.0.0",
+    "author": "You",
+    "entry": "Greeter.pluto"
+}
