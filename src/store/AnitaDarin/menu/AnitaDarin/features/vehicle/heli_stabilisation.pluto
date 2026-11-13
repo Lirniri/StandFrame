@@ -1,0 +1,39 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The helicopter the player flies does not level itself (Atdar.util.game.vehicle.heli_stabilisation). The settings are
+-- kept here and given to it at enable, and at once when they change while it is on. Not checked in game
+local class HeliStabilisation extends Feature
+    function __construct()
+        parent:__construct({
+            id = "vehicle.heli_stabilisation", kind = "toggle"
+        })
+
+        -- Settings
+        self.stabilise_scale = 1 -- percent of the stabilisation that is left
+        self.thrust_scale = 135 -- percent of the thrust
+    end
+
+    function set_stabilise_scale(value: int): void
+        self.stabilise_scale = value
+        Atdar.util.game.vehicle.heli_stabilisation.set_stabilise_scale(value / 100)
+    end
+
+    function set_thrust_scale(value: int): void
+        self.thrust_scale = value
+        Atdar.util.game.vehicle.heli_stabilisation.set_thrust_scale(value / 100)
+    end
+
+    function on_enable()
+        local stab = Atdar.util.game.vehicle.heli_stabilisation
+
+        stab.set_stabilise_scale(self.stabilise_scale / 100)
+        stab.set_thrust_scale(self.thrust_scale / 100)
+        stab.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.vehicle.heli_stabilisation.disable()
+    end
+end
+
+return Atdar.features.add(new HeliStabilisation())

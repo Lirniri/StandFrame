@@ -1,0 +1,39 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The vehicle the player drives rides on the water (Atdar.util.game.vehicle.drive_on_water). The settings are kept here
+-- and given to it at enable, and at once when they change while it is on. Not checked in game
+local class DriveOnWater extends Feature
+    function __construct()
+        parent:__construct({
+            id = "vehicle.drive_on_water", kind = "toggle"
+        })
+
+        -- Settings
+        self.depth = 30 -- how far under the surface the block is, in centimetres
+        self.smoothing = 10 -- how fast the block follows the surface, in percent
+    end
+
+    function set_depth(value: int): void
+        self.depth = value
+        Atdar.util.game.vehicle.drive_on_water.set_depth(value / 100)
+    end
+
+    function set_smoothing(value: int): void
+        self.smoothing = value
+        Atdar.util.game.vehicle.drive_on_water.set_smoothing(value / 100)
+    end
+
+    function on_enable()
+        local water = Atdar.util.game.vehicle.drive_on_water
+
+        water.set_depth(self.depth / 100)
+        water.set_smoothing(self.smoothing / 100)
+        water.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.vehicle.drive_on_water.disable()
+    end
+end
+
+return Atdar.features.add(new DriveOnWater())

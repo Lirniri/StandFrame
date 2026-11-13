@@ -1,0 +1,259 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("TaskList")
+
+-- What a ped is doing, read from the game's memory (the active tasks of its task trees): the numbers of the game's
+-- tasks with their names, as a list, as a line of text, in the log, and on the screen over the peds around (Stand's
+-- Show Ped Tasks). A tool for finding out which task makes the ped do something, not a way to change it.
+--
+--     local tasks = Atdar.util.game.tools.task_list
+--
+--     tasks.set_range(30.0)                     -- the settings, any time, before or after enable()
+--     tasks.set_source("tree")                  -- "tree" (the task trees) or "info" (the list Stand reads)
+--     print(tasks.describe(ped))                -- "PLAYER_ON_FOOT > MOVE_PLAYER" from the primary tree
+--     tasks.dump(ped)                           -- every tree and priority to the log
+--     tasks.enable()                            -- the tasks of the peds around, over their heads
+--     tasks.disable()
+--
+-- It reads by the offsets of Atdar.natives.memory.task (those of Stand-OSS, not checked in game): when they are wrong
+-- the answer is "No tasks", nothing is written to the game
+local module = {}
+
+-- The most peds written over at once: a crowd would be a wall of text, and every ped costs reads of the memory
+local MAX_PEDS = 25
+
+-- How high over the ped (metres) the text is
+local TEXT_HEIGHT = 1.0
+
+-- The colour of the text over a ped (red, green, blue, alpha)
+local TEXT_COLOR = { 255, 255, 255, 255 }
+
+-- The settings, see the set_ functions
+local settings = {
+    range = 30.0,
+    source = "tree",
+    names = true,
+    debug = false,
+}
+
+-- Whether it's on, which run of the tick handler is the wanted one
+local state = { enabled = false, run = 0 }
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return state.enabled
+end
+
+-- Settings
+
+-- How far (metres) from the player a ped still gets its tasks written, 30 by default
+function module.set_range(metres: number): void
+    settings.range = math.max(metres, 1.0)
+end
+
+-- Where the tasks come from: "tree" - the task trees of the ped (the chain of tasks from the root to the deepest,
+-- of the primary tree), "info" - the list of the ped's CPedIntelligence that Stand's Show Ped Tasks reads. "tree" by default
+-- @param source "tree" or "info"
+function module.set_source(source: string): void
+
+    if source ~= "tree" and source ~= "info" then
+        log:warn($"set_source: '{source}' is not tree or info")
+        return
+    end
+
+    settings.source = source
+end
+
+-- Whether the tasks are written with their names (FALL), on by default; off: the numbers only (423)
+function module.set_names(toggle: bool): void
+    settings.names = toggle
+end
+
+-- Whether it writes how many peds it shows to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+-- Get
+
+-- One task as text: its name, or its number when names are off
+local function label(task_type: ?int): string
+
+    if task_type == nil then
+        return "?"
+    end
+
+    if settings.names then
+        return Atdar.natives.memory.task_types.get_name(task_type)
+    end
+
+    return tostring(task_type)
+end
+
+-- The task numbers of the ped by the source of the settings, from the root to the deepest (or in the order of the list)
+-- @return A list of numbers, empty when there is none
+function module.list(ped: int): table
+
+    local task = Atdar.natives.memory.task
+    local numbers = {}
+
+    if settings.source == "info" then
+        for _, info in ipairs(task.get_info_list(ped)) do
+            table.insert(numbers, info.type)
+        end
+
+        return numbers
+    end
+
+    for _, entry in ipairs(task.get_chain(ped)) do
+        table.insert(numbers, entry.type)
+    end
+
+    return numbers
+end
+
+-- The tasks of the ped as one line: "PLAYER_ON_FOOT > MOVE_PLAYER" for the tree (the deepest last), "A, B" for the list,
+-- "No tasks" when there is none
+function module.describe(ped: int): string
+
+    local numbers = module.list(ped)
+    local parts = {}
+    local separator = " > "
+
+    if #numbers == 0 then
+        return "No tasks"
+    end
+
+    if settings.source == "info" then
+        separator = ", "
+    end
+
+    for _, number in ipairs(numbers) do
+        table.insert(parts, label(number))
+    end
+
+    return table.concat(parts, separator)
+end
+
+-- Actions
+
+-- Writes everything the memory shows of the ped to the log (info level): each tree and priority that has tasks, with
+-- the state of each task, and the list of the ped's intelligence
+function module.dump(ped: int): void
+
+    local task = Atdar.natives.memory.task
+    local all = task.get_all(ped)
+    local info = {}
+
+    if #all == 0 then
+        log:info($"ped {ped}: no tasks in the trees")
+    end
+
+    for _, group in ipairs(all) do
+
+        local parts = {}
+
+        for _, entry in ipairs(group.tasks) do
+            table.insert(parts, $"{label(entry.type)}[{entry.state}]")
+        end
+
+        local chain = table.concat(parts, " > ")
+
+        log:info($"ped {ped}: tree {group.tree} priority {group.priority}: {chain}")
+    end
+
+    for _, entry in ipairs(task.get_info_list(ped)) do
+        table.insert(info, label(entry.type))
+    end
+
+    if #info == 0 then
+        log:info($"ped {ped}: list: none")
+        return
+    end
+
+    local listed = table.concat(info, ", ")
+
+    log:info($"ped {ped}: list: {listed}")
+end
+
+-- One frame: the tasks over the peds in range, the nearest MAX_PEDS of them
+local function tick(): void
+
+    local n_entity = Atdar.natives.entity
+    local draw = Atdar.natives.visual.draw
+    local player_ped = Atdar.natives.player.get_ped_id()
+    local origin = n_entity.get_coords(player_ped, false, false)
+    local shown = {}
+
+    for _, ped in ipairs(n_entity.ped.get_all()) do
+
+        local coords = n_entity.get_coords(ped, false, false)
+        local distance = math.sqrt((coords.x - origin.x) ^ 2 + (coords.y - origin.y) ^ 2 + (coords.z - origin.z) ^ 2)
+
+        if distance <= settings.range then
+            table.insert(shown, { ped = ped, coords = coords, distance = distance })
+        end
+    end
+
+    table.sort(shown, function(a, b) return a.distance < b.distance end)
+
+    local count = math.min(#shown, MAX_PEDS)
+
+    for index = 1, count do
+
+        local entry = shown[index]
+        local text = module.describe(entry.ped)
+        local color = TEXT_COLOR
+
+        draw.draw_debug_text(text, entry.coords.x, entry.coords.y, entry.coords.z + TEXT_HEIGHT, color[1], color[2], color[3], color[4])
+    end
+
+    if settings.debug then
+        log:debug($"{count} of {#shown} peds shown")
+    end
+end
+
+-- Switches the text over the peds on. A second call does nothing
+function module.enable(): void
+
+    if state.enabled then
+        return
+    end
+
+    state.enabled = true
+    state.run += 1
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        -- Switched off, or switched on again and a newer handler runs
+        if not state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(tick)
+        if not ok then
+            log:error($"task list stopped\n{err}")
+            state.enabled = false
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Switches it off: nothing was changed in the game, the text is just not drawn any more
+function module.disable(): void
+
+    if not state.enabled then
+        return
+    end
+
+    state.enabled = false
+    state.run += 1
+end
+
+util.on_stop(module.disable)
+
+return module

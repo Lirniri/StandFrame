@@ -1,0 +1,161 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("HeliStabilisation")
+
+-- The helicopter the player flies does not level itself: the lift of the nose and the stabilisation of pitch, roll and
+-- yaw of its flying handling data are taken down, and the wind has no effect, after Stand's Disable Heli Auto
+-- Stabilisation (CommandDisableHeliAutoStabilisation). It acts on the current vehicle (on_current), helicopters only.
+--
+--     local stab = Atdar.util.game.vehicle.heli_stabilisation
+--
+--     stab.set_stabilise_scale(0.0)    -- the settings, any time, before or after enable()
+--     stab.set_thrust_scale(1.35)
+--     stab.enable()
+--     if stab.is_enabled() then ... end
+--     stab.disable()
+--
+-- NOT CHECKED IN GAME: the fields are those of the flying handling data (Atdar.natives.memory.handling, the layout of
+-- Stand-OSS), found by the type that sits in it; a helicopter with another one is left alone and the log says so. The first
+-- values of a model are kept (store, get_originals) and come back when the player leaves the helicopter or the module is
+-- switched off.
+local module = {}
+
+local HOLDER = "heli_stabilisation"
+
+-- The fields that are set to zero
+local ZEROED = { "flying.attack_lift_mult", "flying.attack_dive_mult", "flying.wind_mult" }
+
+-- The fields that are scaled by the stabilise scale
+local STABILISED = { "flying.pitch_stabilise", "flying.roll_stabilise", "flying.yaw_stabilise" }
+
+local THRUST = "flying.thrust"
+
+-- The settings, see the set_ functions
+local settings = {
+    stabilise_scale = 0.01,
+    thrust_scale = 1.35,
+    debug = false,
+}
+
+local behaviour = nil
+
+-- Settings
+
+-- What the stabilisation of pitch, roll and yaw is multiplied by, 0.01 by default (Stand): 0.0 is none at all
+-- @param scale From 0.0
+function module.set_stabilise_scale(scale: number): void
+    settings.stabilise_scale = math.max(scale, 0.0)
+
+    if behaviour ~= nil and behaviour.is_enabled() then
+        behaviour.refresh()
+    end
+end
+
+-- What the thrust is multiplied by, 1.35 by default (Stand does it to make up for the lift lost): 1.0 leaves it
+-- @param scale From 0.1
+function module.set_thrust_scale(scale: number): void
+    settings.thrust_scale = math.max(scale, 0.1)
+
+    if behaviour ~= nil and behaviour.is_enabled() then
+        behaviour.refresh()
+    end
+end
+
+-- Whether it writes what it does to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+
+    if behaviour ~= nil then
+        behaviour.set_debug(toggle)
+    end
+end
+
+-- Get
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return behaviour ~= nil and behaviour.is_enabled()
+end
+
+-- The vehicle that is changed now, nil if none
+function module.get_vehicle(): ?int
+
+    if behaviour == nil then
+        return nil
+    end
+
+    return behaviour.get_vehicle()
+end
+
+-- The values the fields had before this changed them, for the helicopter that is changed now: field -> value. Empty
+-- when there is none
+function module.get_originals(): table
+
+    local vehicle = module.get_vehicle()
+
+    if vehicle == nil then
+        return {}
+    end
+
+    local kept = behaviour.store[Atdar.natives.entity.get_model(vehicle)]
+
+    if kept == nil then
+        return {}
+    end
+
+    return kept
+end
+
+local function change(vehicle: int, model: int, self_behaviour: table): void
+
+    local handling = Atdar.util.game.vehicle.handling
+    local mem = Atdar.natives.memory.handling
+    local originals = {}
+
+    if mem.get_sub(vehicle, "flying") == nil then
+        log:warn("the flying handling data was not found: nothing is changed")
+        return
+    end
+
+    for _, field in ipairs(ZEROED) do
+        originals[field] = handling.get(vehicle, field)
+        handling.set(vehicle, field, 0.0, HOLDER)
+    end
+
+    for _, field in ipairs(STABILISED) do
+        originals[field] = handling.get(vehicle, field)
+        handling.scale(vehicle, field, settings.stabilise_scale, HOLDER)
+    end
+
+    originals[THRUST] = handling.get(vehicle, THRUST)
+    handling.scale(vehicle, THRUST, settings.thrust_scale, HOLDER)
+
+    self_behaviour.store[model] = originals
+end
+
+local function undo(vehicle: int, model: int, self_behaviour: table): void
+    Atdar.util.game.vehicle.handling.release_holder(HOLDER)
+    self_behaviour.take(model)
+end
+
+behaviour = Atdar.util.game.vehicle.on_current.create("HeliStabilisation", {
+    only = { "heli" },
+    change = change,
+    undo = undo,
+})
+
+-- Actions
+
+-- Switches it on for the helicopter the player flies, and for each one he gets into, until disable(). A second call
+-- does nothing
+function module.enable(): void
+    behaviour.set_debug(settings.debug)
+    behaviour.enable()
+end
+
+-- Switches it off: the handling of the helicopter is as it was
+function module.disable(): void
+    behaviour.disable()
+end
+
+return module

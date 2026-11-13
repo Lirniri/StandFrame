@@ -1,0 +1,106 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("LessenBurnouts")
+
+-- Less tyre burnout when the vehicle starts: the low speed traction loss of its handling is taken down, after Stand's
+-- Lessen Tyre Burnouts (CommandLessenTyreBurnouts, launch control). It acts on the current vehicle (on_current).
+--
+--     local lessen = Atdar.util.game.vehicle.lessen_burnouts
+--
+--     lessen.set_value(0.2)       -- the setting, any time, before or after enable(): 0.0 is no loss at all
+--     lessen.enable()
+--     if lessen.is_enabled() then ... end
+--     lessen.disable()
+--
+-- NOT CHECKED IN GAME: the field is low_speed_traction_loss_mult of the handling data (Atdar.natives.memory.handling),
+-- the layout is that of Stand-OSS. The old value comes back when the player leaves the vehicle or the module is switched
+-- off, as the holder "lessen_burnouts" lets go of the field (another module that changed it keeps its own value).
+local module = {}
+
+-- Who holds the field
+local HOLDER = "lessen_burnouts"
+
+local FIELD = "low_speed_traction_loss_mult"
+
+-- The settings, see set_value
+local settings = {
+    value = 0.0,
+    debug = false,
+}
+
+local behaviour = nil
+
+-- Settings
+
+-- What the low speed traction loss is while it is on, 0.0 (none) by default. A vehicle that has a bigger one spins its
+-- wheels more, the factor of 1.0 is what Stand saw on every vehicle
+-- @param value From 0.0
+function module.set_value(value: number): void
+    settings.value = math.max(value, 0.0)
+
+    if behaviour ~= nil and behaviour.is_enabled() then
+        behaviour.refresh()
+    end
+end
+
+-- Whether it writes what it does to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+
+    if behaviour ~= nil then
+        behaviour.set_debug(toggle)
+    end
+end
+
+-- Get
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return behaviour ~= nil and behaviour.is_enabled()
+end
+
+-- The vehicle that is changed now, nil if none
+function module.get_vehicle(): ?int
+
+    if behaviour == nil then
+        return nil
+    end
+
+    return behaviour.get_vehicle()
+end
+
+local function change(vehicle: int, model: int, self_behaviour: table): void
+
+    local handling = Atdar.util.game.vehicle.handling
+
+    self_behaviour.store[model] = { original = handling.get(vehicle, FIELD) }
+
+    if not handling.set(vehicle, FIELD, settings.value, HOLDER) then
+        log:warn("the handling data was not found: nothing is changed")
+    end
+end
+
+local function undo(vehicle: int, model: int, self_behaviour: table): void
+    Atdar.util.game.vehicle.handling.release_holder(HOLDER)
+    self_behaviour.take(model)
+end
+
+behaviour = Atdar.util.game.vehicle.on_current.create("LessenBurnouts", {
+    change = change,
+    undo = undo,
+})
+
+-- Actions
+
+-- Switches it on for the vehicle the player drives, and for each one he gets into, until disable(). A second call does nothing
+function module.enable(): void
+    behaviour.set_debug(settings.debug)
+    behaviour.enable()
+end
+
+-- Switches it off: the handling of the vehicle is as it was
+function module.disable(): void
+    behaviour.disable()
+end
+
+return module

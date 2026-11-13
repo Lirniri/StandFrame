@@ -166,6 +166,204 @@
             },
             "explode": {
                 "name": "Explode"
+            },
+            "handling": {
+                "name": "Handling",
+                "help": "Changes to the handling of the vehicle you drive. They are written to the memory of the game, not checked in game, and are given back when you leave the vehicle or switch them off.",
+                "settings": {
+                    "name": "Settings"
+                },
+                "divider": {
+                    "reset": {
+                        "name": "Reset"
+                    }
+                },
+                "reset_handling": {
+                    "name": "Reset All Handling Changes",
+                    "help": "Gives back every handling number this script changed, in every vehicle."
+                },
+                "drift_mode": {
+                    "name": "Drift Mode",
+                    "help": "The car you drive slides like a drift car: a drift tune of the handling numbers and flags. Not for bikes, boats and aircraft.",
+                    "preset": {
+                        "name": "Preset",
+                        "help": "How much grip and steering the tune has.",
+                        "stand": "Standard",
+                        "loose": "Loose",
+                        "grippy": "Grippy"
+                    },
+                    "traction_scale": {
+                        "name": "Grip (%)",
+                        "help": "The grip of the tune in percent. Less slides more."
+                    },
+                    "live_traction": {
+                        "name": "Grip Follows Speed",
+                        "help": "More grip when slow so the car gets going. Off: set once when you get in."
+                    },
+                    "top_speed": {
+                        "name": "Raise Top Speed",
+                        "help": "Raises the top speed of the vehicle while it drifts, as Stand does."
+                    }
+                },
+                "lessen_burnouts": {
+                    "name": "Lessen Tyre Burnouts",
+                    "help": "Less wheelspin at the start: the low speed traction loss of the vehicle is taken down.",
+                    "value": {
+                        "name": "Traction Loss Left (%)",
+                        "help": "How much of the low speed traction loss is left. 0 is none."
+                    }
+                },
+                "heli_stabilisation": {
+                    "name": "Disable Heli Auto Stabilisation",
+                    "help": "The helicopter you fly does not level itself and the wind does not push it.",
+                    "stabilise_scale": {
+                        "name": "Stabilisation Left (%)",
+                        "help": "How much of the stabilisation of pitch, roll and yaw is left. 0 is none."
+                    },
+                    "thrust_scale": {
+                        "name": "Thrust (%)",
+                        "help": "The thrust in percent, 135 makes up for the lift that is lost."
+                    }
+                },
+                "gravity": {
+                    "name": "Gravity Multiplier",
+                    "help": "The gravity of the vehicle you drive as a multiple of the normal one.",
+                    "multiplier": {
+                        "name": "Multiplier (%)",
+                        "help": "100 is the normal gravity, 0 has none, a negative number pulls up."
+                    },
+                    "not_in_aircraft": {
+                        "name": "Not In Aircraft",
+                        "help": "Aircraft keep the normal gravity."
+                    }
+                },
+                "drive_on_water": {
+                    "name": "Drive On Water",
+                    "help": "A block under the surface carries the vehicle over the water. Single player only: online nobody else sees it.",
+                    "depth": {
+                        "name": "Depth (cm)",
+                        "help": "How far under the surface the top of the block is."
+                    },
+                    "smoothing": {
+                        "name": "Smoothing (%)",
+                        "help": "How fast the block follows the surface. 100 is at once."
+                    }
+                },
+                "forge_model": {
+                    "name": "Forge Model",
+                    "help": "The vehicle you drive is taken for another model: every vehicle of that model carries the name while it is on. Single player only, risky.",
+                    "model": {
+                        "name": "Model",
+                        "help": "The name of the model it is taken for, ruffian by default."
+                    }
+                }
+            }
+        },
+        "extras": {
+            "name": "Extras",
+            "settings": {
+                "name": "Settings"
+            },
+            "player": {
+                "name": "Player",
+                "rewind": {
+                    "name": "Rewind",
+                    "help": "Hold the Special Ability key to go back in time: the player (or his vehicle) and the camera are put back where they were. The longer you hold it, the faster it goes: 2x after 5 seconds, 3x after 10.",
+                    "restore_camera": {
+                        "name": "Restore Camera",
+                        "help": "The camera goes back with the player. Off: the game's camera stays as it is."
+                    },
+                    "max_seconds": {
+                        "name": "History Length (s)",
+                        "help": "How far back it can go. The positions are written down every frame, 60 frames count as a second."
+                    }
+                },
+                "floppy_mode": {
+                    "name": "Floppy Mode",
+                    "help": "The player is a ragdoll pushed by the stick, Jump and Duck. Doesn't work together with Graceland.",
+                    "speed": {
+                        "name": "Movement Speed (%)"
+                    },
+                    "sprint": {
+                        "name": "Sprint Multiplier"
+                    }
+                },
+                "preserve_walk_style": {
+                    "name": "Preserve Walk Style During Combat",
+                    "help": "The player doesn't go into combat mode when there is violence around. It changes the code of the game: not checked in game."
+                }
+            },
+            "weapons": {
+                "name": "Weapons",
+                "gravity_gun": {
+                    "name": "Gravity Gun",
+                    "help": "Aim at a thing and hold Aim to grab it, the mouse wheel moves it nearer and farther, Attack throws it.",
+                    "force": {
+                        "name": "Force (%)"
+                    },
+                    "collision": {
+                        "name": "Collision",
+                        "help": "The held thing keeps its collision. Off: it goes through everything."
+                    },
+                    "contrived_physics": {
+                        "name": "Contrived Physics",
+                        "help": "Moves the held thing by its position instead of by a force: stiffer."
+                    },
+                    "distance": {
+                        "name": "Distance (m)"
+                    }
+                }
+            },
+            "vehicle": {
+                "name": "Vehicle",
+                "super_drive": {
+                    "name": "Super Drive",
+                    "help": "A push on the vehicle you drive while the accelerate key is held.",
+                    "force": {
+                        "name": "Force (%)"
+                    },
+                    "use_camera": {
+                        "name": "Use Camera",
+                        "help": "Pushes where the camera looks, not where the vehicle points."
+                    }
+                },
+                "super_handbrake": {
+                    "name": "Super Handbrake",
+                    "help": "The handbrake key stops the vehicle you drive.",
+                    "strength": {
+                        "name": "Strength (%)",
+                        "help": "How much of the speed is taken every frame. 100 stops the vehicle at once."
+                    }
+                },
+                "wheel_on_wheels": {
+                    "name": "Weapon Wheel In Vehicles",
+                    "help": "Opens the weapon wheel while driving. It changes the code of the game: not checked in game."
+                },
+                "no_hair_scale": {
+                    "name": "Disable In-Vehicle Hair Scaling",
+                    "help": "The game doesn't scale the hair of a ped in a vehicle. It changes the code of the game: not checked in game."
+                }
+            },
+            "world": {
+                "name": "World",
+                "no_stunt_jumps": {
+                    "name": "Disable Stunt Jumps",
+                    "help": "Cancels the stunt jumps of the map as they start."
+                }
+            },
+            "debug": {
+                "name": "Debug",
+                "task_list": {
+                    "name": "Show Ped Tasks",
+                    "help": "Writes the tasks of the peds around over their heads, read from the memory of the game: a debug tool, not checked in game.",
+                    "range": {
+                        "name": "Range (m)"
+                    },
+                    "names": {
+                        "name": "Show Names",
+                        "help": "Off: the numbers of the tasks instead of their names."
+                    }
+                }
             }
         },
         "modes": {

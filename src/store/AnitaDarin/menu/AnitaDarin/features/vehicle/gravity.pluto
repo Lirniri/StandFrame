@@ -1,0 +1,39 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The gravity of the vehicle the player drives (Atdar.util.game.vehicle.gravity). The settings are kept here and given to
+-- it at enable, and at once when they change while it is on. Not checked in game
+local class VehicleGravity extends Feature
+    function __construct()
+        parent:__construct({
+            id = "vehicle.gravity", kind = "toggle"
+        })
+
+        -- Settings
+        self.multiplier = 100 -- percent of the normal gravity, like the slider of Stand
+        self.not_in_aircraft = true -- aircraft keep the normal gravity
+    end
+
+    function set_multiplier(value: int): void
+        self.multiplier = value
+        Atdar.util.game.vehicle.gravity.set_multiplier(value / 100)
+    end
+
+    function set_not_in_aircraft(on: bool): void
+        self.not_in_aircraft = on
+        Atdar.util.game.vehicle.gravity.set_not_in_aircraft(on)
+    end
+
+    function on_enable()
+        local gravity = Atdar.util.game.vehicle.gravity
+
+        gravity.set_multiplier(self.multiplier / 100)
+        gravity.set_not_in_aircraft(self.not_in_aircraft)
+        gravity.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.vehicle.gravity.disable()
+    end
+end
+
+return Atdar.features.add(new VehicleGravity())

@@ -1,0 +1,337 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("GravityGun")
+
+-- Grabs what the player aims at and holds it in front of him (Stand's Gravity Gun): aim at a thing (a vehicle, a ped, an
+-- object) and hold Aim to pick it up; it floats where the camera looks, the scroll wheel moves it nearer and
+-- farther; Attack throws it along the camera, letting go of Aim lets it fall (with a push towards where it was held).
+--
+--     local gun = Atdar.util.game.players.user.gravity_gun
+--
+--     gun.set_force(1.0)                -- the settings, any time, before or after enable()
+--     gun.set_collision(true)
+--     gun.set_contrived_physics(false)  -- moves the thing by position, not by force
+--     gun.enable()
+--     if gun.is_enabled() then ... end
+--     gun.disable()
+--
+-- It is made for the single player: it never takes the player himself, and does not ask for the network control of
+-- a thing (so in a session only what the player owns moves). A ped in a vehicle takes the vehicle. At disable the held
+-- thing is let go of, with its collision and gravity back. The scroll wheel is read as a disabled control (the game
+-- itself uses it for the weapon wheel while aiming)
+local module = {}
+
+-- The type of the force of APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS Stand uses (a force over time, not an impulse)
+local FORCE_TYPE = 1
+
+-- The throw: the camera direction times this times the force
+local THROW_FORCE = 1000.0
+
+-- The pull of the held thing towards where it should be: the distance to it divided by these (force and position
+-- ways), and the push of a thing that is let go
+local PULL_DIVISOR_FORCE = 5.47722557505
+local PULL_DIVISOR_POSITION = 8.94427191
+local RELEASE_PUSH = 10.0
+
+-- How far (metres) the thing is held for a ped in a vehicle, and what one step of the wheel changes
+local VEHICLE_DISTANCE = 10.0
+local SCROLL_STEP = 1.0
+
+-- How near (m) the thing can be moved with the wheel: farther behind the player it would be the player's own
+local MIN_DISTANCE = 1.0
+
+-- The settings, see the set_ functions
+local settings = {
+    force = 1.0,
+    contrived_physics = false,
+    collision = true,
+    distance = 5.0,
+    debug = false,
+}
+
+-- Whether it's on, which run of the tick handler is the wanted one, the thing that is held (nil if none), how far
+-- in front of the player, the last thing that was thrown (not grabbed again until Aim is let go), the memory the aimed
+-- thing is read from
+local state = { enabled = false, run = 0, target = nil, distance = 5.0, thrown = nil, buffer = nil }
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return state.enabled
+end
+
+-- Whether a thing is held now
+function module.is_holding(): bool
+    return state.target ~= nil
+end
+
+-- Settings
+
+-- How strong the pull and the throw are, 1 by default (the 100 of Stand's slider)
+function module.set_force(force: number): void
+    settings.force = math.max(force, 0.01)
+end
+
+-- Whether a held thing keeps its collision (default); off: it goes through everything while held
+function module.set_collision(toggle: bool): void
+    settings.collision = toggle
+end
+
+-- Whether the held thing is moved by setting its position (a smooth, stiff hold) instead of by a force (default, it swings)
+function module.set_contrived_physics(toggle: bool): void
+    settings.contrived_physics = toggle
+end
+
+-- How far in front of the player (metres) a thing is held when it is grabbed, 5 by default (a vehicle with a ped in it: 10)
+function module.set_distance(metres: number): void
+    settings.distance = math.max(metres, MIN_DISTANCE)
+end
+
+-- Whether it writes what is grabbed, thrown and let go to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+-- The direction a rotation (degrees, order 2) looks in, { x, y, z }
+local function direction(rot: vector3): table
+    local pitch = math.rad(rot.x)
+    local yaw = math.rad(rot.z)
+
+    return { x = -math.sin(yaw) * math.cos(pitch), y = math.cos(yaw) * math.cos(pitch), z = math.sin(pitch) }
+end
+
+-- The thing the player free aims at now, nil if none. A ped in a vehicle gives the vehicle (distance is set for it)
+local function find_aimed(player: int, ped: int): ?int
+
+    local n_entity = Atdar.natives.entity
+
+    if state.buffer == nil then
+        state.buffer = memory.alloc(4)
+    end
+
+    memory.write_int(state.buffer, 0)
+
+    if not Atdar.natives.player.get_entity_is_free_aiming(player, state.buffer) then
+        return nil
+    end
+
+    local entity = memory.read_int(state.buffer)
+
+    if entity == 0 or entity == ped or not n_entity.does_exist(entity) then
+        return nil
+    end
+
+    if n_entity.ped.is_ped(entity) and n_entity.ped.vehicle.is_in_any(entity) then
+        state.distance = VEHICLE_DISTANCE
+        return n_entity.ped.vehicle.get(entity)
+    end
+
+    return entity
+end
+
+-- Lets the held thing go, with its collision and gravity back
+local function release_target(): void
+
+    local target = state.target
+
+    if target == nil then
+        return
+    end
+
+    state.target = nil
+
+    if Atdar.natives.entity.does_exist(target) then
+        Atdar.natives.entity.set_collision(target, true, false)
+        Atdar.natives.entity.set_has_gravity(target, true)
+    end
+
+    if settings.debug then
+        log:debug($"let go of {target}")
+    end
+end
+
+-- Throws the held thing along the camera and lets it go
+local function throw_target(): void
+
+    local target = state.target
+    local dir = direction(Atdar.natives.camera.get_final_rotation(2))
+    local scale = THROW_FORCE * settings.force
+
+    Atdar.natives.entity.apply_force_to_center_of_mass(target, FORCE_TYPE, dir.x * scale, dir.y * scale, dir.z * scale, true, false, true, true)
+    state.thrown = target
+    release_target()
+
+    if settings.debug then
+        log:debug($"thrown {target}")
+    end
+end
+
+-- Holds the thing at the distance in front of the camera (aim is held), or lets it go with a push (not held)
+local function hold_target(ped: int, aiming: bool): void
+
+    local n_entity = Atdar.natives.entity
+    local input = Atdar.natives.input
+    local target = state.target
+
+    if input.is_disabled_pressed(0, input.ACTION.CURSOR_SCROLL_UP) then
+        state.distance += SCROLL_STEP
+    end
+
+    if input.is_disabled_pressed(0, input.ACTION.CURSOR_SCROLL_DOWN) then
+        state.distance = math.max(state.distance - SCROLL_STEP, MIN_DISTANCE)
+    end
+
+    local origin = n_entity.get_coords(ped, false, false)
+    local position = n_entity.get_coords(target, false, false)
+    local dir = direction(Atdar.natives.camera.get_final_rotation(2))
+    local wanted_x = origin.x + dir.x * state.distance
+    local wanted_y = origin.y + dir.y * state.distance
+    local wanted_z = origin.z + dir.z * state.distance
+    local dx = wanted_x - position.x
+    local dy = wanted_y - position.y
+    local dz = wanted_z - position.z
+    local length = math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    if length == 0 then
+        return
+    end
+
+    -- The unit direction from the thing to where it should be
+    local ux = dx / length
+    local uy = dy / length
+    local uz = dz / length
+
+    if not aiming then
+        local push = RELEASE_PUSH * settings.force
+
+        n_entity.apply_force_to_center_of_mass(target, FORCE_TYPE, ux * push, uy * push, uz * push, true, false, true, true)
+        release_target()
+        return
+    end
+
+    if settings.collision then
+        n_entity.set_collision(target, true, false)
+    else
+        n_entity.set_completely_disable_collision(target, false, false)
+    end
+
+    n_entity.set_has_gravity(target, false)
+
+    if settings.contrived_physics then
+        local step = length / PULL_DIVISOR_POSITION * settings.force
+
+        n_entity.set_coords_no_offset(target, v3.new(position.x + ux * step, position.y + uy * step, position.z + uz * step), false)
+        return
+    end
+
+    local pull = length / PULL_DIVISOR_FORCE * settings.force
+
+    n_entity.apply_force_to_center_of_mass(target, FORCE_TYPE, ux * pull, uy * pull, uz * pull, true, false, true, true)
+end
+
+-- One frame
+local function apply(): void
+
+    local n_player = Atdar.natives.player
+    local input = Atdar.natives.input
+    local player = n_player.get_id()
+    local ped = n_player.get_ped_id()
+    local aiming = input.is_pressed(0, input.ACTION.AIM)
+
+    if state.target ~= nil then
+
+        if not Atdar.natives.entity.does_exist(state.target) then
+            state.target = nil
+        elseif input.is_pressed(0, input.ACTION.ATTACK) then
+            throw_target()
+        else
+            hold_target(ped, aiming)
+        end
+
+        return
+    end
+
+    if not aiming then
+        state.thrown = nil
+        return
+    end
+
+    state.distance = settings.distance
+
+    local entity = find_aimed(player, ped)
+
+    -- The thing that was just thrown is not picked up again while Aim stays pressed
+    if entity == nil or entity == state.thrown then
+        return
+    end
+
+    state.target = entity
+
+    if settings.debug then
+        log:debug($"grabbed {entity}")
+    end
+end
+
+-- Lets the held thing go and frees the memory
+local function release(): void
+
+    release_target()
+    state.thrown = nil
+
+    if state.buffer ~= nil then
+        memory.free(state.buffer)
+        state.buffer = nil
+    end
+end
+
+-- Switches it off at once
+local function stop_now(): void
+    state.enabled = false
+    state.run += 1
+    pcall(release)
+end
+
+-- Actions
+
+-- Switches it on. A second call does nothing
+function module.enable(): void
+
+    if state.enabled then
+        return
+    end
+
+    state.enabled = true
+    state.run += 1
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        -- Switched off, or switched on again and a newer handler runs
+        if not state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(apply)
+        if not ok then
+            log:error($"gravity gun stopped\n{err}")
+            stop_now()
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Switches it off: the held thing is let go of
+function module.disable(): void
+
+    if not state.enabled then
+        return
+    end
+
+    stop_now()
+end
+
+util.on_stop(stop_now)
+
+return module

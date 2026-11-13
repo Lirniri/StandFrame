@@ -1,0 +1,20 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- A patch of the game's code (Atdar.natives.memory.patch), put on once and given back at disable. Not checked in game:
+-- when the code of the game is not the one expected, it is not found and the item switches itself off with the reason
+return Atdar.features.add(new Feature({
+    id = "extras.no_hair_scale",
+    kind = "toggle",
+
+    on_enable = function(self)
+        local control = Atdar.util.game.players.user.no_hair_scale
+
+        if not control.enable() then
+            error("the code of the game was not found (another build?), nothing was changed")
+        end
+    end,
+
+    on_disable = function(self)
+        Atdar.util.game.players.user.no_hair_scale.disable()
+    end,
+}))

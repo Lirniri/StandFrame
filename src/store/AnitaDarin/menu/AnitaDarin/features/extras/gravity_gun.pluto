@@ -1,0 +1,52 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- Aim to grab a thing, Attack to throw it (Atdar.util.game.players.user.gravity_gun)
+local class GravityGun extends Feature
+    function __construct()
+        parent:__construct({
+            id = "extras.gravity_gun", kind = "toggle"
+        })
+
+        -- Settings
+        self.force = 100 -- the pull and the throw, in percent of 1.0
+        self.collision = true -- the held thing keeps its collision
+        self.contrived_physics = false -- the held thing is moved by position, not by force
+        self.distance = 5 -- metres in front of the player when it is grabbed
+    end
+
+    function set_force(value: int): void
+        self.force = value
+        Atdar.util.game.players.user.gravity_gun.set_force(value / 100)
+    end
+
+    function set_collision(toggle: bool): void
+        self.collision = toggle
+        Atdar.util.game.players.user.gravity_gun.set_collision(toggle)
+    end
+
+    function set_contrived_physics(toggle: bool): void
+        self.contrived_physics = toggle
+        Atdar.util.game.players.user.gravity_gun.set_contrived_physics(toggle)
+    end
+
+    function set_distance(value: int): void
+        self.distance = value
+        Atdar.util.game.players.user.gravity_gun.set_distance(value)
+    end
+
+    function on_enable()
+        local gun = Atdar.util.game.players.user.gravity_gun
+
+        gun.set_force(self.force / 100)
+        gun.set_collision(self.collision)
+        gun.set_contrived_physics(self.contrived_physics)
+        gun.set_distance(self.distance)
+        gun.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.players.user.gravity_gun.disable()
+    end
+end
+
+return Atdar.features.add(new GravityGun())

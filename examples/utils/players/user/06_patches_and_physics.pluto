@@ -1,0 +1,55 @@
+-- EXAMPLE: the functions after Stand-OSS: patches of the game's code, rewind, and the small physics ones.
+--
+-- Each is a module of Atdar.util.game.players.user with the shape of Graceland: settings that can be changed any time
+-- (set_*), enable(), disable(), is_enabled(), set_debug(), and everything given back at disable and when the script
+-- stops. The offsets, patterns and bytes come from Stand-OSS and are NOT checked in game.
+
+local user = Atdar.util.game.players.user
+
+-- A patch of the game's code: on once, the old bytes are back at disable. enable() gives false (and writes nothing)
+-- when the pattern is not found or the code there is not the expected one: the reason is in the log
+-- user.preserve_walk_style.enable()     -- no combat mode when there is violence around
+-- user.no_hair_scale.enable()           -- the hair in a vehicle is not scaled
+-- user.wheel_on_wheels.enable()         -- the weapon wheel opens while driving
+local patch = Atdar.natives.memory.patch
+util.log($"patch no_hair_scale registered: {patch.is_registered('no_hair_scale')}")
+util.log($"its place: {tostring(patch.get_address('no_hair_scale'))}")     -- nil when the pattern is not found
+util.log($"why not: {tostring(patch.get_error('no_hair_scale'))}")
+
+-- A patch of your own: the pattern, the bytes, and (not needed) the bytes that must be there before
+patch.register("my_patch", "48 89 5C 24 ?? 57", { 0x90, 0x90 }, { at = 0, expected = { 0x48, 0x89 } })
+-- patch.apply("my_patch")  /  patch.restore("my_patch")
+
+-- Rewind: every frame is written down, the held key goes back (1x, 2x after 5 s, 3x after 10 s), the camera follows
+user.rewind.set_max_frames(3000)                       -- 50 seconds at 60 frames
+user.rewind.set_action(user.rewind.ACTION.SPECIAL_ABILITY)
+user.rewind.set_restore_camera(true)
+-- user.rewind.enable()
+-- user.rewind.is_playing()  user.rewind.get_frame_count()  user.rewind.clear()
+
+-- A push on the driven vehicle while the key is held
+user.super_drive.set_force(3.0)
+user.super_drive.set_use_camera(true)                  -- along the camera, not along the vehicle
+-- user.super_drive.enable()
+
+-- The handbrake stops the vehicle (strength 1 at once, less takes a part of the speed every frame)
+user.super_handbrake.set_strength(1.0)
+-- user.super_handbrake.enable()
+
+-- The stunt jumps of the map are cancelled as they start
+-- user.no_stunt_jumps.enable()
+
+-- The player is a ragdoll pushed by the stick, Jump (up) and Duck (down); not together with graceland
+user.floppy_mode.set_speed(1.0)
+user.floppy_mode.set_sprint_multiplier(5.0)
+-- user.floppy_mode.enable()
+
+-- Aim at a thing and hold Aim to grab it, the mouse wheel moves it, Attack throws it
+user.gravity_gun.set_force(1.0)
+user.gravity_gun.set_collision(true)
+user.gravity_gun.set_contrived_physics(false)          -- true moves it by position, stiffer
+user.gravity_gun.set_distance(5.0)
+-- user.gravity_gun.enable()
+-- user.gravity_gun.is_holding()
+
+-- All of them are reachable from Call Function, for example Atdar.util.game.players.user.rewind.enable

@@ -1,0 +1,31 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The handbrake stops the driven vehicle (Atdar.util.game.players.user.super_handbrake)
+local class SuperHandbrake extends Feature
+    function __construct()
+        parent:__construct({
+            id = "extras.super_handbrake", kind = "toggle"
+        })
+
+        -- Settings
+        self.strength = 100 -- how much of the speed is taken each frame, in percent
+    end
+
+    function set_strength(value: int): void
+        self.strength = value
+        Atdar.util.game.players.user.super_handbrake.set_strength(value / 100)
+    end
+
+    function on_enable()
+        local brake = Atdar.util.game.players.user.super_handbrake
+
+        brake.set_strength(self.strength / 100)
+        brake.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.players.user.super_handbrake.disable()
+    end
+end
+
+return Atdar.features.add(new SuperHandbrake())

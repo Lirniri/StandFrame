@@ -1,0 +1,235 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Handling")
+
+-- The handling of a vehicle by the name of a field, with a way back. The numbers are the ones of handling.meta (mass,
+-- grip, gears, flight, boat...) read and written in the game's memory (Atdar.natives.memory.handling), where the layout
+-- of Stand-OSS is used: NOT CHECKED IN GAME. A vehicle is a handle, or nothing for the vehicle the player is in.
+--
+--     local handling = Atdar.util.game.vehicle.handling
+--
+--     handling.set(vehicle, "drive_bias_front", 0.5)               -- true if it was written
+--     handling.set_many(vehicle, { mass = 3000.0, brake_force = 1.2 })
+--     handling.scale(vehicle, "acceleration", 1.5)                 -- 1.5 times what it was
+--     handling.set_bits(vehicle, "aflags", 1 << 4, true)           -- flags of the car handling data
+--     print(handling.get(vehicle, "mass"))
+--     handling.reset(vehicle)                                      -- what this changed is as it was
+--     handling.reset_all()                                         -- the same for every vehicle
+--
+-- All the vehicles of a handling name share one data, so a change reaches them all (and the vehicles that spawn later) until
+-- it is given back: reset when done. Fields of a sub handling data (flying, boat...) are named "boat.keel_sphere_size",
+-- the plain name works while only one section has it. Two users of a field are told apart by the holder
+-- (the last argument), so one that lets go does not take the value of the other. The field names are in get_field_names.
+local module = {}
+
+-- The sections of the fields, see get_field_names
+module.SECTION = {
+    MAIN = "main", CAR = "car", BIKE = "bike", FLYING = "flying", BOAT = "boat", SEAPLANE = "seaplane",
+    SUBMARINE = "submarine", TRAILER = "trailer", SPECIAL_FLIGHT = "special_flight", WEAPON = "weapon",
+}
+
+-- The holder that is used when none is given
+module.DEFAULT_HOLDER = Atdar.natives.memory.handling.DEFAULT_HOLDER
+
+-- The vehicle of the call: the one given, or the one the player is in when nothing is given. nil if there is none
+local function resolve(vehicle: ?int): ?int
+
+    if vehicle ~= nil then
+        return vehicle
+    end
+
+    local current = Atdar.natives.player.user.get_vehicle(false)
+
+    if current == nil or current <= 0 then
+        return nil
+    end
+
+    return current
+end
+
+-- Get
+
+-- The names of the fields: of one section, or of all of them
+function module.get_field_names(section: ?string): table
+    return Atdar.natives.memory.handling.get_field_names(section)
+end
+
+-- Whether the name is a field of the layout
+function module.has_field(name: string): bool
+    return Atdar.natives.memory.handling.has_field(name)
+end
+
+-- The value of a field now, nil if the vehicle has no such field or its data can't be read
+function module.get(vehicle: ?int, name: string): any
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return nil
+    end
+
+    return Atdar.natives.memory.handling.get(target, name)
+end
+
+-- The value of a field before it was changed here, the current one if it was not changed
+function module.get_original(vehicle: ?int, name: string): any
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return nil
+    end
+
+    return Atdar.natives.memory.handling.get_original(target, name)
+end
+
+-- The fields of a section (or all of them) that the vehicle has, with their values: name -> value. What a vehicle lacks
+-- is left out (the sub handling data of another kind of vehicle)
+function module.get_all(vehicle: ?int, section: ?string): table
+
+    local target = resolve(vehicle)
+    local result = {}
+
+    if target == nil then
+        return result
+    end
+
+    local mem = Atdar.natives.memory.handling
+
+    for _, name in ipairs(mem.get_field_names(section)) do
+
+        local value = mem.get(target, name)
+
+        if value ~= nil then
+            result[name] = value
+        end
+    end
+
+    return result
+end
+
+-- Whether a field of the vehicle is changed by this and not given back
+function module.is_changed(vehicle: ?int, name: string): bool
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return false
+    end
+
+    return Atdar.natives.memory.handling.is_changed(target, name)
+end
+
+-- Set
+
+-- Sets a field. The old value is kept, reset gives it back
+-- @param value A number, or { x = , y = , z = } for the fields of three numbers (centre_of_mass...)
+-- @param holder Who sets it, "user" by default
+-- @return Whether it was written
+function module.set(vehicle: ?int, name: string, value: any, holder: string = module.DEFAULT_HOLDER): bool
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return false
+    end
+
+    local ok = Atdar.natives.memory.handling.set(target, name, value, holder)
+
+    if not ok then
+        log:warn($"set {name}: not written (no such field, no data, or a wrong value)")
+    end
+
+    return ok
+end
+
+-- Sets several fields: name -> value
+-- @return How many were written
+function module.set_many(vehicle: ?int, values: table, holder: string = module.DEFAULT_HOLDER): int
+
+    local count = 0
+
+    for name, value in pairs(values) do
+
+        if module.set(vehicle, name, value, holder) then
+            count += 1
+        end
+    end
+
+    return count
+end
+
+-- Sets a number field to a multiple of what it was before this changed it (so scaling twice is not a square)
+-- @return Whether it was written
+function module.scale(vehicle: ?int, name: string, factor: number, holder: string = module.DEFAULT_HOLDER): bool
+
+    local original = module.get_original(vehicle, name)
+
+    if type(original) ~= "number" then
+        return false
+    end
+
+    return module.set(vehicle, name, original * factor, holder)
+end
+
+-- Puts bits of a flags field on (or off): the other bits stay, and two users of one field keep their own bits
+-- @return Whether it was written
+function module.set_bits(vehicle: ?int, name: string, bits: int, on: bool, holder: string = module.DEFAULT_HOLDER): bool
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return false
+    end
+
+    return Atdar.natives.memory.handling.set_bits(target, name, bits, on, holder)
+end
+
+-- Reset
+
+-- Gives a field back as it was before the holder changed it (what another holder set stays)
+-- @return Whether the holder had changed it
+function module.release(vehicle: ?int, name: string, holder: string = module.DEFAULT_HOLDER): bool
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return false
+    end
+
+    return Atdar.natives.memory.handling.release(target, name, holder)
+end
+
+-- Gives back what the holder changed in the vehicle's handling
+-- @param holder nil - what every holder changed
+-- @return How many fields were given back
+function module.reset(vehicle: ?int, holder: ?string): int
+
+    local target = resolve(vehicle)
+
+    if target == nil then
+        return 0
+    end
+
+    return Atdar.natives.memory.handling.reset(target, holder)
+end
+
+-- Gives back what the holder changed in any vehicle's handling, the vehicle need not be there
+-- @return How many fields were given back
+function module.release_holder(holder: string): int
+    return Atdar.natives.memory.handling.release_holder(holder)
+end
+
+-- Gives back everything changed through a model, the vehicle need not be there
+-- @return How many fields were given back
+function module.reset_model(model: int): int
+    return Atdar.natives.memory.handling.reset_model(model)
+end
+
+-- Gives back everything that was changed, in every vehicle
+-- @return How many fields were given back
+function module.reset_all(): int
+    return Atdar.natives.memory.handling.reset_all()
+end
+
+return module

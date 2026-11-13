@@ -9,14 +9,35 @@ local module = {}
 
 module.TASK_FALL = 423
 
+-- The task trees of a ped (ePedTaskTrees): the primary one holds what the ped is doing, the others its secondary
+-- tasks, its movement and its motion
+module.TREE = {
+    PRIMARY = 0,
+    SECONDARY = 1,
+    MOVEMENT = 2,
+    MOTION = 3,
+}
+
+-- A tree has this many priorities (aiTaskTree.tasks); the active one is the lowest number that has a task
+local PRIORITY_COUNT = 5
+
 module.offsets = {
     ped_intelligence = 0x10A0,   -- CPed: the CPedIntelligence pointer
     task_manager = 0x368,        -- CPedIntelligence: the CPedTaskManager, which starts with a vtable
     trees = 0x8,                 -- CPedTaskManager: the array of task tree pointers, 0 is the primary tree
+    tree_stride = 0x8,           -- CPedTaskManager: the distance between two tree pointers
     active_priority = 0x10,      -- aiTaskTree: the priority that is active, -1 when none
     tasks = 0x20,                -- aiTaskTree: the array of the root task of each priority
+    entity = 0x10,               -- aiTask: the entity it belongs to
+    parent = 0x18,               -- aiTask: the task it runs inside of
     sub_task = 0x20,             -- aiTask: the task it runs inside of itself
+    task_flags = 0x30,           -- aiTask: the flags (bit 2 is "has finished")
     type_id = 0x34,              -- aiTask: the number of the task (CTaskTypes)
+    task_state = 0x36,           -- aiTask: the state (a byte) of the task
+    task_info = 0xB08,           -- CPedIntelligence: the first CTaskInfo, the list of the tasks Stand's Show Ped Tasks reads
+    info_task_id = 0x08,         -- CTaskInfo: the number of the task
+    info_bitfield = 0x0C,        -- CTaskInfo: the priority is bits 1..3
+    info_next = 0x10,            -- CTaskInfo: the next one, 0 at the end
     fall_flags = 0x180,          -- CTaskFall: the flags
 }
 
@@ -25,7 +46,6 @@ module.offsets = {
 -- known yet, so it is empty; set_signature adds one and resolve reads them
 module.signatures = {}
 
-local MAX_PRIORITY = 4
 local MAX_DEPTH = 32
 local MIN_POINTER = 0x10000
 local MAX_POINTER = 0x7FFFFFFFFFFF
@@ -35,8 +55,8 @@ local function is_pointer(value: any): bool
     return type(value) == "number" and value >= MIN_POINTER and value <= MAX_POINTER
 end
 
--- The root task of the active priority of the primary tree of the ped. nil if a step is wrong
-local function get_root(ped: int): ?int
+-- The pointer to the tree of the ped: tree is one of module.TREE. nil if a step is wrong
+local function get_tree_pointer(ped: int, tree_index: int): ?int
     local offsets = module.offsets
     local pointer = Atdar.memory.handle_to_pointer(ped)
 
@@ -49,13 +69,29 @@ local function get_root(ped: int): ?int
         return nil
     end
 
-    local tree = memory.read_long(intelligence + offsets.task_manager + offsets.trees)
+    local tree = memory.read_long(intelligence + offsets.task_manager + offsets.trees + tree_index * offsets.tree_stride)
     if not is_pointer(tree) then
         return nil
     end
 
-    local priority = memory.read_int(tree + offsets.active_priority)
-    if priority < 0 or priority > MAX_PRIORITY then
+    return tree
+end
+
+-- The root task of a priority of a tree of the ped (the active priority when it is nil, of the primary tree by default).
+-- nil if a step is wrong or there is no task
+local function get_root(ped: int, tree_index: int = module.TREE.PRIMARY, priority: ?int): ?int
+    local offsets = module.offsets
+    local tree = get_tree_pointer(ped, tree_index)
+
+    if tree == nil then
+        return nil
+    end
+
+    if priority == nil then
+        priority = memory.read_int(tree + offsets.active_priority)
+    end
+
+    if priority < 0 or priority >= PRIORITY_COUNT then
         return nil
     end
 
@@ -124,6 +160,118 @@ function module.find_task(ped: int, task_type: int): ?int
     end
 
     return nil
+end
+
+-- The state of a task read from the memory (a number the task itself defines), nil if it is not a pointer
+function module.get_state(task: int): ?int
+
+    if not is_pointer(task) then
+        return nil
+    end
+
+    return memory.read_byte(task + module.offsets.task_state) & 0xFF
+end
+
+-- The priority that is active in a tree of the ped (module.TREE, primary by default), nil when none is or a step is wrong
+function module.get_active_priority(ped: int, tree_index: int = module.TREE.PRIMARY): ?int
+
+    local tree = get_tree_pointer(ped, tree_index)
+
+    if tree == nil then
+        return nil
+    end
+
+    local priority = memory.read_int(tree + module.offsets.active_priority)
+
+    if priority < 0 or priority >= PRIORITY_COUNT then
+        return nil
+    end
+
+    return priority
+end
+
+-- The tasks of a priority of a tree of the ped from the root to the deepest, each { type, state, pointer }. The active
+-- priority when it is nil. An empty table if there is nothing, or a step doesn't look right
+-- @param tree_index One of module.TREE, the primary one by default
+function module.get_chain(ped: int, tree_index: int = module.TREE.PRIMARY, priority: ?int): table
+
+    local chain = {}
+    local task = get_root(ped, tree_index, priority)
+
+    for _ = 1, MAX_DEPTH do
+
+        if not is_pointer(task) then
+            break
+        end
+
+        table.insert(chain, { type = module.get_type(task), state = module.get_state(task), pointer = task })
+        task = memory.read_long(task + module.offsets.sub_task)
+    end
+
+    return chain
+end
+
+-- Every task of the ped that the memory shows: for each tree and each priority that has one, { tree, priority, tasks },
+-- tasks as get_chain gives them. It is the whole picture, where get_chain is the active priority of one tree
+function module.get_all(ped: int): table
+
+    local result = {}
+
+    for tree_index = module.TREE.PRIMARY, module.TREE.MOTION do
+        for priority = 0, PRIORITY_COUNT - 1 do
+
+            local chain = module.get_chain(ped, tree_index, priority)
+
+            if #chain > 0 then
+                table.insert(result, { tree = tree_index, priority = priority, tasks = chain })
+            end
+        end
+    end
+
+    return result
+end
+
+-- The numbers of the tasks in the list of the ped's CPedIntelligence (the one Stand's Show Ped Tasks reads), those of the
+-- best priority only: the tasks of lower priorities are what the ped would do next. Each { type, priority }; empty when
+-- there is none or a step doesn't look right
+function module.get_info_list(ped: int): table
+
+    local pointer = Atdar.memory.handle_to_pointer(ped)
+    local offsets = module.offsets
+    local list = {}
+
+    if pointer == nil then
+        return list
+    end
+
+    local intelligence = memory.read_long(pointer + offsets.ped_intelligence)
+    if not is_pointer(intelligence) then
+        return list
+    end
+
+    local info = memory.read_long(intelligence + offsets.task_info)
+    local best = nil
+
+    for _ = 1, MAX_DEPTH do
+
+        if not is_pointer(info) then
+            break
+        end
+
+        local priority = (memory.read_int(info + offsets.info_bitfield) >> 1) & 7
+
+        best ??= priority
+
+        if priority > best then
+            break
+        end
+
+        best = priority
+        table.insert(list, { type = memory.read_int(info + offsets.info_task_id), priority = priority })
+        info = memory.read_long(info + offsets.info_next)
+    end
+
+    return list
 end
 
 -- The numbers of the tasks of the active priority of the ped, from the root to the deepest, as text. It is what to

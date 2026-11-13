@@ -1,0 +1,41 @@
+-- EXAMPLE: the handling of a vehicle by the name of a field, with a way back.
+--
+-- Atdar.util.game.vehicle.handling (lib/AnitaDarin/utils/util/game/vehicle/handling.pluto) on top of
+-- Atdar.natives.memory.handling (the layout of CHandlingData and its sub handling data, from Stand-OSS: NOT checked in game).
+-- One handling data belongs to every vehicle of a handling name, so a change reaches all of them until it is given back.
+
+local handling = Atdar.util.game.vehicle.handling
+local vehicle = Atdar.natives.player.user.get_vehicle(false)
+
+-- No vehicle given (nil): the one the player is in
+print(handling.get(nil, "mass"))                            -- a number, or nil when the data is not found
+print(handling.get(vehicle, "centre_of_mass").z)            -- three-number fields are { x, y, z }
+
+handling.set(vehicle, "drive_bias_front", 0.5)              -- true if it was written
+handling.set_many(vehicle, { mass = 3000.0, brake_force = 1.2 })
+handling.scale(vehicle, "acceleration", 1.5)                -- 1.5 times what it was; again is not 2.25 times
+handling.set_bits(vehicle, "aflags", 1 << 4, true)          -- bits of a flags field (here of the car handling data)
+
+-- A field of a sub handling data (flying, boat, car, bike, seaplane, submarine, trailer, special_flight, weapon) is named with its
+-- section; the plain name works while only one section has it ("turn_res" is in two: "flying.turn_res")
+handling.set(vehicle, "boat.keel_sphere_size", 0.2)
+print(table.concat(handling.get_field_names("boat"), ", "))
+
+-- Two users of a field: each is a holder, the last holder wins, and one that lets go does not take the other one's value
+handling.set(vehicle, "mass", 2500.0, "my_script")
+handling.release(vehicle, "mass", "my_script")              -- the 3000 of "user" is back, not the original 1500
+
+print(handling.get_original(vehicle, "mass"))               -- before anything of this was written
+handling.reset(vehicle)                                     -- what "user" changed in this vehicle is as it was
+handling.reset(vehicle, nil)                                -- what any holder changed
+handling.reset_model(Atdar.natives.entity.get_model(vehicle)) -- by model: the vehicle need not be there any more
+handling.reset_all()                                        -- everything; also done when the script stops
+
+-- A sub handling data is told from the others by the vtable it has, which a script can only learn: a vehicle with one sub handling
+-- data that is a car teaches "car". list_subs shows what a vehicle has when a section is not found
+local memory_handling = Atdar.natives.memory.handling
+
+memory_handling.learn_sub(vehicle, "car")
+for _, sub in ipairs(memory_handling.list_subs(vehicle)) do
+    print(sub.index, string.format("%X", sub.pointer), string.format("%X", sub.vtable))
+end

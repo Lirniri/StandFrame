@@ -1,0 +1,133 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("VehicleGravity")
+
+-- The gravity of the vehicle the player drives, as a multiple of the normal one (Stand's Gravity Multiplier,
+-- CommandVehicleGravityMultiplier). It acts on the current vehicle (on_current).
+--
+--     local gravity = Atdar.util.game.vehicle.gravity
+--
+--     gravity.set_multiplier(0.3)       -- the settings, any time, before or after enable(): 1.0 is the normal gravity
+--     gravity.set_not_in_aircraft(true)
+--     gravity.enable()
+--     if gravity.is_enabled() then ... end
+--     gravity.disable()
+--
+-- NOT CHECKED IN GAME. Stand finds a function of the game by a signature to set it (CVehicle_SetGravityForWheellIntegrator,
+-- "F3 0F 10 ? ? ? ? ? 48 8B CE E8 ? ? ? ? 48 8B 4E" and the call at 12 bytes in) and offers it to scripts as
+-- entities.set_gravity_multiplier: that is what is called (Atdar.natives.memory.vehicle.set_gravity_multiplier), so there is
+-- no signature of ours to go stale. Without that function the gravity field of the vehicle is written (offset 0xC9C of the
+-- CVehicle, 9.8 times the multiplier). The gravity it had comes back (written to the field) when the player leaves the
+-- vehicle or the module is switched off. The game may set the value again, so it is written every frame.
+local module = {}
+
+-- The settings, see the set_ functions
+local settings = {
+    multiplier = 1.0,
+    not_in_aircraft = true,
+    debug = false,
+}
+
+local behaviour = nil
+
+-- Settings
+
+-- The multiple of the normal gravity, 1.0 by default (the normal one); 0.0 has none, a negative one pulls up
+-- @param multiplier Stand's slider goes from -100.0 to 100.0
+function module.set_multiplier(multiplier: number): void
+    settings.multiplier = multiplier
+end
+
+-- Whether aircraft keep the normal gravity (they are hard to fly with another), on by default
+function module.set_not_in_aircraft(toggle: bool): void
+    settings.not_in_aircraft = toggle
+end
+
+-- Whether it writes what it does to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+
+    if behaviour ~= nil then
+        behaviour.set_debug(toggle)
+    end
+end
+
+-- Get
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return behaviour ~= nil and behaviour.is_enabled()
+end
+
+-- The vehicle that is changed now, nil if none
+function module.get_vehicle(): ?int
+
+    if behaviour == nil then
+        return nil
+    end
+
+    return behaviour.get_vehicle()
+end
+
+-- The multiple the vehicle is given now: the normal one for an aircraft when not_in_aircraft is on
+local function wanted(model: int): float
+
+    if settings.not_in_aircraft and Atdar.util.game.vehicle.on_current.get_kinds(model).air then
+        return 1.0
+    end
+
+    return settings.multiplier
+end
+
+local function change(vehicle: int, model: int, self_behaviour: table): void
+
+    local mem = Atdar.natives.memory.vehicle
+
+    self_behaviour.store[model] = { gravity = mem.get_gravity(vehicle) }
+
+    if not mem.set_gravity_multiplier(vehicle, wanted(model)) then
+        log:warn("the vehicle was not found in memory: nothing is changed")
+    end
+end
+
+-- The game may set the gravity again: it is written every frame, when it is not what is wanted
+local function frame(vehicle: int, model: int, self_behaviour: table): void
+
+    local mem = Atdar.natives.memory.vehicle
+    local current = mem.get_gravity(vehicle)
+    local goal = wanted(model) * mem.NORMAL_GRAVITY
+
+    if current ~= nil and math.abs(current - goal) > 0.001 then
+        mem.set_gravity_multiplier(vehicle, wanted(model))
+    end
+end
+
+local function undo(vehicle: int, model: int, self_behaviour: table): void
+
+    local kept = self_behaviour.take(model)
+
+    if kept ~= nil and kept.gravity ~= nil then
+        Atdar.natives.memory.vehicle.set_gravity(vehicle, kept.gravity)
+    end
+end
+
+behaviour = Atdar.util.game.vehicle.on_current.create("VehicleGravity", {
+    change = change,
+    undo = undo,
+    frame = frame,
+})
+
+-- Actions
+
+-- Switches it on for the vehicle the player drives, and for each one he gets into, until disable(). A second call does nothing
+function module.enable(): void
+    behaviour.set_debug(settings.debug)
+    behaviour.enable()
+end
+
+-- Switches it off: the gravity of the vehicle is as it was
+function module.disable(): void
+    behaviour.disable()
+end
+
+return module

@@ -1,0 +1,12 @@
+-- No scaling of the hair in a vehicle (Stand's Disable In-Vehicle Hair Scaling): the game scales the hair of a ped
+-- in a vehicle; the jump in its code that skips that is made unconditional, so the scaling never runs.
+--
+--     local hair = Atdar.util.game.players.user.no_hair_scale
+--
+--     hair.enable()      -- false if the code of the game is not found or is another one
+--     hair.disable()
+--
+-- It changes the code of the game (patch "no_hair_scale" of Atdar.natives.memory.patch), not checked in game
+local patch_toggle = Atdar.util.game.players.user.patch_toggle
+
+return patch_toggle.make("NoHairScale", "no_hair_scale")

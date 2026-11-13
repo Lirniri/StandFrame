@@ -3,6 +3,7 @@ return {
         node:divider("AnitaDarin")
         ctx.load("self").build(node, ctx)
         ctx.load("vehicle").build(node, ctx)
+        ctx.load("extras").build(node, ctx)
         ctx.load("modes").build(node, ctx)
         ctx.load("settings").build(node, ctx)
     end,

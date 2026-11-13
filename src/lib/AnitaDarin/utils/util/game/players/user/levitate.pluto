@@ -50,12 +50,12 @@ local function tick(): void
     local dy = math.cos(yaw) * math.cos(pitch) * forward + math.sin(yaw) * stick_x
     local dz = math.sin(pitch) * forward + vertical
 
-    local pos = n_entity.get_coords(ped, false, 0)
+    local pos = n_entity.get_coords(ped, false, false)
     local step = settings.speed * seconds
 
     n_entity.freeze_position(ped, true)
     n_entity.set_heading(ped, rot.z)
-    n_entity.set_coords_no_offset(ped, pos.x + dx * step, pos.y + dy * step, pos.z + dz * step, false, false, false)
+    n_entity.set_coords_no_offset(ped, v3.new(pos.x + dx * step, pos.y + dy * step, pos.z + dz * step), false)
 end
 
 local function release(): void

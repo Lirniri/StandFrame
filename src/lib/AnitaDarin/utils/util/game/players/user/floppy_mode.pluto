@@ -1,0 +1,198 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("FloppyMode")
+
+-- The player is a ragdoll that is pushed by the stick (Stand's Floppy Mode, "insurance fraud"): every frame the ped
+-- is put in a ragdoll again, and the stick, Jump (up) and Duck (down) push it along where the camera looks; Sprint
+-- pushes harder. When the player dies it waits for the respawn first.
+--
+--     local floppy = Atdar.util.game.players.user.floppy_mode
+--
+--     floppy.set_speed(1.0)             -- the settings, any time, before or after enable()
+--     floppy.set_sprint_multiplier(5.0)
+--     floppy.enable()
+--     if floppy.is_enabled() then ... end
+--     floppy.disable()
+--
+-- It does not work together with graceland (graceland ends the ragdoll to land): switch that off first. At disable the
+-- ragdoll is let go of and the ped stands up
+local module = {}
+
+-- The type of the force of APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS Stand uses (a force over time, not an impulse)
+local FORCE_TYPE = 1
+
+-- After a death the ragdoll is not forced for this long (ms): the game respawns the player in that time
+local RESPAWN_WAIT_MS = 7000
+
+-- How long (ms) one frame's ragdoll lasts; it is renewed every frame, so a long time would only delay the stand-up
+local RAGDOLL_MS = 1000
+
+-- The controls of Jump and Duck (INPUT_JUMP, INPUT_DUCK) and of Sprint (INPUT_SPRINT)
+local ACTION_UP = Atdar.natives.input.ACTION.JUMP
+local ACTION_DOWN = Atdar.natives.input.ACTION.DUCK
+local ACTION_SPRINT = Atdar.natives.input.ACTION.SPRINT
+
+-- The settings, see the set_ functions
+local settings = {
+    speed = 1.0,
+    sprint_multiplier = 5.0,
+    debug = false,
+}
+
+-- Whether it's on, which run of the tick handler is the wanted one, when the player died last (ms), whether the ped
+-- is forced into a ragdoll now (for the debug log: a line at each change)
+local state = { enabled = false, run = 0, last_death = 0, forcing = false }
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return state.enabled
+end
+
+-- Settings
+
+-- How hard the stick pushes, 1 by default (the 100 of Stand's slider)
+function module.set_speed(speed: number): void
+    settings.speed = math.max(speed, 0.0)
+end
+
+-- How many times harder the push is with Sprint pressed all the way, 5 by default; 1 is no difference
+function module.set_sprint_multiplier(multiplier: number): void
+    settings.sprint_multiplier = math.max(multiplier, 1.0)
+end
+
+-- Whether it writes when the ragdoll is forced or waits for a respawn to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+-- Where the stick pushes this frame, { x, y, z } along the camera, with the length the stick and the keys give. All zero when
+-- nothing is pressed
+local function get_push(): table
+
+    local input = Atdar.natives.input
+    local rot = Atdar.natives.camera.get_final_rotation(2)
+    local pitch = math.rad(rot.x)
+    local yaw = math.rad(rot.z)
+    local forward = -input.get_normal(0, input.ACTION.MOVE_UD)
+    local sideways = input.get_normal(0, input.ACTION.MOVE_LR)
+    local vertical = 0.0
+
+    if input.is_pressed(0, ACTION_UP) then
+        vertical += 1.0
+    end
+
+    if input.is_pressed(0, ACTION_DOWN) then
+        vertical -= 1.0
+    end
+
+    return {
+        x = -math.sin(yaw) * math.cos(pitch) * forward + math.cos(yaw) * sideways,
+        y = math.cos(yaw) * math.cos(pitch) * forward + math.sin(yaw) * sideways,
+        z = math.sin(pitch) * forward + vertical,
+    }
+end
+
+-- One frame
+local function apply(): void
+
+    local n_player = Atdar.natives.player
+    local n_entity = Atdar.natives.entity
+    local player = n_player.get_id()
+    local ped = n_player.get_ped_id()
+    local now = util.current_time_millis()
+
+    if n_player.is_dead(player) then
+        state.last_death = now
+        return
+    end
+
+    if now - state.last_death <= RESPAWN_WAIT_MS then
+        return
+    end
+
+    if settings.debug and not state.forcing then
+        log:debug("ragdoll forced")
+    end
+
+    state.forcing = true
+    n_entity.ped.ragdoll.set_to_ragdoll(ped, RAGDOLL_MS, RAGDOLL_MS, 0, false, false, false)
+
+    local push = get_push()
+
+    if push.x == 0 and push.y == 0 and push.z == 0 then
+        return
+    end
+
+    local sprint = Atdar.natives.input.get_normal(0, ACTION_SPRINT)
+    local scale = settings.speed * (1.0 + (settings.sprint_multiplier - 1.0) * sprint)
+
+    n_entity.apply_force_to_center_of_mass(ped, FORCE_TYPE, push.x * scale, push.y * scale, push.z * scale, true, false, true, true)
+end
+
+-- Lets the ragdoll go: the player stands up
+local function release(): void
+
+    if state.forcing then
+        Atdar.natives.entity.ped.task.clear(Atdar.natives.player.get_ped_id(), 1)
+    end
+
+    state.forcing = false
+end
+
+-- Switches it off at once
+local function stop_now(): void
+    state.enabled = false
+    state.run += 1
+    pcall(release)
+end
+
+-- Actions
+
+-- Switches it on. A second call does nothing. With graceland on it is on, but graceland ends its ragdoll
+function module.enable(): void
+
+    if state.enabled then
+        return
+    end
+
+    if Atdar.util.game.players.user.graceland.is_enabled() then
+        log:warn("graceland is on: it ends the ragdoll of Floppy Mode, switch it off")
+    end
+
+    state.enabled = true
+    state.run += 1
+    state.last_death = 0
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        -- Switched off, or switched on again and a newer handler runs
+        if not state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(apply)
+        if not ok then
+            log:error($"floppy mode stopped\n{err}")
+            stop_now()
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Switches it off: the ragdoll is let go of
+function module.disable(): void
+
+    if not state.enabled then
+        return
+    end
+
+    stop_now()
+end
+
+util.on_stop(stop_now)
+
+return module

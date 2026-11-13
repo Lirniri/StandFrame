@@ -1,0 +1,19 @@
+# Notes for translators (tools/i18n_sync.py reads this file; the script itself reads only the .json files)
+#
+#   key: a note shown beside the key when it is missing or untranslated in a translation
+#   @same key    the text is the same in every language (a name, a format), so it isn't counted as untranslated
+
+@same menu_loader.pack.unknown_version
+@same menu_loader.state.name
+@same profile.notify.target.stand
+@same profile.notify.stand.divider
+@same profile.feed.icon.rp
+@same modules.entry.name
+@same modules.edit.done
+@same modules.call.result
+@same modules.loop.no_result
+@same arguments.types.userdata
+@same arguments.errors.bad
+@same script_menu.call_function.result
+
+menu_loader.state.name: the two %s are the name of the menu and its state, in that order

@@ -1,0 +1,176 @@
+-- What a vehicle holds in the game's memory, as functions in the way of the natives (the vehicle is the first argument):
+-- its handling data, the model info it shares with the others of its model, the gravity of its wheels. They are not natives:
+-- the offsets are those of Stand-OSS (CVehicle, CEntity, CBaseModelInfo) and belong to a build of the game, they are NOT
+-- CHECKED IN GAME. When one is wrong the functions give nil / false, and the offsets are in module.offsets to change
+-- without touching the code.
+--
+--     local mem = Atdar.natives.memory.vehicle
+--
+--     local data = mem.get_handling_data(vehicle)    -- nil when the offset is wrong or it isn't a vehicle
+--     mem.set_gravity_multiplier(vehicle, 0.5)
+local module = {}
+
+module.offsets = {
+    archetype = 0x20,        -- CEntity: the CBaseModelInfo pointer, the same for every entity of the model
+    archetype_hash = 0x18,   -- CBaseModelInfo: the hash of the model
+    handling_data = 0x960,   -- CVehicle: the CHandlingData pointer, the same for every vehicle of that handling name
+    gravity = 0xC9C,         -- CVehicle: the gravity of the wheel integrator, 9.8 is the normal one
+}
+
+-- The normal gravity (m/s^2) the multiplier is of: the value the game has in a vehicle
+module.NORMAL_GRAVITY = 9.8000002
+
+local MIN_POINTER = 0x10000
+local MAX_POINTER = 0x7FFFFFFFFFFF
+
+-- Whether the number can be a pointer to read: nil, 0 and a small number cannot
+-- @param value Anything: what was read from the memory
+function module.is_pointer(value: any): bool
+    return type(value) == "number" and value >= MIN_POINTER and value <= MAX_POINTER
+end
+
+-- Get
+
+-- The pointer of the vehicle in the game's memory, nil if it isn't a vehicle
+function module.get_pointer(vehicle: int): ?int
+
+    if not Atdar.natives.entity.vehicle.does_exist(vehicle) then
+        return nil
+    end
+
+    local pointer = Atdar.memory.handle_to_pointer(vehicle)
+
+    if not module.is_pointer(pointer) then
+        return nil
+    end
+
+    return pointer
+end
+
+-- The pointer of the handling data of the vehicle, nil if a step is wrong. Vehicles of one handling name share it
+function module.get_handling_data(vehicle: int): ?int
+
+    local pointer = module.get_pointer(vehicle)
+
+    if pointer == nil then
+        return nil
+    end
+
+    local data = memory.read_long(pointer + module.offsets.handling_data)
+
+    if not module.is_pointer(data) then
+        return nil
+    end
+
+    return data
+end
+
+-- The pointer of the model info of the vehicle, nil if a step is wrong. Every vehicle of the model shares it
+function module.get_archetype(vehicle: int): ?int
+
+    local pointer = module.get_pointer(vehicle)
+
+    if pointer == nil then
+        return nil
+    end
+
+    local archetype = memory.read_long(pointer + module.offsets.archetype)
+
+    if not module.is_pointer(archetype) then
+        return nil
+    end
+
+    return archetype
+end
+
+-- The hash of the model as the model info has it now (a swapped one when set_archetype_hash was used), nil if a step is wrong
+function module.get_archetype_hash(vehicle: int): ?int
+
+    local archetype = module.get_archetype(vehicle)
+
+    if archetype == nil then
+        return nil
+    end
+
+    return memory.read_int(archetype + module.offsets.archetype_hash) & 0xFFFFFFFF
+end
+
+-- The gravity of the wheels of the vehicle (9.8 is the normal one), nil if it isn't a vehicle
+function module.get_gravity(vehicle: int): ?float
+
+    local pointer = module.get_pointer(vehicle)
+
+    if pointer == nil then
+        return nil
+    end
+
+    return memory.read_float(pointer + module.offsets.gravity)
+end
+
+-- Set
+
+-- Writes a hash into a model info by its pointer (get_archetype), the one place that needs no vehicle: a vehicle that is gone
+-- cannot be asked, and the hash must be written back all the same
+function module.set_archetype_hash_at(archetype: int, hash: int): bool
+
+    if not module.is_pointer(archetype) then
+        return false
+    end
+
+    if hash >= 0x80000000 then
+        hash -= 0x100000000
+    end
+
+    memory.write_int(archetype + module.offsets.archetype_hash, hash)
+    return true
+end
+
+-- Writes the hash of the model into the model info: EVERY vehicle of the model has it until it is written back, and the
+-- game may use the model info under that name in between (Stand's Forge Model does it). The caller must write the old
+-- hash back (it is what get_archetype_hash gave before), with set_archetype_hash_at if the vehicle may be gone by then
+-- @return Whether it was written
+function module.set_archetype_hash(vehicle: int, hash: int): bool
+
+    local archetype = module.get_archetype(vehicle)
+
+    if archetype == nil then
+        return false
+    end
+
+    return module.set_archetype_hash_at(archetype, hash)
+end
+
+-- Writes the gravity of the wheels of the vehicle
+-- @return Whether it was written
+function module.set_gravity(vehicle: int, gravity: float): bool
+
+    local pointer = module.get_pointer(vehicle)
+
+    if pointer == nil then
+        return false
+    end
+
+    memory.write_float(pointer + module.offsets.gravity, gravity)
+    return true
+end
+
+-- The gravity of the wheels as a multiple of the normal one (1.0): through Stand's own entities.set_gravity_multiplier,
+-- which is what Stand's Gravity Multiplier calls, and by the write of the field when the script has no such function
+-- @return Whether it was set
+function module.set_gravity_multiplier(vehicle: int, multiplier: float): bool
+
+    local pointer = module.get_pointer(vehicle)
+
+    if pointer == nil then
+        return false
+    end
+
+    if entities ~= nil and entities.set_gravity_multiplier ~= nil then
+        entities.set_gravity_multiplier(pointer, multiplier)
+        return true
+    end
+
+    return module.set_gravity(vehicle, multiplier * module.NORMAL_GRAVITY)
+end
+
+return module

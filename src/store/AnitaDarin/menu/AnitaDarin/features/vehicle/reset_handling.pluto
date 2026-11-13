@@ -1,0 +1,16 @@
+local Feature = Atdar.loader.load("features/feature")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("ResetHandling")
+
+-- Gives back every handling number that the script changed, in every vehicle (Atdar.util.game.vehicle.handling.reset_all)
+return Atdar.features.add(new Feature({
+    id = "vehicle.reset_handling",
+    kind = "action",
+
+    on_trigger = function(self)
+        local count = Atdar.util.game.vehicle.handling.reset_all()
+
+        log:notify($"{self.id}: {count} handling fields given back")
+    end
+}))

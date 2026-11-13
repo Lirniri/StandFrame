@@ -1,0 +1,32 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- Less tyre burnout at the start (Atdar.util.game.vehicle.lessen_burnouts). The setting is kept here and given to it at
+-- enable, and at once when it changes while it is on. Not checked in game
+local class LessenBurnouts extends Feature
+    function __construct()
+        parent:__construct({
+            id = "vehicle.lessen_burnouts", kind = "toggle"
+        })
+
+        -- Settings
+        self.value = 0 -- the low speed traction loss left, in percent of 1.0
+    end
+
+    function set_value(value: int): void
+        self.value = value
+        Atdar.util.game.vehicle.lessen_burnouts.set_value(value / 100)
+    end
+
+    function on_enable()
+        local lessen = Atdar.util.game.vehicle.lessen_burnouts
+
+        lessen.set_value(self.value / 100)
+        lessen.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.vehicle.lessen_burnouts.disable()
+    end
+end
+
+return Atdar.features.add(new LessenBurnouts())

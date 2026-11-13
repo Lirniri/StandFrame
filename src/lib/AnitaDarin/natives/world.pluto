@@ -1,16 +1,19 @@
 local module = {}
 
 -- @desc Lowers coords.z to the ground (in place) if the point is above it by no more than max_height.
--- @param max_height Maximum height above ground to snap (false — any height)
+-- @param max_height Maximum height above ground to snap (true — any height, false — no snapping)
 -- @return true if the coordinates were snapped
-function module.snap_to_ground(coords: vector3, max_height: number|bool = false): bool
+function module.snap_to_ground(coords: vector3, max_height: number|bool = 1.3): bool
+    if max_height == false then
+        return false
+    end
 
     local found, ground_z = util.get_ground_z(coords.x, coords.y, coords.z)
     if not found or coords.z < ground_z then
         return false
     end
 
-    if max_height ~= false and found and (coords.z - ground_z) > max_height then
+    if max_height ~= true and found and (coords.z - ground_z) > max_height then
         return false
     end
 

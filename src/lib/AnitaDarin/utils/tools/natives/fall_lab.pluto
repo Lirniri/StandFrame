@@ -156,11 +156,11 @@ local function steer(ped: int): void
         return
     end
 
-    local coords = n_entity.get_coords(ped, false, 0)
+    local coords = n_entity.get_coords(ped, false, false)
 
     if mode == "position" then
-        n_entity.set_coords_no_offset(ped, coords.x + state.kept_x * frame, coords.y + state.kept_y * frame,
-            coords.z, false, false, false)
+        n_entity.set_coords_no_offset(ped, v3.new(coords.x + state.kept_x * frame, coords.y + state.kept_y * frame,
+            coords.z), false)
         return
     end
 
@@ -177,8 +177,8 @@ local function steer(ped: int): void
 
     state.kept_z = math.max(state.kept_z - GRAVITY * frame, -TERMINAL_SPEED)
     Atdar.natives.entity.ped.flags.set_reset(ped, Atdar.natives.entity.ped.flags.RESET.OVERRIDE_PHYSICS, true)
-    n_entity.set_coords_no_offset(ped, coords.x + state.kept_x * frame, coords.y + state.kept_y * frame,
-        coords.z + state.kept_z * frame, false, false, false)
+    n_entity.set_coords_no_offset(ped, v3.new(coords.x + state.kept_x * frame, coords.y + state.kept_y * frame,
+        coords.z + state.kept_z * frame), false)
 end
 
 -- One frame of start(): the protection every frame, the steering while the player falls without a ragdoll
@@ -256,7 +256,7 @@ local function sample(ms: int): table
 
     local n_entity = Atdar.natives.entity
     local ped = Atdar.natives.player.get_ped_id()
-    local coords = n_entity.get_coords(ped, false, 0)
+    local coords = n_entity.get_coords(ped, false, false)
     local velocity = n_entity.get_velocity(ped)
     local rotation = n_entity.get_rotation(ped, 2)
     local stick_x, stick_y, dir_x, dir_y = Atdar.util.game.players.user.get_move_input()

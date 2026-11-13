@@ -1,0 +1,93 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("SuperHandbrake")
+
+-- The handbrake stops the vehicle dead (Stand's Super Handbrake): while the handbrake key is held the speed of the
+-- vehicle the player drives is set to zero, or only lowered by set_strength.
+--
+--     local brake = Atdar.util.game.players.user.super_handbrake
+--
+--     brake.set_strength(1.0)                       -- 1 stops it, 0.5 takes half of the speed each frame; any time
+--     brake.set_action(brake.ACTION.VEH_BRAKE)      -- the control that brakes, the handbrake by default
+--     brake.enable()
+--     if brake.is_enabled() then ... end
+--     brake.disable()
+--
+-- Only the driver brakes. Nothing is changed that has to be given back, so disable() only stops the loop. The loop is
+-- the ticker's (a run counter, a pcall that stops it on an error, a stop with the script)
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The controls that make sense to hold (INPUT_*), what set_action takes
+local ACTION = {
+    VEH_HANDBRAKE = Atdar.natives.input.ACTION.VEH_HANDBRAKE,
+    VEH_BRAKE = Atdar.natives.input.ACTION.VEH_BRAKE,
+}
+
+-- The driver's seat
+local DRIVER_SEAT = -1
+
+-- The settings, see the set_ functions
+local settings = {
+    strength = 1.0,
+    action = ACTION.VEH_HANDBRAKE,
+    debug = false,
+}
+
+-- Whether the vehicle was held last frame, for the debug log: one line at the start of a stop
+local state = { holding = false }
+
+local function tick(): void
+
+    local n_ped = Atdar.natives.entity.ped
+    local ped = Atdar.natives.player.get_ped_id()
+
+    if not n_ped.vehicle.is_in_any(ped) then
+        state.holding = false
+        return
+    end
+
+    local n_entity = Atdar.natives.entity
+    local vehicle = n_ped.vehicle.get(ped)
+
+    if n_entity.vehicle.get_ped_in_seat(vehicle, DRIVER_SEAT, false) ~= ped
+        or not Atdar.natives.input.is_pressed(0, settings.action)
+    then
+        state.holding = false
+        return
+    end
+
+    local velocity = n_entity.get_velocity(vehicle)
+    local keep = 1.0 - settings.strength
+
+    n_entity.set_velocity(vehicle, velocity.x * keep, velocity.y * keep, velocity.z * keep)
+
+    if settings.debug and not state.holding then
+        state.holding = true
+        log:debug($"holding vehicle {vehicle}")
+    end
+end
+
+local control = ticker.make("SuperHandbrake", tick)
+
+control.ACTION = ACTION
+
+-- Settings
+
+-- How much of the speed is taken each frame while the key is held: 1 (default) stops the vehicle, 0.5 halves its speed
+-- every frame, 0 does nothing
+-- @param strength 0..1
+function control.set_strength(strength: number): void
+    settings.strength = math.min(math.max(strength, 0.0), 1.0)
+end
+
+-- The control that brakes, one of ACTION or any INPUT_ number: the handbrake by default
+function control.set_action(action: int): void
+    settings.action = action
+end
+
+-- Whether it writes when a stop begins to the log (debug level)
+function control.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+return control

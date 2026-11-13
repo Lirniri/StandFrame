@@ -1,0 +1,39 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("NoStuntJumps")
+
+-- The stunt jumps of the map do not start (Stand's Disable Stunt Jumps): every frame a started one is cancelled, so no
+-- camera, no countdown, no message. An active one is cancelled too when this is switched on in the middle of it.
+--
+--     local stunts = Atdar.util.game.players.user.no_stunt_jumps
+--
+--     stunts.enable()
+--     if stunts.is_enabled() then ... end
+--     stunts.disable()
+--
+-- Nothing is given back: a cancelled stunt jump is gone until the player drives into its start again. The loop is the
+-- ticker's (a run counter, a pcall that stops it on an error, a stop with the script)
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The settings, see the set_ functions
+local settings = { debug = false }
+
+local function tick(): void
+
+    local misc = Atdar.natives.misc
+
+    if settings.debug and misc.is_stunt_jump_in_progress() then
+        log:debug("a stunt jump cancelled")
+    end
+
+    misc.cancel_stunt_jump()
+end
+
+local control = ticker.make("NoStuntJumps", tick)
+
+-- Whether it writes each cancelled jump to the log (debug level)
+function control.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+return control

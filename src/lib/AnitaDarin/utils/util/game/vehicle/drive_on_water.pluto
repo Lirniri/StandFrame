@@ -1,0 +1,274 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("DriveOnWater")
+
+-- Drive on the water: a huge invisible block is kept just under the surface below the vehicle, and the vehicle drives on it,
+-- the way Stand's Drive On Water does (CommandDriveOnWater). It acts on the current vehicle (on_current), not on boats.
+--
+--     local water = Atdar.util.game.vehicle.drive_on_water
+--
+--     water.set_depth(0.3)           -- the settings, any time, before or after enable()
+--     water.enable()
+--     if water.is_enabled() then ... end
+--     water.disable()
+--
+-- Not tried in the game; it is a port of how Stand does it, with its pitfalls kept, each one a line of the code below:
+--  - the model of the block is only requested, never waited for: the block is made when it has loaded
+--  - the block collides with nothing the player is (set_no_collision with the player's ped: the game only checks it when
+--    the entity is set, so it is set once, at the making)
+--  - a vehicle that is partly under the surface when it is switched on is lifted onto the block, or the collision it makes
+--    pushes the camera through the world
+--  - an upside down vehicle does not get the block moved under it: each move is a new collision with its roof, and
+--    those speed the vehicle up in random directions so it can't be flipped. It moves only when far (FAR_MOVE) from
+--    the vehicle
+--  - the block follows the surface smoothly (set_smoothing) and tilts along the water a few metres ahead (the nose a
+--    little lower, NOSE_PITCH, as it looks better); with no water below, the block is removed
+--  - the block is made without a network id: it is for single player. Online it refuses to start (set_allow_online
+--    switches that check off) because nobody else sees the block
+-- The block is deleted when the vehicle is left, on disable() and when the script stops.
+local module = {}
+
+local MODEL = "ar_prop_ar_bblock_huge_01"
+
+-- How far above the vehicle (m) the probe of the water starts: the surface may be above the vehicle when it is partly under
+local PROBE_HEIGHT = 5.0
+
+-- How far ahead (m) the tilt of the block looks at the water
+local LOOK_AHEAD = 5.0
+
+-- The block tilts this many degrees more nose down than the water: it looks natural
+local NOSE_PITCH = -0.075
+
+-- A block that is not moved for an upside down vehicle is moved anyway when it is this far (m) from where it should be
+local FAR_MOVE = 5.0
+
+-- The vehicle that sinks below the block is put this high (m) over its top
+local LIFT = 0.1
+
+-- How fast the block follows the tilt of the water (0..1 of the way each frame)
+local PITCH_SMOOTHING = 0.05
+
+-- The settings, see the set_ functions
+local settings = {
+    depth = 0.30,
+    smoothing = 0.1,
+    allow_online = false,
+    debug = false,
+}
+
+-- The block (nil when there is none), the memory the probe of the water writes the height to (nil when none)
+local state = { object = nil, probe = nil }
+
+local behaviour = nil
+
+-- Settings
+
+-- How far (m) the top of the block is under the surface, 0.3 by default: the water shows over the wheels, the vehicle drives
+-- in it and not above it
+-- @param metres From 0.0
+function module.set_depth(metres: number): void
+    settings.depth = math.max(metres, 0.0)
+end
+
+-- How fast the block follows the surface, 0.1 by default: 1.0 is at once, a smaller number is a softer follow
+-- @param amount From 0.01 to 1.0
+function module.set_smoothing(amount: number): void
+    settings.smoothing = math.min(math.max(amount, 0.01), 1.0)
+end
+
+-- Whether it may start online, off by default: the block has no network id, nobody else sees it, and the others see the
+-- vehicle sink
+function module.set_allow_online(toggle: bool): void
+    settings.allow_online = toggle
+end
+
+-- Whether it writes what it does to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+
+    if behaviour ~= nil then
+        behaviour.set_debug(toggle)
+    end
+end
+
+-- Get
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return behaviour ~= nil and behaviour.is_enabled()
+end
+
+-- Whether the block exists now (under the vehicle that has water below it)
+function module.has_block(): bool
+    return state.object ~= nil
+end
+
+-- The height of the water (m) at the place, nil if there is none. The probe is made from PROBE_HEIGHT above the place
+local function get_water_height(x: float, y: float, z: float): ?float
+
+    if state.probe == nil then
+        return nil
+    end
+
+    local found = Atdar.natives.world.water.test_vertical_probe_against_all(x, y, z + PROBE_HEIGHT, 0, state.probe)
+
+    if found == 0 then
+        return nil
+    end
+
+    return memory.read_float(state.probe)
+end
+
+-- Where the entity is, not put on the ground (a block over the water would be put at the sea floor)
+local function get_pos(entity: int): table
+    return Atdar.natives.entity.get_coords(entity, false, false)
+end
+
+local function lerp(from: number, to: number, amount: number): number
+    return from + (to - from) * amount
+end
+
+-- Removes the block
+local function remove_block(): void
+
+    if state.object == nil then
+        return
+    end
+
+    local object = state.object
+
+    state.object = nil
+
+    if Atdar.natives.entity.does_exist(object) then
+        Atdar.natives.entity.delete_entity(object)
+    end
+end
+
+-- Makes the block under the vehicle; false until the model has loaded
+local function make_block(vehicle: int, x: float, y: float, z: float): bool
+
+    local n_entity = Atdar.natives.entity
+    local model = Atdar.natives.streaming.model.asset
+
+    if not model.is_loaded(MODEL) then
+        model.request(MODEL, false)
+        return false
+    end
+
+    local object = Atdar.natives.entity.object.create(Atdar.util.hash(MODEL), x, y, z, false, false, false)
+
+    if object == nil or object == 0 then
+        return false
+    end
+
+    state.object = object
+    n_entity.freeze_position(object, true)
+    n_entity.set_visible(object, false, false)
+    n_entity.set_no_collision(object, Atdar.natives.player.get_ped_id(), false)
+
+    return true
+end
+
+-- Moves the block to the water under the vehicle and tilts it along the water ahead
+local function move_block(vehicle: int, x: float, y: float, z: float): void
+
+    local n_entity = Atdar.natives.entity
+    local old = get_pos(state.object)
+    local smoothed = lerp(old.z, z, settings.smoothing)
+
+    n_entity.set_coords_no_offset(state.object, v3.new(x, y, smoothed), false)
+
+    local rot = n_entity.get_rotation(state.object, 2)
+    local yaw = n_entity.get_rotation(vehicle, 2).z
+    local forward = n_entity.get_forward_vector(vehicle)
+    local ahead_x = x + forward.x * LOOK_AHEAD
+    local ahead_y = y + forward.y * LOOK_AHEAD
+    local ahead = get_water_height(ahead_x, ahead_y, smoothed)
+    local pitch = rot.x
+
+    if ahead ~= nil then
+        pitch = lerp(rot.x, math.deg(math.atan(ahead - smoothed, LOOK_AHEAD)), PITCH_SMOOTHING) + NOSE_PITCH
+    end
+
+    n_entity.set_rotation(state.object, pitch, rot.y, yaw, 2, false)
+end
+
+-- One frame of a vehicle that is changed
+local function frame(vehicle: int, model: int, self_behaviour: table): void
+
+    local n_entity = Atdar.natives.entity
+    local pos = get_pos(vehicle)
+    local height = get_water_height(pos.x, pos.y, pos.z)
+
+    if height == nil then
+        remove_block()
+        return
+    end
+
+    local z = height - settings.depth
+
+    if state.object == nil and not make_block(vehicle, pos.x, pos.y, z) then
+        return
+    end
+
+    local block = get_pos(state.object)
+    local far = math.sqrt((block.x - pos.x) ^ 2 + (block.y - pos.y) ^ 2) > FAR_MOVE
+
+    if not n_entity.is_upsidedown(vehicle) or far then
+        move_block(vehicle, pos.x, pos.y, z)
+    end
+
+    -- The vehicle that is partly under the surface: put onto the block, or the collision pushes the camera through the world
+    block = get_pos(state.object)
+
+    if pos.z < block.z then
+        n_entity.set_coords_no_offset(vehicle, v3.new(pos.x, pos.y, block.z + LIFT), false)
+    end
+end
+
+local function change(vehicle: int, model: int, self_behaviour: table): void
+
+    state.probe = memory.alloc(4)
+    Atdar.natives.streaming.model.asset.request(MODEL, false)
+end
+
+-- Removes the block and gives the model back
+local function undo(vehicle: int, model: int, self_behaviour: table): void
+
+    remove_block()
+    Atdar.natives.streaming.model.asset.remove(MODEL)
+
+    if state.probe ~= nil then
+        memory.free(state.probe)
+        state.probe = nil
+    end
+end
+
+behaviour = Atdar.util.game.vehicle.on_current.create("DriveOnWater", {
+    except = { "aquatic" },
+    change = change,
+    undo = undo,
+    frame = frame,
+})
+
+-- Actions
+
+-- Switches it on for the vehicle the player drives, and for each one he gets into, until disable(). A second call does nothing.
+-- Online it does nothing (and says so) unless set_allow_online(true)
+function module.enable(): void
+
+    if util.is_session_started() and not settings.allow_online then
+        log:warn("not switched on: online the block is not seen by the others (set_allow_online)")
+        return
+    end
+
+    behaviour.set_debug(settings.debug)
+    behaviour.enable()
+end
+
+-- Switches it off: the block is gone
+function module.disable(): void
+    behaviour.disable()
+end
+
+return module

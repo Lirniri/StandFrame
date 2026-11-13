@@ -1,0 +1,127 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("ForgeModel")
+
+-- The vehicle the player drives is given the name of another model: the hash of its model info is overwritten, so the game
+-- (and a script that asks) takes the vehicle for the other model, after Stand's Forge Model (CommandForgeModel). It acts on
+-- the current vehicle (on_current) and is for single player only.
+--
+--     local forge = Atdar.util.game.vehicle.forge_model
+--
+--     forge.set_model("ruffian")      -- the setting, any time: it is taken at the next vehicle (or refresh)
+--     forge.enable()
+--     if forge.is_enabled() then ... end
+--     forge.disable()
+--
+-- NOT CHECKED IN GAME, and the riskiest module of the handling group, so know what it is: the model info is ONE object that
+-- every vehicle of the model shares, so EVERY vehicle of that model carries the forged name while it is on. The game's
+-- own tables of models are not changed (they find the model info by the old hash), only what is read back from it, so most
+-- of what a vehicle IS stays. The hash is written back when the player leaves the vehicle, on disable(), and when the script
+-- stops (by the pointer of the model info, so a vehicle that is gone is no problem). Stand warns that in freemode it bricks
+-- the session for the player and refuses his personal vehicle: online this refuses to start (set_allow_online switches the
+-- check off, at your own risk), and a vehicle that is not a plain model is not touched.
+local module = {}
+
+-- The settings, see the set_ functions
+local settings = {
+    model = "ruffian",
+    allow_online = false,
+    debug = false,
+}
+
+local behaviour = nil
+
+-- Settings
+
+-- The model the vehicle is taken for, "ruffian" by default (Stand's). A name or a hash of a model of the game
+function module.set_model(model: int|string): void
+    settings.model = model
+
+    if behaviour ~= nil and behaviour.is_enabled() then
+        behaviour.refresh()
+    end
+end
+
+-- Whether it may start online, off by default: it bricks the session for the player in Stand's experience
+function module.set_allow_online(toggle: bool): void
+    settings.allow_online = toggle
+end
+
+-- Whether it writes what it does to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+
+    if behaviour ~= nil then
+        behaviour.set_debug(toggle)
+    end
+end
+
+-- Get
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return behaviour ~= nil and behaviour.is_enabled()
+end
+
+-- The vehicle that is forged now, nil if none
+function module.get_vehicle(): ?int
+
+    if behaviour == nil then
+        return nil
+    end
+
+    return behaviour.get_vehicle()
+end
+
+local function change(vehicle: int, model: int, self_behaviour: table): void
+
+    local mem = Atdar.natives.memory.vehicle
+    local archetype = mem.get_archetype(vehicle)
+    local old = mem.get_archetype_hash(vehicle)
+
+    if archetype == nil or old == nil then
+        log:warn("the model info was not found: nothing is changed")
+        return
+    end
+
+    self_behaviour.store[model] = { archetype = archetype, hash = old }
+    mem.set_archetype_hash_at(archetype, Atdar.util.hash(settings.model))
+end
+
+-- Writes the old hash back, by the pointer kept: the vehicle may be gone
+local function undo(vehicle: int, model: int, self_behaviour: table): void
+
+    local kept = self_behaviour.take(model)
+
+    if kept ~= nil then
+        Atdar.natives.memory.vehicle.set_archetype_hash_at(kept.archetype, kept.hash)
+    end
+end
+
+behaviour = Atdar.util.game.vehicle.on_current.create("ForgeModel", {
+    only = { "car", "bike", "quad" },
+    change = change,
+    undo = undo,
+})
+
+-- Actions
+
+-- Switches it on for the vehicle the player drives, and for each one he gets into, until disable(). A second call does nothing.
+-- Online it does nothing (and says so) unless set_allow_online(true)
+function module.enable(): void
+
+    if util.is_session_started() and not settings.allow_online then
+        log:warn("not switched on: online it bricks the session (set_allow_online)")
+        return
+    end
+
+    behaviour.set_debug(settings.debug)
+    behaviour.enable()
+end
+
+-- Switches it off: the model info has its own hash again
+function module.disable(): void
+    behaviour.disable()
+end
+
+return module

@@ -1,0 +1,38 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The tasks of the peds around, written over their heads (Atdar.util.game.tools.task_list): a debug tool
+local class TaskList extends Feature
+    function __construct()
+        parent:__construct({
+            id = "extras.task_list", kind = "toggle"
+        })
+
+        -- Settings
+        self.range = 30 -- metres from the player
+        self.names = true -- the names of the tasks, not their numbers
+    end
+
+    function set_range(value: int): void
+        self.range = value
+        Atdar.util.game.tools.task_list.set_range(value)
+    end
+
+    function set_names(toggle: bool): void
+        self.names = toggle
+        Atdar.util.game.tools.task_list.set_names(toggle)
+    end
+
+    function on_enable()
+        local tasks = Atdar.util.game.tools.task_list
+
+        tasks.set_range(self.range)
+        tasks.set_names(self.names)
+        tasks.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.tools.task_list.disable()
+    end
+end
+
+return Atdar.features.add(new TaskList())

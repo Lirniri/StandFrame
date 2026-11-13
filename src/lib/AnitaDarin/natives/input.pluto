@@ -13,6 +13,15 @@ module.ACTION = {
     MOVE_DOWN_ONLY = 33,
     MOVE_LEFT_ONLY = 34,
     MOVE_RIGHT_ONLY = 35,
+    ATTACK = 24,
+    AIM = 25,
+    SPECIAL_ABILITY = 28,
+    DUCK = 36,
+    VEH_ACCELERATE = 71,
+    VEH_BRAKE = 72,
+    VEH_HANDBRAKE = 76,
+    CURSOR_SCROLL_UP = 241,
+    CURSOR_SCROLL_DOWN = 242,
 }
 
 -- State

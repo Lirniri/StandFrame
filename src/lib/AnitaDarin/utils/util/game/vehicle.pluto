@@ -1,0 +1,5 @@
+-- The vehicle the player drives: the numbers of its handling, the helper for a change that holds only while the player is in
+-- the vehicle, and the features built on them. Atdar.util.game.vehicle.<module>
+local module = {}
+
+return Atdar.loader.auto(module, "utils/util/game/vehicle")

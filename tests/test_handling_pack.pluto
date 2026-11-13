@@ -1,0 +1,132 @@
+-- The Handling menu of the AnitaDarin pack (menu/stand/vehicle_handling.pluto and the vehicle.* features): the features load,
+-- the menu builds from the pack's strings (English and Russian), and the items switch the functions of util.game.vehicle on
+-- and off. The game is not there: the functions are replaced by stand-ins that count their calls, the code under test is the
+-- features and the menu
+local stand = require("stand")
+stand.boot()
+for _, name in { "util", "filesystem", "lang", "color", "menu", "memory" } do
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
+end
+Atdar.profile = { get = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
+Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
+Atdar.features = Atdar.loader.load("features/registry")
+
+-- What the functions do here: nothing, but they are asked
+local calls = {}
+local function stand_in(name: string): table
+    local control = { enabled = false }
+    function control.enable() table.insert(calls, name .. ".enable") control.enabled = true end
+    function control.disable() table.insert(calls, name .. ".disable") control.enabled = false end
+    function control.is_enabled() return control.enabled end
+    setmetatable(control, { __index = function(_, key)
+        if key:sub(1, 4) == "set_" then
+            return function(...)
+                local given = {}
+                for i = 1, select("#", ...) do
+                    given[i] = tostring((select(i, ...)))
+                end
+                table.insert(calls, $"{name}.{key} {table.concat(given, ' ')}")
+            end
+        end
+        return nil
+    end })
+    return control
+end
+local vehicle = {}
+for _, name in { "drift_mode", "lessen_burnouts", "heli_stabilisation", "gravity", "drive_on_water", "forge_model" } do
+    vehicle[name] = stand_in(name)
+end
+vehicle.handling = { reset_all = || -> 7 }
+Atdar.util = { game = { vehicle = vehicle } }
+
+local packs = Atdar.loader.load("ui/logic/stand/menu_packs")
+local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
+local info = nil
+for _, pack in ipairs(packs.find_loadable_packs($"{stand.SRC}store/AnitaDarin/menu\\")) do
+    if pack.folder == "AnitaDarin" then
+        info = pack
+    end
+end
+stand.check(info ~= nil, "the AnitaDarin pack is found")
+
+local IDS = { "drift_mode", "lessen_burnouts", "heli_stabilisation", "gravity", "drive_on_water", "forge_model", "reset_handling" }
+local files = {}
+for _, path in ipairs(info.feature_files) do
+    for _, id in IDS do
+        if path:find("vehicle\\" .. id .. ".pluto", 1, true) or path:find("vehicle/" .. id .. ".pluto", 1, true) then
+            table.insert(files, path)
+        end
+    end
+end
+stand.equal(#files, 7, "seven features are in features/vehicle for the handling")
+stand.equal(packs.load_feature_files(files), 7, "they all load")
+for _, id in IDS do
+    stand.check(Atdar.features.has($"vehicle.{id}"), $"vehicle.{id} is registered")
+end
+
+local i18n = Atdar.loader.load("core/i18n")
+i18n.add_source($"{info.dir}language\\")
+local root = new MenuNode(stand.root):list("Menu")
+local vehicle_menu = root:list("Vehicle")
+local menu = loadfile($"{info.dir}menu\\stand\\vehicle_handling.pluto")()
+menu.build(vehicle_menu, {})
+local handling_list = stand.child(vehicle_menu.handle, "Handling")
+stand.check(handling_list ~= nil, "the Handling list is built")
+for _, name in { "Drift Mode", "Lessen Tyre Burnouts", "Disable Heli Auto Stabilisation", "Gravity Multiplier",
+        "Drive On Water", "Forge Model" } do
+    stand.check(stand.child(handling_list, name) ~= nil, $"with the {name} list")
+end
+
+-- A toggle starts the function and takes it off again
+local drift_list = stand.child(handling_list, "Drift Mode")
+local drift_toggle = stand.find_item(drift_list, "Drift Mode")
+stand.check(drift_toggle ~= nil and stand.find_item(drift_list, "Grip (%)") and stand.find_item(drift_list, "Preset"), "drift mode has its settings")
+calls = {}
+stand.click(drift_toggle)
+stand.check(vehicle.drift_mode.is_enabled() and calls[#calls] == "drift_mode.enable", "the toggle switches drift mode on")
+stand.check(calls[1] == "drift_mode.set_preset stand", "after its settings")
+stand.click(drift_toggle)
+stand.check(not vehicle.drift_mode.is_enabled(), "and off")
+
+-- A setting reaches the function at once, in the units of the function
+calls = {}
+Atdar.features.get("vehicle.drift_mode"):set_traction_scale(95)
+stand.equal(calls[1], "drift_mode.set_traction_scale 0.95", "percent become a multiple")
+calls = {}
+Atdar.features.get("vehicle.gravity"):set_multiplier(-50)
+stand.equal(calls[1], "gravity.set_multiplier -0.5", "gravity as Stand: percent of the normal one")
+calls = {}
+Atdar.features.get("vehicle.drive_on_water"):set_depth(45)
+stand.equal(calls[1], "drive_on_water.set_depth 0.45", "centimetres become metres")
+calls = {}
+Atdar.features.get("vehicle.forge_model"):set_model("")
+stand.equal(#calls, 0, "an empty model name is not given")
+Atdar.features.get("vehicle.forge_model"):set_model("sultan")
+stand.equal(calls[1], "forge_model.set_model sultan", "a model name is")
+calls = {}
+Atdar.features.get("vehicle.heli_stabilisation"):enable()
+stand.check(calls[1] == "heli_stabilisation.set_stabilise_scale 0.01" and calls[#calls] == "heli_stabilisation.enable",
+    "the settings are given at enable too")
+Atdar.features.get("vehicle.heli_stabilisation"):disable()
+stand.check(not vehicle.heli_stabilisation.is_enabled(), "and disable switches it off")
+Atdar.features.get("vehicle.lessen_burnouts"):set_value(20)
+stand.equal(Atdar.features.get("vehicle.lessen_burnouts").value, 20, "a setting is kept in the feature")
+
+-- The reset action
+local reset = stand.find_item(handling_list, "Reset All Handling Changes")
+stand.check(reset ~= nil, "the reset action is there")
+stand.clear_logs()
+stand.click(reset)
+stand.check(stand.find_log("7 handling fields given back"), "it gives back and says how many")
+
+-- The Russian strings are there for every item
+stand.language = "ru"
+local ru_root = new MenuNode(stand.root):list("Menu ru")
+local ru_vehicle = ru_root:list("Vehicle ru")
+menu.build(ru_vehicle, {})
+local ru_list = stand.child(ru_vehicle.handle, "Управляемость")
+stand.check(ru_list ~= nil and stand.child(ru_list, "Режим дрифта") ~= nil, "the Russian names are used")
+stand.language = "en"
+
+stand.finish()

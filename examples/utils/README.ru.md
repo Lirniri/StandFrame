@@ -5,7 +5,7 @@
 Что построено на нативах, в `Atdar.util.game`: то, что несколько нативов делают вместе. Главное здесь Graceland.
 
 Папки повторяют код: `players/user/` это `Atdar.util.game.players.user` (локальный игрок: Graceland работает только на нём,
-берёт его id и его пед), `entity/` это `Atdar.util.game.entity`, `world/` это `Atdar.util.game.world`, `tools/` это `Atdar.util.game.tools`.
+берёт его id и его пед), `entity/` это `Atdar.util.game.entity`, `world/` это `Atdar.util.game.world`, `tools/` это `Atdar.util.game.tools`, `data/` это `Atdar.util.game.data`.
 
 | Файл | Что показывает |
 |---|---|
@@ -14,11 +14,16 @@
 | `players/user/03_helpers.pluto` | Из чего собран Graceland: стик в мире, защита от падения, восстановление брони и выносливости |
 | `players/user/04_landing_roll.pluto` | `landing_roll`: держит игроку направление перед землёй, чтобы игра сделала перекат; кирпичики, из которых он собран (`natives.input.ACTION`, `press_next_frame`, `ped.is_plain_falling`, `entity.get_horizontal_speed`) |
 | `players/user/05_player_functions.pluto` | Функции игрока, собранные на тикере (`auto_heal`, `levitate`, `freecam`, `damage`, `air_swim` ...): `enable`, `disable`, `is_enabled`, числа для настройки, `outfit` и свой цикл через `ticker.make` |
+| `players/user/06_patches_and_physics.pluto` | Функции по мотивам Stand-OSS: байтовые патчи кода игры с реестром (`preserve_walk_style`, `no_hair_scale`, `wheel_on_wheels`, `natives.memory.patch.register/apply`), `rewind`, `super_drive`, `super_handbrake`, `no_stunt_jumps`, `floppy_mode`, `gravity_gun` |
 | `entity/01_ped.pluto` | `entity.ped`: выход из ragdoll с сохранением скорости, включённые флаги педа (любого), запуск и остановка анимации |
 | `entity/02_vehicle.pluto` | `entity.vehicle`: ремонт транспорта, переворот на колёса |
 | `world/01_world.pluto` | `Atdar.util.game.world`: часы, timecycle, облака, дальность прорисовки, затемнение, пешеходы |
 | `tools/01_states.pluto` | `Atdar.util.game.tools.states`: опрашивает все нативы `is_` / `has_` / `can_` и показывает, что изменилось |
 | `tools/02_fall_lab.pluto` | `Atdar.util.game.tools.fall_lab`: лаборатория управления падением без ragdoll: `arm()` / `arm_loop()`, которые сами ловят падение (или каждое падение подряд) и следят за флагами и активными задачами педа в воздухе (при желании каждый кадр) (покадровая запись со сводкой по окнам времени и изменения флагов педа в воздухе), флаги педа до и после момента, способы управления для проб, помощь с перекатом (клавиша вперёд перед землёй) |
+| `vehicle/01_handling.pluto` | `Atdar.util.game.vehicle.handling`: числа управляемости транспорта по имени (`get`, `set`, `scale`, `set_bits`), держатели и путь назад (`reset`, `reset_model`, `reset_all`) |
+| `vehicle/02_current_vehicle.pluto` | Изменения, которые держатся, пока игрок за рулём: `drift_mode`, `lessen_burnouts`, `heli_stabilisation`, `gravity`, `drive_on_water`, `forge_model`, помощник `on_current.create` и `natives.memory.holds` |
+| `tools/03_task_list.pluto` | `Atdar.util.game.tools.task_list`: что делает пед, по памяти игры (деревья задач и список интеллекта, названия из `natives.memory.task_types`), вывод в лог, задачи над головами педов вокруг |
+| `data/01_data_tables.pluto` | `Atdar.util.game.data`: компоненты оружия и транспорт по DLC (генерируются в `tools/`) и `Atdar.parsers.varint` |
 
 ## Graceland: падение с любой высоты
 
@@ -107,8 +112,54 @@ release)` и имеют общие `enable()`, `disable()` и `is_enabled()`: о
 `outfit` хранит одежду педа в `store/<script>/user/outfits/<имя>.json`. В `world/` каждый файл это одна вещь мира; `clock`
 единственный, кто не цикл (`set`, `lock`, `unlock`, `set_speed`).
 
+### По мотивам Stand-OSS: патчи, перемотка, физика
+
+Устроены как Graceland: настройки `set_*` работают до и после `enable()`, `enable()` / `disable()` / `is_enabled()`,
+`set_debug()`, всё возвращается при `disable()` и при остановке скрипта. **Ничего из этого не проверено в игре**:
+паттерны, смещения и байты скопированы из Stand-OSS.
+
+| Модуль | Что делает |
+|---|---|
+| `preserve_walk_style`, `no_hair_scale`, `wheel_on_wheels` | По патчу кода игры, сделаны через `patch_toggle` из реестра `natives.memory.patch` (паттерн, место, байты, байты, которые должны там быть до этого). `enable()` даёт `false` и ничего не пишет, если паттерн не найден или там другой код; `disable()` возвращает старые байты |
+| `rewind` | Каждый кадр записывается; удерживаемая клавиша (`set_action`) возвращает их с последнего, 2x через 5 с, 3x через 10 с, камера следует за ними (скриптовая камера, в конце возвращается игре). `set_max_frames`, `set_speed_times`, `set_restore_camera`, `is_playing`, `get_frame_count`, `clear` |
+| `super_drive` | Толчок транспорта, которым управляет игрок, пока удерживается клавиша: `set_force`, `set_use_camera`, `set_action` |
+| `super_handbrake` | Клавиша ручного тормоза останавливает транспорт: `set_strength` (1 - остановка, меньше - часть скорости), `set_action` |
+| `no_stunt_jumps` | Каждый кадр отменяет трюковые прыжки на карте |
+| `floppy_mode` | Игрок - тряпичная кукла, которую толкает стик: `set_speed`, `set_sprint_multiplier`; не вместе с graceland |
+| `gravity_gun` | Прицелиться, чтобы схватить предмет, колесо мыши двигает его, атака бросает: `set_force`, `set_collision`, `set_contrived_physics`, `set_distance` |
+
+`airwalk` уже был. В `natives.memory.task` теперь весь макет aiTask (`TREE`, `get_chain`, `get_all`, `get_info_list`,
+`get_state`), а в `natives.memory.task_types` номера 531 задачи игры (генерируются `tools/gen_task_types.py`);
+`tools.task_list` - отладочный просмотр над ними.
+
+Таблицы в `data/` и `task_types` генерируются скриптами из `tools/` по копии Stand-OSS; `tools/i18n_sync.py` показывает
+состояние файлов переводов и заполняет их (`python tools/i18n_sync.py`, справка в самом скрипте).
+
 ## `Atdar.util.game.tools.states`
 
 Опрашивает нативы про игрока и показывает разницу между двумя моментами. `info()`, `snapshot(имя?)`,
 `diff(первый?, второй?)`, `watch()`, `unwatch()`. Спрашиваются только нативы без параметров или с одним описателем.
 Удобно искать, что меняет пункт меню другого скрипта: снимок, включить, снимок, `diff`.
+
+### Управляемость и текущий транспорт
+
+`Atdar.util.game.vehicle` хранит числа управляемости транспорта и изменения, которые держатся, пока игрок за рулём.
+Устроено как Graceland (`set_*`, `enable()` / `disable()` / `is_enabled()`, `set_debug()`, всё возвращается при `disable()`
+и при остановке скрипта). **Ничего из этого не проверено в игре**: макет CHandlingData и смещения скопированы из Stand-OSS
+(в `natives.memory.handling` и `vehicle` они лежат таблицами, `offsets`, их можно менять, не трогая код).
+
+| Модуль | Что делает |
+|---|---|
+| `handling` | `get` / `set` / `set_many` / `scale` / `set_bits` поля по имени (`mass`, `drive_bias_front`, `boat.keel_sphere_size` ...), `reset` / `reset_model` / `reset_all`; держатели разделяют двух пользователей одного поля |
+| `on_current` | Помощник, на котором собрано остальное: `create(name, { only / except виды, change, undo, frame })` даёт `enable`, `disable`, `refresh`, `store[model]`; делается, пока игрок за рулём подходящего транспорта, отменяется, когда он выходит или пересаживается |
+| `drift_mode` | Дрифт-настройка и флаги Stand, с пресетами (`stand`, `loose`, `grippy`), `set_value` для каждого числа, биты `FLAG`; сцепление следует за скоростью |
+| `lessen_burnouts` | `low_speed_traction_loss_mult` уменьшен |
+| `heli_stabilisation` | Без автостабилизации вертолёта (подъёмная сила носа, стабилизация тангажа / крена / рыскания, ветер) |
+| `gravity` | Гравитация транспорта в долях от обычной через `entities.set_gravity_multiplier` Stand |
+| `drive_on_water` | Невидимый блок под поверхностью; одиночная игра, подводные камни версии Stand сохранены и перечислены в файле |
+| `forge_model` | Информация о модели транспорта получает другой хеш; рискованно, одиночная игра, возвращается по указателю |
+
+Одни данные управляемости принадлежат всему транспорту с одним именем управляемости, поэтому изменение достаётся всем,
+пока его не вернут: каждый пользователь поля это *держатель*, побеждает последний, а когда он отпускает, возвращается
+значение предыдущего или исходное. `natives.memory.holds` - то же для изменения кода игры (первый держатель делает, последний
+отпускающий отменяет). В меню: Транспорт > Управляемость.

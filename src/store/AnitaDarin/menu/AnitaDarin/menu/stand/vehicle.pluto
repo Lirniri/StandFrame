@@ -24,5 +24,7 @@ return {
             lang.translate("menu.vehicle.explode.name"),
             { "explodevehicle" }
         )
+
+        ctx.load("vehicle_handling").build(vehicle_menu, ctx)
     end,
 }

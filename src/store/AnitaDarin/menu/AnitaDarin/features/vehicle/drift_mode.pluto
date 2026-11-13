@@ -1,0 +1,53 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The car the player drives drifts (Atdar.util.game.vehicle.drift_mode). The settings are kept here and given to it at
+-- enable, and at once when they change while it is on. Not checked in game
+local class DriftMode extends Feature
+    function __construct()
+        parent:__construct({
+            id = "vehicle.drift_mode", kind = "toggle"
+        })
+
+        -- Settings
+        self.preset = "stand" -- stand, loose or grippy
+        self.traction_scale = 100 -- percent of the grip of the tune
+        self.live_traction = true -- the grip follows the speed
+        self.top_speed = true -- the top speed is raised while it drifts
+    end
+
+    function set_preset(name: string): void
+        self.preset = name
+        Atdar.util.game.vehicle.drift_mode.set_preset(name)
+    end
+
+    function set_traction_scale(value: int): void
+        self.traction_scale = value
+        Atdar.util.game.vehicle.drift_mode.set_traction_scale(value / 100)
+    end
+
+    function set_live_traction(on: bool): void
+        self.live_traction = on
+        Atdar.util.game.vehicle.drift_mode.set_live_traction(on)
+    end
+
+    function set_top_speed(on: bool): void
+        self.top_speed = on
+        Atdar.util.game.vehicle.drift_mode.set_top_speed(on)
+    end
+
+    function on_enable()
+        local drift = Atdar.util.game.vehicle.drift_mode
+
+        drift.set_preset(self.preset)
+        drift.set_traction_scale(self.traction_scale / 100)
+        drift.set_live_traction(self.live_traction)
+        drift.set_top_speed(self.top_speed)
+        drift.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.vehicle.drift_mode.disable()
+    end
+end
+
+return Atdar.features.add(new DriftMode())

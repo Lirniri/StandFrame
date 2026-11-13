@@ -1,0 +1,37 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The vehicle the player drives is taken for another model (Atdar.util.game.vehicle.forge_model). The model is kept here
+-- and given to it at enable, and at once when it changes while it is on. Not checked in game, single player only
+local class ForgeModel extends Feature
+    function __construct()
+        parent:__construct({
+            id = "vehicle.forge_model", kind = "toggle"
+        })
+
+        -- Settings
+        self.model = "ruffian" -- the name of the model it is taken for
+    end
+
+    function set_model(name: string): void
+
+        if name == "" then
+            return
+        end
+
+        self.model = name
+        Atdar.util.game.vehicle.forge_model.set_model(name)
+    end
+
+    function on_enable()
+        local forge = Atdar.util.game.vehicle.forge_model
+
+        forge.set_model(self.model)
+        forge.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.vehicle.forge_model.disable()
+    end
+end
+
+return Atdar.features.add(new ForgeModel())

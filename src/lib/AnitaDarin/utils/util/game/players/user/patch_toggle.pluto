@@ -1,0 +1,90 @@
+local Logger = Atdar.loader.load("core/logger")
+
+-- The switch of one patch of the game's code from the registry of Atdar.natives.memory.patch: enable() puts the bytes
+-- in, disable() puts the old ones back, a stopped script gives them back too (a patch left in the code outlives the
+-- script). It is the shape of the other functions of the player, but there is no tick: a patch is written once.
+--
+--     local control = Atdar.util.game.players.user.patch_toggle.make("Name", "registered_patch")
+--     control.enable()
+--     if control.is_enabled() then ... end
+--     control.disable()
+--
+-- The patterns and bytes of the registry are copied from Stand-OSS and are not checked in game: if a build of the game
+-- differs, enable() finds nothing (or sees other code) and writes nothing, and says why in the log
+local module = {}
+
+-- @param name The name in the log
+-- @param patch_name The name in the registry of Atdar.natives.memory.patch
+-- @return A table with enable(), disable(), is_enabled(), is_available(), set_debug()
+function module.make(name: string, patch_name: string): table
+
+    local log = new Logger(name)
+    local control = {}
+    local settings = { debug = false }
+    local state = { enabled = false }
+
+    -- Whether it's on
+    function control.is_enabled(): bool
+        return state.enabled
+    end
+
+    -- Whether the place of the patch is found in the game's code now (searches on the first ask)
+    function control.is_available(): bool
+        return Atdar.natives.memory.patch.get_address(patch_name) ~= nil
+    end
+
+    -- Whether it writes what it does to the log (debug level)
+    function control.set_debug(toggle: bool): void
+        settings.debug = toggle
+    end
+
+    -- Switches it on. A second call does nothing
+    -- @return Whether it is on: false when the pattern is not found or the code is not the expected one (nothing is written)
+    function control.enable(): bool
+
+        if state.enabled then
+            return true
+        end
+
+        local patch = Atdar.natives.memory.patch
+        local ok, applied = pcall(patch.apply, patch_name)
+
+        if not ok then
+            log:error($"{name} not switched on\n{applied}")
+            return false
+        end
+
+        if not applied then
+            return false
+        end
+
+        state.enabled = true
+
+        if settings.debug then
+            log:debug($"{name}: on at {patch.get_address(patch_name)}")
+        end
+
+        return true
+    end
+
+    -- Switches it off: the old bytes are back
+    function control.disable(): void
+
+        if not state.enabled then
+            return
+        end
+
+        state.enabled = false
+        pcall(Atdar.natives.memory.patch.restore, patch_name)
+
+        if settings.debug then
+            log:debug($"{name}: off")
+        end
+    end
+
+    util.on_stop(control.disable)
+
+    return control
+end
+
+return module

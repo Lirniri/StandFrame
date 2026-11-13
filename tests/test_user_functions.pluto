@@ -1,0 +1,477 @@
+-- The functions of the player and the tools built after Stand-OSS (rewind, super drive, floppy mode, gravity gun, the byte
+-- patches, the task list, ...) on a fake game: every native is a stub that records its call, the memory is a table of bytes.
+-- Nothing here says the offsets or patterns are right for the real game: that is what is not checked in game
+local stand = require("stand")
+stand.boot()
+Atdar.memory = { handle_to_pointer = |handle| -> 0x100000 + handle }
+Atdar.util = Atdar.loader.load("utils/util")
+Atdar.util.game = Atdar.loader.load("utils/util/game")
+Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
+local user = Atdar.util.game.players.user
+
+-- ─── a fake game ─────────────────────────────────────────────────────────────
+
+-- Every native records "NAMESPACE.NAME arguments"; game.returns[key] is a value or a function that gives one
+local game = { calls = {}, returns = {}, pressed = {}, normal = {}, pos = {}, rot = {}, vel = {}, in_vehicle = nil }
+_G.v3 = { new = function(x, y, z) if type(x) == "table" then return x end return { x = x, y = y, z = z } end }
+
+local function namespace(name: string): table
+    return setmetatable({}, { __index = function(_, native)
+        local key = $"{name}.{native}"
+        return function(...)
+            local args = {}
+            for i = 1, select("#", ...) do
+                args[i] = tostring((select(i, ...)))
+            end
+            table.insert(game.calls, key .. " " .. table.concat(args, " "))
+            local result = game.returns[key]
+            if type(result) == "function" then
+                return result(...)
+            end
+            if result == nil then
+                return false
+            end
+            return result
+        end
+    end })
+end
+
+for _, name in { "PLAYER", "ENTITY", "PED", "PAD", "CAM", "HUD", "MISC", "VEHICLE", "TASK", "GRAPHICS" } do
+    _G[name] = namespace(name)
+end
+
+local function count(prefix: string): int
+    local total = 0
+    for _, call in game.calls do
+        if call:sub(1, #prefix) == prefix then
+            total += 1
+        end
+    end
+    return total
+end
+
+local function last(prefix: string): ?string
+    for i = #game.calls, 1, -1 do
+        if game.calls[i]:sub(1, #prefix) == prefix then
+            return game.calls[i]
+        end
+    end
+    return nil
+end
+
+local function reset(): void
+    game.calls = {}
+    game.pressed = {}
+    game.normal = {}
+    game.in_vehicle = nil
+end
+
+game.returns["PLAYER.PLAYER_ID"] = 0
+game.returns["PLAYER.PLAYER_PED_ID"] = 100
+game.returns["PLAYER.GET_PLAYER_PED_SCRIPT_INDEX"] = 100
+game.returns["ENTITY.DOES_ENTITY_EXIST"] = true
+game.returns["ENTITY.IS_ENTITY_A_VEHICLE"] = |h| -> h >= 500
+game.returns["PAD.IS_CONTROL_PRESSED"] = |_, action| -> game.pressed[action] == true
+game.returns["PAD.IS_DISABLED_CONTROL_PRESSED"] = |_, action| -> game.pressed[action] == true
+game.returns["PAD.GET_CONTROL_NORMAL"] = |_, action| -> game.normal[action] or 0.0
+game.returns["PED.IS_PED_IN_ANY_VEHICLE"] = || -> game.in_vehicle ~= nil
+game.returns["PED.GET_VEHICLE_PED_IS_IN"] = || -> game.in_vehicle or 0
+game.returns["VEHICLE.GET_PED_IN_VEHICLE_SEAT"] = |_, seat| -> seat == -1 and 100 or 0
+game.returns["ENTITY.GET_ENTITY_COORDS"] = |h| -> game.pos[h] or { x = 0.0, y = 0.0, z = 0.0 }
+game.returns["ENTITY.GET_ENTITY_ROTATION"] = |h| -> game.rot[h] or { x = 0.0, y = 0.0, z = 0.0 }
+game.returns["ENTITY.GET_ENTITY_VELOCITY"] = |h| -> game.vel[h] or { x = 0.0, y = 0.0, z = 0.0 }
+game.returns["ENTITY.GET_ENTITY_FORWARD_VECTOR"] = || -> { x = 0.0, y = 1.0, z = 0.0 }
+game.returns["CAM.GET_FINAL_RENDERED_CAM_COORD"] = || -> { x = 5.0, y = 5.0, z = 5.0 }
+game.returns["CAM.GET_FINAL_RENDERED_CAM_ROT"] = || -> { x = 0.0, y = 0.0, z = 90.0 }
+game.returns["CAM.CREATE_CAM"] = 900
+util.get_ground_z = || -> false
+util.get_label_text = |label| -> $"text of {label}"
+
+local ACTION = Atdar.natives.input.ACTION
+
+-- ─── the registry of the byte patches ────────────────────────────────────────
+
+-- The memory is a table of bytes by address; scan gives the address that a pattern is set to
+local ram = {}
+local scans = {}
+local function poke(address: int, ...): void
+    for i, byte in { ... } do
+        ram[address + i - 1] = byte
+    end
+end
+_G.memory = {
+    read_byte = |a| -> ram[a] or 0,
+    write_ubyte = function(a, v) ram[a] = v end,
+    write_byte = function(a, v) ram[a] = v & 0xFF end,
+    read_int = function(a)
+        local value = (ram[a] or 0) | ((ram[a + 1] or 0) << 8) | ((ram[a + 2] or 0) << 16) | ((ram[a + 3] or 0) << 24)
+        return value >= 0x80000000 and value - 0x100000000 or value
+    end,
+    read_short = |a| -> (ram[a] or 0) | ((ram[a + 1] or 0) << 8),
+    read_long = function(a)
+        local value = 0
+        for i = 0, 7 do
+            value |= (ram[a + i] or 0) << (8 * i)
+        end
+        return value
+    end,
+    scan = |pattern| -> scans[pattern],
+    alloc = |size| -> 0x900000,
+    free = || -> nil,
+    write_int = function(a, v)
+        for i = 0, 3 do
+            ram[a + i] = (v >> (8 * i)) & 0xFF
+        end
+    end,
+}
+local function poke_long(address: int, value: int): void
+    for i = 0, 7 do
+        ram[address + i] = (value >> (8 * i)) & 0xFF
+    end
+end
+local patch = Atdar.natives.memory.patch
+
+-- walk style: the pattern is a call, the place is where the call goes (rip), 0x1000 plus its end
+poke(0x20000, 0xE8, 0x00, 0x01, 0x00, 0x00)                -- call +0x100
+scans["E8 ?? ?? ?? ?? 84 C0 75 27 48 8B CE"] = 0x20000
+poke(0x20105, 0x55, 0x48, 0x89, 0xE5)                       -- the code it goes to
+stand.equal(patch.get_address("preserve_walk_style"), 0x20105, "a patch of the rip kind: the address is where the call goes")
+stand.check(user.preserve_walk_style.is_available(), "is_available when the pattern is found")
+stand.check(user.preserve_walk_style.enable() and user.preserve_walk_style.is_enabled(), "enable puts the patch on")
+stand.check(ram[0x20105] == 0x31 and ram[0x20106] == 0xC0 and ram[0x20107] == 0xC3, "xor eax, eax; ret is written")
+stand.check(patch.is_patched("preserve_walk_style"), "patch.is_patched says so")
+user.preserve_walk_style.disable()
+stand.check(ram[0x20105] == 0x55 and ram[0x20106] == 0x48 and ram[0x20108] == 0xE5, "disable puts the old bytes back")
+stand.check(not user.preserve_walk_style.is_enabled(), "and it is off")
+
+-- hair scale: the place is 3 into the pattern and must hold 0F 84
+scans["48 85 DB 0F 84 D0 00 00 00 48 8B CB"] = 0x30000
+poke(0x30000, 0x48, 0x85, 0xDB, 0x0F, 0x84, 0xD0, 0x00, 0x00, 0x00)
+stand.check(user.no_hair_scale.enable(), "no_hair_scale: the expected code is there, the patch is on")
+stand.check(ram[0x30003] == 0x90 and ram[0x30004] == 0xE9 and ram[0x30005] == 0xD0, "jz becomes jmp: 90 E9, the distance stays")
+user.no_hair_scale.disable()
+stand.check(ram[0x30003] == 0x0F and ram[0x30004] == 0x84, "and it is given back")
+
+-- another build: other code at the place, nothing is written
+poke(0x30003, 0x74, 0x10)
+stand.check(not user.no_hair_scale.enable(), "the code is not the expected one: enable says false")
+stand.check(ram[0x30003] == 0x74 and ram[0x30004] == 0x10, "and nothing is written")
+stand.check(patch.get_error("no_hair_scale") == "the code there is not the expected one", "get_error says why")
+stand.check(not user.no_hair_scale.is_enabled(), "it stays off")
+
+-- a pattern that is not found
+stand.check(not user.wheel_on_wheels.enable(), "wheel_on_wheels with no pattern in the game: false")
+stand.equal(patch.get_error("wheel_on_wheels"), "the pattern is not found", "and the reason is the pattern")
+scans["74 09 41 B5 01 44 88 6D E0"] = 0x40000
+poke(0x40000, 0x74, 0x09, 0x41, 0xB5, 0x01, 0x44)
+patch.get_address("wheel_on_wheels")
+stand.equal(patch.get_address("wheel_on_wheels"), nil, "a pattern that was not found is not searched again by itself (pointers keeps it)")
+Atdar.natives.memory.pointers.rescan("patch.wheel_on_wheels")
+stand.check(user.wheel_on_wheels.enable() and ram[0x40004] == 0, "after a rescan the byte is 0")
+stand.stop()
+stand.check(ram[0x40004] == 1, "a stopped script gives the patch back")
+stand.equal(patch.write("x", 5, { 1 }), false, "write refuses an address that cannot be one")
+stand.check(patch.write("x", 0x50000, { 1, 2, 3 }) and ram[0x50001] == 2, "write puts bytes of its own")
+patch.restore("x")
+stand.check(ram[0x50001] == 0, "and restore gives them back")
+
+-- ─── the task tree ───────────────────────────────────────────────────────────
+
+local task = Atdar.natives.memory.task
+local types = Atdar.natives.memory.task_types
+local ped_pointer = 0x100000 + 100
+local intelligence = 0x200000
+poke_long(ped_pointer + task.offsets.ped_intelligence, intelligence)
+local manager = intelligence + task.offsets.task_manager
+local function make_tree(index: int, address: int, priority: int, roots: table): void
+    poke_long(manager + task.offsets.trees + index * task.offsets.tree_stride, address)
+    memory.write_int(address + task.offsets.active_priority, priority)
+    for slot, root in pairs(roots) do
+        poke_long(address + task.offsets.tasks + slot * 8, root)
+    end
+end
+local function make_task(address: int, task_type: int, sub: int): void
+    poke(address + task.offsets.type_id, task_type & 0xFF, task_type >> 8)
+    poke_long(address + task.offsets.sub_task, sub)
+    ram[address + task.offsets.task_state] = 3
+end
+make_tree(0, 0x300000, 1, { [1] = 0x400000 })
+make_task(0x400000, types.TASK.PLAYER_ON_FOOT, 0x400100)
+make_task(0x400100, types.TASK.FALL, 0)
+make_tree(1, 0x310000, 0, { [0] = 0x410000, [2] = 0x410200 })
+make_task(0x410000, types.TASK.AIM_GUN_ON_FOOT, 0)
+make_task(0x410200, types.TASK.JUMP, 0)
+
+stand.equal(types.TASK.FALL, task.TASK_FALL, "the generated task table agrees with TASK_FALL")
+stand.equal(types.get_name(423), "FALL", "get_name: a number gives its name")
+stand.equal(types.get_name(9999), "?9999", "and one without a name gives ?number")
+stand.check(types.TASK_COUNT == nil and types.COMBAT_PED_FLAG.PREVENT_CHANGING_TARGET == 67108864, "the flags of the combat task are there")
+
+local chain = task.get_chain(100)
+stand.check(#chain == 2 and chain[1].type == types.TASK.PLAYER_ON_FOOT and chain[2].type == types.TASK.FALL, "get_chain: the active priority from the root to the deepest")
+stand.equal(chain[2].state, 3, "the state of a task is read")
+stand.equal(task.get_active_priority(100), 1, "get_active_priority")
+stand.equal(#task.get_chain(100, task.TREE.SECONDARY), 1, "the secondary tree's active priority is 0: one task")
+stand.equal(task.get_chain(100, task.TREE.SECONDARY, 2)[1].type, types.TASK.JUMP, "a priority can be asked for")
+stand.equal(#task.get_chain(100, task.TREE.MOVEMENT), 0, "a tree that is not there gives nothing")
+stand.equal(#task.get_all(100), 3, "get_all: each tree and priority that has tasks (1 in the primary, 2 in the secondary)")
+stand.check(task.describe(100):find("423", 1, true), "describe keeps working")
+stand.equal(task.find_task(100, types.TASK.FALL), 0x400100, "find_task still finds the fall task")
+
+-- The list of the ped's intelligence (what Show Ped Tasks reads): the best priority only
+local info = intelligence + task.offsets.task_info
+poke_long(info, 0x500000)
+local function make_info(address: int, task_id: int, priority: int, nxt: int): void
+    memory.write_int(address + task.offsets.info_task_id, task_id)
+    memory.write_int(address + task.offsets.info_bitfield, priority << 1)
+    poke_long(address + task.offsets.info_next, nxt)
+end
+make_info(0x500000, types.TASK.FALL, 2, 0x500100)
+make_info(0x500100, types.TASK.JUMP, 2, 0x500200)
+make_info(0x500200, types.TASK.PAUSE, 3, 0)
+local list = task.get_info_list(100)
+stand.check(#list == 2 and list[1].type == types.TASK.FALL and list[2].type == types.TASK.JUMP, "get_info_list stops at a worse priority")
+
+local task_list = Atdar.util.game.tools.task_list
+stand.equal(task_list.describe(100), "PLAYER_ON_FOOT > FALL", "task_list.describe: names, the deepest last")
+task_list.set_source("info")
+stand.equal(task_list.describe(100), "FALL, JUMP", "the list of the intelligence")
+task_list.set_names(false)
+stand.equal(task_list.describe(100), $"{types.TASK.FALL}, {types.TASK.JUMP}", "without names, the numbers")
+task_list.set_names(true)
+task_list.set_source("tree")
+stand.equal(task_list.describe(200), "No tasks", "a ped with nothing found: No tasks")
+stand.clear_logs()
+task_list.dump(100)
+stand.check(stand.find_log("tree 0 priority 1: PLAYER_ON_FOOT[3] > FALL[3]"), "dump writes each tree and priority with the states")
+stand.check(stand.find_log("list: FALL, JUMP"), "and the list")
+
+-- It draws over the peds in range
+game.returns["ENTITY.GET_ENTITY_COORDS"] = |h| -> game.pos[h] or { x = 0.0, y = 0.0, z = 0.0 }
+_G.entities = { get_all_peds_as_handles = || -> { 100, 101, 102 } }
+game.pos[101] = { x = 3.0, y = 0.0, z = 0.0 }
+game.pos[102] = { x = 500.0, y = 0.0, z = 0.0 }
+reset()
+task_list.set_range(50.0)
+task_list.enable()
+stand.check(task_list.is_enabled(), "task_list.enable")
+stand.frame()
+stand.equal(count("GRAPHICS.DRAW_DEBUG_TEXT "), 2, "the text goes over the peds in range, not the far one")
+task_list.disable()
+reset()
+stand.frame()
+stand.equal(count("GRAPHICS.DRAW_DEBUG_TEXT "), 0, "disable stops the drawing")
+
+-- ─── rewind ──────────────────────────────────────────────────────────────────
+
+local rewind = user.rewind
+rewind.set_max_frames(5)
+stand.equal(rewind.set_max_frames(1), nil, "set_max_frames")
+rewind.set_max_frames(5)
+rewind.enable()
+reset()
+for frame = 1, 8 do
+    game.pos[100] = { x = frame * 1.0, y = 0.0, z = 0.0 }
+    stand.clock += 16
+    stand.frame()
+end
+stand.equal(rewind.get_frame_count(), 5, "rewind keeps at most max_frames frames, the oldest is dropped")
+stand.check(not rewind.is_playing() and count("CAM.CREATE_CAM") == 0, "nothing plays while the key is not held")
+game.pressed[ACTION.SPECIAL_ABILITY] = true
+stand.frame()
+stand.check(rewind.is_playing(), "the key held: it plays")
+stand.equal(last("ENTITY.SET_ENTITY_COORDS_NO_OFFSET"), "ENTITY.SET_ENTITY_COORDS_NO_OFFSET 100 8.0 0.0 0.0 false false false", "the newest frame is put back first")
+stand.equal(rewind.get_frame_count(), 4, "and it is used up")
+stand.check(count("CAM.CREATE_CAM") == 1 and count("CAM.RENDER_SCRIPT_CAMS true") == 1, "a scripted camera takes the view")
+stand.check(count("HUD.LOCK_MINIMAP_ANGLE 90") == 1, "the minimap is turned to the camera")
+stand.frame()
+stand.equal(last("ENTITY.SET_ENTITY_COORDS_NO_OFFSET"), "ENTITY.SET_ENTITY_COORDS_NO_OFFSET 100 7.0 0.0 0.0 false false false", "then the one before")
+stand.clock += 6000
+stand.frame()
+stand.equal(rewind.get_frame_count(), 1, "after 5 s the playback goes 2x: two frames used in one (3 left became 1)")
+stand.frame()
+stand.check(rewind.is_playing() and rewind.get_frame_count() == 0, "the last frame is put back, still playing")
+stand.frame()
+stand.check(not rewind.is_playing(), "with no frames left it stops, and records again")
+game.pressed[ACTION.SPECIAL_ABILITY] = nil
+stand.frame()
+stand.check(not rewind.is_playing(), "the key let go: the playback ends")
+stand.check(count("CAM.DESTROY_CAM") == 1 and count("HUD.UNLOCK_MINIMAP_ANGLE") == 1, "the camera and the minimap are given back")
+stand.check(rewind.get_frame_count() >= 1, "and the recording starts again from there")
+rewind.disable()
+stand.equal(rewind.get_frame_count(), 0, "disable forgets the frames")
+stand.check(not rewind.is_enabled(), "and it is off")
+
+-- A vehicle is put back with its seat
+reset()
+game.in_vehicle = 500
+rewind.enable()
+game.pos[500] = { x = 20.0, y = 0.0, z = 0.0 }
+stand.frame()
+game.pressed[ACTION.SPECIAL_ABILITY] = true
+stand.frame()
+stand.check(last("ENTITY.SET_ENTITY_COORDS_NO_OFFSET"):find("500 20.0", 1, true), "in a vehicle the vehicle is moved")
+stand.equal(last("PED.SET_PED_INTO_VEHICLE"), "PED.SET_PED_INTO_VEHICLE 100 500 -1", "and the ped is put in its seat")
+game.pressed[ACTION.SPECIAL_ABILITY] = nil
+rewind.disable()
+
+-- ─── super drive, super handbrake, no stunt jumps, floppy mode ───────────────
+
+reset()
+game.in_vehicle = 500
+local drive = user.super_drive
+drive.set_use_camera(false)
+drive.set_force(2.0)
+drive.enable()
+stand.frame()
+stand.equal(count("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS"), 0, "super drive pushes only while the key is pressed")
+game.normal[ACTION.VEH_ACCELERATE] = 0.5
+stand.frame()
+stand.equal(last("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS"), "ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS 500 1 0.0 1.0 0.0 true false true true", "the force is along the vehicle, force times the pressure")
+drive.set_use_camera(true)
+stand.frame()
+stand.check(last("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS"):find("500 1 -0.5", 1, true), "with the camera it is along the camera at half strength (yaw 90: -x)")
+game.in_vehicle = nil
+reset()
+stand.frame()
+stand.equal(count("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS"), 0, "on foot nothing is pushed")
+drive.disable()
+
+game.in_vehicle = 500
+game.vel[500] = { x = 10.0, y = 20.0, z = 0.0 }
+local brake = user.super_handbrake
+brake.enable()
+stand.frame()
+stand.equal(count("ENTITY.SET_ENTITY_VELOCITY"), 0, "super handbrake does nothing without the key")
+game.pressed[ACTION.VEH_HANDBRAKE] = true
+stand.frame()
+stand.equal(last("ENTITY.SET_ENTITY_VELOCITY"), "ENTITY.SET_ENTITY_VELOCITY 500 0.0 0.0 0.0", "the handbrake held stops the vehicle")
+brake.set_strength(0.5)
+stand.frame()
+stand.equal(last("ENTITY.SET_ENTITY_VELOCITY"), "ENTITY.SET_ENTITY_VELOCITY 500 5.0 10.0 0.0", "a strength of 0.5 halves the speed")
+brake.set_strength(7)
+stand.frame()
+stand.equal(last("ENTITY.SET_ENTITY_VELOCITY"), "ENTITY.SET_ENTITY_VELOCITY 500 0.0 0.0 0.0", "a strength above 1 is 1")
+brake.disable()
+game.in_vehicle = nil
+game.pressed = {}
+
+reset()
+local stunts = user.no_stunt_jumps
+stunts.enable()
+stand.frame(3)
+stand.equal(count("MISC.CANCEL_STUNT_JUMP"), 3, "no_stunt_jumps cancels every frame")
+stunts.disable()
+stand.frame()
+stand.equal(count("MISC.CANCEL_STUNT_JUMP"), 3, "and stops when it is off")
+
+reset()
+local floppy = user.floppy_mode
+floppy.enable()
+stand.clock += 8000
+stand.frame()
+stand.equal(count("PED.SET_PED_TO_RAGDOLL 100 1000 1000"), 1, "floppy mode puts the ped in a ragdoll every frame")
+stand.equal(count("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS"), 0, "no push without the stick")
+game.normal[ACTION.MOVE_UD] = -1.0
+floppy.set_speed(2.0)
+stand.frame()
+stand.check(last("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS"):find("100 1 ", 1, true), "the stick pushes the ped")
+floppy.disable()
+stand.check(count("TASK.CLEAR_PED_TASKS 100 1") == 1 or count("TASK.CLEAR_PED_TASKS") == 1, "at disable the ragdoll is let go of")
+game.normal = {}
+
+-- ─── gravity gun ─────────────────────────────────────────────────────────────
+
+reset()
+game.returns["PLAYER.GET_ENTITY_PLAYER_IS_FREE_AIMING_AT"] = function(_, buffer)
+    memory.write_int(buffer, 300)
+    return true
+end
+game.pos[300] = { x = 0.0, y = 8.0, z = 0.0 }
+local gun = user.gravity_gun
+gun.enable()
+stand.frame()
+stand.check(not gun.is_holding(), "the gravity gun holds nothing until Aim is pressed")
+game.pressed[ACTION.AIM] = true
+stand.frame()
+stand.check(gun.is_holding(), "aiming at a thing grabs it")
+stand.frame()
+stand.check(count("ENTITY.SET_ENTITY_HAS_GRAVITY 300 false") >= 1, "the held thing has no gravity")
+stand.check(count("ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS 300") >= 1, "and is pulled with a force")
+game.pressed[ACTION.ATTACK] = true
+stand.frame()
+stand.check(not gun.is_holding() and count("ENTITY.SET_ENTITY_COLLISION 300 true") >= 1, "Attack throws it: it is let go, with its collision back")
+game.pressed[ACTION.ATTACK] = nil
+stand.frame()
+stand.check(not gun.is_holding(), "the thing that was thrown is not grabbed again while Aim stays pressed")
+game.pressed[ACTION.AIM] = nil
+stand.frame()
+game.pressed[ACTION.AIM] = true
+stand.frame()
+stand.check(gun.is_holding(), "after Aim is let go it can be grabbed again")
+gun.disable()
+stand.check(not gun.is_holding() and count("ENTITY.SET_ENTITY_HAS_GRAVITY 300 true") >= 1, "disable lets the held thing go, with its gravity back")
+game.pressed = {}
+
+-- ─── data and tools ──────────────────────────────────────────────────────────
+
+local data = Atdar.util.game.data
+local components = data.weapon_components
+stand.check(components.count() > 300 and components.has("COMPONENT_PISTOL_CLIP_02"), "the weapon components are there")
+stand.equal(components.get_label("COMPONENT_PISTOL_CLIP_02"), "WCT_CLIP2", "a component's label")
+stand.equal(components.get_text("COMPONENT_PISTOL_CLIP_02"), "text of WCT_CLIP2", "its text from the game's labels")
+stand.equal(components.get_label("COMPONENT_NOPE"), nil, "an unknown component has none")
+stand.check(#components.find("COMPONENT_AT_") > 20, "find by a prefix")
+stand.equal(components.get_hash("COMPONENT_AT_PI_FLSH"), util.joaat("COMPONENT_AT_PI_FLSH"), "the hash of a component")
+local seen, dupes = {}, 0
+for _, entry in components.COMPONENTS do
+    if seen[entry[1]] then
+        dupes += 1
+    end
+    seen[entry[1]] = true
+end
+stand.equal(dupes, 0, "no component twice")
+
+local dlcs = data.vehicle_dlcs
+stand.equal(dlcs.get_title("mpheist4"), "1.52 Cayo Perico Heist", "the title of a DLC")
+stand.equal(dlcs.get_dlc("KOSATKA"), "mpheist4", "the DLC of a vehicle, any case")
+stand.equal(dlcs.get_dlc("nothing"), nil, "a vehicle that is not in the table")
+stand.equal(dlcs.group().mpheist4[1], "kosatka", "group lists the vehicles by their DLC")
+stand.check(dlcs.has_dlc("TitleUpdate") and not dlcs.has_dlc("nothing"), "has_dlc")
+
+local varint = Atdar.parsers.varint
+for _, value in { 0, 1, 127, 128, 300, 16383, 16384, 2 ^ 31 | 0, 2 ^ 55 | 0, 2 ^ 56 | 0, math.maxinteger, -1, math.mininteger } do
+    local packed = varint.pack_u64(value)
+    local back, at = varint.unpack_u64(packed)
+    stand.check(back == value and at == #packed + 1, $"u64 {value} survives packing in {#packed} bytes")
+end
+for _, value in { 0, 1, -1, 63, -63, 64, -64, 1000, -1000, math.maxinteger, math.mininteger } do
+    local back = varint.unpack_i64(varint.pack_i64(value))
+    stand.check(back == value, $"i64 {value} survives packing")
+end
+stand.equal(#varint.pack_u64(127), 1, "below 128 is one byte")
+stand.equal(#varint.pack_u64(128), 2, "128 is two")
+stand.equal(#varint.pack_u64(-1), 9, "a full 64-bit number is nine bytes")
+stand.equal(#varint.pack_i64(-5), 1, "a small negative number is one byte")
+local two = varint.pack_u64(300) .. varint.pack_u64(5)
+local first, at = varint.unpack_u64(two)
+stand.equal(varint.unpack_u64(two, at), 5, "the place after a number is where the next one begins")
+stand.equal(varint.unpack_u64("\x80"), nil, "bytes that end in the middle of a number give nil")
+
+-- Config flags: no number or name twice
+local flags = Atdar.natives.entity.ped.flags
+local ids, names, total = {}, {}, 0
+local clash = nil
+for name, id in flags.CONFIG do
+    total += 1
+    if ids[id] then
+        clash = $"{name} and {ids[id]} are both {id}"
+    end
+    ids[id] = name
+end
+stand.equal(clash, nil, "ped config flags: no number twice")
+stand.check(total >= 462, $"ped config flags: all of Stand's 462 are there ({total})")
+stand.equal(flags.CONFIG.IS_STANDING, 60, "ped config flags keep the game's own numbers")
+
+stand.finish()

@@ -1,0 +1,995 @@
+-- The handling data of a vehicle (the numbers of handling.meta: mass, grip, gears, flight, boat...) read and written
+-- in the game's memory by the name of a field. The layout follows Stand-OSS (CHandlingData and its sub handling data), NOT
+-- CHECKED IN GAME: when an offset is wrong, the numbers read are nonsense and a write may break the vehicle, so
+-- the way back is built in: the first write of a field keeps the old value, reset puts it back (see the holders below).
+--
+--     local handling = Atdar.natives.memory.handling
+--
+--     handling.get(vehicle, "mass")                          -- 1500.0, nil when the data or the field isn't there
+--     handling.set(vehicle, "drive_bias_front", 0.5)         -- true if it was written
+--     handling.set(vehicle, "boat.keel_sphere_size", 0.2)    -- a field of a sub handling data, by its section
+--     handling.set_bits(vehicle, "aflags", 1 << 4, true)     -- bits of a flags field
+--     handling.reset(vehicle)                                -- every field written here is as it was
+--
+-- One CHandlingData belongs to every vehicle of a handling name, so a change reaches all of them (and the vehicles
+-- spawned after it) until it is given back: the old values are kept by the address of the data, with the models they were
+-- changed through (reset_model). Several users can write one field: each is a holder with its own value, the last
+-- holder wins, and when a holder lets go the value of the one before it is back, or the original when none is left.
+-- Everything is given back when the script stops.
+local module = {}
+
+-- The values of eHandlingType: which sub handling data it is
+module.HANDLING_TYPE = {
+    BIKE = 0,
+    FLYING = 1,
+    VERTICAL_FLYING = 2,
+    BOAT = 3,
+    SEAPLANE = 4,
+    SUBMARINE = 5,
+    TRAIN = 6,
+    TRAILER = 7,
+    CAR = 8,
+    WEAPON = 9,
+    SPECIAL_FLIGHT = 10,
+}
+
+-- The offsets of the layout that are not fields
+module.offsets = {
+    sub_array = 0x158,       -- CHandlingData: the atArray of the pointers to the sub handling data { pointer, count (u16), capacity (u16) }
+    flying_type = 0xC8,      -- CFlyingHandlingData: its own eHandlingType (flying or vertical flying)
+}
+
+-- The most sub handling data that are read: the game has about 3 of them
+local MAX_SUBS = 8
+
+-- The holder that writes without naming itself
+module.DEFAULT_HOLDER = "user"
+
+-- The sections of fields: "main" is the CHandlingData itself, the others are its sub handling data, by the name of the
+-- section. A field is { name, offset, type }: float by default, "int", "uint", "hash", "ubyte" or "vec3" (3 floats)
+local SECTIONS = {}
+
+SECTIONS.main = {
+    { "handling_name", 0x08, "hash" },
+    { "mass", 0x0C },
+    { "initial_drag_coeff", 0x10 },
+    { "downforce_modifier", 0x14 },
+    { "popup_light_rotation", 0x18 },
+    { "centre_of_mass", 0x20, "vec3" },
+    { "inertia_mult", 0x30, "vec3" },
+    { "buoyancy", 0x40 },
+    { "drive_bias_rear", 0x44 },
+    { "drive_bias_front", 0x48 },
+    { "acceleration", 0x4C },
+    { "initial_drive_gears", 0x50, "ubyte" },
+    { "drive_inertia", 0x54 },
+    { "upshift", 0x58 },
+    { "downshift", 0x5C },
+    { "initial_drive_force", 0x60 },
+    { "drive_max_flat_velocity", 0x64 },
+    { "initial_drive_max_flat_vel", 0x68 },
+    { "brake_force", 0x6C },
+    { "brake_bias_front", 0x74 },
+    { "brake_bias_rear", 0x78 },
+    { "handbrake_force", 0x7C },
+    { "steering_lock", 0x80 },
+    { "steering_lock_ratio", 0x84 },
+    { "traction_curve_max", 0x88 },
+    { "traction_curve_lateral", 0x8C },
+    { "traction_curve_min", 0x90 },
+    { "traction_curve_ratio", 0x94 },
+    { "curve_lateral", 0x98 },
+    { "curve_lateral_ratio", 0x9C },
+    { "traction_spring_delta_max", 0xA0 },
+    { "traction_spring_delta_max_ratio", 0xA4 },
+    { "low_speed_traction_loss_mult", 0xA8 },
+    { "camber_stiffness", 0xAC },
+    { "traction_bias_front", 0xB0 },
+    { "traction_bias_rear", 0xB4 },
+    { "traction_loss_mult", 0xB8 },
+    { "suspension_force", 0xBC },
+    { "suspension_comp_damp", 0xC0 },
+    { "suspension_rebound_damp", 0xC4 },
+    { "suspension_upper_limit", 0xC8 },
+    { "suspension_lower_limit", 0xCC },
+    { "suspension_raise", 0xD0 },
+    { "suspension_bias_front", 0xD4 },
+    { "suspension_bias_rear", 0xD8 },
+    { "anti_rollbar_force", 0xDC },
+    { "anti_rollbar_bias_front", 0xE0 },
+    { "anti_rollbar_bias_rear", 0xE4 },
+    { "roll_centre_height_front", 0xE8 },
+    { "roll_centre_height_rear", 0xEC },
+    { "collision_damage_mult", 0xF0 },
+    { "weapon_damage_mult", 0xF4 },
+    { "deformation_mult", 0xF8 },
+    { "engine_damage_mult", 0xFC },
+    { "petrol_tank_volume", 0x100 },
+    { "oil_volume", 0x104 },
+    { "seat_offset_dist", 0x10C, "vec3" },
+    { "monetary_value", 0x118, "uint" },
+    { "model_flags", 0x124, "uint" },
+    { "handling_flags", 0x128, "uint" },
+    { "damage_flags", 0x12C, "uint" },
+    { "ai_handling_hash", 0x13C, "hash" },
+}
+
+SECTIONS.car = {
+    { "back_end_popup_car_impulse_mult", 0x08 },
+    { "back_end_popup_building_impulse_mult", 0x0C },
+    { "back_end_popup_max_delta_speed", 0x10 },
+    { "toe_front", 0x14 },
+    { "toe_rear", 0x18 },
+    { "camber_front", 0x1C },
+    { "camber_rear", 0x20 },
+    { "castor", 0x24 },
+    { "engine_resistance", 0x28 },
+    { "max_drive_bias_transfer", 0x2C },
+    { "jump_force_scale", 0x30 },
+    { "increased_ramming_force_scale", 0x34 },
+    { "advanced_flags_hash", 0x38, "hash" },
+    { "aflags", 0x3C, "uint" },
+}
+
+SECTIONS.bike = {
+    { "lean_fwd_com_mult", 0x08 },
+    { "lean_fwd_force_mult", 0x0C },
+    { "lean_bak_com_mult", 0x10 },
+    { "lean_bak_force_mult", 0x14 },
+    { "max_bank_angle", 0x18 },
+    { "full_anim_angle", 0x1C },
+    { "full_anim_angle_inv", 0x20 },
+    { "des_lean_return_frac", 0x24 },
+    { "stick_lean_mult", 0x28 },
+    { "braking_stability_mult", 0x2C },
+    { "in_air_steer_mult", 0x30 },
+    { "wheelie_balance_point", 0x34 },
+    { "stoppie_balance_point", 0x38 },
+    { "wheelie_steer_mult", 0x3C },
+    { "rear_balance_mult", 0x40 },
+    { "front_balance_mult", 0x44 },
+    { "bike_ground_side_friction_mult", 0x48 },
+    { "bike_wheel_ground_side_friction_mult", 0x4C },
+    { "bike_on_stand_lean_angle", 0x50 },
+    { "bike_on_stand_steer_angle", 0x54 },
+    { "jump_force", 0x58 },
+}
+
+SECTIONS.flying = {
+    { "thrust", 0x08 },
+    { "thrust_fall_off", 0x0C },
+    { "thrust_vectoring", 0x10 },
+    { "initial_thrust", 0x14 },
+    { "initial_thrust_fall_off", 0x18 },
+    { "yaw_mult", 0x1C },
+    { "yaw_stabilise", 0x20 },
+    { "side_slip_mult", 0x24 },
+    { "initial_yaw_mult", 0x28 },
+    { "roll_mult", 0x2C },
+    { "roll_stabilise", 0x30 },
+    { "initial_roll_mult", 0x34 },
+    { "pitch_mult", 0x38 },
+    { "pitch_stabilise", 0x3C },
+    { "initial_pitch_mult", 0x40 },
+    { "form_lift_mult", 0x44 },
+    { "attack_lift_mult", 0x48 },
+    { "attack_dive_mult", 0x4C },
+    { "gear_down_drag_v", 0x50 },
+    { "gear_down_lift_mult", 0x54 },
+    { "wind_mult", 0x58 },
+    { "move_res", 0x5C },
+    { "turn_res", 0x60, "vec3" },
+    { "speed_res", 0x70, "vec3" },
+    { "gear_door_front_open", 0x80 },
+    { "gear_door_rear_open", 0x84 },
+    { "gear_door_rear_open2", 0x88 },
+    { "gear_door_rear_m_open", 0x8C },
+    { "turbulence_magnitude_max", 0x90 },
+    { "turbulence_force_multi", 0x94 },
+    { "turbulence_roll_torque_multi", 0x98 },
+    { "turbulence_pitch_torque_multi", 0x9C },
+    { "body_damage_control_effect_mult", 0xA0 },
+    { "input_sensitivity_for_difficulty", 0xA4 },
+    { "on_ground_yaw_boost_speed_peak", 0xA8 },
+    { "on_ground_yaw_boost_speed_cap", 0xAC },
+    { "engine_off_glide_multi", 0xB0 },
+    { "afterburner_effect_radius", 0xB4 },
+    { "afterburner_effect_distance", 0xB8 },
+    { "afterburner_effect_force_multi", 0xBC },
+    { "submerge_level_to_pull_heli_underwater", 0xC0 },
+    { "extra_lift_with_roll", 0xC4 },
+    { "handling_type", 0xC8, "int" },
+}
+
+SECTIONS.boat = {
+    { "box_front_mult", 0x08 },
+    { "box_rear_mult", 0x0C },
+    { "box_side_mult", 0x10 },
+    { "sample_top", 0x14 },
+    { "sample_bottom", 0x18 },
+    { "sample_bottom_test_correction", 0x1C },
+    { "aquaplane_force", 0x20 },
+    { "aquaplane_push_water_mult", 0x24 },
+    { "aquaplane_push_water_cap", 0x28 },
+    { "aquaplane_push_water_apply", 0x2C },
+    { "rudder_force", 0x30 },
+    { "rudder_offset_submerge", 0x34 },
+    { "rudder_offset_force", 0x38 },
+    { "rudder_offset_force_z_mult", 0x3C },
+    { "wave_audio_mult", 0x40 },
+    { "move_resistance", 0x50, "vec3" },
+    { "turn_resistance", 0x60, "vec3" },
+    { "look_l_r_cam_height", 0x70 },
+    { "drag_coefficient", 0x74 },
+    { "keel_sphere_size", 0x78 },
+    { "prop_radius", 0x7C },
+    { "low_lod_ang_offset", 0x80 },
+    { "low_lod_draught_offset", 0x84 },
+    { "impeller_offset", 0x88 },
+    { "impeller_force_mult", 0x8C },
+    { "dinghy_sphere_buoy_const", 0x90 },
+    { "prow_raise_mult", 0x94 },
+    { "deep_water_sample_buoyancy_mult", 0x98 },
+    { "transmission_multiplier", 0x9C },
+    { "traction_multiplier", 0xA0 },
+}
+
+SECTIONS.seaplane = {
+    { "left_pontoon_component_id", 0x08, "int" },
+    { "right_pontoon_component_id", 0x0C, "int" },
+    { "pontoon_buoy_const", 0x10 },
+    { "pontoon_sample_size_front", 0x14 },
+    { "pontoon_sample_size_middle", 0x18 },
+    { "pontoon_sample_size_rear", 0x1C },
+    { "pontoon_length_fraction_for_samples", 0x20 },
+    { "pontoon_drag_coefficient", 0x24 },
+    { "pontoon_vertical_damping_coefficient_up", 0x28 },
+    { "pontoon_vertical_damping_coefficient_down", 0x2C },
+    { "keel_sphere_size", 0x30 },
+}
+
+SECTIONS.submarine = {
+    { "turn_res", 0x10, "vec3" },
+    { "move_res_xy", 0x20 },
+    { "move_res_z", 0x24 },
+    { "pitch_mult", 0x28 },
+    { "pitch_angle", 0x2C },
+    { "yaw_mult", 0x30 },
+    { "dive_speed", 0x34 },
+    { "roll_mult", 0x38 },
+    { "roll_stab", 0x3C },
+}
+
+SECTIONS.trailer = {
+    { "attach_limit_pitch", 0x08 },
+    { "attach_limit_roll", 0x0C },
+    { "attach_limit_yaw", 0x10 },
+    { "upright_spring_constant", 0x14 },
+    { "upright_damping_constant", 0x18 },
+    { "attached_max_distance", 0x1C },
+    { "attached_max_penetration", 0x20 },
+    { "attach_raise_z", 0x24 },
+    { "pos_constraint_mass_ratio", 0x28 },
+}
+
+SECTIONS.special_flight = {
+    { "angular_damping", 0x10, "vec3" },
+    { "angular_damping_min", 0x20, "vec3" },
+    { "linear_damping", 0x30, "vec3" },
+    { "linear_damping_min", 0x40, "vec3" },
+    { "lift_coefficient", 0x50 },
+    { "critical_lift_angle", 0x54 },
+    { "initial_lift_angle", 0x58 },
+    { "max_lift_angle", 0x5C },
+    { "drag_coefficient", 0x60 },
+    { "braking_drag", 0x64 },
+    { "max_lift_velocity", 0x68 },
+    { "min_lift_velocity", 0x6C },
+    { "roll_torque_scale", 0x70 },
+    { "max_torque_velocity", 0x74 },
+    { "min_torque_velocity", 0x78 },
+    { "yaw_torque_scale", 0x7C },
+    { "self_leveling_pitch_torque_scale", 0x80 },
+    { "self_leveling_roll_torque_scale", 0x84 },
+    { "max_pitch_torque", 0x88 },
+    { "max_steering_roll_torque", 0x8C },
+    { "pitch_torque_scale", 0x90 },
+    { "steering_torque_scale", 0x94 },
+    { "max_thrust", 0x98 },
+    { "transition_duration", 0x9C },
+    { "hover_velocity_scale", 0xA0 },
+    { "stability_assist", 0xA4 },
+    { "min_speed_for_thrust_falloff", 0xA8 },
+    { "braking_thrust_scale", 0xAC },
+    { "mode", 0xB0, "int" },
+}
+
+-- The weapons of a vehicle: six of each, the field name ends with the number 1..6
+SECTIONS.weapon = {
+    { "uv_anim_mult", 0x320 },
+    { "misc_gadget_var", 0x324 },
+    { "wheel_impact_offset", 0x328 },
+}
+
+for index = 1, 6 do
+
+    local step = (index - 1) * 4
+    local suffix = "_" .. index
+
+    table.insert(SECTIONS.weapon, { "weapon_hash" .. suffix, 0x08 + step, "hash" })
+    table.insert(SECTIONS.weapon, { "weapon_seat" .. suffix, 0x20 + step, "int" })
+    table.insert(SECTIONS.weapon, { "turret_speed" .. suffix, 0x50 + step })
+    table.insert(SECTIONS.weapon, { "turret_pitch_min" .. suffix, 0x80 + step })
+    table.insert(SECTIONS.weapon, { "turret_pitch_max" .. suffix, 0xB0 + step })
+    table.insert(SECTIONS.weapon, { "turret_cam_pitch_min" .. suffix, 0xE0 + step })
+    table.insert(SECTIONS.weapon, { "turret_cam_pitch_max" .. suffix, 0x110 + step })
+    table.insert(SECTIONS.weapon, { "bullet_velocity_for_gravity" .. suffix, 0x140 + step })
+    table.insert(SECTIONS.weapon, { "turret_pitch_forward_min" .. suffix, 0x170 + step })
+end
+
+-- The eHandlingType of the sub handling data of a section
+local SECTION_TYPE = {
+    car = module.HANDLING_TYPE.CAR,
+    bike = module.HANDLING_TYPE.BIKE,
+    flying = module.HANDLING_TYPE.FLYING,
+    boat = module.HANDLING_TYPE.BOAT,
+    seaplane = module.HANDLING_TYPE.SEAPLANE,
+    submarine = module.HANDLING_TYPE.SUBMARINE,
+    trailer = module.HANDLING_TYPE.TRAILER,
+    special_flight = module.HANDLING_TYPE.SPECIAL_FLIGHT,
+    weapon = module.HANDLING_TYPE.WEAPON,
+}
+
+-- The fields by name: { name, section, offset, type }. "section.name" is there for every field, the plain name only
+-- for a field whose name is in one section only (turn_res is in two: it is flying.turn_res and submarine.turn_res)
+local fields = {}
+
+local plain_count = {}
+
+for section, list in pairs(SECTIONS) do
+
+    for _, entry in ipairs(list) do
+        plain_count[entry[1]] = (plain_count[entry[1]] or 0) + 1
+    end
+end
+
+for section, list in pairs(SECTIONS) do
+
+    for _, entry in ipairs(list) do
+
+        local info = { name = section .. "." .. entry[1], section = section, offset = entry[2], type = entry[3] or "float" }
+
+        fields[info.name] = info
+
+        if section == "main" or plain_count[entry[1]] == 1 then
+            fields[entry[1]] = info
+        end
+    end
+end
+
+-- The vtables of the sub handling data, by section: how a sub handling data is told from the others. The game's own way
+-- is a virtual call (GetHandlingType), which a script can't make. Learned by learn_sub (a vehicle whose only sub handling
+-- data is known by its model), the flying ones are told by their own field, any can be given by set_vtable
+local vtables = {}
+
+-- The changes: the data address -> field name -> { original, model, holders = { name -> value }, order = { names } }
+local changes = {}
+
+-- The data addresses changed through a model: model hash -> data address -> true
+local by_model = {}
+
+-- Raw values
+
+-- Writes a byte: Stand has write_ubyte, and where it has not the signed write_byte gets the same byte as a signed number
+local function write_byte(address: int, value: int): void
+
+    if memory.write_ubyte ~= nil then
+        memory.write_ubyte(address, value)
+        return
+    end
+
+    if value > 127 then
+        value -= 256
+    end
+
+    memory.write_byte(address, value)
+end
+
+-- A value read from the address as its type says: a number, or { x, y, z } for vec3
+local function read_value(address: int, kind: string): any
+
+    if kind == "float" then
+        return memory.read_float(address)
+    end
+
+    if kind == "int" then
+        return memory.read_int(address)
+    end
+
+    if kind == "ubyte" then
+        return memory.read_byte(address) & 0xFF
+    end
+
+    if kind == "vec3" then
+        return { x = memory.read_float(address), y = memory.read_float(address + 4), z = memory.read_float(address + 8) }
+    end
+
+    return memory.read_int(address) & 0xFFFFFFFF
+end
+
+-- Writes a value (as read_value gives it) to the address
+local function write_value(address: int, kind: string, value: any): void
+
+    if kind == "float" then
+        memory.write_float(address, value)
+    elseif kind == "int" then
+        memory.write_int(address, value)
+    elseif kind == "ubyte" then
+        write_byte(address, value)
+    elseif kind == "vec3" then
+        memory.write_float(address, value.x)
+        memory.write_float(address + 4, value.y)
+        memory.write_float(address + 8, value.z)
+    else
+        if value >= 0x80000000 then
+            value -= 0x100000000
+        end
+
+        memory.write_int(address, value)
+    end
+end
+
+-- Whether the value fits the type of the field
+local function fits(kind: string, value: any): bool
+
+    if kind == "vec3" then
+        return type(value) == "table" and type(value.x) == "number" and type(value.y) == "number" and type(value.z) == "number"
+    end
+
+    return type(value) == "number"
+end
+
+-- Sub handling data
+
+-- The pointers in the array of the sub handling data of the data, in their order (the null ones are left out)
+local function read_subs(data: int): table
+
+    local mem_vehicle = Atdar.natives.memory.vehicle
+    local array = data + module.offsets.sub_array
+    local items = memory.read_long(array)
+    local count = memory.read_short(array + 8) & 0xFFFF
+    local result = {}
+
+    if not mem_vehicle.is_pointer(items) or count > MAX_SUBS then
+        return result
+    end
+
+    for index = 0, count - 1 do
+
+        local item = memory.read_long(items + index * 8)
+
+        if mem_vehicle.is_pointer(item) then
+            table.insert(result, item)
+        end
+    end
+
+    return result
+end
+
+-- Whether the sub handling data is the one of the section: by the vtable when it is known, the flying ones by their field
+local function is_section(sub: int, section: string): bool
+
+    if vtables[section] ~= nil then
+        return memory.read_long(sub) == vtables[section]
+    end
+
+    if section == "flying" then
+        local flying_type = memory.read_int(sub + module.offsets.flying_type)
+
+        return flying_type == module.HANDLING_TYPE.FLYING or flying_type == module.HANDLING_TYPE.VERTICAL_FLYING
+    end
+
+    return false
+end
+
+-- Tells the module which vtable the sub handling data of a section have, found by hand (the first 8 bytes of one)
+-- @param section "car", "bike", "flying", "boat", "seaplane", "submarine", "trailer", "special_flight" or "weapon"
+function module.set_vtable(section: string, vtable: int): void
+    vtables[section] = vtable
+end
+
+-- Get
+
+-- The pointer of the handling data of the vehicle, nil if it isn't there
+function module.get_data(vehicle: int): ?int
+    return Atdar.natives.memory.vehicle.get_handling_data(vehicle)
+end
+
+-- The pointer of the sub handling data of the section of the vehicle, nil if the vehicle has none or this module can't tell it
+-- from the others yet (learn_sub, set_vtable)
+-- @param section "car", "bike", "flying", "boat", "seaplane", "submarine", "trailer", "special_flight" or "weapon"
+function module.get_sub(vehicle: int, section: string): ?int
+
+    local data = module.get_data(vehicle)
+
+    if data == nil or SECTION_TYPE[section] == nil then
+        return nil
+    end
+
+    for _, sub in ipairs(read_subs(data)) do
+
+        if is_section(sub, section) then
+            return sub
+        end
+    end
+
+    return nil
+end
+
+-- The sub handling data of the vehicle as { index, pointer, vtable }, to see what a vehicle has when get_sub finds nothing
+function module.list_subs(vehicle: int): table
+
+    local data = module.get_data(vehicle)
+    local result = {}
+
+    if data == nil then
+        return result
+    end
+
+    for index, sub in ipairs(read_subs(data)) do
+        table.insert(result, { index = index, pointer = sub, vtable = memory.read_long(sub) })
+    end
+
+    return result
+end
+
+-- Learns the vtable of a section from a vehicle that has one sub handling data only and is of that section (a plain car for
+-- "car", a bike for "bike", a boat for "boat", a trailer for "trailer"): the caller knows that, the memory doesn't
+-- @return Whether the vehicle had exactly one sub handling data and it was learned
+function module.learn_sub(vehicle: int, section: string): bool
+
+    local data = module.get_data(vehicle)
+
+    if data == nil or SECTION_TYPE[section] == nil then
+        return false
+    end
+
+    local subs = read_subs(data)
+
+    if #subs ~= 1 then
+        return false
+    end
+
+    vtables[section] = memory.read_long(subs[1])
+    return true
+end
+
+-- Whether the module can tell the sub handling data of the section (a vtable is known, or the flying ones)
+function module.knows_section(section: string): bool
+    return vtables[section] ~= nil or section == "flying"
+end
+
+-- The address and the information of a field of the vehicle: { address, info }, nil if there is no such field, data or sub
+-- handling data
+local function locate(vehicle: int, name: string): ?table
+
+    local info = fields[name]
+
+    if info == nil then
+        return nil
+    end
+
+    local base = nil
+
+    if info.section == "main" then
+        base = module.get_data(vehicle)
+    else
+        base = module.get_sub(vehicle, info.section)
+    end
+
+    if base == nil then
+        return nil
+    end
+
+    return { address = base + info.offset, info = info, data = module.get_data(vehicle) }
+end
+
+-- Whether the name is a field of the layout ("mass", "boat.keel_sphere_size")
+function module.has_field(name: string): bool
+    return fields[name] ~= nil
+end
+
+-- The names of the fields of a section ("main" or a sub handling data), or all of them when there is no section, sorted
+function module.get_field_names(section: ?string): table
+
+    local names = {}
+
+    for name, info in pairs(fields) do
+
+        if section == nil or info.section == section then
+            table.insert(names, name)
+        end
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+-- The sections: "main" and the sub handling data
+function module.get_sections(): table
+
+    local names = {}
+
+    for section in pairs(SECTIONS) do
+        table.insert(names, section)
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+-- The type of a field: "float", "int", "uint", "hash", "ubyte" or "vec3", nil if there is no such field
+function module.get_field_type(name: string): ?string
+
+    if fields[name] == nil then
+        return nil
+    end
+
+    return fields[name].type
+end
+
+-- The value of the field now: a number, or { x, y, z } for a vec3 field. nil if the vehicle has no such field
+function module.get(vehicle: int, name: string): any
+
+    local place = locate(vehicle, name)
+
+    if place == nil then
+        return nil
+    end
+
+    return read_value(place.address, place.info.type)
+end
+
+-- The value of the field before this module changed it (the same as get when it wasn't changed)
+function module.get_original(vehicle: int, name: string): any
+
+    local place = locate(vehicle, name)
+
+    if place == nil then
+        return nil
+    end
+
+    if changes[place.data] ~= nil and changes[place.data][name] ~= nil then
+        return changes[place.data][name].original
+    end
+
+    return read_value(place.address, place.info.type)
+end
+
+-- Whether this module changed the field of the vehicle's handling data and has not given it back
+function module.is_changed(vehicle: int, name: string): bool
+
+    local data = module.get_data(vehicle)
+
+    if data == nil or changes[data] == nil then
+        return false
+    end
+
+    return changes[data][name] ~= nil
+end
+
+-- What is changed now, as { data pointer, field, original, holders } lines, to see what is left to give back
+function module.get_changes(): table
+
+    local result = {}
+
+    for data, list in pairs(changes) do
+
+        for name, entry in pairs(list) do
+            table.insert(result, { data = data, field = name, original = entry.original, holders = #entry.order })
+        end
+    end
+
+    return result
+end
+
+-- Writes
+
+-- What a field has with its holders: the original, then each holder in order, a value replacing it, bits put on top of it
+local function effective(entry: table): any
+
+    local value = entry.original
+
+    for _, holder in ipairs(entry.order) do
+
+        local item = entry.holders[holder]
+
+        if item.value ~= nil then
+            value = item.value
+        else
+            value = (value | item.set) & ~item.clear
+        end
+    end
+
+    return value
+end
+
+-- The entry of the field of the data with the original value, made when the field is changed for the first time. It keeps
+-- where the field is (address, type), so it can be given back without the vehicle
+local function get_entry(place: table, name: string, model: int): table
+
+    local list = changes[place.data]
+
+    if list == nil then
+        list = {}
+        changes[place.data] = list
+    end
+
+    if list[name] == nil then
+        list[name] = {
+            original = read_value(place.address, place.info.type), model = model,
+            address = place.address, kind = place.info.type, holders = {}, order = {},
+        }
+    end
+
+    if by_model[model] == nil then
+        by_model[model] = {}
+    end
+
+    by_model[model][place.data] = true
+
+    return list[name]
+end
+
+-- Puts the holder last in the order of the entry (the last holder is the one that counts)
+local function touch(entry: table, holder: string): void
+
+    for index, name in ipairs(entry.order) do
+
+        if name == holder then
+            table.remove(entry.order, index)
+            break
+        end
+    end
+
+    table.insert(entry.order, holder)
+end
+
+-- Writes the value that the holders of the entry give now
+local function apply(entry: table): void
+    write_value(entry.address, entry.kind, effective(entry))
+end
+
+-- Takes the holder out of the entry's order
+local function drop_holder(entry: table, holder: string): void
+
+    entry.holders[holder] = nil
+
+    for index, held in ipairs(entry.order) do
+
+        if held == holder then
+            table.remove(entry.order, index)
+            break
+        end
+    end
+end
+
+-- After a holder is gone: what the others hold is written, or the original value when none is left (the entry is dropped)
+local function settle(data: int, name: string): void
+
+    local entry = changes[data][name]
+
+    if #entry.order > 0 then
+        apply(entry)
+        return
+    end
+
+    write_value(entry.address, entry.kind, entry.original)
+    changes[data][name] = nil
+
+    if next(changes[data]) == nil then
+        changes[data] = nil
+    end
+end
+
+-- Sets the field of the vehicle's handling data to the value. The old value is kept the first time (reset gives it back).
+-- The vehicles of the same handling name change with it
+-- @param value A number, or { x = , y = , z = } for a vec3 field
+-- @param holder Who writes: another holder's value is not lost, see release; "user" by default
+-- @return Whether it was written: not when the field, the data or the value isn't right
+function module.set(vehicle: int, name: string, value: any, holder: string = module.DEFAULT_HOLDER): bool
+
+    local place = locate(vehicle, name)
+
+    if place == nil or not fits(place.info.type, value) then
+        return false
+    end
+
+    local entry = get_entry(place, name, Atdar.natives.entity.get_model(vehicle))
+
+    entry.holders[holder] = { value = value }
+    touch(entry, holder)
+    apply(entry)
+
+    return true
+end
+
+-- Puts bits of an integer field on or off and keeps the others as they are: flags are shared by holders better than
+-- numbers (two holders put different bits and both stay). The old value is kept as with set
+-- @param on true puts the bits on, false takes them out
+-- @return Whether it was written: not for a field that isn't whole, or when the field or the data isn't there
+function module.set_bits(vehicle: int, name: string, bits: int, on: bool, holder: string = module.DEFAULT_HOLDER): bool
+
+    local place = locate(vehicle, name)
+
+    if place == nil or place.info.type == "float" or place.info.type == "vec3" then
+        return false
+    end
+
+    local entry = get_entry(place, name, Atdar.natives.entity.get_model(vehicle))
+    local item = entry.holders[holder]
+
+    if item == nil or item.value ~= nil then
+        item = { set = 0, clear = 0 }
+    end
+
+    if on then
+        item.set = item.set | bits
+        item.clear = item.clear & ~bits
+    else
+        item.clear = item.clear | bits
+        item.set = item.set & ~bits
+    end
+
+    entry.holders[holder] = item
+    touch(entry, holder)
+    apply(entry)
+
+    return true
+end
+
+-- The holder lets go of the field: what the others hold is written, or the original value when none is left
+-- @return Whether the holder had changed the field
+function module.release(vehicle: int, name: string, holder: string = module.DEFAULT_HOLDER): bool
+
+    local place = locate(vehicle, name)
+
+    if place == nil or changes[place.data] == nil then
+        return false
+    end
+
+    local entry = changes[place.data][name]
+
+    if entry == nil or entry.holders[holder] == nil then
+        return false
+    end
+
+    drop_holder(entry, holder)
+    settle(place.data, name)
+
+    return true
+end
+
+-- The names of the fields changed in the data
+local function changed_names(data: int): table
+
+    local names = {}
+
+    for name in pairs(changes[data] or {}) do
+        table.insert(names, name)
+    end
+
+    return names
+end
+
+-- The holder lets go of every field it changed in the handling data of the vehicle
+-- @param holder Who lets go; nil - every holder, so every field is as it was
+-- @return How many fields were given back
+function module.reset(vehicle: int, holder: ?string): int
+
+    local data = module.get_data(vehicle)
+    local count = 0
+
+    if data == nil then
+        return 0
+    end
+
+    for _, name in ipairs(changed_names(data)) do
+
+        local entry = changes[data][name]
+
+        if holder == nil then
+            entry.holders = {}
+            entry.order = {}
+            settle(data, name)
+            count += 1
+        elseif entry.holders[holder] ~= nil then
+            drop_holder(entry, holder)
+            settle(data, name)
+            count += 1
+        end
+    end
+
+    return count
+end
+
+-- The holder lets go of everything it changed, in every handling data: needs no vehicle, so it works when the vehicle is gone
+-- (the data stays in the game)
+-- @param model Only the fields first changed through this model; nil - all of them
+-- @return How many fields were given back
+function module.release_holder(holder: string, model: ?int): int
+
+    local datas = {}
+    local count = 0
+
+    for data in pairs(changes) do
+        table.insert(datas, data)
+    end
+
+    for _, data in ipairs(datas) do
+
+        for _, name in ipairs(changed_names(data)) do
+
+            local entry = changes[data][name]
+
+            if entry.holders[holder] ~= nil and (model == nil or entry.model == model) then
+                drop_holder(entry, holder)
+                settle(data, name)
+                count += 1
+            end
+        end
+    end
+
+    return count
+end
+
+-- Gives back everything that was changed through the model of the vehicle, whatever holds it: needs no vehicle of that
+-- model, the data stays in the game
+-- @return How many fields were given back
+function module.reset_model(model: int): int
+
+    local count = 0
+
+    for data in pairs(by_model[model] or {}) do
+
+        for _, name in ipairs(changed_names(data)) do
+
+            local entry = changes[data][name]
+
+            if entry.model == model then
+                entry.holders = {}
+                entry.order = {}
+                settle(data, name)
+                count += 1
+            end
+        end
+    end
+
+    by_model[model] = nil
+
+    return count
+end
+
+-- Gives back everything this module changed, in every vehicle
+-- @return How many fields were given back
+function module.reset_all(): int
+
+    local count = 0
+    local models = {}
+
+    for model in pairs(by_model) do
+        table.insert(models, model)
+    end
+
+    for _, model in ipairs(models) do
+        count += module.reset_model(model)
+    end
+
+    return count
+end
+
+util.on_stop(module.reset_all)
+
+return module

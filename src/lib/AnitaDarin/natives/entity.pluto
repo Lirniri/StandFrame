@@ -22,7 +22,7 @@ function module.is_in_air(entity: int)
 end
 
 -- @param max_height Maximum height above ground still counted as "on ground" (false — any height)
-function module.is_on_ground(entity: int, alive, max_height: number|bool = false): bool
+function module.is_on_ground(entity: int, alive, max_height: number|bool = 1.3): bool
     if module.is_in_air(entity) then
         return false
     end
@@ -236,15 +236,12 @@ function module.get_rotation_velocity(entity: int): vector3
     return ENTITY.GET_ENTITY_ROTATION_VELOCITY(entity)
 end
 
--- @param from_eulers Worked out from its rotation (GET_ENTITY_HEADING_FROM_EULERS)
-function module.get_heading(
-    entity: int,
-    from_eulers: bool = false
-): float
-    if from_eulers then
-        return ENTITY.GET_ENTITY_HEADING_FROM_EULERS(entity)
-    end
+function module.get_heading(entity: int): float 
     return ENTITY.GET_ENTITY_HEADING(entity)
+end
+
+function module.get_heading_from_eulers(entity)
+    return ENTITY.GET_ENTITY_HEADING_FROM_EULERS(entity)
 end
 
 -- The model's hash
@@ -271,11 +268,11 @@ function module.get_max_health(entity: int): int
 end
 
 -- @desc Returns the coordinates of an entity, optionally snapped to the ground.
--- @param max_height Maximum height above ground to snap (false — snap at any height)
+-- @param max_height Maximum height above ground to snap (true — any height, false — don't snap)
 function module.get_coords(
     entity: int, alive: bool = false, max_height: number|bool = 1.3
 ): ?vector3
-    -- body
+    -- body function
     if alive and module.is_dead(entity) then
         return nil
     end
@@ -537,8 +534,7 @@ end
 
 -- @param "value" Health to set; nil or true restores the maximum
 function module.set_max_health(
-    entity: int, value: ?int, 
-    instigator: int = 0, weapon_type: int = 0
+    entity: int, value: ?int
 ): void
     -- body
     if value == nil or value == true then
@@ -558,7 +554,7 @@ function module.set_coords(entity: int,
     y_axis: bool = false,
     z_axis: bool = false
 ): bool
-    -- body
+    -- body function
     if coords == nil then
         return false
     end
@@ -638,11 +634,23 @@ function module.set_coords_without_plants_reset(
 end
 
 -- Axis - Invert Axis Flags
-function module.set_coords_no_offset(
-    entity: int, x_pos: float, y_pos: float, z_pos: float, x_axis: bool, y_axis: bool, z_axis: bool
-): void
-    -- body function:
-    ENTITY.SET_ENTITY_COORDS_NO_OFFSET(entity, x_pos, y_pos, z_pos, x_axis, y_axis, z_axis)
+function module.set_coords_no_offset(entity: int,
+    coords: ?vector3,
+    max_height: number|bool = 1.3,
+    x_axis: bool = false,
+    y_axis: bool = false,
+    z_axis: bool = false
+): bool
+    -- body function
+    if coords == nil then
+        return false
+    end
+
+    local pos = v3.new(coords)
+    world.snap_to_ground(pos, max_height)
+
+    ENTITY.SET_ENTITY_COORDS_NO_OFFSET(entity, pos.x, pos.y, pos.z, x_axis, y_axis, z_axis)
+    return true
 end
 
 function module.set_dynamic(entity: int, toggle: bool): void

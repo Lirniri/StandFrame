@@ -1,0 +1,15 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- Cancels the stunt jumps of the map every frame while it is on
+return Atdar.features.add(new Feature({
+    id = "extras.no_stunt_jumps",
+    kind = "toggle",
+
+    on_enable = function(self)
+        Atdar.util.game.players.user.no_stunt_jumps.enable()
+    end,
+
+    on_disable = function(self)
+        Atdar.util.game.players.user.no_stunt_jumps.disable()
+    end,
+}))

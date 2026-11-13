@@ -1,0 +1,38 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- A push on the driven vehicle while the accelerate key is held (Atdar.util.game.players.user.super_drive)
+local class SuperDrive extends Feature
+    function __construct()
+        parent:__construct({
+            id = "extras.super_drive", kind = "toggle"
+        })
+
+        -- Settings
+        self.force = 300 -- the push of a full press, in percent of 1.0
+        self.use_camera = true -- push where the camera looks, not where the vehicle points
+    end
+
+    function set_force(value: int): void
+        self.force = value
+        Atdar.util.game.players.user.super_drive.set_force(value / 100)
+    end
+
+    function set_use_camera(toggle: bool): void
+        self.use_camera = toggle
+        Atdar.util.game.players.user.super_drive.set_use_camera(toggle)
+    end
+
+    function on_enable()
+        local drive = Atdar.util.game.players.user.super_drive
+
+        drive.set_force(self.force / 100)
+        drive.set_use_camera(self.use_camera)
+        drive.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.players.user.super_drive.disable()
+    end
+end
+
+return Atdar.features.add(new SuperDrive())

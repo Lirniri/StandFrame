@@ -6,7 +6,27 @@
 --
 --     patch.nop("roll", address, 9)     -- 9 bytes at the address do nothing now
 --     patch.restore("roll")             -- the old bytes are back
+--
+-- Bytes of your own, and patches that are found by a pattern (the registry, like the Bytepatch commands of Stand-OSS: the
+-- pattern, where in it the patched place is, the bytes to put, and the bytes that must be there before):
+--
+--     patch.write("skip", address, { 0x31, 0xC0, 0xC3 })   -- xor eax, eax; ret
+--     patch.register("hair_scale", "48 85 DB 0F 84 D0 00 00 00 48 8B CB", { 0x90, 0xE9 }, { at = 3, expected = { 0x0F, 0x84 } })
+--     patch.apply("hair_scale")      -- false when the pattern isn't found or the code is not what was expected
+--     patch.restore("hair_scale")
+--
+-- The patterns and the bytes of the registry come from Stand-OSS and are not checked in game
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("MemoryPatch")
+
 local module = {}
+
+-- How the place of a registered patch is found (the same words as Atdar.natives.memory.pointers.KIND)
+module.KIND = {
+    ADDRESS = "address", -- the pattern itself, "at" bytes into it
+    RIP = "rip",         -- the place a call or lea found by the pattern points at, the number is "at" bytes into it
+}
 
 local NOP = 0x90
 
@@ -37,27 +57,45 @@ end
 
 -- Actions
 
--- Makes count bytes at the address NOP (they do nothing), keeping what was there
--- @return Whether it was done: not when the name is on already or the address cannot be one
-function module.nop(key: string, address: int, count: int): bool
+-- Writes the bytes at the address, keeping what was there under the name
+-- @param bytes A list of numbers 0..255
+-- @return Whether it was done: not when the name is on already, the address cannot be one or there are no bytes
+function module.write(key: string, address: int, bytes: table): bool
 
-    if patches[key] ~= nil or type(address) ~= "number" or address < 0x10000 or count < 1 then
+    if patches[key] ~= nil or type(address) ~= "number" or address < 0x10000 or #bytes < 1 then
         return false
     end
 
     local saved = {}
 
-    for index = 0, count - 1 do
+    for index = 0, #bytes - 1 do
         saved[index + 1] = memory.read_byte(address + index) & 0xFF
     end
 
     patches[key] = { address = address, saved = saved }
 
-    for index = 0, count - 1 do
-        write_byte(address + index, NOP)
+    for index, byte in ipairs(bytes) do
+        write_byte(address + index - 1, byte)
     end
 
     return true
+end
+
+-- Makes count bytes at the address NOP (they do nothing), keeping what was there
+-- @return Whether it was done: not when the name is on already or the address cannot be one
+function module.nop(key: string, address: int, count: int): bool
+
+    if count < 1 then
+        return false
+    end
+
+    local bytes = {}
+
+    for index = 1, count do
+        bytes[index] = NOP
+    end
+
+    return module.write(key, address, bytes)
 end
 
 -- Puts the old bytes of the patch back
@@ -92,6 +130,135 @@ function module.restore_all(): void
         module.restore(key)
     end
 end
+
+-- Registry
+
+-- The registered patches by name: { pattern, kind, at, extra, bytes, expected, error, stored }
+local registry = {}
+
+-- Says how to find a patch and what to write, without touching the game; the same name registered again replaces it
+-- (and is searched anew). The place is found by the pattern at the first apply or get_address, through
+-- Atdar.natives.memory.pointers (under the name patch.<name>)
+-- @param bytes The bytes to write
+-- @param options at (bytes from the start of the pattern to the place, 0), kind (module.KIND, "address"), extra (RIP:
+-- the bytes that follow the number in the instruction, 0), expected (the bytes that must be there now, nil: not checked)
+function module.register(name: string, pattern: string, bytes: table, options: table = {}): void
+
+    registry[name] = {
+        pattern = pattern, kind = options.kind ?? module.KIND.ADDRESS, at = options.at ?? 0, extra = options.extra ?? 0,
+        bytes = bytes, expected = options.expected, error = nil, stored = false,
+    }
+end
+
+-- Whether the name is registered
+function module.is_registered(name: string): bool
+    return registry[name] ~= nil
+end
+
+-- The address of the place of a registered patch, nil if the pattern isn't found (searched once, see pointers)
+function module.get_address(name: string): ?int
+
+    local entry = registry[name]
+
+    if entry == nil then
+        return nil
+    end
+
+    local pointers = Atdar.natives.memory.pointers
+
+    -- Handed to pointers on the first use, not at the registration: a place that is never asked for is never listed
+    -- or searched. An address is the start of the pattern ("at" is added here, so one search serves any place in it)
+    if not entry.stored then
+        entry.stored = true
+
+        if entry.kind == module.KIND.RIP then
+            pointers.store($"patch.{name}", entry.pattern, pointers.KIND.RIP, entry.at, 4, entry.extra)
+        else
+            pointers.store($"patch.{name}", entry.pattern, pointers.KIND.ADDRESS)
+        end
+    end
+
+    local address = pointers.get($"patch.{name}")
+
+    if address == nil then
+        return nil
+    end
+
+    if entry.kind == module.KIND.ADDRESS then
+        return address + entry.at
+    end
+
+    return address
+end
+
+-- Why the last apply of the name failed, nil if it did not
+function module.get_error(name: string): ?string
+
+    local entry = registry[name]
+
+    if entry == nil then
+        return "not registered"
+    end
+
+    return entry.error
+end
+
+-- Puts the bytes of a registered patch in the code of the game. Nothing is written when the pattern is not found or
+-- the bytes there are not the expected ones (another build of the game): get_error says which
+-- @return Whether the patch is on now (also when it was on already)
+function module.apply(name: string): bool
+
+    local entry = registry[name]
+
+    if entry == nil then
+        log:warn($"{name}: not registered")
+        return false
+    end
+
+    if patches[name] ~= nil then
+        return true
+    end
+
+    local address = module.get_address(name)
+
+    if address == nil then
+        entry.error = "the pattern is not found"
+        log:warn($"{name}: {entry.error}")
+        return false
+    end
+
+    if entry.expected ~= nil then
+        for index, byte in ipairs(entry.expected) do
+            if memory.read_byte(address + index - 1) & 0xFF ~= byte then
+                entry.error = "the code there is not the expected one"
+                log:warn($"{name}: {entry.error}")
+                return false
+            end
+        end
+    end
+
+    if not module.write(name, address, entry.bytes) then
+        entry.error = "the bytes could not be written"
+        log:warn($"{name}: {entry.error}")
+        return false
+    end
+
+    entry.error = nil
+    return true
+end
+
+-- The patches of Stand-OSS that are known (pattern, place and bytes copied from its source, not checked in game):
+-- Atdar.util.game.players.user has a switch for each
+
+-- CPed::WantsToUseActionMode answers false at once: xor eax, eax; ret. The ped keeps its walk style in a fight
+module.register("preserve_walk_style", "E8 ?? ?? ?? ?? 84 C0 75 27 48 8B CE", { 0x31, 0xC0, 0xC3 }, { kind = module.KIND.RIP, at = 1 })
+
+-- The jump that skips the hair scaling in a vehicle becomes a jump that always does: 0F 84 (jz rel32) -> 90 E9 (nop, jmp rel32)
+module.register("no_hair_scale", "48 85 DB 0F 84 D0 00 00 00 48 8B CB", { 0x90, 0xE9 }, { at = 3, expected = { 0x0F, 0x84 } })
+
+-- The 1 of "mov r13b, 1" in the update of the weapon wheel (the "ped is in a vehicle" value) becomes 0: the wheel
+-- treats the player as on foot, so the weapons can be chosen while driving
+module.register("wheel_on_wheels", "74 09 41 B5 01 44 88 6D E0", { 0x00 }, { at = 4, expected = { 0x01 } })
 
 util.on_stop(module.restore_all)
 

@@ -1,0 +1,347 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Rewind")
+
+-- Time goes back for the player (Stand's Rewind): every frame the position of the player, or of his vehicle, is written
+-- down; while the key is held the last written positions are put back, newest first, and the camera follows what it
+-- saw then. The longer the key is held the faster it goes: 1x, then 2x after 5 s, then 3x after 10 s. Letting go
+-- of the key ends it where it is, and recording starts again from there.
+--
+--     local rewind = Atdar.util.game.players.user.rewind
+--
+--     rewind.set_action(rewind.ACTION.SPECIAL_ABILITY)   -- the control to hold, the settings any time, before or after enable()
+--     rewind.set_max_frames(3000)                        -- how far back it can go, in frames
+--     rewind.enable()
+--     if rewind.is_playing() then ... end
+--     rewind.disable()
+--
+-- Only the position, the rotation and the speed (and the seat in a vehicle) are put back, not the health, the damage
+-- of a vehicle or the world around. In a vehicle that is not the player's to move (another owner in a session) nothing
+-- is restored, as the game refuses it: it is made for the single player. The camera is a scripted camera for the time of
+-- the playback (as in freecam) and the minimap is turned to it; both are given back at the end.
+local module = {}
+
+-- The controls that make sense to hold (INPUT_*), what set_action takes
+module.ACTION = {
+    SPECIAL_ABILITY = Atdar.natives.input.ACTION.SPECIAL_ABILITY,
+    AIM = Atdar.natives.input.ACTION.AIM,
+    VEH_HANDBRAKE = Atdar.natives.input.ACTION.VEH_HANDBRAKE,
+}
+
+-- How many frames are kept at most: the oldest is dropped (Stand keeps 20000, about 5 minutes at 60 fps)
+local DEFAULT_MAX_FRAMES = 20000
+
+-- set_max_frames below this is raised to it
+local MIN_FRAMES = 2
+
+-- The seats looked through to find the one the ped sits in (-1 is the driver)
+local FIRST_SEAT = -1
+local LAST_SEAT = 15
+
+-- How long (ms) the key is held before the playback goes 2x and 3x
+local DEFAULT_SECOND_SPEED_MS = 5000
+local DEFAULT_THIRD_SPEED_MS = 10000
+
+-- The settings, see the set_ functions
+local settings = {
+    action = module.ACTION.SPECIAL_ABILITY,
+    max_frames = DEFAULT_MAX_FRAMES,
+    second_speed_ms = DEFAULT_SECOND_SPEED_MS,
+    third_speed_ms = DEFAULT_THIRD_SPEED_MS,
+    restore_camera = true,
+    debug = false,
+}
+
+-- Whether it's on, which run of the tick handler is the wanted one; the written frames: a ring in frames[first..last],
+-- the newest at last; whether it plays and since when (ms), at what speed, the scripted camera of the playback
+local state = {
+    enabled = false, run = 0,
+    frames = {}, first = 1, last = 0,
+    playing = false, playing_since = 0, speed = 1, cam = nil,
+}
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return state.enabled
+end
+
+-- Whether the positions are being put back now
+function module.is_playing(): bool
+    return state.playing
+end
+
+-- How many frames are written down now
+function module.get_frame_count(): int
+    return state.last - state.first + 1
+end
+
+-- Settings
+
+-- The control that is held to go back, SPECIAL_ABILITY by default (one of module.ACTION, or any INPUT_ number)
+function module.set_action(action: int): void
+    settings.action = action
+end
+
+-- How many frames are kept (the oldest is dropped), 20000 by default. A smaller number than is written now drops the
+-- oldest at the next frame
+-- @param frames From 2
+function module.set_max_frames(frames: int): void
+    settings.max_frames = math.max(frames, MIN_FRAMES)
+end
+
+-- How long (ms) the key is held before it goes 2x and before 3x, 5000 and 10000 by default. 3x is never before 2x
+function module.set_speed_times(second_ms: int, third_ms: int): void
+    settings.second_speed_ms = second_ms
+    settings.third_speed_ms = math.max(third_ms, second_ms)
+end
+
+-- Whether the camera goes back with the player, on by default. Off: the game's camera stays behind the player as it is
+function module.set_restore_camera(toggle: bool): void
+    settings.restore_camera = toggle
+end
+
+-- Whether it writes the start and the end of a playback to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+-- Actions
+
+-- Forgets every written frame
+function module.clear(): void
+    state.frames = {}
+    state.first = 1
+    state.last = 0
+end
+
+-- The seat the ped sits in, nil if it is in none
+local function find_seat(ped: int, vehicle: int): ?int
+
+    local n_vehicle = Atdar.natives.entity.vehicle
+
+    for seat = FIRST_SEAT, LAST_SEAT do
+        if n_vehicle.get_ped_in_seat(vehicle, seat, false) == ped then
+            return seat
+        end
+    end
+
+    return nil
+end
+
+-- Writes down the player now: where he is (or his vehicle), how it turns, how fast it moves, and what the camera shows
+local function record(ped: int): void
+
+    local n_entity = Atdar.natives.entity
+    local n_camera = Atdar.natives.camera
+    local vehicle = 0
+    local seat = nil
+    local subject = ped
+
+    if n_entity.ped.vehicle.is_in_any(ped) then
+        vehicle = n_entity.ped.vehicle.get(ped)
+        seat = find_seat(ped, vehicle)
+    end
+
+    if vehicle ~= 0 and seat ~= nil then
+        subject = vehicle
+    else
+        vehicle = 0
+    end
+
+    local frame = {
+        vehicle = vehicle,
+        seat = seat,
+        position = n_entity.get_coords(subject, false, false),
+        rotation = n_entity.get_rotation(subject, 2),
+        velocity = n_entity.get_velocity(subject),
+        cam_position = n_camera.get_final_rendered_coord(),
+        cam_rotation = n_camera.get_final_rotation(2),
+    }
+
+    state.last += 1
+    state.frames[state.last] = frame
+
+    while state.last - state.first + 1 > settings.max_frames do
+        state.frames[state.first] = nil
+        state.first += 1
+    end
+end
+
+-- Puts a frame back: the player or his vehicle where they were, the camera where it was
+local function restore(frame: table, ped: int): void
+
+    local n_entity = Atdar.natives.entity
+    local subject = ped
+
+    if frame.vehicle ~= 0 and n_entity.vehicle.does_exist(frame.vehicle) then
+        subject = frame.vehicle
+    end
+
+    local position = frame.position
+    local rotation = frame.rotation
+    local velocity = frame.velocity
+
+    n_entity.set_coords_no_offset(subject, position, false)
+    n_entity.set_rotation(subject, rotation.x, rotation.y, rotation.z, 2, true)
+    n_entity.set_velocity(subject, velocity.x, velocity.y, velocity.z)
+
+    if subject ~= ped then
+        n_entity.ped.vehicle.set_into(ped, subject, frame.seat)
+    end
+
+    if not settings.restore_camera then
+        return
+    end
+
+    local n_camera = Atdar.natives.camera
+
+    if state.cam == nil then
+        state.cam = n_camera.create("DEFAULT_SCRIPTED_CAMERA", true)
+        n_camera.render_script_cams(true, false, 0, true, true, 0)
+    end
+
+    n_camera.set_coord(state.cam, frame.cam_position.x, frame.cam_position.y, frame.cam_position.z)
+    n_camera.set_rot(state.cam, frame.cam_rotation.x, frame.cam_rotation.y, frame.cam_rotation.z, 2)
+    Atdar.natives.visual.hud.minimap.lock_angle(math.floor(frame.cam_rotation.z))
+end
+
+-- Ends a playback: the camera and the minimap are the game's again, the next frame is a new recording
+local function stop_playback(): void
+
+    if not state.playing then
+        return
+    end
+
+    state.playing = false
+    state.playing_since = 0
+
+    if state.cam ~= nil then
+        local n_camera = Atdar.natives.camera
+
+        n_camera.render_script_cams(false, false, 0, true, true, 0)
+        n_camera.destroy(state.cam, false)
+        Atdar.natives.visual.hud.minimap.unlock_angle()
+        state.cam = nil
+    end
+
+    if settings.debug then
+        log:debug($"playback ended, {module.get_frame_count()} frames left")
+    end
+end
+
+-- How many frames one frame of playback goes back, by how long the key has been held
+local function get_speed(held_ms: int): int
+
+    if held_ms > settings.third_speed_ms then
+        return 3
+    end
+
+    if held_ms > settings.second_speed_ms then
+        return 2
+    end
+
+    return 1
+end
+
+-- Puts the newest frame back and drops it with the ones the speed skips
+local function play(ped: int): void
+
+    local now = util.current_time_millis()
+
+    if not state.playing then
+        state.playing = true
+        state.playing_since = now
+
+        if settings.debug then
+            log:debug($"playback started, {module.get_frame_count()} frames")
+        end
+    end
+
+    state.speed = get_speed(now - state.playing_since)
+    restore(state.frames[state.last], ped)
+
+    local count = math.min(state.speed, module.get_frame_count())
+
+    for _ = 1, count do
+        state.frames[state.last] = nil
+        state.last -= 1
+    end
+end
+
+-- One frame: the key held goes back, otherwise the player is written down
+local function apply(): void
+
+    local n_player = Atdar.natives.player
+    local ped = n_player.get_ped_id()
+
+    if n_player.is_dead(n_player.get_id()) then
+        stop_playback()
+        return
+    end
+
+    if Atdar.natives.input.is_pressed(0, settings.action) and module.get_frame_count() > 0 then
+        play(ped)
+        return
+    end
+
+    stop_playback()
+    record(ped)
+end
+
+-- Gives back the camera and forgets the frames
+local function release(): void
+    stop_playback()
+    module.clear()
+end
+
+-- Switches it off at once
+local function stop_now(): void
+    state.enabled = false
+    state.run += 1
+    pcall(release)
+end
+
+-- Switches it on: the frames are written from now. A second call does nothing
+function module.enable(): void
+
+    if state.enabled then
+        return
+    end
+
+    state.enabled = true
+    state.run += 1
+
+    local run = state.run
+
+    util.create_tick_handler(function()
+
+        -- Switched off, or switched on again and a newer handler runs
+        if not state.enabled or state.run ~= run then
+            return false
+        end
+
+        local ok, err = pcall(apply)
+        if not ok then
+            log:error($"rewind stopped\n{err}")
+            stop_now()
+            return false
+        end
+
+        return true
+    end)
+end
+
+-- Switches it off: the camera is the game's again and the written frames are forgotten
+function module.disable(): void
+
+    if not state.enabled then
+        return
+    end
+
+    stop_now()
+end
+
+-- A stopped script leaves no scripted camera behind
+util.on_stop(stop_now)
+
+return module

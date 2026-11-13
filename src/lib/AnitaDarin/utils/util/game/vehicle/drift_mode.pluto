@@ -1,0 +1,383 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("DriftMode")
+
+-- The vehicle the player drives slides like a drift car: the handling numbers of a drift tune and the flags of the
+-- car handling data, after Stand's Drift Mode (CommandDriftMode). It acts on the current vehicle (on_current): done when
+-- the player drives a car, undone when he leaves it or gets into another, so the shared handling data of the model is
+-- back as it was.
+--
+--     local drift = Atdar.util.game.vehicle.drift_mode
+--
+--     drift.set_preset("loose")           -- the settings, any time, before or after enable()
+--     drift.set_traction_scale(0.95)
+--     drift.set_value("handbrake_force", 1.2)    -- one number of the tune by hand, drift.clear_values() drops them
+--     drift.enable()
+--     if drift.is_enabled() then ... end
+--     drift.disable()
+--
+-- NOT CHECKED IN GAME: the numbers are Stand's and the layout is read from Stand-OSS (Atdar.natives.memory.handling).
+-- The way back is built in: every number goes through a holder ("drift_mode"), so a change is undone by letting go of the
+-- holder, the flags are put on and taken off bit by bit. What is left of Stand's: no bikes, bicycles, boats, aircraft (a drift tune
+-- is a car's); a car that has a drift tune of its own (Stand: hasDriftTune) is not told from the others here. The
+-- flags are in the sub handling data of the car: when the module can't find it, only the numbers are changed (and the log says it).
+local module = {}
+
+-- The names of the bits of the flags (aFlags of the car handling data) that this uses. The numbers are the bit numbers
+-- as in Stand-OSS; its comments are the only names there are, so most of them have none: the bits are a try
+module.FLAG = {
+    BIT_4 = 1 << 4,
+    BIT_6 = 1 << 6,
+    BIT_8 = 1 << 8,
+    BIT_9 = 1 << 9,
+    GEARBOX_MANUAL = 1 << 10,   -- not set: stays in the first gear (Stand's guess at the name), "possibly CF_GEARBOX_MANUAL"
+    TRACTION_OFF = 1 << 13,     -- not set: loses much more traction and spins out (Stand's guess: the traction control, backwards)
+    BIT_15 = 1 << 15,
+    EARLY_SHIFT = 1 << 16,      -- not set: shifts before the redline
+    BIT_18 = 1 << 18,
+    BIT_20 = 1 << 20,
+    BIT_22 = 1 << 22,
+    STEER_MOVES = 1 << 23,      -- not set: the car moves and shifts whenever it is steered
+}
+
+-- The bits Stand puts on: the ones above without GEARBOX_MANUAL, TRACTION_OFF, EARLY_SHIFT and STEER_MOVES
+module.DEFAULT_FLAGS = module.FLAG.BIT_4 | module.FLAG.BIT_6 | module.FLAG.BIT_8 | module.FLAG.BIT_9 | module.FLAG.BIT_15
+    | module.FLAG.BIT_18 | module.FLAG.BIT_20 | module.FLAG.BIT_22
+
+-- Who holds the numbers of the handling (natives.memory.handling holders)
+local HOLDER = "drift_mode"
+
+-- The numbers of Stand's tune (the traction curve is by speed, see traction_values)
+local TUNE = {
+    acceleration = 1.65,
+    suspension_force = 2.0,
+    suspension_raise = 0.025,
+    suspension_comp_damp = 0.1,
+    traction_loss_mult = 1.0,
+    upshift = 4.8,
+    downshift = 4.7,
+    drive_bias_rear = 1.1764,
+    drive_bias_front = 0.35,
+    drive_inertia = 1.0,
+    initial_drive_force = 0.7059,
+    drive_max_flat_velocity = 44.1666,
+    initial_drive_max_flat_vel = 36.8055,
+    brake_force = 0.8750,
+    brake_bias_front = 0.64,
+    brake_bias_rear = 1.36,
+    handbrake_force = 0.9,
+    steering_lock = 1.3482,
+    steering_lock_ratio = 0.7416,
+    traction_curve_lateral = 0.6535,
+    curve_lateral = 0.5139,
+    curve_lateral_ratio = 1.9455,
+    traction_spring_delta_max = 0.1500,
+    traction_spring_delta_max_ratio = 6.6666,
+    low_speed_traction_loss_mult = 0.0,
+    camber_stiffness = 0.0,
+    traction_bias_front = 0.9240,
+    traction_bias_rear = 1.076,
+    suspension_rebound_damp = 0.155,
+    suspension_upper_limit = 0.0675,
+    suspension_lower_limit = -0.1,
+    suspension_bias_front = 1.04,
+    suspension_bias_rear = 0.96,
+}
+
+-- The grip of the tune on dry ground and in snow: { min, max } of the traction curve, for a speed above SLOW_SPEEDS
+local TRACTION_DRY = { 1.625, 1.63 }
+local TRACTION_SNOW = { 1.925, 1.93 }
+
+-- Slower than the speed (m/s) the traction curve is this much bigger: the car gets going before it slides
+local SLOW_SPEEDS = {
+    { 4.5, 1.50 },
+    { 8.0, 1.30 },
+    { 13.0, 1.15 },
+}
+
+-- What the game's own top speed boost is while it is on, and what Stand sets when it is done (Stand: 30.0 and 10.0; the
+-- second is how Stand undoes it, whether it is the value the game had before is not checked)
+local TOP_SPEED_ON = 30.0
+local TOP_SPEED_OFF = 10.0
+
+-- The presets: how much grip and steering the tune has, on top of the settings. "stand" is Stand's tune as it is
+local PRESETS = {
+    stand = { traction = 1.0, steering = 1.0 },
+    loose = { traction = 0.9, steering = 1.1 },
+    grippy = { traction = 1.1, steering = 1.0 },
+}
+
+-- The settings, see the set_ functions. overrides: the numbers of the tune set by hand
+local settings = {
+    preset = "stand",
+    traction_scale = 1.0,
+    live_traction = true,
+    flags = module.DEFAULT_FLAGS,
+    top_speed = true,
+    overrides = {},
+    debug = false,
+}
+
+-- The grip the traction curve had when it was last written, to write it again only when the speed changes it
+local state = { band = nil, top_speed_set = false, car_warned = false }
+
+local behaviour = nil
+
+-- Settings
+
+-- The names of the presets
+function module.get_presets(): table
+
+    local names = {}
+
+    for name in pairs(PRESETS) do
+        table.insert(names, name)
+    end
+
+    table.sort(names)
+
+    return names
+end
+
+-- Takes a setting to the vehicle that is changed now
+local function changed(): void
+
+    if behaviour ~= nil and behaviour.is_enabled() then
+        behaviour.refresh()
+    end
+end
+
+-- How much grip and steering the tune has: "stand" (Stand's numbers), "loose" (a bit less grip, more steering) or "grippy"
+-- @param name One of get_presets()
+function module.set_preset(name: string): void
+
+    if PRESETS[name] == nil then
+        log:warn($"set_preset: '{name}' is not a preset")
+        return
+    end
+
+    settings.preset = name
+    changed()
+end
+
+-- The grip of the tune times this, 1.0 by default, on top of the preset. Less slides more
+-- @param scale From 0.1
+function module.set_traction_scale(scale: number): void
+    settings.traction_scale = math.max(scale, 0.1)
+    state.band = nil
+    changed()
+end
+
+-- Whether the grip of the traction curve follows the speed (slow: more grip, so the car gets going), on by default;
+-- off: written once for the speed the vehicle has when it is changed, like Stand does
+function module.set_live_traction(toggle: bool): void
+    settings.live_traction = toggle
+end
+
+-- The bits of the flags that are put on, module.DEFAULT_FLAGS by default (Stand's): the names are in module.FLAG
+function module.set_flags(flags: int): void
+    settings.flags = flags
+    changed()
+end
+
+-- Puts one bit of the flags on or off
+-- @param bit One of module.FLAG
+function module.set_flag(bit: int, on: bool): void
+
+    if on then
+        settings.flags = settings.flags | bit
+    else
+        settings.flags = settings.flags & ~bit
+    end
+
+    changed()
+end
+
+-- Whether the top speed of the vehicle is raised by the game's own native while it drifts (Stand does), on by default
+function module.set_top_speed(toggle: bool): void
+    settings.top_speed = toggle
+    changed()
+end
+
+-- Sets one number of the tune by hand, instead of the preset's: a field of the handling data (Atdar.natives.memory.handling)
+function module.set_value(field: string, value: number): void
+
+    if not Atdar.natives.memory.handling.has_field(field) then
+        log:warn($"set_value: '{field}' is not a handling field")
+        return
+    end
+
+    settings.overrides[field] = value
+    changed()
+end
+
+-- Drops the numbers set by hand
+function module.clear_values(): void
+    settings.overrides = {}
+    changed()
+end
+
+-- Whether it writes what it does to the log (debug level)
+function module.set_debug(toggle: bool): void
+    settings.debug = toggle
+
+    if behaviour ~= nil then
+        behaviour.set_debug(toggle)
+    end
+end
+
+-- Get
+
+-- Whether it's on
+function module.is_enabled(): bool
+    return behaviour ~= nil and behaviour.is_enabled()
+end
+
+-- The vehicle that drifts now, nil if none
+function module.get_vehicle(): ?int
+
+    if behaviour == nil then
+        return nil
+    end
+
+    return behaviour.get_vehicle()
+end
+
+-- The traction curve { min, max } for the speed: the grip of the ground, more when slow, times the preset and the scale
+local function traction_values(speed: number): table
+
+    local base = TRACTION_DRY
+
+    if Atdar.natives.world.weather.get_snow_level() ~= 0.0 then
+        base = TRACTION_SNOW
+    end
+
+    local factor = PRESETS[settings.preset].traction * settings.traction_scale
+
+    for _, band in ipairs(SLOW_SPEEDS) do
+
+        if speed < band[1] then
+            factor = factor * band[2]
+            break
+        end
+    end
+
+    return { base[1] * factor, base[2] * factor }
+end
+
+-- The numbers of the tune now: the tune, the preset's steering, the numbers set by hand
+local function build_values(): table
+
+    local values = {}
+
+    for field, value in pairs(TUNE) do
+        values[field] = value
+    end
+
+    values.steering_lock = values.steering_lock * PRESETS[settings.preset].steering
+
+    for field, value in pairs(settings.overrides) do
+        values[field] = value
+    end
+
+    return values
+end
+
+-- Writes the traction curve for the speed when the grip has changed since the last write
+local function update_traction(vehicle: int, force: bool): void
+
+    local speed = Atdar.natives.entity.get_speed(vehicle)
+    local values = traction_values(speed)
+    local min = values[1]
+    local max = values[2]
+
+    if not force and state.band == min then
+        return
+    end
+
+    state.band = min
+
+    if settings.overrides.traction_curve_min == nil then
+        Atdar.util.game.vehicle.handling.set(vehicle, "traction_curve_min", min, HOLDER)
+    end
+
+    if settings.overrides.traction_curve_max == nil then
+        Atdar.util.game.vehicle.handling.set(vehicle, "traction_curve_max", max, HOLDER)
+    end
+end
+
+-- Puts the tune on the vehicle
+local function change(vehicle: int, model: int, self_behaviour: table): void
+
+    local handling = Atdar.util.game.vehicle.handling
+    local mem = Atdar.natives.memory.handling
+
+    if not mem.knows_section("car") then
+        mem.learn_sub(vehicle, "car")
+    end
+
+    for field, value in pairs(build_values()) do
+        handling.set(vehicle, field, value, HOLDER)
+    end
+
+    update_traction(vehicle, true)
+
+    if not handling.set_bits(vehicle, "car.aflags", settings.flags, true, HOLDER) and not state.car_warned then
+        state.car_warned = true
+        log:warn("the car handling data was not found: the flags are not set (Atdar.natives.memory.handling.set_vtable or learn_sub)")
+    end
+
+    if settings.top_speed then
+        Atdar.natives.entity.vehicle.modify_top_speed(vehicle, TOP_SPEED_ON)
+        state.top_speed_set = true
+    end
+
+    self_behaviour.store[model] = { numbers = true }
+end
+
+-- Gives the handling back, and the top speed
+local function undo(vehicle: int, model: int, self_behaviour: table): void
+
+    Atdar.util.game.vehicle.handling.release_holder(HOLDER)
+    self_behaviour.take(model)
+    state.band = nil
+
+    if state.top_speed_set then
+        state.top_speed_set = false
+
+        if Atdar.natives.entity.vehicle.does_exist(vehicle) then
+            Atdar.natives.entity.vehicle.modify_top_speed(vehicle, TOP_SPEED_OFF)
+        end
+    end
+end
+
+-- Every frame: the grip follows the speed
+local function frame(vehicle: int, model: int, self_behaviour: table): void
+
+    if settings.live_traction then
+        update_traction(vehicle, false)
+    end
+end
+
+behaviour = Atdar.util.game.vehicle.on_current.create("DriftMode", {
+    except = { "bike", "bicycle", "aquatic", "air", "train", "trailer" },
+    change = change,
+    undo = undo,
+    frame = frame,
+})
+
+-- Actions
+
+-- Switches it on: the vehicle the player drives (a car) drifts, and so does each car he gets into, until disable().
+-- A second call does nothing
+function module.enable(): void
+    behaviour.set_debug(settings.debug)
+    behaviour.enable()
+end
+
+-- Switches it off: the handling of the vehicle is as it was
+function module.disable(): void
+    behaviour.disable()
+end
+
+return module

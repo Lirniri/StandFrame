@@ -1,0 +1,126 @@
+-- The Extras menu of the AnitaDarin pack (menu/stand/extras.pluto and features/extras): its features load, the menu builds
+-- from the pack's strings, and the items switch the functions of the player on and off. The game is not there: the
+-- functions are replaced by stand-ins that count their calls, the code under test is the features and the menu
+local stand = require("stand")
+stand.boot()
+for _, name in { "util", "filesystem", "lang", "color", "menu", "memory" } do
+    Atdar[name] = Atdar.loader.load($"utils/{name}")
+end
+Atdar.profile = { get = || -> nil, on_change = || -> nil, log_name = || -> "AnitaDarin" }
+Atdar.natives = Atdar.loader.auto({}, "natives")
+Atdar.parsers = Atdar.loader.auto({}, "parsers")
+Atdar.features = Atdar.loader.load("features/registry")
+
+-- What the functions of the player do here: nothing, but they are asked
+local calls = {}
+local function stand_in(name: string, ok: bool = true): table
+    local control = { enabled = false }
+    function control.enable() table.insert(calls, name .. ".enable") control.enabled = ok return ok end
+    function control.disable() table.insert(calls, name .. ".disable") control.enabled = false end
+    function control.is_enabled() return control.enabled end
+    setmetatable(control, { __index = function(_, key)
+        if key:sub(1, 4) == "set_" then
+            return function(...)
+                local given = {}
+                for i = 1, select("#", ...) do
+                    given[i] = tostring((select(i, ...)))
+                end
+                local joined = table.concat(given, " ")
+                table.insert(calls, $"{name}.{key} {joined}")
+            end
+        end
+        return nil
+    end })
+    return control
+end
+local user = {}
+for _, name in { "rewind", "floppy_mode", "gravity_gun", "super_drive", "super_handbrake", "no_stunt_jumps",
+        "preserve_walk_style", "no_hair_scale" } do
+    user[name] = stand_in(name)
+end
+user.wheel_on_wheels = stand_in("wheel_on_wheels", false)
+Atdar.util = { game = { players = { user = user }, tools = { task_list = stand_in("task_list") } } }
+
+local packs = Atdar.loader.load("ui/logic/stand/menu_packs")
+local MenuNode = Atdar.loader.load("ui/stand/core/menu_node")
+local info = nil
+for _, pack in ipairs(packs.find_loadable_packs($"{stand.SRC}store/AnitaDarin/menu\\")) do
+    if pack.folder == "AnitaDarin" then
+        info = pack
+    end
+end
+stand.check(info ~= nil, "the AnitaDarin pack is found")
+
+local extras = {}
+for _, path in ipairs(info.feature_files) do
+    if path:find("extras", 1, true) then
+        table.insert(extras, path)
+    end
+end
+stand.equal(#extras, 10, "ten features are in features/extras")
+stand.equal(packs.load_feature_files(extras), 10, "they all load")
+for _, id in { "rewind", "floppy_mode", "gravity_gun", "super_drive", "super_handbrake", "no_stunt_jumps",
+        "preserve_walk_style", "no_hair_scale", "wheel_on_wheels", "task_list" } do
+    stand.check(Atdar.features.has($"extras.{id}"), $"extras.{id} is registered")
+end
+
+local i18n = Atdar.loader.load("core/i18n")
+i18n.add_source($"{info.dir}language\\")
+local root = new MenuNode(stand.root):list("Menu")
+local menu = loadfile($"{info.dir}menu\\stand\\extras.pluto")()
+menu.build(root, {})
+local extras_list = stand.child(root.handle, "Extras")
+stand.check(extras_list ~= nil, "the Extras list is built")
+for _, name in { "Player", "Weapons", "Vehicle", "World", "Debug" } do
+    stand.check(stand.child(extras_list, name) ~= nil, $"with the {name} list")
+end
+
+local function item(text: string): table
+    local found = stand.find_item(extras_list, text)
+    stand.check(found ~= nil, $"item '{text}' is there")
+    return found
+end
+
+-- A toggle starts the function and takes it off again
+local gun = item("Gravity Gun")
+stand.check(stand.find_item(gun, "Force (%)") and stand.find_item(gun, "Distance (m)"), "the gravity gun has its settings")
+local no_stunts = stand.find_item(extras_list, "Disable Stunt Jumps")
+stand.click(no_stunts)
+stand.check(user.no_stunt_jumps.is_enabled(), "the toggle switches no_stunt_jumps on")
+stand.click(no_stunts)
+stand.check(not user.no_stunt_jumps.is_enabled(), "and off")
+
+-- A setting reaches the function at once and again at enable
+local slider = stand.find_item(stand.find_item(extras_list, "Super Drive"), "Force (%)")
+stand.check(slider ~= nil, "super drive has a force slider")
+calls = {}
+Atdar.features.get("extras.super_drive"):set_force(250)
+stand.check(calls[1] == "super_drive.set_force 2.5", $"a setting is given to the function ({tostring(calls[1])})")
+calls = {}
+Atdar.features.get("extras.super_drive"):enable()
+stand.equal(calls[#calls], "super_drive.enable", "enable ends with the function's enable")
+stand.check(calls[1] == "super_drive.set_force 2.5", "after its settings")
+Atdar.features.get("extras.super_drive"):disable()
+stand.check(not user.super_drive.is_enabled(), "disable switches it off")
+
+-- A patch that cannot be put on: the feature fails with the reason and the item goes off
+stand.clear_logs()
+local wheel = stand.find_item(extras_list, "Weapon Wheel In Vehicles")
+stand.click(wheel)
+stand.check(stand.find_log("the code of the game was not found"), "a patch that is not found says so")
+stand.check(not Atdar.features.get("extras.wheel_on_wheels"):is_enabled(), "and the feature is off")
+
+-- The task list setting
+Atdar.features.get("extras.task_list"):set_range(60)
+stand.check(Atdar.features.get("extras.task_list").range == 60, "a setting is kept in the feature")
+calls = {}
+Atdar.features.get("extras.task_list"):enable()
+stand.check(calls[1] == "task_list.set_range 60" and calls[#calls] == "task_list.enable", "and given at enable")
+Atdar.features.get("extras.task_list"):disable()
+
+-- Rewind: seconds are frames at 60 a second
+calls = {}
+Atdar.features.get("extras.rewind"):set_max_seconds(10)
+stand.equal(calls[1], "rewind.set_max_frames 600", "history length is given as frames")
+
+stand.finish()

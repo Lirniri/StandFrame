@@ -23,6 +23,8 @@ What's checked:
 |---|---|
 | `test_loader` | `loader.load` survives broken files; `loader.auto` reaches every file in `natives` |
 | `test_natives` | natives as functions: `entity`, `ped` and its parts, `vehicle`, `player`, `hud.blip`; the `hud_color` and `feed_picture` tables |
+| `test_vehicle_handling` | `natives.memory.handling` / `vehicle` / `holds` and `util.game.vehicle` on a fake memory: fields by name, holders and the way back, the current vehicle pattern, drift mode, lessen burnouts, heli stabilisation, gravity, drive on water, forge model, giving everything back when the script stops |
+| `test_handling_pack` | The Handling menu of the AnitaDarin pack (`vehicle.*` features): they load, the menu builds in English and Russian, the items and settings reach the functions in their units |
 | `test_feature` | Feature's option checks, hook order, switching off on error, repeated clicks |
 | `test_file_watch` | Stop After Changes: off watches nothing, a written, added or removed file (and the launcher) stops the script, once a second |
 | `test_module_manager` | dependencies, stopping along a chain, restarting, tick, reloading from disk, system modules (`is_system`), `is_running` by name, `hand_over` / `take_over` across a Reload |
@@ -42,6 +44,9 @@ What's checked:
 | `test_commands` | command names with the profile's prefix and renaming on the fly |
 | `test_i18n` | strings from language files through Stand labels, layers of sources |
 | `test_i18n_keys.py` | every key written out in the code (`lang.translate`, `i18n.label`/`text`, `label`/`text` of a scope) is in the English files |
+| `test_i18n_sync.py` | `tools/i18n_sync.py`: the report, stubs for missing keys, `@same` and the notes of `context.txt`; the Russian files lack no key of the English ones |
+| `test_user_functions` | The player's functions after Stand-OSS on a fake game (every native a recording stub, the memory a table of bytes): the byte patches and their registry, the task tree and `task_list`, `rewind`, `super_drive`, `super_handbrake`, `no_stunt_jumps`, `floppy_mode`, `gravity_gun`, the data tables, `varint`, the ped config flags |
+| `test_extras_pack` | The Extras menu of the AnitaDarin pack: its ten features load, the menu builds from the pack's strings, toggles and settings reach the functions, a patch that is not found switches its item off |
 | `test_streaming` | loading each kind of asset (and `texture_dict`, `model`), `request(false)`, timeouts |
 | `test_examples` | runs modules, features, the pack, `menu/helpers`, and `basics/06_check` plus `basics/07_parsers_and_colors` against stubs; checks the wrapper names used by the native examples |
 | `test_check` | `core/check`: `expecter` for function arguments and `validator` for options; errors from `Module` and `Feature` point at the line with the options, through `extends` too |

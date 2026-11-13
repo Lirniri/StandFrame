@@ -1,0 +1,34 @@
+-- EXAMPLE: tools.task_list, what a ped is doing, read from the game's memory.
+--
+-- Atdar.util.game.tools.task_list (lib/AnitaDarin/utils/tools/natives/task_list.pluto) lists the tasks of a ped by the
+-- numbers of the game (Atdar.natives.memory.task_types has their names). The way to them is Stand-OSS's (CPed ->
+-- CPedIntelligence -> task trees), by the offsets of Atdar.natives.memory.task: NOT checked in game, so when they
+-- are wrong the answer is "No tasks". It changes nothing in the game.
+
+local tasks = Atdar.util.game.tools.task_list
+local task = Atdar.natives.memory.task
+local types = Atdar.natives.memory.task_types
+
+local ped = Atdar.natives.player.get_ped_id()
+
+-- A line of text: "PLAYER_ON_FOOT > MOVE_PLAYER", the deepest task last
+util.log(tasks.describe(ped))
+
+-- The other source: the list of the ped's intelligence that Stand's Show Ped Tasks reads
+tasks.set_source("info")
+util.log(tasks.describe(ped))
+tasks.set_source("tree")
+
+-- Everything the memory shows, to the log: each tree and priority, with the state of each task
+tasks.dump(ped)
+
+-- The pieces: the trees of a ped, their active priority, the chain of tasks, one task by its number
+local chain = task.get_chain(ped, task.TREE.PRIMARY)          -- { { type, state, pointer }, ... }
+util.log($"{#chain} tasks in the primary tree, priority {tostring(task.get_active_priority(ped))}")
+util.log($"falling: {task.find_task(ped, types.TASK.FALL) ~= nil}")
+util.log($"the name of 423: {types.get_name(423)}")
+
+-- The tasks of the peds around, written over their heads (a switch, as the others)
+tasks.set_range(30.0)
+tasks.set_names(true)
+-- tasks.enable()  ...  tasks.disable()

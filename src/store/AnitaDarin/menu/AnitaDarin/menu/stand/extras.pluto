@@ -1,0 +1,250 @@
+local features = Atdar.features
+local lang = Atdar.lang
+
+-- Features after Stand-OSS: the settings are the feature's fields, the sliders write them back (set_*)
+-- Everything that changes the code of the game or reads its memory is not checked in game
+return {
+    build = function(node, ctx)
+        local extras_menu = node:list(
+            lang.translate("menu.extras.name"),
+            { "extras" }
+        )
+
+        -- Player
+
+        local player_menu = extras_menu:list(
+            lang.translate("menu.extras.player.name")
+        )
+
+        local rewind = features.get("extras.rewind")
+        local rewind_menu = player_menu:list(
+            lang.translate("menu.extras.player.rewind.name"),
+            {},
+            lang.translate("menu.extras.player.rewind.help")
+        )
+        rewind_menu:add_feature(
+            rewind,
+            lang.translate("menu.extras.player.rewind.name"),
+            { "rewind" },
+            lang.translate("menu.extras.player.rewind.help")
+        )
+        rewind_menu:divider(
+            lang.translate("menu.extras.settings.name")
+        )
+        rewind_menu:toggle(
+            lang.translate("menu.extras.player.rewind.restore_camera.name"),
+            function(on) rewind:set_restore_camera(on) end,
+            { "rewindcamera" },
+            lang.translate("menu.extras.player.rewind.restore_camera.help"),
+            rewind.restore_camera
+        )
+        rewind_menu:slider(
+            lang.translate("menu.extras.player.rewind.max_seconds.name"),
+            5, 600, rewind.max_seconds, 5,
+            function(value) rewind:set_max_seconds(value) end,
+            { "rewindseconds" },
+            lang.translate("menu.extras.player.rewind.max_seconds.help")
+        )
+
+        local floppy = features.get("extras.floppy_mode")
+        local floppy_menu = player_menu:list(
+            lang.translate("menu.extras.player.floppy_mode.name"),
+            {},
+            lang.translate("menu.extras.player.floppy_mode.help")
+        )
+        floppy_menu:add_feature(
+            floppy,
+            lang.translate("menu.extras.player.floppy_mode.name"),
+            { "floppy" },
+            lang.translate("menu.extras.player.floppy_mode.help")
+        )
+        floppy_menu:divider(
+            lang.translate("menu.extras.settings.name")
+        )
+        floppy_menu:slider(
+            lang.translate("menu.extras.player.floppy_mode.speed.name"),
+            1, 1000, floppy.speed, 10,
+            function(value) floppy:set_speed(value) end,
+            { "floppyspeed" }
+        )
+        floppy_menu:slider(
+            lang.translate("menu.extras.player.floppy_mode.sprint.name"),
+            1, 50, floppy.sprint_multiplier, 1,
+            function(value) floppy:set_sprint_multiplier(value) end,
+            { "floppysprint" }
+        )
+
+        player_menu:add_feature(
+            features.get("extras.preserve_walk_style"),
+            lang.translate("menu.extras.player.preserve_walk_style.name"),
+            { "preservewalkstyle" },
+            lang.translate("menu.extras.player.preserve_walk_style.help")
+        )
+
+        -- Weapons
+
+        local weapons_menu = extras_menu:list(
+            lang.translate("menu.extras.weapons.name")
+        )
+
+        local gun = features.get("extras.gravity_gun")
+        local gun_menu = weapons_menu:list(
+            lang.translate("menu.extras.weapons.gravity_gun.name"),
+            {},
+            lang.translate("menu.extras.weapons.gravity_gun.help")
+        )
+        gun_menu:add_feature(
+            gun,
+            lang.translate("menu.extras.weapons.gravity_gun.name"),
+            { "gravitygun" },
+            lang.translate("menu.extras.weapons.gravity_gun.help")
+        )
+        gun_menu:divider(
+            lang.translate("menu.extras.settings.name")
+        )
+        gun_menu:slider(
+            lang.translate("menu.extras.weapons.gravity_gun.force.name"),
+            1, 1000, gun.force, 10,
+            function(value) gun:set_force(value) end,
+            { "gravitygunforce" }
+        )
+        gun_menu:toggle(
+            lang.translate("menu.extras.weapons.gravity_gun.collision.name"),
+            function(on) gun:set_collision(on) end,
+            { "gravityguncollision" },
+            lang.translate("menu.extras.weapons.gravity_gun.collision.help"),
+            gun.collision
+        )
+        gun_menu:toggle(
+            lang.translate("menu.extras.weapons.gravity_gun.contrived_physics.name"),
+            function(on) gun:set_contrived_physics(on) end,
+            { "gravityguncontrived" },
+            lang.translate("menu.extras.weapons.gravity_gun.contrived_physics.help"),
+            gun.contrived_physics
+        )
+        gun_menu:slider(
+            lang.translate("menu.extras.weapons.gravity_gun.distance.name"),
+            1, 50, gun.distance, 1,
+            function(value) gun:set_distance(value) end,
+            { "gravitygundistance" }
+        )
+
+        -- Vehicle
+
+        local vehicle_menu = extras_menu:list(
+            lang.translate("menu.extras.vehicle.name")
+        )
+
+        local drive = features.get("extras.super_drive")
+        local drive_menu = vehicle_menu:list(
+            lang.translate("menu.extras.vehicle.super_drive.name"),
+            {},
+            lang.translate("menu.extras.vehicle.super_drive.help")
+        )
+        drive_menu:add_feature(
+            drive,
+            lang.translate("menu.extras.vehicle.super_drive.name"),
+            { "superdrive" },
+            lang.translate("menu.extras.vehicle.super_drive.help")
+        )
+        drive_menu:divider(
+            lang.translate("menu.extras.settings.name")
+        )
+        drive_menu:slider(
+            lang.translate("menu.extras.vehicle.super_drive.force.name"),
+            -1000, 1000, drive.force, 10,
+            function(value) drive:set_force(value) end,
+            { "superdriveforce" }
+        )
+        drive_menu:toggle(
+            lang.translate("menu.extras.vehicle.super_drive.use_camera.name"),
+            function(on) drive:set_use_camera(on) end,
+            { "superdrivecamera" },
+            lang.translate("menu.extras.vehicle.super_drive.use_camera.help"),
+            drive.use_camera
+        )
+
+        local brake = features.get("extras.super_handbrake")
+        local brake_menu = vehicle_menu:list(
+            lang.translate("menu.extras.vehicle.super_handbrake.name"),
+            {},
+            lang.translate("menu.extras.vehicle.super_handbrake.help")
+        )
+        brake_menu:add_feature(
+            brake,
+            lang.translate("menu.extras.vehicle.super_handbrake.name"),
+            { "superhandbrake" },
+            lang.translate("menu.extras.vehicle.super_handbrake.help")
+        )
+        brake_menu:divider(
+            lang.translate("menu.extras.settings.name")
+        )
+        brake_menu:slider(
+            lang.translate("menu.extras.vehicle.super_handbrake.strength.name"),
+            1, 100, brake.strength, 1,
+            function(value) brake:set_strength(value) end,
+            { "superhandbrakestrength" },
+            lang.translate("menu.extras.vehicle.super_handbrake.strength.help")
+        )
+
+        vehicle_menu:add_feature(
+            features.get("extras.wheel_on_wheels"),
+            lang.translate("menu.extras.vehicle.wheel_on_wheels.name"),
+            { "wheelonwheels" },
+            lang.translate("menu.extras.vehicle.wheel_on_wheels.help")
+        )
+        vehicle_menu:add_feature(
+            features.get("extras.no_hair_scale"),
+            lang.translate("menu.extras.vehicle.no_hair_scale.name"),
+            { "nohairscale" },
+            lang.translate("menu.extras.vehicle.no_hair_scale.help")
+        )
+
+        -- World
+
+        local world_menu = extras_menu:list(
+            lang.translate("menu.extras.world.name")
+        )
+        world_menu:add_feature(
+            features.get("extras.no_stunt_jumps"),
+            lang.translate("menu.extras.world.no_stunt_jumps.name"),
+            { "nostuntjumps" },
+            lang.translate("menu.extras.world.no_stunt_jumps.help")
+        )
+
+        -- Debug
+
+        local debug_menu = extras_menu:list(
+            lang.translate("menu.extras.debug.name")
+        )
+
+        local tasks = features.get("extras.task_list")
+        local tasks_menu = debug_menu:list(
+            lang.translate("menu.extras.debug.task_list.name"),
+            {},
+            lang.translate("menu.extras.debug.task_list.help")
+        )
+        tasks_menu:add_feature(
+            tasks,
+            lang.translate("menu.extras.debug.task_list.name"),
+            { "showpedtasks" },
+            lang.translate("menu.extras.debug.task_list.help")
+        )
+        tasks_menu:divider(
+            lang.translate("menu.extras.settings.name")
+        )
+        tasks_menu:slider(
+            lang.translate("menu.extras.debug.task_list.range.name"),
+            1, 200, tasks.range, 1,
+            function(value) tasks:set_range(value) end,
+            { "showpedtasksrange" }
+        )
+        tasks_menu:toggle(
+            lang.translate("menu.extras.debug.task_list.names.name"),
+            function(on) tasks:set_names(on) end,
+            { "showpedtasksnames" },
+            lang.translate("menu.extras.debug.task_list.names.help"),
+            tasks.names
+        )
+    end,
+}

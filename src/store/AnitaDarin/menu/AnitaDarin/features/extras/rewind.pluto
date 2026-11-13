@@ -1,0 +1,38 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- Time goes back while the key is held (Atdar.util.game.players.user.rewind)
+local class Rewind extends Feature
+    function __construct()
+        parent:__construct({
+            id = "extras.rewind", kind = "toggle"
+        })
+
+        -- Settings
+        self.restore_camera = true -- the camera goes back with the player
+        self.max_seconds = 300 -- how far back it can go, at 60 frames a second
+    end
+
+    function set_restore_camera(toggle: bool): void
+        self.restore_camera = toggle
+        Atdar.util.game.players.user.rewind.set_restore_camera(toggle)
+    end
+
+    function set_max_seconds(value: int): void
+        self.max_seconds = value
+        Atdar.util.game.players.user.rewind.set_max_frames(value * 60)
+    end
+
+    function on_enable()
+        local rewind = Atdar.util.game.players.user.rewind
+
+        rewind.set_restore_camera(self.restore_camera)
+        rewind.set_max_frames(self.max_seconds * 60)
+        rewind.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.players.user.rewind.disable()
+    end
+end
+
+return Atdar.features.add(new Rewind())

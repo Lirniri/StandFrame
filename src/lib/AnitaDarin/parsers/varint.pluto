@@ -1,0 +1,129 @@
+-- Whole numbers as bytes that take only as many as the number needs (a varint, the "dynamic u64" of Stand-OSS's
+-- tunables/u64_dyn.lua): 7 bits of the number in each byte, the top bit of a byte says another one follows, and the
+-- eighth byte of a number that is still not over holds the last 8 bits whole. A number below 128 is one byte, a full
+-- 64-bit one nine.
+--
+--     local varint = Atdar.parsers.varint
+--
+--     local bytes = varint.pack_u64(300)            -- 2 bytes
+--     local value, next_at = varint.unpack_u64(bytes)   -- 300, 3
+--     varint.unpack_i64(varint.pack_i64(-5))        -- -5, the sign is kept in the bits of the first byte
+--
+-- It is for binary data (a file, a buffer): the profile of the script is JSON text, where a number is written as text
+-- already and this would not make it smaller. Not checked against Stand's own use of it
+local module = {}
+
+-- The bits of a byte that are the number, and the bit that says another byte follows
+local DATA_MASK = 0x7F
+local MORE_BIT = 0x80
+
+-- A number of this many bits is complete: the next byte is the last one, with all of its 8 bits
+local WIDE_BITS = 56
+
+-- The number of the bit that is the sign of a 64-bit number, and where the sign sits in an encoded signed number
+local SIGN_BIT = 63
+local ENCODED_SIGN_BIT = 6
+
+-- The lowest 6 bits of a signed number stay in place, the sign takes the 7th, the rest move up by one
+local LOW_MASK = 0x3F
+
+-- Packs a whole number as it is read unsigned (64 bits, a negative one is a very large one)
+-- @return A string of 1 to 9 bytes
+function module.pack_u64(value: int): string
+
+    local out = {}
+
+    for _ = 1, 8 do
+
+        local current = value & DATA_MASK
+
+        value = value >> 7
+
+        if value ~= 0 then
+            table.insert(out, string.char(current | MORE_BIT))
+        else
+            table.insert(out, string.char(current))
+            return table.concat(out)
+        end
+    end
+
+    -- Still not over after 8 bytes of 7 bits: what is left is at most 8 bits
+    if value ~= 0 then
+        table.insert(out, string.char(value))
+    end
+
+    return table.concat(out)
+end
+
+-- Reads a number from the bytes (as pack_u64 made them)
+-- @param at The place of the first byte, 1 by default
+-- @return The number, and the place right after it (to read the next one from there); nil if the bytes end in the middle of it
+function module.unpack_u64(bytes: string, at: int = 1)
+
+    local value = 0
+    local bits = 0
+
+    while true do
+
+        local byte = bytes:byte(at)
+
+        if byte == nil then
+            return nil, nil
+        end
+
+        at += 1
+
+        local more = bits < WIDE_BITS and (byte >> 7) ~= 0
+
+        if more then
+            byte = byte & DATA_MASK
+        end
+
+        value = value | (byte << bits)
+
+        if not more then
+            return value, at
+        end
+
+        bits += 7
+    end
+end
+
+-- Packs a signed whole number: the sign is kept in the bits of the first byte, so a small negative number is small too
+-- @return A string of 1 to 9 bytes
+function module.pack_i64(value: int): string
+
+    local negative = value >> SIGN_BIT
+
+    if value < 0 then
+        value = (value * -1) & ~(1 << SIGN_BIT)
+    end
+
+    return module.pack_u64((negative << ENCODED_SIGN_BIT) | ((value & ~LOW_MASK) << 1) | (value & LOW_MASK))
+end
+
+-- Reads a signed number (as pack_i64 made it)
+-- @return The number, and the place right after it; nil if the bytes end in the middle of it
+function module.unpack_i64(bytes: string, at: int = 1)
+
+    local encoded, next_at = module.unpack_u64(bytes, at)
+
+    if encoded == nil then
+        return nil, nil
+    end
+
+    local negative = ((encoded >> ENCODED_SIGN_BIT) & 1) ~= 0
+    local value = ((encoded >> 1) & ~LOW_MASK) | (encoded & LOW_MASK)
+
+    if negative then
+        if value == 0 then
+            value = 1 << SIGN_BIT
+        else
+            value = value * -1
+        end
+    end
+
+    return value, next_at
+end
+
+return module

@@ -1,0 +1,134 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("SuperDrive")
+
+-- A push on the vehicle the player drives while the key is held (Stand's Super Drive): every frame a force along the
+-- vehicle (or along where the camera looks) is applied to its centre of mass, as strong as the key is pressed.
+--
+--     local drive = Atdar.util.game.players.user.super_drive
+--
+--     drive.set_force(3.0)                          -- the settings, any time, before or after enable()
+--     drive.set_use_camera(true)                    -- push where the camera looks, not where the vehicle points
+--     drive.set_action(drive.ACTION.VEH_BRAKE)      -- the control that pushes, accelerate by default
+--     drive.enable()
+--     if drive.is_enabled() then ... end
+--     drive.disable()
+--
+-- Only the driver pushes. Nothing is changed that has to be given back: the force is applied and gone, so disable()
+-- only stops the loop. The loop is the ticker's (a run counter, a pcall that stops it on an error, a stop with the script)
+local ticker = Atdar.util.game.players.user.ticker
+
+-- The controls that make sense to hold (INPUT_*), what set_action takes
+local ACTION = {
+    VEH_ACCELERATE = Atdar.natives.input.ACTION.VEH_ACCELERATE,
+    VEH_BRAKE = Atdar.natives.input.ACTION.VEH_BRAKE,
+    VEH_HANDBRAKE = Atdar.natives.input.ACTION.VEH_HANDBRAKE,
+}
+
+-- The type of the force of APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS Stand uses (a force over time, not an impulse)
+local FORCE_TYPE = 1
+
+-- With the camera the push is half as strong (Stand halves the direction of the camera)
+local CAMERA_FACTOR = 0.5
+
+-- The driver's seat
+local DRIVER_SEAT = -1
+
+-- The settings, see the set_ functions
+local settings = {
+    force = 3.0,
+    use_camera = true,
+    action = ACTION.VEH_ACCELERATE,
+    debug = false,
+}
+
+-- The vehicle that is pushed now, for the debug log: one line when it changes
+local state = { vehicle = nil }
+
+-- The direction a rotation (degrees, order 2) looks in, { x, y, z }
+local function direction(rot: vector3): table
+    local pitch = math.rad(rot.x)
+    local yaw = math.rad(rot.z)
+
+    return { x = -math.sin(yaw) * math.cos(pitch), y = math.cos(yaw) * math.cos(pitch), z = math.sin(pitch) }
+end
+
+-- The vehicle the player drives, nil on foot or in another seat
+local function get_driven_vehicle(): ?int
+
+    local n_ped = Atdar.natives.entity.ped
+    local ped = Atdar.natives.player.get_ped_id()
+
+    if not n_ped.vehicle.is_in_any(ped) then
+        return nil
+    end
+
+    local vehicle = n_ped.vehicle.get(ped)
+
+    if Atdar.natives.entity.vehicle.get_ped_in_seat(vehicle, DRIVER_SEAT, false) ~= ped then
+        return nil
+    end
+
+    return vehicle
+end
+
+local function tick(): void
+
+    local vehicle = get_driven_vehicle()
+
+    if vehicle == nil then
+        state.vehicle = nil
+        return
+    end
+
+    local n_entity = Atdar.natives.entity
+    local normal = Atdar.natives.input.get_normal(0, settings.action)
+
+    if normal == 0 then
+        return
+    end
+
+    local scale = settings.force * normal
+    local push = n_entity.get_forward_vector(vehicle)
+
+    if settings.use_camera then
+        push = direction(Atdar.natives.camera.get_final_rotation(2))
+        scale *= CAMERA_FACTOR
+    end
+
+    n_entity.apply_force_to_center_of_mass(vehicle, FORCE_TYPE, push.x * scale, push.y * scale, push.z * scale, true, false, true, true)
+
+    if settings.debug and state.vehicle ~= vehicle then
+        state.vehicle = vehicle
+        log:debug($"pushing vehicle {vehicle}")
+    end
+end
+
+local control = ticker.make("SuperDrive", tick)
+
+control.ACTION = ACTION
+
+-- Settings
+
+-- How strong the push is: the force of a full press, 3 by default (the 300 of Stand's slider). Negative pushes backwards
+function control.set_force(force: number): void
+    settings.force = force
+end
+
+-- Whether the push goes where the camera looks (default) or the way the vehicle points
+function control.set_use_camera(toggle: bool): void
+    settings.use_camera = toggle
+end
+
+-- The control that pushes, one of ACTION or any INPUT_ number: accelerate by default. Its pressure (a trigger gives
+-- 0..1) is how strong the push is
+function control.set_action(action: int): void
+    settings.action = action
+end
+
+-- Whether it writes the vehicle it pushes to the log (debug level)
+function control.set_debug(toggle: bool): void
+    settings.debug = toggle
+end
+
+return control

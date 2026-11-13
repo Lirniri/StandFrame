@@ -189,7 +189,7 @@ local class DoubleJump extends Feature
         local ped = Atdar.natives.player.get_ped_id()
         local coords = n_entity.get_coords(ped, false, false)
 
-        n_entity.set_coords_no_offset(ped, coords.x, coords.y, coords.z, false, false, false)
+        n_entity.set_coords_no_offset(ped, coords, false)
         self:start_jump(kind)
         self:sync_graceland()
     end

@@ -1,0 +1,224 @@
+local features = Atdar.features
+local lang = Atdar.lang
+
+-- The handling features of the vehicle menu, after Stand-OSS: the settings are the feature fields, the sliders and
+-- toggles write them back (set_*). Everything here changes the memory of the game and is not checked in game
+local PRESETS = { "stand", "loose", "grippy" }
+
+return {
+    build = function(vehicle_menu, ctx)
+        local handling_menu = vehicle_menu:list(
+            lang.translate("menu.vehicle.handling.name"),
+            { "handling" },
+            lang.translate("menu.vehicle.handling.help")
+        )
+
+        -- Drift Mode
+
+        local drift = features.get("vehicle.drift_mode")
+        local drift_menu = handling_menu:list(
+            lang.translate("menu.vehicle.handling.drift_mode.name"),
+            {},
+            lang.translate("menu.vehicle.handling.drift_mode.help")
+        )
+        drift_menu:add_feature(
+            drift,
+            lang.translate("menu.vehicle.handling.drift_mode.name"),
+            { "driftmode" },
+            lang.translate("menu.vehicle.handling.drift_mode.help")
+        )
+        drift_menu:divider(
+            lang.translate("menu.vehicle.handling.settings.name")
+        )
+        drift_menu:list_action(
+            lang.translate("menu.vehicle.handling.drift_mode.preset.name"),
+            {
+                lang.text("menu.vehicle.handling.drift_mode.preset.stand"),
+                lang.text("menu.vehicle.handling.drift_mode.preset.loose"),
+                lang.text("menu.vehicle.handling.drift_mode.preset.grippy"),
+            },
+            function(index) drift:set_preset(PRESETS[index]) end,
+            { "driftpreset" },
+            lang.translate("menu.vehicle.handling.drift_mode.preset.help")
+        )
+        drift_menu:slider(
+            lang.translate("menu.vehicle.handling.drift_mode.traction_scale.name"),
+            10, 200, drift.traction_scale, 5,
+            function(value) drift:set_traction_scale(value) end,
+            { "drifttraction" },
+            lang.translate("menu.vehicle.handling.drift_mode.traction_scale.help")
+        )
+        drift_menu:toggle(
+            lang.translate("menu.vehicle.handling.drift_mode.live_traction.name"),
+            function(on) drift:set_live_traction(on) end,
+            { "driftlivetraction" },
+            lang.translate("menu.vehicle.handling.drift_mode.live_traction.help"),
+            drift.live_traction
+        )
+        drift_menu:toggle(
+            lang.translate("menu.vehicle.handling.drift_mode.top_speed.name"),
+            function(on) drift:set_top_speed(on) end,
+            { "drifttopspeed" },
+            lang.translate("menu.vehicle.handling.drift_mode.top_speed.help"),
+            drift.top_speed
+        )
+
+        -- Lessen Tyre Burnouts
+
+        local lessen = features.get("vehicle.lessen_burnouts")
+        local lessen_menu = handling_menu:list(
+            lang.translate("menu.vehicle.handling.lessen_burnouts.name"),
+            {},
+            lang.translate("menu.vehicle.handling.lessen_burnouts.help")
+        )
+        lessen_menu:add_feature(
+            lessen,
+            lang.translate("menu.vehicle.handling.lessen_burnouts.name"),
+            { "lessenburnouts" },
+            lang.translate("menu.vehicle.handling.lessen_burnouts.help")
+        )
+        lessen_menu:divider(
+            lang.translate("menu.vehicle.handling.settings.name")
+        )
+        lessen_menu:slider(
+            lang.translate("menu.vehicle.handling.lessen_burnouts.value.name"),
+            0, 100, lessen.value, 5,
+            function(value) lessen:set_value(value) end,
+            { "lessenburnoutsvalue" },
+            lang.translate("menu.vehicle.handling.lessen_burnouts.value.help")
+        )
+
+        -- Disable Heli Auto Stabilisation
+
+        local stab = features.get("vehicle.heli_stabilisation")
+        local stab_menu = handling_menu:list(
+            lang.translate("menu.vehicle.handling.heli_stabilisation.name"),
+            {},
+            lang.translate("menu.vehicle.handling.heli_stabilisation.help")
+        )
+        stab_menu:add_feature(
+            stab,
+            lang.translate("menu.vehicle.handling.heli_stabilisation.name"),
+            { "helistabilisation" },
+            lang.translate("menu.vehicle.handling.heli_stabilisation.help")
+        )
+        stab_menu:divider(
+            lang.translate("menu.vehicle.handling.settings.name")
+        )
+        stab_menu:slider(
+            lang.translate("menu.vehicle.handling.heli_stabilisation.stabilise_scale.name"),
+            0, 100, stab.stabilise_scale, 1,
+            function(value) stab:set_stabilise_scale(value) end,
+            { "helistabilise" },
+            lang.translate("menu.vehicle.handling.heli_stabilisation.stabilise_scale.help")
+        )
+        stab_menu:slider(
+            lang.translate("menu.vehicle.handling.heli_stabilisation.thrust_scale.name"),
+            10, 300, stab.thrust_scale, 5,
+            function(value) stab:set_thrust_scale(value) end,
+            { "helithrust" },
+            lang.translate("menu.vehicle.handling.heli_stabilisation.thrust_scale.help")
+        )
+
+        -- Gravity Multiplier
+
+        local gravity = features.get("vehicle.gravity")
+        local gravity_menu = handling_menu:list(
+            lang.translate("menu.vehicle.handling.gravity.name"),
+            {},
+            lang.translate("menu.vehicle.handling.gravity.help")
+        )
+        gravity_menu:add_feature(
+            gravity,
+            lang.translate("menu.vehicle.handling.gravity.name"),
+            { "vehiclegravity" },
+            lang.translate("menu.vehicle.handling.gravity.help")
+        )
+        gravity_menu:divider(
+            lang.translate("menu.vehicle.handling.settings.name")
+        )
+        gravity_menu:slider(
+            lang.translate("menu.vehicle.handling.gravity.multiplier.name"),
+            -10000, 10000, gravity.multiplier, 10,
+            function(value) gravity:set_multiplier(value) end,
+            { "vehiclegravitymultiplier" },
+            lang.translate("menu.vehicle.handling.gravity.multiplier.help")
+        )
+        gravity_menu:toggle(
+            lang.translate("menu.vehicle.handling.gravity.not_in_aircraft.name"),
+            function(on) gravity:set_not_in_aircraft(on) end,
+            { "vehiclegravitynotinaircraft" },
+            lang.translate("menu.vehicle.handling.gravity.not_in_aircraft.help"),
+            gravity.not_in_aircraft
+        )
+
+        -- Drive On Water
+
+        local water = features.get("vehicle.drive_on_water")
+        local water_menu = handling_menu:list(
+            lang.translate("menu.vehicle.handling.drive_on_water.name"),
+            {},
+            lang.translate("menu.vehicle.handling.drive_on_water.help")
+        )
+        water_menu:add_feature(
+            water,
+            lang.translate("menu.vehicle.handling.drive_on_water.name"),
+            { "driveonwater" },
+            lang.translate("menu.vehicle.handling.drive_on_water.help")
+        )
+        water_menu:divider(
+            lang.translate("menu.vehicle.handling.settings.name")
+        )
+        water_menu:slider(
+            lang.translate("menu.vehicle.handling.drive_on_water.depth.name"),
+            0, 200, water.depth, 5,
+            function(value) water:set_depth(value) end,
+            { "driveonwaterdepth" },
+            lang.translate("menu.vehicle.handling.drive_on_water.depth.help")
+        )
+        water_menu:slider(
+            lang.translate("menu.vehicle.handling.drive_on_water.smoothing.name"),
+            1, 100, water.smoothing, 1,
+            function(value) water:set_smoothing(value) end,
+            { "driveonwatersmoothing" },
+            lang.translate("menu.vehicle.handling.drive_on_water.smoothing.help")
+        )
+
+        -- Forge Model
+
+        local forge = features.get("vehicle.forge_model")
+        local forge_menu = handling_menu:list(
+            lang.translate("menu.vehicle.handling.forge_model.name"),
+            {},
+            lang.translate("menu.vehicle.handling.forge_model.help")
+        )
+        forge_menu:add_feature(
+            forge,
+            lang.translate("menu.vehicle.handling.forge_model.name"),
+            { "forgemodel" },
+            lang.translate("menu.vehicle.handling.forge_model.help")
+        )
+        forge_menu:divider(
+            lang.translate("menu.vehicle.handling.settings.name")
+        )
+        forge_menu:text_input(
+            lang.translate("menu.vehicle.handling.forge_model.model.name"),
+            { "forgemodelname" },
+            function(value) forge:set_model(value) end,
+            lang.translate("menu.vehicle.handling.forge_model.model.help"),
+            forge.model
+        )
+
+        -- Reset
+
+        handling_menu:divider(
+            lang.translate("menu.vehicle.handling.divider.reset.name")
+        )
+        handling_menu:add_feature(
+            features.get("vehicle.reset_handling"),
+            lang.translate("menu.vehicle.handling.reset_handling.name"),
+            { "resethandling" },
+            lang.translate("menu.vehicle.handling.reset_handling.help")
+        )
+    end,
+}

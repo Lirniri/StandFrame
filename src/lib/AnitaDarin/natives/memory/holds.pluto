@@ -1,0 +1,162 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("MemoryHolds")
+
+-- A counter of enables for a change of the game that must be on while ANY of its users wants it and off only when the last
+-- one is done: a patch like Stand's counted hooks. patch.nop refuses the same name twice, and a second user that switches
+-- off would take the patch away from the first one. Here each user is a holder of the name: the change is made by the
+-- first holder, and undone by the release of the last one. Nothing here is tried in the game yet.
+--
+--     local holds = Atdar.natives.memory.holds
+--
+--     holds.acquire("no_burnout", "feature_a", function() ... end, function() ... end)    -- true: it made the change
+--     holds.acquire("no_burnout", "feature_b", function() ... end, function() ... end)    -- false: it was made already
+--     holds.release("no_burnout", "feature_a")                                            -- still on, feature_b holds it
+--     holds.release("no_burnout", "feature_b")                                            -- the undo function runs now
+--
+--     holds.acquire_nop("roll", "feature_a", address, 9)    -- the same for a patch.nop of the code of the game
+--     holds.release("roll", "feature_a")
+--
+-- Everything is undone when the script stops.
+local module = {}
+
+-- The names that are held, by name: { holders = { holder -> true }, count, undo = function }
+local entries = {}
+
+-- Get
+
+-- How many holders the name has
+function module.get_count(key: string): int
+
+    if entries[key] == nil then
+        return 0
+    end
+
+    return entries[key].count
+end
+
+-- Whether the name has any holder
+function module.is_held(key: string): bool
+    return entries[key] ~= nil
+end
+
+-- Whether this holder holds the name
+function module.is_holder(key: string, holder: string): bool
+
+    if entries[key] == nil then
+        return false
+    end
+
+    return entries[key].holders[holder] == true
+end
+
+-- Runs the undo of an entry, a failed one is logged and does not stop the others
+local function run_undo(key: string, entry: table): void
+
+    if entry.undo == nil then
+        return
+    end
+
+    local ok, err = pcall(entry.undo)
+
+    if not ok then
+        log:error($"{key}: undo failed\n{err}")
+    end
+end
+
+-- Actions
+
+-- Makes the holder a holder of the name. The first holder makes the change (apply), and the undo is kept for the last release
+-- @param apply Runs when the name had no holder; the holder is not counted when it raises an error
+-- @param undo Runs when the last holder lets go
+-- @return Whether this call made the change (it was the first holder); a holder that holds the name already gives false
+function module.acquire(key: string, holder: string, apply: ?function, undo: ?function): bool
+
+    local entry = entries[key]
+
+    if entry ~= nil then
+
+        if not entry.holders[holder] then
+            entry.holders[holder] = true
+            entry.count += 1
+        end
+
+        return false
+    end
+
+    if apply ~= nil then
+        local ok, err = pcall(apply)
+
+        if not ok then
+            log:error($"{key}: apply failed\n{err}")
+            return false
+        end
+    end
+
+    entries[key] = { holders = { [holder] = true }, count = 1, undo = undo }
+
+    return true
+end
+
+-- Takes the holder away; the last one runs the undo
+-- @return Whether the undo ran now; a holder that held nothing gives false
+function module.release(key: string, holder: string): bool
+
+    local entry = entries[key]
+
+    if entry == nil or not entry.holders[holder] then
+        return false
+    end
+
+    entry.holders[holder] = nil
+    entry.count -= 1
+
+    if entry.count > 0 then
+        return false
+    end
+
+    entries[key] = nil
+    run_undo(key, entry)
+
+    return true
+end
+
+-- A holder of the name of a patch of the code: the first holder makes the bytes at the address NOP (natives.memory.patch),
+-- the last release puts them back
+-- @return Whether the patch was made now; false when the name was held already or the patch was refused
+function module.acquire_nop(key: string, holder: string, address: int, count: int): bool
+
+    local patch = Atdar.natives.memory.patch
+
+    if entries[key] ~= nil then
+        return module.acquire(key, holder)
+    end
+
+    if not patch.nop(key, address, count) then
+        return false
+    end
+
+    return module.acquire(key, holder, nil, || -> patch.restore(key))
+end
+
+-- Lets go of every name of every holder, the undo of each one runs
+function module.release_all(): void
+
+    local keys = {}
+
+    for key in pairs(entries) do
+        table.insert(keys, key)
+    end
+
+    for _, key in ipairs(keys) do
+
+        local entry = entries[key]
+
+        entries[key] = nil
+        run_undo(key, entry)
+    end
+end
+
+util.on_stop(module.release_all)
+
+return module

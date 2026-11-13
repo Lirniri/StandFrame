@@ -1,0 +1,13 @@
+-- The weapon wheel in vehicles (Stand's Weapon Wheel In Vehicles): the game's update of the weapon wheel is told
+-- the ped is not in a vehicle, so the wheel of the weapons opens while driving (the scroll wheel still goes one by
+-- one through the vehicle weapons).
+--
+--     local wheel = Atdar.util.game.players.user.wheel_on_wheels
+--
+--     wheel.enable()      -- false if the code of the game is not found or is another one
+--     wheel.disable()
+--
+-- It changes one byte of the code of the game (patch "wheel_on_wheels" of Atdar.natives.memory.patch), not checked in game
+local patch_toggle = Atdar.util.game.players.user.patch_toggle
+
+return patch_toggle.make("WheelOnWheels", "wheel_on_wheels")

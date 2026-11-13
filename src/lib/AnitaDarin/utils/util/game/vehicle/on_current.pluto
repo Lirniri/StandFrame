@@ -1,0 +1,312 @@
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("OnCurrentVehicle")
+
+-- The shape of Stand's "on current vehicle" commands (CommandOnCurrentVehicle): a change that holds while the player drives
+-- a vehicle, is undone when the player gets out or into another one, and is done again for the next one. It is a helper
+-- for a util module (or a Feature) so that each one doesn't write the tick handler, the run counter, the filter by kind of
+-- vehicle, the undo and the error stop again.
+--
+--     local on_current = Atdar.util.game.vehicle.on_current
+--
+--     local behaviour = on_current.create("NoBurnouts", {
+--         except = { "bike", "air" },                      -- or only = { "car" }; the kinds are in on_current.KIND
+--         change = function(vehicle, model, behaviour)     -- once for a vehicle that is allowed
+--             Atdar.util.game.vehicle.handling.set(vehicle, "low_speed_traction_loss_mult", 0.0, "no_burnouts")
+--         end,
+--         undo = function(vehicle, model, behaviour)       -- when it is not the current one any more, or on disable
+--             Atdar.util.game.vehicle.handling.reset_model(model)
+--         end,
+--         frame = function(vehicle, model, behaviour) end, -- optional: every frame while it is changed
+--     })
+--
+--     behaviour.enable()
+--     behaviour.refresh()           -- the settings changed: undo and do again for the vehicle it holds
+--     behaviour.disable()
+--
+-- behaviour.store[model] is a table of the model for what the hooks keep (the first values of a model, for example); the
+-- tables are kept until the behaviour stops, and behaviour.take(model) gives one back and forgets it. The hooks are
+-- guarded: an error in one is logged, the behaviour stops by itself and the undo runs. Like Stand's, it acts on the
+-- vehicle the player DRIVES (set only_driver = false for a passenger too).
+local module = {}
+
+-- The kinds of vehicle that a filter can name, with what each is
+module.KIND = {
+    CAR = "car",
+    BIKE = "bike",
+    BICYCLE = "bicycle",
+    QUAD = "quad",
+    BOAT = "boat",
+    JETSKI = "jetski",
+    HELI = "heli",
+    PLANE = "plane",
+    BLIMP = "blimp",
+    TRAIN = "train",
+    TRAILER = "trailer",
+    SUBMARINE = "submarine",
+    AIR = "air",                 -- heli, plane or blimp
+    AQUATIC = "aquatic",         -- boat, jetski or submarine
+    TWO_WHEELER = "two_wheeler", -- bike or bicycle
+}
+
+-- Get
+
+-- Sets the kind in the set when the answer is yes
+local function mark(kinds: table, kind: string, yes: bool): void
+
+    if yes then
+        kinds[kind] = true
+    end
+end
+
+-- The kinds a vehicle model is of, as a set { kind = true }. The grouping kinds (air, aquatic, two_wheeler) are in it too
+-- @param model The hash of the vehicle's model
+function module.get_kinds(model: int): table
+
+    local n_vehicle = Atdar.natives.entity.vehicle
+    local KIND = module.KIND
+    local kinds = {}
+
+    mark(kinds, KIND.CAR, n_vehicle.is_this_model_a_car(model))
+    mark(kinds, KIND.BIKE, n_vehicle.is_this_model_a_bike(model))
+    mark(kinds, KIND.BICYCLE, n_vehicle.is_this_model_a_bicycle(model))
+    mark(kinds, KIND.QUAD, n_vehicle.is_this_model_a_quadbike(model))
+    mark(kinds, KIND.BOAT, n_vehicle.is_this_model_a_boat(model))
+    mark(kinds, KIND.JETSKI, n_vehicle.is_this_model_a_jetski(model))
+    mark(kinds, KIND.HELI, n_vehicle.is_this_model_a_heli(model))
+    mark(kinds, KIND.PLANE, n_vehicle.is_this_model_a_plane(model))
+    mark(kinds, KIND.TRAIN, n_vehicle.is_this_model_a_train(model))
+    mark(kinds, KIND.BLIMP, n_vehicle.is_a_blimp(model))
+    mark(kinds, KIND.TRAILER, n_vehicle.is_a_trailer(model))
+    mark(kinds, KIND.SUBMARINE, n_vehicle.is_a_submarine(model))
+
+    mark(kinds, KIND.AIR, kinds[KIND.HELI] or kinds[KIND.PLANE] or kinds[KIND.BLIMP])
+    mark(kinds, KIND.AQUATIC, kinds[KIND.BOAT] or kinds[KIND.JETSKI] or kinds[KIND.SUBMARINE])
+    mark(kinds, KIND.TWO_WHEELER, kinds[KIND.BIKE] or kinds[KIND.BICYCLE])
+
+    return kinds
+end
+
+-- Whether a vehicle of these kinds (get_kinds) passes the filter: it names one of "only" (when there is "only"), and
+-- none of "except"
+function module.passes(kinds: table, only: ?table, except: ?table): bool
+
+    if only ~= nil then
+
+        local named = false
+
+        for _, kind in ipairs(only) do
+
+            if kinds[kind] then
+                named = true
+                break
+            end
+        end
+
+        if not named then
+            return false
+        end
+    end
+
+    if except ~= nil then
+
+        for _, kind in ipairs(except) do
+
+            if kinds[kind] then
+                return false
+            end
+        end
+    end
+
+    return true
+end
+
+-- The vehicle the player is in, nil if none (or not as the driver when only_driver)
+-- @param only_driver Whether the player must be in the driver's seat
+function module.get_current(only_driver: bool = true): ?int
+
+    local n_vehicle = Atdar.natives.entity.vehicle
+    local vehicle = Atdar.natives.player.user.get_vehicle(false)
+
+    if vehicle == nil or vehicle <= 0 or not n_vehicle.does_exist(vehicle) then
+        return nil
+    end
+
+    if only_driver and n_vehicle.get_ped_in_seat(vehicle, -1, false) ~= Atdar.natives.player.get_ped_id() then
+        return nil
+    end
+
+    return vehicle
+end
+
+-- The behaviour
+
+local OPTIONS = { only = true, except = true, only_driver = true, change = true, undo = true, frame = true }
+
+-- Makes a behaviour: the options are above (the hooks change and undo are needed)
+-- @return A table with enable, disable, is_enabled, refresh, get_vehicle, take, set_debug and store
+function module.create(name: string, options: table): table
+
+    for key in pairs(options) do
+
+        if not OPTIONS[key] then
+            error($"[OnCurrentVehicle '{name}'] unknown option '{key}'", 2)
+        end
+    end
+
+    if type(options.change) ~= "function" or type(options.undo) ~= "function" then
+        error($"[OnCurrentVehicle '{name}'] change and undo are needed", 2)
+    end
+
+    local only_driver = options.only_driver ~= false
+    local behaviour = { store = {} }
+
+    -- Whether it's on, which run of the tick handler is the wanted one, the vehicle that is changed and its model (nil when
+    -- none), whether the change is to be undone and done again (refresh), and the debug
+    local state = { enabled = false, run = 0, vehicle = nil, model = nil, dirty = false, debug = false }
+
+    -- Whether it's on
+    function behaviour.is_enabled(): bool
+        return state.enabled
+    end
+
+    -- The vehicle that is changed now, nil if none
+    function behaviour.get_vehicle(): ?int
+        return state.vehicle
+    end
+
+    -- Whether it writes what it does to the log (debug level)
+    function behaviour.set_debug(toggle: bool): void
+        state.debug = toggle
+    end
+
+    -- What the hooks kept for the model, gone from the store
+    function behaviour.take(model: int): any
+
+        local kept = behaviour.store[model]
+
+        behaviour.store[model] = nil
+
+        return kept
+    end
+
+    -- Undoes the change of the vehicle that is changed, the undo hook is guarded
+    local function undo_now(): void
+
+        if state.vehicle == nil then
+            return
+        end
+
+        local vehicle = state.vehicle
+        local model = state.model
+
+        state.vehicle = nil
+        state.model = nil
+
+        if state.debug then
+            log:debug($"{name}: undo for {vehicle}")
+        end
+
+        local ok, err = pcall(options.undo, vehicle, model, behaviour)
+
+        if not ok then
+            log:error($"{name}: undo failed\n{err}")
+        end
+    end
+
+    -- One frame: undoes the change for a vehicle that is no longer the current one, changes the new one if it passes
+    local function step(): void
+
+        local current = module.get_current(only_driver)
+
+        if state.vehicle ~= nil and (current ~= state.vehicle or state.dirty) then
+            undo_now()
+        end
+
+        state.dirty = false
+
+        if current ~= nil and state.vehicle == nil then
+
+            local model = Atdar.natives.entity.get_model(current)
+
+            if module.passes(module.get_kinds(model), options.only, options.except) then
+                state.vehicle = current
+                state.model = model
+
+                if state.debug then
+                    log:debug($"{name}: change for {current}")
+                end
+
+                options.change(current, model, behaviour)
+            end
+        end
+
+        if state.vehicle ~= nil and options.frame ~= nil then
+            options.frame(state.vehicle, state.model, behaviour)
+        end
+    end
+
+    -- Switches off at once and undoes what was changed
+    local function stop_now(): void
+        state.enabled = false
+        state.run += 1
+        undo_now()
+    end
+
+    -- Switches it on. A second call does nothing
+    function behaviour.enable(): void
+
+        if state.enabled then
+            return
+        end
+
+        state.enabled = true
+        state.run += 1
+
+        local run = state.run
+
+        util.create_tick_handler(function()
+
+            -- Switched off, or switched on again and a newer handler runs
+            if not state.enabled or state.run ~= run then
+                return false
+            end
+
+            local ok, err = pcall(step)
+
+            if not ok then
+                log:error($"{name} stopped\n{err}")
+                stop_now()
+                return false
+            end
+
+            return true
+        end)
+    end
+
+    -- Switches it off and undoes the change of the vehicle it holds
+    function behaviour.disable(): void
+
+        if not state.enabled then
+            return
+        end
+
+        stop_now()
+    end
+
+    -- The settings changed: the change is undone and done again for the vehicle it holds (at the next frame)
+    function behaviour.refresh(): void
+        state.dirty = true
+    end
+
+    util.on_stop(function()
+
+        if state.enabled then
+            stop_now()
+        end
+    end)
+
+    return behaviour
+end
+
+return module

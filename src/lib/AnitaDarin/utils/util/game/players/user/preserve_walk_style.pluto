@@ -1,0 +1,12 @@
+-- The player does not go into "combat mode" when violence is around (Stand's Preserve Walk Style During Combat): the
+-- game's function that asks for the action mode is made to answer no at once, so the walk style stays.
+--
+--     local walk = Atdar.util.game.players.user.preserve_walk_style
+--
+--     walk.enable()      -- false if the code of the game is not found (another build)
+--     walk.disable()
+--
+-- It changes the code of the game (patch "preserve_walk_style" of Atdar.natives.memory.patch), not checked in game
+local patch_toggle = Atdar.util.game.players.user.patch_toggle
+
+return patch_toggle.make("PreserveWalkStyle", "preserve_walk_style")

@@ -1,0 +1,39 @@
+local Feature = Atdar.loader.load("features/feature")
+
+-- The player is a ragdoll pushed by the stick (Atdar.util.game.players.user.floppy_mode). The settings are kept here and
+-- given to it at enable, and at once when they change while it is on
+local class FloppyMode extends Feature
+    function __construct()
+        parent:__construct({
+            id = "extras.floppy_mode", kind = "toggle"
+        })
+
+        -- Settings
+        self.speed = 100 -- how hard the stick pushes, in percent of 1.0
+        self.sprint_multiplier = 5 -- how many times harder with Sprint pressed
+    end
+
+    function set_speed(value: int): void
+        self.speed = value
+        Atdar.util.game.players.user.floppy_mode.set_speed(value / 100)
+    end
+
+    function set_sprint_multiplier(value: int): void
+        self.sprint_multiplier = value
+        Atdar.util.game.players.user.floppy_mode.set_sprint_multiplier(value)
+    end
+
+    function on_enable()
+        local floppy = Atdar.util.game.players.user.floppy_mode
+
+        floppy.set_speed(self.speed / 100)
+        floppy.set_sprint_multiplier(self.sprint_multiplier)
+        floppy.enable()
+    end
+
+    function on_disable()
+        Atdar.util.game.players.user.floppy_mode.disable()
+    end
+end
+
+return Atdar.features.add(new FloppyMode())
