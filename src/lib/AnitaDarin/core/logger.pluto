@@ -22,6 +22,11 @@
 -- The open file of today; a new day (or another folder) opens a new one
 local log_file = { path = nil, handle = nil }
 
+-- os.time() the open file's day ends at, and the Atdar.log_dir it was opened with: until then (and with the
+-- same folder) today_file gives the handle without building the day and the path again. 0 - nothing to reuse
+local day_ends = 0
+local opened_dir = nil
+
 -- Lines written but not on disk yet, and when they last went (see Writing to disk below)
 local unflushed = false
 local last_flush = 0
@@ -46,6 +51,20 @@ local function close_file(): void
     end
     log_file.handle = nil
     log_file.path = nil
+    day_ends = 0
+end
+
+-- @param day "2026-11-06"
+-- @return os.time() of the midnight the day ends at, 0 if the day can't be read
+local function end_of(day: string): int
+
+    local year, month, number = day:match("^(%d+)%-(%d+)%-(%d+)$")
+
+    if not year then
+        return 0
+    end
+
+    return os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(number) + 1, hour = 0 })
 end
 
 -- The day files in the folder: { name = "2026-11-06", path = ... }; other files aren't touched.
@@ -108,6 +127,11 @@ end
 -- Errors when it can't be opened
 local function today_file()
 
+    -- Every line comes through here: the same day and folder need no date and no path
+    if log_file.handle ~= nil and Atdar.log_dir == opened_dir and os.time() < day_ends then
+        return log_file.handle
+    end
+
     local dir = log_dir()
     local today = os.date("%Y-%m-%d")
 
@@ -115,6 +139,8 @@ local function today_file()
     -- Not the Display Name: changing it would split a day into two files
     local path = $"{dir}{Atdar.name}_{today}.log"
     if path == log_file.path then
+        opened_dir = Atdar.log_dir
+        day_ends = end_of(today)
         return log_file.handle
     end
     close_file()
@@ -132,6 +158,8 @@ local function today_file()
     end
     log_file.handle = handle
     log_file.path = path
+    opened_dir = Atdar.log_dir
+    day_ends = end_of(today)
     return handle
 end
 

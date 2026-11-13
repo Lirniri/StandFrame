@@ -17,6 +17,16 @@ os.date = function(format, time)
     return real_date(format, time)
 end
 
+-- The clock goes with the calendar: noon of the day set (the logger keeps a day's file open until the day ends)
+local real_time = os.time
+os.time = function(date)
+    if date == nil then
+        local year, month, day = today:match("^(%d+)%-(%d+)%-(%d+)$")
+        return real_time({ year = tonumber(year), month = tonumber(month), day = tonumber(day), hour = 12 })
+    end
+    return real_time(date)
+end
+
 -- The file as it is on disk: info lines wait in the buffer for up to a second, so they're put there first
 local function lines_of(day)
     Logger.flush()
@@ -132,4 +142,5 @@ stand.check(stand.find_log("after stop"), "Stand's log still gets lines")
 stand.equal(#filesystem.list_files(dir), files_before, "but no file is written")
 
 os.date = real_date
+os.time = real_time
 stand.finish()

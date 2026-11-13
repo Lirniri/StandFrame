@@ -96,8 +96,11 @@ local KINDS = {
             local key = opts.profile
             local hex = color.to_hex(colour, true)
 
-            -- Who changes the colour and when: the user or Stand by itself (debug mode)
-            log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)})")
+            -- Who changes the colour and when: the user or Stand by itself (debug mode). Checked here too:
+            -- a colour being dragged calls this all the time, and the line would be built for nothing
+            if Atdar.debug then
+                log:debug($"{key}: {Atdar.profile.get(key)} -> {hex} (click type {tostring(click_type)})")
+            end
 
             -- Stand also calls this when the script stops, with the colour the item shows: for "" (the game's
             -- own) that's black, which would then be saved as picked. Only a different colour is a pick
