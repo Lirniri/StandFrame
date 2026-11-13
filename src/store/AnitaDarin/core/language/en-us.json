@@ -505,9 +505,6 @@
         "entry": {
             "name": "%d: %s: %s",
             "short": "Module %d",
-            "version": "Version: %s",
-            "author": "Author: %s",
-            "disabled": "Autostart is off",
             "deps": "Needs: %s",
             "no_deps": "none",
             "ticks": "Has on_tick",

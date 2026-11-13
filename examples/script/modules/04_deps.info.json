@@ -1,9 +1,0 @@
-{
-    "id": "example.reporter",
-    "name": "Example: Reporter",
-    "version": "1.0.0",
-    "author": "You",
-    "dependencies": [
-        "example.clock"
-    ]
-}

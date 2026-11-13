@@ -1,9 +1,0 @@
-{
-    "id": "CallFunction",
-    "name": "Call Function",
-    "version": "0.1.0",
-    "entry": "CallFunction.pluto",
-    "enabled": true,
-    "system": true,
-    "dependencies": []
-}

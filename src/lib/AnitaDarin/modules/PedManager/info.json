@@ -1,9 +1,0 @@
-{
-    "id": "PedManager",
-    "name": "Ped Manager",
-    "version": "0.1.0",
-    "entry": "PedManager.pluto",
-    "enabled": true,
-    "system": false,
-    "dependencies": []
-}

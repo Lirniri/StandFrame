@@ -1,10 +1,7 @@
 -- EXAMPLE 1: the smallest module, written as a table of options.
 -- Good for a module that only does something on start and undoes it on stop.
 --
--- Options: name, deps (optional), on_start / on_stop / on_tick (all optional)
---
--- The script finds the module by its manifest, 01_basic.info.json next to this file: { "id": "example.basic", ... }.
--- This file runs when the module is first started. `name` here must be the manifest's id, or can be left out
+-- Options: name (required, unique), deps (optional), on_start / on_stop / on_tick (all optional)
 
 local Module = Atdar.loader.load("core/module")
 

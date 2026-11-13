@@ -505,9 +505,6 @@
         "entry": {
             "name": "%d: %s: %s",
             "short": "Модуль %d",
-            "version": "Версия: %s",
-            "author": "Автор: %s",
-            "disabled": "Автозапуск выключен",
             "deps": "Зависит от: %s",
             "no_deps": "нет",
             "ticks": "Есть on_tick",

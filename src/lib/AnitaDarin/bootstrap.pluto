@@ -47,7 +47,6 @@ Atdar.natives = Atdar.loader.auto({}, "natives")
 Atdar.parsers = Atdar.loader.auto({}, "parsers")
 
 -- Modules: internal parts the script starts by itself, in dependency order (core/module).
--- Found by their manifests (core/module_manifest: info.json), each one's file runs when it starts.
 -- Before features and the menu, so those can use them
 Atdar.modules = Atdar.loader.load("core/module_manager")
 Atdar.modules.load_dir($"{Atdar.filesystem.paths.lib}modules\\")
