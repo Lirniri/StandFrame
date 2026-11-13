@@ -104,6 +104,20 @@ local function ordered(value, rank: table, seen: table)
     return copy
 end
 
+-- The file's write time and size, as core/file_watch stamps a file; with the path, so another path never matches
+-- @return nil when it can't be told
+local function stamp_of(path: string): ?string
+
+    local ok_time, written = pcall(io.writetime, path)
+    local ok_size, size = pcall(io.filesize, path)
+
+    if not ok_time or not ok_size then
+        return nil
+    end
+
+    return $"{path}:{written}:{size}"
+end
+
 local class JsonFile
 
     -- pretty: indented JSON, easier to edit by hand
@@ -115,6 +129,11 @@ local class JsonFile
         self.pretty = pretty
         self.rank = {}
 
+        -- Whether the file on disk is known to be sound JSON: read or written by this instance, and not touched
+        -- since (good_stamp: its path, write time and size then). write() then doesn't read it again to check
+        self.known_good = false
+        self.good_stamp = nil
+
         for place, key in ipairs(key_order or {}) do
             self.rank[key] = place
         end
@@ -124,6 +143,22 @@ local class JsonFile
         return filesystem.exists(self.path)
     end
 
+    -- The file on disk was just read or written as sound JSON
+    private function mark_good(): void
+        self.good_stamp = stamp_of(self.path)
+        self.known_good = self.good_stamp ~= nil
+    end
+
+    private function mark_unknown(): void
+        self.known_good = false
+        self.good_stamp = nil
+    end
+
+    -- Whether the file is still the one marked good: the same path, not written since
+    private function still_good(): bool
+        return self.known_good and self.good_stamp == stamp_of(self.path)
+    end
+
     -- @return The file's table; nil if there is no file (or it's damaged) and no usable backup
     function read(): ?table
         local text = read_text(self.path)
@@ -131,9 +166,13 @@ local class JsonFile
         if text ~= nil then
             local data = json_parser.decode(text)
             if data ~= nil then
+                self:mark_good()
                 return data
             end
         end
+
+        -- Missing or damaged: whatever comes back is the backup's
+        self:mark_unknown()
 
         local backup_text = read_text($"{self.path}.bak")
         local backup = backup_text ~= nil ? json_parser.decode(backup_text) : nil
@@ -197,13 +236,24 @@ local class JsonFile
         local moved_to = nil
 
         if filesystem.exists(self.path) then
-            local current = read_text(self.path)
-            if current ~= nil and json_parser.decode(current) ~= nil then
+            -- Read and decoded only to tell a sound file from a damaged one: not when it's the very file
+            -- this instance read or wrote last
+            local sound = self:still_good()
+
+            if not sound then
+                local current = read_text(self.path)
+                sound = current ~= nil and json_parser.decode(current) ~= nil
+            end
+
+            if sound then
                 moved_to = $"{self.path}.bak"
             else
                 moved_to = $"{self.path}.broken"
                 log:warn($"{self.path} was damaged, kept as {moved_to}")
             end
+
+            -- From here on the file is on its way out, whatever comes of the write
+            self:mark_unknown()
             os.remove(moved_to)
             local moved, err = os.rename(self.path, moved_to)
             if not moved then
@@ -223,6 +273,8 @@ local class JsonFile
             log:error($"{self.path} not written: {err}")
             return false
         end
+
+        self:mark_good()
         
         return true
     end
@@ -232,6 +284,8 @@ local class JsonFile
         for _, suffix in { "", ".bak", ".tmp", ".broken" } do
             os.remove(self.path .. suffix)
         end
+
+        self:mark_unknown()
     end
 
 end

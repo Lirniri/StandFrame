@@ -10,6 +10,15 @@ local json = require "pluto:json"
 
 local module = {}
 
+-- The characters the checks look at, as string.byte gives them: compared as numbers, so no one-character
+-- string is made for each of them
+local QUOTE = 34 -- "
+local BACKSLASH = 92
+local OPEN_BRACKET = 91 -- [
+local CLOSE_BRACKET = 93 -- ]
+local OPEN_BRACE = 123 -- {
+local CLOSE_BRACE = 125 -- }
+
 -- Whether every bracket the text opens is closed, outside of strings: '{"a":{"b":1}' (a cut-off file that
 -- still starts with { and ends with }) is not
 local function is_balanced(text: string): bool
@@ -27,18 +36,18 @@ local function is_balanced(text: string): bool
             break
         end
 
-        local char = text:sub(at, at)
+        local char = text:byte(at)
         position = at + 1
 
         if in_string then
-            if char == "\\" then
+            if char == BACKSLASH then
                 position = at + 2
             else
                 in_string = false
             end
-        elseif char == '"' then
+        elseif char == QUOTE then
             in_string = true
-        elseif char == "{" or char == "[" then
+        elseif char == OPEN_BRACE or char == OPEN_BRACKET then
             depth += 1
         else
             depth -= 1
@@ -56,18 +65,27 @@ end
 -- @return The decoded table, or nil if the text isn't one whole JSON object or array
 function module.decode(text: string): ?table
 
-    local trimmed = text:match("^%s*(.-)%s*$")
-    local first, last = trimmed:sub(1, 1), trimmed:sub(-1)
+    -- Where the text without the whitespace around it starts and ends: looked at in place, a file isn't
+    -- copied to be trimmed
+    local from = text:find("%S")
 
-    if not ((first == "{" and last == "}") or (first == "[" and last == "]")) then
+    if from == nil then
         return nil
     end
 
-    if not is_balanced(trimmed) then
+    local to = text:match(".*()%S")
+    local first, last = text:byte(from), text:byte(to)
+
+    if not ((first == OPEN_BRACE and last == CLOSE_BRACE) or (first == OPEN_BRACKET and last == CLOSE_BRACKET)) then
         return nil
     end
 
-    local data = json.decode(trimmed)
+    -- The whitespace around has no brackets and no quotes, the whole text counts the same
+    if not is_balanced(text) then
+        return nil
+    end
+
+    local data = json.decode(text)
 
     if type(data) ~= "table" then
         return nil
@@ -75,7 +93,7 @@ function module.decode(text: string): ?table
 
     -- '{bad}' decodes to an empty table; the whitespace is stripped only for that case, not for every file
     if next(data) == nil then
-        local compact = trimmed:gsub("%s", "")
+        local compact = text:gsub("%s", "")
         if compact ~= "{}" and compact ~= "[]" then
             return nil
         end
