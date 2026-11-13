@@ -80,6 +80,25 @@ function module.remove_fall_flags(ped: int, bits: int): bool
     return true
 end
 
+
+
+-- Is
+
+-- Whether all the bits are in the flags of the fall task (set_air_control), false too if the ped doesn't fall in that task
+-- @param bits Which bits, FALL_FLAG_GRACELAND by default
+function module.has_air_control(ped: int, bits: int = module.FALL_FLAG_GRACELAND): bool
+
+    local flags = module.get_fall_flags(ped)
+
+    if flags == nil then
+        return false
+    end
+
+    return flags & bits == bits
+end
+
+-- Set
+
 -- Steering in a fall without a ragdoll: puts the flags of Stand's Graceland in the fall task (toggle true), or takes
 -- them out (false). Only the fall that goes now: the next fall starts without them
 -- @param bits Which bits, FALL_FLAG_GRACELAND by default

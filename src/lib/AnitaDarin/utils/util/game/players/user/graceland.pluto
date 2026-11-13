@@ -74,6 +74,7 @@ local FALL_LOG_MS = 1000
 local settings = {
     steering = true,
     ragdoll_distance = 12.0,
+    min_height = 6.0,
     safe_landing = true,
     landing_time = 0.5,
     wall_protection = true,
@@ -93,7 +94,7 @@ local state = {
     enabled = false, run = 0,
     blocked = false, landing_done = false, flags_saved = nil, fall_heading = nil, ground_since = nil, control_given = false, still_since = nil,
     was_ragdoll = false, was_airborne = false, last_fall_log = 0, last_speed = 0.0,
-    ped = nil, airborne = false, last_ms = nil, frame = 0.0,
+    ped = nil, airborne = false, last_ms = nil, frame = 0.0, peak_height = 0.0,
 }
 
 -- Whether it's on
@@ -119,6 +120,13 @@ end
 -- @param metres From about 5
 function module.set_ragdoll_distance(metres: number): void
     settings.ragdoll_distance = math.max(metres, MIN_RAGDOLL_DISTANCE)
+end
+
+-- How high (metres above the ground) the player must have been in the air for a fall to count, 4 by default. Lower
+-- than that (a light hit by a car, a hop) nothing is done: no standing up from the ragdoll, no steering, no ending
+-- of the ragdoll; it is the game's ragdoll as usual. 0 - every fall counts
+function module.set_min_height(metres: number): void
+    settings.min_height = math.max(metres, 0)
 end
 
 -- Whether a ragdoll in a fall is ended above the ground, on by default: the player falls the last metres on his
@@ -212,6 +220,25 @@ local function is_ragdoll_steered(): bool
     return settings.air_control
 end
 
+-- Whether the fall (or the ragdoll that came of it) began high enough to count, see set_min_height
+local function is_fall_high(): bool
+    return state.peak_height >= settings.min_height
+end
+
+-- Remembers the highest point of the fall; forgets it on the ground, when the protection of the landing is over and
+-- no ragdoll lies there (a ragdoll that lies still after a high fall is still that fall's)
+local function update_peak(ped: int, airborne: bool): void
+
+    if airborne then
+        state.peak_height = math.max(state.peak_height, Atdar.natives.entity.get_height_above_ground(ped))
+        return
+    end
+
+    if not state.landing_done and not Atdar.natives.player.is_ragdoll(ped) then
+        state.peak_height = 0.0
+    end
+end
+
 -- Blocks or gives back the ragdoll once, not every frame
 local function set_ragdoll_blocked(ped: int, blocked: bool): void
 
@@ -226,7 +253,7 @@ end
 -- A ragdoll that landed and lies still is ended after stuck_ragdoll_ms: the player stands up
 local function end_stuck_ragdoll(ped: int, airborne: bool): void
 
-    if settings.stuck_ragdoll_ms <= 0 then
+    if settings.stuck_ragdoll_ms <= 0 or not is_fall_high() then
         return
     end
 
@@ -325,7 +352,7 @@ local function land_safely(ped: int, airborne: bool): void
         return
     end
 
-    if not airborne or not settings.safe_landing or not Atdar.natives.player.is_ragdoll(ped) then
+    if not airborne or not settings.safe_landing or not is_fall_high() or not Atdar.natives.player.is_ragdoll(ped) then
         return
     end
 
@@ -349,7 +376,7 @@ end
 -- is ended before that by land_safely, and below WALL_MIN_HEIGHT it isn't asked
 local function end_on_wall(ped: int, airborne: bool): void
 
-    if not settings.wall_protection or state.landing_done or not airborne then
+    if not settings.wall_protection or state.landing_done or not airborne or not is_fall_high() then
         return
     end
 
@@ -530,6 +557,7 @@ local function sync_ped(ped: int): void
         state.fall_heading = nil
         state.ground_since = nil
         state.still_since = nil
+        state.peak_height = 0.0
     end
 
     state.ped = ped
@@ -586,6 +614,7 @@ local function apply(): void
     sync_air_control(airborne)
     state.airborne = airborne
     remember_heading(ped, airborne)
+    update_peak(ped, airborne)
     land_safely(ped, airborne)
     end_on_wall(ped, airborne)
 
@@ -619,7 +648,7 @@ local function apply(): void
     -- The ragdoll control is given once, only while the ped is ragdolling and the stick steers the ragdoll
     -- (is_ragdoll_steered). When it must not be there it is taken every frame, not only on a change: the game keeps it
     -- from before (a reloaded script, another script or Stand that gave it) and a flag of ours can't tell
-    local steered = is_ragdoll_steered() and n_player.is_ragdoll(ped)
+    local steered = is_ragdoll_steered() and is_fall_high() and n_player.is_ragdoll(ped)
 
     if steered then
         if not state.control_given then
@@ -664,6 +693,7 @@ local function release(): void
     state.fall_heading = nil
     state.ground_since = nil
     state.still_since = nil
+    state.peak_height = 0.0
     state.was_ragdoll = false
     state.was_airborne = false
     state.last_fall_log = 0
