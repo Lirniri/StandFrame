@@ -1,7 +1,0 @@
-local module = {}
-
-function module.is_model(hash: int)
-    return STREAMING.IS_MODEL_A_VEHICLE(hash)
-end
-
-return Atdar.loader.auto(module, "natives/streaming/vehicle")

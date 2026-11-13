@@ -1,3 +1,0 @@
-local module = {}
-
-return Atdar.loader.auto(module, "natives/visual/color")
