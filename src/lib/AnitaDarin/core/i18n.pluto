@@ -162,13 +162,13 @@ end
 -- it, with the prefix taken off ("module.VehicleManager.wreck" -> "wreck"); nil when the key isn't its
 local function key_in(source: table, key: string): ?string
 
-    local prefix = source.prefix
-    if prefix == nil then
+    local dotted = source.dotted
+    if dotted == nil then
         return key
     end
 
-    if key:sub(1, #prefix + 1) == $"{prefix}." then
-        return key:sub(#prefix + 2)
+    if key:startswith(dotted) then
+        return key:sub(#dotted + 1)
     end
 
     return nil
@@ -213,18 +213,45 @@ local function stand_code(code: string): string
     return STAND_CODE_ALIASES[base] or base
 end
 
+-- current_code's last answer and Stand's language it was for: { stand = "ru", code = "ru-ru" or nil }.
+-- Every new label asks, and the answer only changes with Stand's language or the sources (they reset it)
+local code_cache = nil
+
 -- Our file code for Stand's current language (Stand's "ru" -> "ru-ru"), or nil if there's no file for it
 local function current_code(): ?string
 
     local current = lang.get_current()
+    local found = nil
+
+    if code_cache ~= nil and code_cache.stand == current then
+        return code_cache.code
+    end
 
     for _, code in ipairs(translated_codes()) do
         if stand_code(code) == current then
-            return code
+            found = code
+            break
         end
     end
-    
-    return nil
+
+    code_cache = { stand = current, code = found }
+
+    return found
+end
+
+-- What a label shows now: its key with show_keys, otherwise the language's text, English when it has none
+-- @param code The language shown (the chosen one or Stand's), nil - English
+local function shown_text(code: ?string, key: string, english: string): string
+
+    if show_keys then
+        return key
+    end
+
+    if code == nil then
+        return english
+    end
+
+    return find(code, key) or english
 end
 
 -- A chosen language is shown by giving its text to Stand as the translation into Stand's current
@@ -232,16 +259,22 @@ end
 -- Without a chosen language this puts back the translation for Stand's language (or the English text)
 local function apply_current(label: int, key: string, english: string): void
 
-    local code = forced or current_code()
-    local text = code and find(code, key) or english
-
-    if show_keys then
-        text = key
-    end
-
     -- Fails for English (see can_choose_language); then there's nothing to put
     if pcall(lang.set_translate, lang.get_current()) then
-        lang.translate(label, text)
+        lang.translate(label, shown_text(forced or current_code(), key, english))
+    end
+end
+
+-- apply_current for every label made. The language is chosen once, not for each of the thousands of labels.
+-- Only when can_choose_language() says yes: Stand takes no translations into English
+local function apply_made(): void
+
+    local code = forced or current_code()
+
+    lang.set_translate(lang.get_current())
+
+    for label, entry in pairs(made) do
+        lang.translate(label, shown_text(code, entry.key, entry.english))
     end
 end
 
@@ -294,6 +327,11 @@ function module.add_source(dir: string, required: bool = false, prefix: ?string)
 
     local source = { dir = dir, prefix = prefix }
 
+    -- The prefix as the keys start with it ("module.VehicleManager."), made once: key_in runs for every label
+    if prefix ~= nil then
+        source.dotted = $"{prefix}."
+    end
+
     read_languages(source)
 
     -- English is read at once: every label needs it, and a damaged file is reported when it's added
@@ -305,6 +343,7 @@ function module.add_source(dir: string, required: bool = false, prefix: ?string)
     table.insert(sources, source)
 
     labels = {}
+    code_cache = nil
 
     return source
 end
@@ -317,6 +356,7 @@ function module.remove_source(source: table): void
         end
     end
     labels = {}
+    code_cache = nil
 end
 
 -- @return Stand label for key, for menu items: Stand shows it in its language and profiles keep the English text.
@@ -413,7 +453,7 @@ function module.file_of(key: string): ?string
                 local path = source.files[code]
                 local root = filesystem.scripts_dir()
 
-                if path:sub(1, #root) == root then
+                if path:startswith(root) then
                     return path:sub(#root + 1)
                 end
 
@@ -512,9 +552,7 @@ function module.set_language(code: ?string): void
     forced = code
     -- With Stand in English nothing was ever put on the labels, so there's nothing to restore either
     if can_choose then
-        for label, source in pairs(made) do
-            apply_current(label, source.key, source.english)
-        end
+        apply_made()
     end
 
     for _, fn in ipairs(listeners) do
@@ -537,9 +575,7 @@ function module.set_show_keys(on: bool): bool
     show_keys = on
 
     if can_choose then
-        for label, entry in pairs(made) do
-            apply_current(label, entry.key, entry.english)
-        end
+        apply_made()
     end
 
     for _, fn in ipairs(listeners) do
@@ -571,6 +607,7 @@ function module.reload(): void
         read_languages(source)
     end
     labels = {}
+    code_cache = nil
     translated_for = nil
     ensure_translated()
     module.set_language(requested)

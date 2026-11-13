@@ -128,6 +128,11 @@ function module.check(): bool
         return true
     end
 
+    -- Too early for another look: before anything else, this runs every frame
+    if now - last_check < CHECK_MS and snapshot ~= nil then
+        return false
+    end
+
     if Atdar.profile.get("stop_on_change") ~= true then
         snapshot = nil
         pending = nil
@@ -142,9 +147,6 @@ function module.check(): bool
         return false
     end
 
-    if now - last_check < CHECK_MS then
-        return false
-    end
     last_check = now
 
     if now - last_scan >= RESCAN_MS then
