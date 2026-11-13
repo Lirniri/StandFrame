@@ -295,7 +295,7 @@ module.MAX_AUTO_LOAD = 60
 module.MAX_TABLE_ENTRIES = 100
 
 -- A variable as items to show, added to out in menu order: a line { kind = "line", name, text } or
--- for a table a list { kind = "list", name = "name (entries)" } with its entries after it. Each has
+-- for a table a list { kind = "list", name = "name{}: (entries)" } with its entries after it. Each has
 -- a path (where it is, unique) and parent (the path of the list it's in, "" - the Variables list).
 -- seen: the tables on the way here, so one inside itself is a line, not lists without end
 -- limit: how deep tables are made lists (MAX_VARIABLE_DEPTH when nil)
@@ -321,7 +321,7 @@ function module.collect_variable(out: table, parent: string, name: string, value
     
     local entries = module.table_entries(value)
     
-    table.insert(out, { kind = "list", path = path, parent = parent, name = $"{name} ({#entries})" })
+    table.insert(out, { kind = "list", path = path, parent = parent, name = name .. "{}: (" .. #entries .. ")" })
     
     if #entries == 0 then
         table.insert(out, { kind = "note", path = $"{path}/", parent = path, name = "{}" })
