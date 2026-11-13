@@ -150,15 +150,23 @@ log:info("first\nsecond\nthird")
 stand.check(stand.find_log("first\n    second\n    third"), "the lines after the first are indented in the log")
 stand.clear_logs()
 log:error("on_tick failed\n...ata\\Roaming\\Stand\\Lua Scripts\\lib\\x.lua:8: bad argument")
-stand.check(stand.find_log("on_tick failed\n    Stand\\Lua Scripts\\lib\\x.lua:8: bad argument"),
+stand.check(stand.find_log("on_tick failed\n    Lua Scripts\\lib\\x.lua:8: bad argument"),
     "an error: the path Lua cut is shown from Stand's folder on")
 stand.clear_logs()
 log:warn($"can't read {filesystem.scripts_dir()}lib/x.pluto and {filesystem.scripts_dir()}lib/y.pluto")
-stand.check(stand.find_log("can't read Stand\\Lua Scripts\\lib/x.pluto and Stand\\Lua Scripts\\lib/y.pluto"),
+stand.check(stand.find_log("can't read Lua Scripts\\lib/x.pluto and Lua Scripts\\lib/y.pluto"),
     "a warning: full paths too, each of them")
 stand.clear_logs()
 log:info($"at {filesystem.scripts_dir()}lib/x.pluto")
 stand.check(stand.find_log($"at {filesystem.scripts_dir()}lib/x.pluto"), "other lines keep their paths")
+stand.equal(Logger.tidy($"{filesystem.scripts_dir()}lib\\{Atdar.name}\\modules\\m\\info.json"), $"{Atdar.name}\\modules\\m\\info.json",
+    "the script's own files are shown from its folder on")
+stand.equal(Logger.tidy($"...ata\\Roaming\\Stand\\Lua Scripts\\lib\\{Atdar.name}\\core\\x.pluto:3: bad"), $"{Atdar.name}\\core\\x.pluto:3: bad",
+    "also when Lua cut the beginning of the path")
+stand.equal(Logger.tidy($"{filesystem.scripts_dir()}Test\\x.pluto:5: boom"), "Lua Scripts\\Test\\x.pluto:5: boom",
+    "a file elsewhere in Lua Scripts: from Lua Scripts on")
+stand.equal(Logger.tidy("...ata\\Roaming\\Stand\\Lua Scripts\\Test\\x.pluto:5: boom"), "Lua Scripts\\Test\\x.pluto:5: boom",
+    "also when Lua cut the beginning of it")
 stand.equal(Logger.tidy("...Scripts\\lib\\x.lua:1: cut too far"), "...Scripts\\lib\\x.lua:1: cut too far",
     "a path cut after the folder's name stays as it is")
 stand.equal(Logger.tidy("100%% sure"), "100%% sure", "a text without paths is as it was")

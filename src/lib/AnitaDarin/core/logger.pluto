@@ -13,8 +13,9 @@
 ]]
 
 -- A message of several lines (an error with its traceback) is logged with the lines after the first indented,
--- so they read as its part. In a warning or an error the paths of the script's files are shown from Stand's
--- folder on (Logger.tidy): "Stand\Lua Scripts\lib\...", also the ones Lua cut ("...and\Lua Scripts\lib\...").
+-- so they read as its part. In a warning or an error the paths are shortened (Logger.tidy): the script's own files
+-- from its folder on ("AnitaDarin\modules\..."), everything else in Stand's Lua Scripts from that folder on
+-- ("Lua Scripts\Test\x.pluto"); the paths Lua cut ("...and\Lua Scripts\Test\...") too.
 -- A line that comes again right after itself isn't written to the script's file again: the next other line
 -- (or the next write to disk) puts "+ repeated N more time(s)" under it, as Stand's own log does
 
@@ -281,12 +282,12 @@ end
 -- ─── Readable messages ───────────────────────────────────────────────────────
 
 -- How the folder of the scripts is shown in a path
-local SHOWN_DIR = "Stand\\Lua Scripts\\"
+local SHOWN_DIR = "Lua Scripts\\"
 
 -- Stand's Lua Scripts folder, asked for once
 local scripts_dir = nil
 
--- The paths of the script's files in a text shown from Stand's folder on: the full ones (no user's folder
+-- The paths of the script's files in a text shown from Lua Scripts on: the full ones (no user's folder
 -- in a log sent to someone) and the ones Lua cut in an error ("...ata\Roaming\Stand\Lua Scripts\lib\x.lua:1:").
 -- A path cut after the folder's name stays as it is
 local function tidy(text: string): string
@@ -303,7 +304,13 @@ local function tidy(text: string): string
     end
 
     -- A function: the text put in isn't read as a pattern's replacement
-    return (text:gsub("%.%.%.[^\n:]-Lua Scripts[/\\]", || -> SHOWN_DIR))
+    text = text:gsub("%.%.%.[^\n:]-Lua Scripts[/\\]", || -> SHOWN_DIR)
+
+    -- The script's own files from its folder on: "AnitaDarin\modules\game\...", the rest of the way is the same
+    -- for everyone. Other libs (natives) keep theirs
+    local own = (Atdar.name:gsub("%W", "%%%0"))
+
+    return (text:gsub("Lua Scripts\\lib[/\\](" .. own .. "[/\\])", "%1"))
 end
 
 -- ─── Logger ──────────────────────────────────────────────────────────────────
