@@ -141,7 +141,7 @@ end
 -- Call When Opened / Hovered, the loop's status, Loop, Loop With Interval, then what it gave
 local function function_list(entry: table, mod: table, fn: table): void
 
-    local key = logic.key_of(mod.name, fn.name)
+    local key = logic.key_of(mod.name, logic.full_name(fn))
     local state = logic.state_of(mod, fn)
     local live = logic.is_live(mod, fn)
     -- The current opening of the list: going back (or opening again) ends the live calls of the one before
@@ -268,6 +268,18 @@ local function functions_of(entry: table, mod: table): void
 
     for _, fn in ipairs(layout.loose) do
         function_list(functions_node, mod, fn)
+    end
+
+    -- The module's objects (self.outfit = new Outfit(self)): a list per object with its functions, called on it
+    if #layout.objects > 0 then
+        functions_node:divider({ name = label("objects.divider") })
+    end
+
+    for _, object in ipairs(layout.objects) do
+        local object_node = functions_node:list({ name = object.name, help = label("objects.help") })
+        for _, fn in ipairs(object.functions) do
+            function_list(object_node, mod, fn)
+        end
     end
 
     -- At the bottom: the module's helpers named with _, then its private ones named with __

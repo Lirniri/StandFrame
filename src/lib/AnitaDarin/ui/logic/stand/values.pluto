@@ -225,7 +225,7 @@ end
 -- Fields every module has (Module's own): not the module's variables
 local MODULE_FIELDS = { name = true, deps = true, status = true, error = true, log = true, debug = true,
     id = true, display_name = true, version = true, author = true, system = true, enabled = true, loaded = true,
-    _language_loaded = true, skip_first_tick = true, _skip_tick = true, _ticks = true }
+    _language_loaded = true, _files = true, skip_first_tick = true, _skip_tick = true, _ticks = true }
 
 -- The module's own fields (set in its __construct or later), sorted by name: { name, value }.
 -- Functions (hooks given as options) and Module's fields are left out

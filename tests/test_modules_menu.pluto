@@ -1206,4 +1206,76 @@ stand.click(stand.child(list, "Reload All"))
 stand.check(Atdar.modules.get("sys_helper") ~= helper, "on: Reload All reloads it too")
 stand.click(stand.child(list, "Show System Modules"))
 
+-- ─── A module's objects: fields that are class instances, their functions called on them ──
+
+local class Outfit
+    function __construct(owner)
+        self.owner = owner
+        self.saved = 0
+    end
+    function capture(): table
+        self.saved += 1
+        return { saved = self.saved }
+    end
+    function apply(name): bool
+        return name == "ok"
+    end
+    function secret() end
+    function _helper() end
+end
+local class Wardrobe extends Module
+    function __construct()
+        parent:__construct({ name = "wardrobe", debug = {
+            hide = { "outfit.secret", "spare" },
+            functions = { ["outfit.apply"] = { help = "Puts an outfit on", args = '"ok"' } },
+        } })
+        self.outfit = new Outfit(self)
+        self.spare = new Outfit(self)
+        self.plain = { 1, 2 }
+        self._inner = new Outfit(self)
+    end
+    function own(): int return 1 end
+end
+local wardrobe = Atdar.modules.add(new Wardrobe())
+Atdar.modules.start_module("wardrobe")
+
+local found_objects = {}
+for _, object in ipairs(Module.objects_of(wardrobe)) do
+    table.insert(found_objects, object.name)
+end
+stand.equal(table.concat(found_objects, ","), "outfit,spare",
+    "objects_of: the fields that are class instances; not a plain table, the logger or a field named with _")
+local outfit_functions = {}
+for _, fn in ipairs(Module.functions_of(wardrobe.outfit)) do
+    table.insert(outfit_functions, fn.name)
+end
+stand.equal(table.concat(outfit_functions, ","), "apply,capture,secret", "functions_of an object: its class's public functions")
+
+stand.click(stand.child(list, "Refresh"))
+local wardrobe_entry = stand.find_item(list, ": wardrobe: ")
+local wardrobe_fns = stand.child(stand.child(wardrobe_entry, "Function Call"), "Module Functions")
+stand.check(names_in(wardrobe_fns):find("own(): int | Objects | outfit", 1, true),
+    "the module's functions, then Objects with a list per object")
+stand.check(stand.child(wardrobe_fns, "spare") == nil, "an object in debug.hide isn't listed")
+local outfit_node = stand.child(wardrobe_fns, "outfit")
+stand.equal(names_in(outfit_node), "apply(name): bool | capture(): table",
+    "its functions with their types; \"outfit.secret\" in debug.hide is left out")
+stand.clear_logs()
+stand.click(stand.child(stand.child(outfit_node, "capture(): table"), "Call"))
+stand.equal(wardrobe.outfit.saved, 1, "Call calls the function on the object, not on the module")
+stand.check(stand.find_log(".outfit.capture() -> "), "and the notice names the object")
+stand.equal(wardrobe.spare.saved, 0, "another object of the same class is left alone")
+local apply_node = stand.child(outfit_node, "apply(name): bool")
+stand.check(apply_node.help:find("Puts an outfit on", 1, true), "debug.functions takes an object's function by \"outfit.apply\"")
+stand.clear_logs()
+stand.click(stand.child(apply_node, "Call"))
+stand.check(stand.find_log(".outfit.apply(name) -> true"), "its default arguments are used")
+-- The same function of the module itself is another key: states don't mix
+stand.check(modules_logic.key_of("wardrobe", modules_logic.full_name({ name = "apply", object = "outfit" }))
+    ~= modules_logic.key_of("wardrobe", "apply"), "an object's function has a key of its own")
+-- Call Function offers them as names to type
+local offered = table.concat(Atdar.modules.get("CallFunction"):module_functions("wardrobe"), " ")
+stand.check(offered:find("wardrobe.outfit:capture", 1, true) and offered:find("wardrobe:own", 1, true),
+    "Call Function offers the objects' functions: wardrobe.outfit:capture")
+
 stand.finish()

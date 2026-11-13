@@ -543,6 +543,10 @@
             "help": "The module's variables and functions",
             "divider": "Functions"
         },
+        "objects": {
+            "divider": "Objects",
+            "help": "The functions of this object of the module, called on it"
+        },
         "variables": {
             "name": "Variables",
             "help": "The module's fields and their values, kept up to date while the list is open"

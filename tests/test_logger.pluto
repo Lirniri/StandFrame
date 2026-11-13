@@ -143,4 +143,57 @@ stand.equal(#filesystem.list_files(dir), files_before, "but no file is written")
 
 os.date = real_date
 os.time = real_time
+-- ─── Readable messages: lines after the first indented, paths from Stand's folder on ──
+
+stand.clear_logs()
+log:info("first\nsecond\nthird")
+stand.check(stand.find_log("first\n    second\n    third"), "the lines after the first are indented in the log")
+stand.clear_logs()
+log:error("on_tick failed\n...ata\\Roaming\\Stand\\Lua Scripts\\lib\\x.lua:8: bad argument")
+stand.check(stand.find_log("on_tick failed\n    Stand\\Lua Scripts\\lib\\x.lua:8: bad argument"),
+    "an error: the path Lua cut is shown from Stand's folder on")
+stand.clear_logs()
+log:warn($"can't read {filesystem.scripts_dir()}lib/x.pluto and {filesystem.scripts_dir()}lib/y.pluto")
+stand.check(stand.find_log("can't read Stand\\Lua Scripts\\lib/x.pluto and Stand\\Lua Scripts\\lib/y.pluto"),
+    "a warning: full paths too, each of them")
+stand.clear_logs()
+log:info($"at {filesystem.scripts_dir()}lib/x.pluto")
+stand.check(stand.find_log($"at {filesystem.scripts_dir()}lib/x.pluto"), "other lines keep their paths")
+stand.equal(Logger.tidy("...Scripts\\lib\\x.lua:1: cut too far"), "...Scripts\\lib\\x.lua:1: cut too far",
+    "a path cut after the folder's name stays as it is")
+stand.equal(Logger.tidy("100%% sure"), "100%% sure", "a text without paths is as it was")
+
+-- ─── A line that comes again right after itself: counted, not written again ──────
+
+-- The file again, of the real day: the calendar is the real one by now
+Atdar.log_dir = dir
+Logger.resume_file()
+local real_today = os.date("%Y-%m-%d")
+Logger.clear_today()
+log:info("once")
+for _ = 1, 4 do
+    log:warn("again and again")
+end
+log:info("other")
+log:info("other")
+log:info("last")
+Logger.flush()
+local repeated = stand.read_file(file_of(real_today))
+local _, times = repeated:gsub("again and again", "")
+stand.equal(times, 1, "a repeated line is in the file once")
+stand.check(repeated:find("again and again\n%[%d+:%d+:%d+%] %+ repeated 3 more time%(s%)\n"), "with how many more times under it")
+stand.check(repeated:find("other\n%[%d+:%d+:%d+%] %+ repeated 1 more time%(s%)\n%[%d+:%d+:%d+%] [^\n]*last\n"),
+    "each run of repeats is counted apart, the next line follows")
+stand.check(not repeated:find("once\n%[%d+:%d+:%d+%] %+ repeated"), "a line that came once has no count")
+for _ = 1, 3 do
+    log:info("tail")
+end
+Logger.flush()
+stand.check(stand.read_file(file_of(real_today)):find("tail\n%[%d+:%d+:%d+%] %+ repeated 2 more time%(s%)\n$"),
+    "a write to disk puts the count of the repeats so far")
+log:info("tail")
+Logger.flush()
+stand.check(stand.read_file(file_of(real_today)):find("repeated 2 more time%(s%)\n%[%d+:%d+:%d+%] %+ repeated 1 more time%(s%)\n$"),
+    "and the ones after it are counted from there")
+
 stand.finish()

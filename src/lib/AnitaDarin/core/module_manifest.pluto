@@ -16,7 +16,9 @@
 --     system        boolean, false when not set: a system module (the ones in systems\ are too)
 --     dependencies  list of ids: the modules it needs, started before it
 --
--- A field of the wrong type or one not listed here is an error: a typo shows at once
+-- A field of the wrong type or one not listed here is an error: a typo shows at once.
+-- A sound manifest whose entry file isn't there (not written yet, misnamed) is still a manifest: its module is
+-- registered, failed with the reason, so the Modules list shows it
 
 local check = Atdar.loader.load("core/check")
 local json_parser = Atdar.loader.load("parsers/json")
@@ -113,8 +115,9 @@ local function entry_of(dir: string, file_name: string, entry: ?string)
 end
 
 -- Reads and checks a manifest. The module's code isn't run, only its entry is looked for on disk
--- @return The manifest: { id, name, version, author, entry (full path), enabled, system, dependencies,
--- path (the manifest's), dir (its folder, ending in a slash), text (as read) }; or nil and why not
+-- @return The manifest: { id, name, version, author, entry (full path; nil when the file isn't there, then
+-- problem says why), enabled, system, dependencies, path (the manifest's), dir (its folder, ending in a slash),
+-- text (as read) }; or nil and why not
 function module.read(path: string)
 
     local text = read_text(path)
@@ -143,10 +146,6 @@ function module.read(path: string)
     local file_name = path:sub(#dir + 1)
     local entry, why = entry_of(dir, file_name, data.entry)
 
-    if entry == nil then
-        return nil, why
-    end
-
     local dependencies = {}
 
     for _, dep in ipairs(data.dependencies or {}) do
@@ -159,6 +158,7 @@ function module.read(path: string)
         version = data.version,
         author = data.author,
         entry = entry,
+        problem = why,
         enabled = data.enabled ~= false,
         system = data.system == true,
         dependencies = dependencies,

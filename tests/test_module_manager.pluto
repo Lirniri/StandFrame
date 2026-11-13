@@ -244,6 +244,9 @@ stand.write_file($"{man_dir}wrong_name.pluto", "local Module = Atdar.loader.load
     .. "return Atdar.modules.add(new Module({ name = 'm_other' }))\n")
 stand.write_manifest(man_dir, "silent", "m_silent")
 stand.write_file($"{man_dir}silent.pluto", "return {}\n")
+-- Sound manifests whose entry file isn't there, or isn't in the manifest's folder: registered, failed
+stand.write_manifest(man_dir, "no_entry", "m_no_entry")
+stand.write_file($"{man_dir}outside.info.json", '{"id": "m_outside", "entry": "../module_manager/a.pluto"}')
 -- Manifests that can't be used
 stand.write_file($"{man_dir}broken.info.json", '{"id": "m_broken", ')
 stand.write_file($"{man_dir}broken.pluto", manifest_module("m_broken"))
@@ -251,27 +254,32 @@ stand.write_file($"{man_dir}no_id.info.json", '{"name": "No Id"}')
 stand.write_file($"{man_dir}typo.info.json", '{"id": "m_typo", "dependancies": []}')
 stand.write_file($"{man_dir}bad_deps.info.json", '{"id": "m_bad_deps", "dependencies": "m_base"}')
 stand.write_file($"{man_dir}bad_enabled.info.json", '{"id": "m_bad_enabled", "enabled": "yes"}')
-stand.write_manifest(man_dir, "no_entry", "m_no_entry")
-stand.write_file($"{man_dir}outside.info.json", '{"id": "m_outside", "entry": "../module_manager/a.pluto"}')
 -- The same id again (sorted after m_base's own manifest)
 stand.write_file($"{man_dir}zz_dup.info.json", '{"id": "m_base", "entry": "m_base.pluto"}')
 
 LOADED = {}
 events()
 stand.clear_logs()
-stand.equal(modules.load_dir(man_dir), 8, "the eight sound manifests' modules are registered")
+stand.equal(modules.load_dir(man_dir), 10, "the ten sound manifests' modules are registered")
 stand.equal(next(LOADED), nil, "and no module file ran")
 
 -- What can't be used is logged and skipped, the rest is there
-stand.check(stand.find_log("broken.info.json\nisn't a JSON object"), "broken JSON: logged")
-stand.check(stand.find_log("no_id.info.json\nid must be a non-empty string"), "no id: logged")
-stand.check(stand.find_log("typo.info.json\nfields: unknown 'dependancies'"), "a typo in a field: logged")
-stand.check(stand.find_log("bad_deps.info.json\ndependencies must be a table, got string"), "dependencies of a wrong type: logged")
-stand.check(stand.find_log("bad_enabled.info.json\nenabled must be a boolean, got string"), "enabled of a wrong type: logged")
-stand.check(stand.find_log("no_entry.info.json\nentry not found: no_entry.pluto"), "no entry file: logged")
-stand.check(stand.find_log("outside.info.json\nentry '../module_manager/a.pluto'"), "an entry outside the manifest's folder: logged")
+stand.check(stand.find_log("broken.info.json\n    isn't a JSON object"), "broken JSON: logged")
+stand.check(stand.find_log("no_id.info.json\n    id must be a non-empty string"), "no id: logged")
+stand.check(stand.find_log("typo.info.json\n    fields: unknown 'dependancies'"), "a typo in a field: logged")
+stand.check(stand.find_log("bad_deps.info.json\n    dependencies must be a table, got string"), "dependencies of a wrong type: logged")
+stand.check(stand.find_log("bad_enabled.info.json\n    enabled must be a boolean, got string"), "enabled of a wrong type: logged")
+-- No entry file: the module is there, failed with the reason, for the Modules list to show
+stand.equal(modules.get("m_no_entry").status, "failed", "no entry file: registered as failed")
+stand.check(modules.get("m_no_entry").error:find("entry not found: no_entry.pluto", 1, true), "with the reason")
+stand.check(stand.find_log("| m_no_entry | ERROR] entry not found: no_entry.pluto"), "and it's logged")
+stand.check(modules.get("m_no_entry"):folder() ~= nil and modules.file_of("m_no_entry") == nil, "it has a folder, no file")
+stand.equal(modules.get("m_outside").status, "failed", "an entry outside the manifest's folder: failed too")
+stand.check(modules.get("m_outside").error:find("entry '../module_manager/a.pluto'", 1, true), "with the reason")
+stand.check(not modules.start_module("m_no_entry") and modules.get("m_no_entry").status == "failed",
+    "Start looks for the file again: still not there")
 stand.check(stand.find_log("module 'm_base' is already registered, the duplicate is skipped"), "the same id again: a warning")
-for _, id in { "m_broken", "m_typo", "m_bad_deps", "m_bad_enabled", "m_no_entry", "m_outside" } do
+for _, id in { "m_broken", "m_typo", "m_bad_deps", "m_bad_enabled" } do
     stand.check(not modules.has(id), $"{id} isn't registered")
 end
 
@@ -328,8 +336,9 @@ stand.check(modules.reload_module("m_silent") and modules.get("m_silent").loaded
 -- load_new: a manifest that couldn't be used before and can now, and a manifest that's new
 stand.write_file($"{man_dir}broken.info.json", '{"id": "m_broken"}')
 stand.write_file($"{man_dir}no_entry.pluto", manifest_module("m_no_entry"))
-stand.equal(modules.load_new(), 2, "load_new registers the mended ones")
-stand.check(modules.is_running("m_broken") and modules.is_running("m_no_entry"), "and starts them")
+stand.equal(modules.load_new(), 1, "load_new registers the mended manifest's module")
+stand.check(modules.is_running("m_broken"), "and starts it")
+stand.check(modules.is_running("m_no_entry") and modules.get("m_no_entry").loaded, "a module whose entry file came since starts too")
 stand.equal(modules.load_new(), 0, "once")
 
 -- Reload reads the manifest again too
@@ -352,5 +361,48 @@ stand.clear_logs()
 stand.check(modules.reload_module("m_full"), "reload with a broken manifest still reloads the file")
 stand.check(stand.find_log("its manifest can't be used, the one read before stays"), "and says the old manifest stays")
 stand.equal(modules.get("m_full").version, "2.0.0", "the fields of the one read before")
+
+-- ─── A module of several files: load_file ────────────────────────────────────
+
+local parts_dir = stand.tmpdir("module_manager_parts")
+io.makedirs($"{parts_dir}Parts/sub")
+local function helper_file(value: int): string
+    return "LOADED.helper = (LOADED.helper or 0) + 1\nreturn { value = " .. value .. " }\n"
+end
+stand.write_file($"{parts_dir}Parts/info.json", '{"id": "m_parts", "entry": "Parts.pluto"}')
+stand.write_file($"{parts_dir}Parts/Parts.pluto", "local Module = Atdar.loader.load('core/module')\n"
+    .. "local class Parts extends Module\n"
+    .. "    function __construct()\n"
+    .. "        parent:__construct({})\n"
+    .. "        self.helper = self:load_file('sub/helper')\n"
+    .. "    end\n"
+    .. "    function value() return self:load_file('sub/helper').value end\n"
+    .. "end\n"
+    .. "return Atdar.modules.add(new Parts())\n")
+stand.write_file($"{parts_dir}Parts/sub/helper.pluto", helper_file(1))
+LOADED = {}
+stand.equal(modules.load_dir(parts_dir), 1, "a module of two files: one manifest, one module")
+stand.check(modules.start_module("m_parts"), "it starts")
+stand.equal(modules.get("m_parts"):value(), 1, "self:load_file gives what the module's other file returns")
+stand.equal(LOADED.helper, 1, "the file ran once for the instance, however many times it's asked for")
+stand.equal(modules.file_changed("m_parts"), false, "nothing edited: not changed")
+stand.write_file($"{parts_dir}Parts/sub/helper.pluto", helper_file(2))
+stand.equal(modules.file_changed("m_parts"), true, "the other file edited: the module is changed")
+stand.equal(modules.get("m_parts"):value(), 1, "the code that runs is still the old one")
+stand.check(modules.reload_module("m_parts"), "Reload")
+stand.equal(modules.get("m_parts"):value(), 2, "reads the module's other files again")
+stand.equal(modules.file_changed("m_parts"), false, "and it isn't changed any more")
+stand.check(modules.loaded_text_of(modules.get("m_parts"):folder() .. "sub\\helper.pluto") ~= nil,
+    "the file's text is kept for reading its functions' source")
+-- A broken other file: the reload fails, the old module and its files stay
+stand.write_file($"{parts_dir}Parts/sub/helper.pluto", "this is not lua (")
+stand.check(not modules.reload_module("m_parts"), "a broken other file: the reload fails")
+stand.check(modules.is_running("m_parts") and modules.get("m_parts"):value() == 2, "the old version is back and runs")
+stand.equal(modules.file_changed("m_parts"), true, "still changed: the file differs from the code that runs")
+-- Only the module's own folder, only a module with one
+ok, err = pcall(|| -> modules.get("m_parts"):load_file("../../module_manager/a"))
+stand.check(not ok and tostring(err):find("[Module 'm_parts'] load_file", 1, true), "a file outside the module's folder is an error")
+ok, err = pcall(|| -> modules.get("x"):load_file("anything"))
+stand.check(not ok and tostring(err):find("isn't a module with a folder", 1, true), "so is one asked by a module made in code")
 
 stand.finish()

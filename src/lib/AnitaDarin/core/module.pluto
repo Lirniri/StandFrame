@@ -13,10 +13,17 @@
 --     self.id (= self.name), self.display_name, self.version, self.author, self.system, self.enabled
 -- self.loaded is false while the file hasn't run yet (the manager keeps a stand-in made from the manifest)
 --
+-- A module's object: a field that is an instance of a class (self.outfit = new Outfit(self)). Its functions show
+-- in the Modules list under Objects and are called on it; debug.functions takes them by "outfit.capture"
+--
+-- A module of several files keeps the others in its folder and loads them with self:load_file("Sub/File"):
+-- Reload reads them again with the module, and the Modules list marks the module when one of them changes
+--
 -- debug = { ... } (optional): how the module shows in Settings > Debug > Modules (ui/stand/modules/list):
 --     functions = { add_vehicle = { help = "...", params = { handle = "..." }, args = "...", live = false } },
 --     groups = { { name = "Getting", functions = { "get_handle", "get_handles" } }, ... },
 --     hide = { "explode_all", "current_vehicle" },   -- functions and variables not shown
+--                                                    -- (an object: "outfit", one function of it: "outfit.capture")
 --     categories = { { key = "getters", words = { "find" } },  -- more words for a list there is
 --                    { key = "shop", name = "Shop", words = { "buy", "sell" } } },  -- a list of its own
 -- See examples/script/modules/06_debug_display.pluto
@@ -270,9 +277,8 @@ Module = class
     -- Marks the module failed; it isn't started or ticked again
     function fail(reason: string): void
 
-        -- Lua cuts a long file's path in its errors ("...ata\Roaming\Stand\Lua Scripts\lib\x.lua:1: ..."):
-        -- shown from Stand's folder on
-        reason = reason:gsub("%.%.%.[^\n:]-(Stand[/\\]Lua Scripts[/\\])", "%1")
+        -- The paths as the log shows them, from Stand's folder on: the menu shows self.error
+        reason = Logger.tidy(reason)
         self.status = "failed"
         self.error = reason
         self.log:error(reason)
@@ -287,6 +293,21 @@ Module = class
     -- for a module made in code. It's the copy Stand runs: build.py rebuild and clean remove what's there
     function folder(): ?string
         return Atdar.modules.folder_of(self.name)
+    end
+
+    -- Another file of the module, from its folder: self:load_file("OutfitManager/Outfit") runs
+    -- <folder>/OutfitManager/Outfit.pluto and gives what it returns (a class, a table of functions). Run once
+    -- for this instance; a reloaded module is a new instance, so Reload takes the file's changes too -
+    -- unlike a lib file (Atdar.loader.load), which stays as it was loaded first
+    function load_file(relative: string)
+
+        self._files ??= {}
+
+        if self._files[relative] == nil then
+            self._files[relative] = Atdar.modules.load_file(relative, self.name)
+        end
+
+        return self._files[relative]
     end
 
     -- The module's own translations: <its folder>/language/<code>.json (en-us.json, ru-ru.json...), read the
@@ -390,7 +411,9 @@ end
 -- kind: "public" (default) - names without _; "internal" - names starting with _ (helpers);
 -- "private" - names starting with __
 -- The list is read once per class and kind (debug.getinfo/getlocal are slow); a reloaded module is a new
--- class, so it's read again. Don't change the returned list
+-- class, so it's read again. Don't change the returned list.
+-- An instance of a class that isn't a Module (a module's object, see objects_of) gives all of its class's
+-- functions the same way: nothing of Module is in it to leave out
 function Module.functions_of(instance: table, kind: string = "public"): table
 
     local found = {}
@@ -403,11 +426,23 @@ function Module.functions_of(instance: table, kind: string = "public"): table
         return cached[kind]
     end
 
+    -- Whether it's a module: only then Module's methods and the hooks are left out
+    local is_module = false
+    local above = cls
+
+    while type(above) == "table" do
+        if above == Module then
+            is_module = true
+            break
+        end
+        above = rawget(above, "__parent")
+    end
+
     while type(cls) == "table" and cls ~= Module do
         for name, value in pairs(cls) do
             if type(name) == "string" and type(value) == "function" and not found[name]
                 and kind_of(name) == kind and not CLASS_FUNCTIONS[name]
-                and not NOT_CALLABLE[name] and rawget(Module, name) == nil then
+                and not (is_module and (NOT_CALLABLE[name] or rawget(Module, name) ~= nil)) then
                 found[name] = true
                 -- The parameters' names, without self
                 local info = debug.getinfo(value, "u")
@@ -427,6 +462,29 @@ function Module.functions_of(instance: table, kind: string = "public"): table
         functions_cache[first] ??= {}
         functions_cache[first][kind] = list
     end
+
+    return list
+end
+
+-- Module's own fields that are objects themselves: not the module's objects
+local NOT_OBJECTS = { log = true, debug = true, deps = true }
+
+-- @return The module's objects, sorted by name: { name, object } for every field of the instance that is an
+-- instance of a class with functions to call (self.outfit = new Outfit(self)). Fields named with _ and plain
+-- tables are left out. The Modules list shows each with its functions, Call Function calls them as
+-- "PedManager.outfit:capture"
+function Module.objects_of(instance: table): table
+
+    local list = {}
+
+    for name, value in pairs(instance) do
+        if type(name) == "string" and name:sub(1, 1) ~= "_" and not NOT_OBJECTS[name] and type(value) == "table"
+            and type(getmetatable(value)) == "table" and #Module.functions_of(value) > 0 then
+            table.insert(list, { name = name, object = value })
+        end
+    end
+
+    table.sort(list, |a, b| -> a.name < b.name)
 
     return list
 end

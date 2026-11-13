@@ -58,8 +58,19 @@ among other files, at any depth under `modules/`. A `.pluto` file without a mani
 
 Reading the manifests runs no code: the module's file runs when the module is first started. The file may leave
 `name` out (`new Module({ ... })`), it's the manifest's `id`; a `name` that differs from the `id` is an error.
-A manifest with broken JSON, a wrong or unknown field, a missing entry file or an `id` that's already taken is logged
-and skipped, the other modules still load.
+A manifest with broken JSON, a wrong or unknown field or an `id` that's already taken is logged and skipped, the
+other modules still load. A sound manifest whose entry file isn't there registers its module as failed, with the
+reason: the Modules list shows it, and "Start" or "Refresh" looks for the file again.
+
+### A module of several files, and its objects
+
+- `self:load_file("Outfit/Outfit")` runs `Outfit/Outfit.pluto` from the module's folder and gives what it returns.
+  Unlike `Atdar.loader.load`, it's read again when the module is reloaded, and a change in it marks the module
+  "· file changed".
+- A field that is an instance of a class (`self.outfit = new Outfit(self)`) is the module's object: its functions
+  show in the Modules list under "Objects" and are called on it, and Call Function takes them as
+  `PedManager.outfit:capture`. `debug.hide = { "outfit" }` hides an object, `{ "outfit.capture" }` one function;
+  `debug.functions["outfit.capture"]` describes one.
 
 ## The module debug menu
 

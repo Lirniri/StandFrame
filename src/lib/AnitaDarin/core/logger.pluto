@@ -12,6 +12,12 @@
     log:error("...")   -- logs, console and a toast
 ]]
 
+-- A message of several lines (an error with its traceback) is logged with the lines after the first indented,
+-- so they read as its part. In a warning or an error the paths of the script's files are shown from Stand's
+-- folder on (Logger.tidy): "Stand\Lua Scripts\lib\...", also the ones Lua cut ("...and\Lua Scripts\lib\...").
+-- A line that comes again right after itself isn't written to the script's file again: the next other line
+-- (or the next write to disk) puts "+ repeated N more time(s)" under it, as Stand's own log does
+
 
 
 -- Every line goes to Stand's log (its file and console, util.log) and to the script's own log file,
@@ -35,6 +41,21 @@ local last_flush = 0
 -- so a full disk or a locked file doesn't fail every line
 local file_broken = false
 
+-- The line written last, how many times it came again since, and the time of the last of them ("[12:00:00] ")
+local last_line = nil
+local repeats = 0
+local last_repeat = ""
+
+-- Writes how many times the last line came again, if it did
+local function write_repeats(): void
+
+    if repeats > 0 and log_file.handle then
+        log_file.handle:write(last_repeat, $"+ repeated {repeats} more time(s)\n")
+    end
+
+    repeats = 0
+end
+
 -- store/<script>/logs/; Atdar.log_dir points elsewhere (the tests do)
 local function log_dir(): string
     if Atdar.log_dir then
@@ -45,10 +66,13 @@ end
 
 local function close_file(): void
     if log_file.handle then
+        pcall(write_repeats)
         -- Closing puts what waits in the buffer on disk too
         log_file.handle:close()
         unflushed = false
     end
+    last_line = nil
+    repeats = 0
     log_file.handle = nil
     log_file.path = nil
     day_ends = 0
@@ -175,6 +199,7 @@ local FLUSH_MS = 1000
 -- Puts the lines written so far on disk
 local function flush_file(): void
     if unflushed and log_file.handle then
+        pcall(write_repeats)
         pcall(log_file.handle.flush, log_file.handle)
     end
     unflushed = false
@@ -187,7 +212,20 @@ local function info_at_once(): bool
 end
 
 local function write_to_file(level: string, line: string): void
+
     local handle = today_file()
+
+    -- The same line again: counted, the count goes with the next write to disk (a second at most), also
+    -- for a warning - written at once each time, it would never be counted
+    if line == last_line then
+        repeats += 1
+        last_repeat = os.date("[%H:%M:%S] ")
+        unflushed = true
+        return
+    end
+
+    write_repeats()
+    last_line = line
     handle:write(os.date("[%H:%M:%S] "), line, "\n")
     unflushed = true
     if level == "WARN" or level == "ERROR" or info_at_once() then
@@ -240,6 +278,34 @@ local function level_title(level: string): string
     return title
 end
 
+-- ─── Readable messages ───────────────────────────────────────────────────────
+
+-- How the folder of the scripts is shown in a path
+local SHOWN_DIR = "Stand\\Lua Scripts\\"
+
+-- Stand's Lua Scripts folder, asked for once
+local scripts_dir = nil
+
+-- The paths of the script's files in a text shown from Stand's folder on: the full ones (no user's folder
+-- in a log sent to someone) and the ones Lua cut in an error ("...ata\Roaming\Stand\Lua Scripts\lib\x.lua:1:").
+-- A path cut after the folder's name stays as it is
+local function tidy(text: string): string
+
+    if scripts_dir == nil then
+        scripts_dir = filesystem.scripts_dir()
+    end
+
+    local at = scripts_dir ~= "" and text:find(scripts_dir, 1, true) or nil
+
+    while at ~= nil do
+        text = text:sub(1, at - 1) .. SHOWN_DIR .. text:sub(at + #scripts_dir)
+        at = text:find(scripts_dir, at + #SHOWN_DIR, true)
+    end
+
+    -- A function: the text put in isn't read as a pattern's replacement
+    return (text:gsub("%.%.%.[^\n:]-Lua Scripts[/\\]", || -> SHOWN_DIR))
+end
+
 -- ─── Logger ──────────────────────────────────────────────────────────────────
 
 local class Logger
@@ -278,7 +344,19 @@ local class Logger
     -- @param target Where it shows, whatever the profile says: "stand" or "game"; nil - as the profile says
     -- @return The post's id when the toast went to the game's feed (thefeed.remove(id) takes it away), otherwise nil
     function write(level: string, msg: string, toast: bool, target: ?string): ?int
-        local line = self:full_line(level, msg)
+
+        if level == "WARN" or level == "ERROR" then
+            msg = tidy(msg)
+        end
+
+        -- The lines after the first indented, in the logs only: on screen the text is as given
+        local logged = msg
+
+        if msg:find("\n", 1, true) then
+            logged = msg:gsub("\n", "\n    ")
+        end
+
+        local line = self:full_line(level, logged)
         util.log(line)
         if not file_broken then
             local ok, err = pcall(write_to_file, level, line)
@@ -366,6 +444,11 @@ end
 -- @return The level's name for the user in the script's language: "INFO" -> "Information" / "Информация"
 function Logger.level_title(level: string): string
     return level_title(level)
+end
+
+-- The paths of the script's files in a text shown from Stand's folder on, as warnings and errors are logged
+function Logger.tidy(text: string): string
+    return tidy(text)
 end
 
 -- The folder of the log files, e.g. to open it

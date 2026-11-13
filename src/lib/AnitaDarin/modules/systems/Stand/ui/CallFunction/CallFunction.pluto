@@ -767,7 +767,8 @@ local class CallFunction extends Module
 
     -- Names
 
-    -- The functions a module offers, as names to type: "VehicleManager:get" (with a colon: they're methods)
+    -- The functions a module offers, as names to type: "VehicleManager:get" (with a colon: they're methods),
+    -- and the ones of its objects: "PedManager.outfit:capture"
     -- @return The names sorted; empty when there's no such module
     function module_functions(module_name: string): table
 
@@ -777,8 +778,16 @@ local class CallFunction extends Module
             return names
         end
 
-        for _, fn in ipairs(Module.functions_of(Atdar.modules.get(module_name))) do
+        local mod = Atdar.modules.get(module_name)
+
+        for _, fn in ipairs(Module.functions_of(mod)) do
             table.insert(names, $"{module_name}:{fn.name}")
+        end
+
+        for _, object in ipairs(Module.objects_of(mod)) do
+            for _, fn in ipairs(Module.functions_of(object.object)) do
+                table.insert(names, $"{module_name}.{object.name}:{fn.name}")
+            end
         end
 
         table.sort(names)

@@ -8,6 +8,10 @@
 -- made from the manifest alone (loaded = false). The module's file runs when the module is first started,
 -- and registers the real module in the stand-in's place:
 --     return Atdar.modules.add(new Module({ on_tick = function(self) ... end }))
+-- A manifest whose entry file isn't there registers a failed stand-in with the reason: Start (or Refresh) looks
+-- for the file again.
+-- A module's other files (in its folder) are loaded with load_file (self:load_file in a Module): run again for
+-- every new instance, so Reload takes their changes too, and watched by file_changed like the entry
 -- A .pluto file without a manifest isn't a module: it's never run from here.
 -- A module made in code (no file) is added the same way, with a name: new Module({ name = "players" })
 
@@ -46,6 +50,9 @@ local loaded_text = {}
 -- Module file -> its text when it was run last, even if it failed (file_changed: a failed module whose file
 -- was edited since is worth another try)
 local attempted = {}
+
+-- Module name -> the other files it loaded (load_file): { [path] = its text when it ran }
+local extra_files = {}
 
 -- The folders load_dir read, for load_new to look at again
 local dirs = {}
@@ -294,6 +301,18 @@ function module.names(): table
     return names
 end
 
+-- Makes the manifest the module's: its fields, dependencies and entry
+local function take_manifest(mod: table, manifest: table): void
+    unindex_deps(mod)
+    mod.deps = {}
+    mod:_apply_manifest(manifest)
+    mod.system = is_system_manifest(manifest)
+    index_deps(mod)
+    manifests[mod.name] = manifest
+    files[mod.name] = manifest.entry
+    same_stamp[manifest.path] = nil
+end
+
 -- Runs a module's file for its manifest: what it registers (add) is that manifest's module
 -- @return Whether it ran without errors, and the error when it didn't
 local function run_entry(manifest: table)
@@ -335,6 +354,23 @@ end
 local function load_module(stand_in: table): ?table
 
     local manifest = manifests[stand_in.name]
+
+    -- No entry file when the manifest was read: it may be there by now
+    if manifest.entry == nil then
+
+        local again = manifest_reader.read(manifest.path)
+
+        if again ~= nil and again.id == stand_in.name then
+            take_manifest(stand_in, again)
+            manifest = again
+        end
+    end
+
+    if manifest.entry == nil then
+        stand_in:fail(manifest.problem)
+        return nil
+    end
+
     local ok, err = run_entry(manifest)
     local fresh = by_name[stand_in.name]
 
@@ -564,8 +600,13 @@ function module.file_changed(name: string): bool
     local path = files[name]
     local manifest = manifests[name]
 
-    if path == nil or manifest == nil then
+    if manifest == nil then
         return false
+    end
+
+    -- No entry file: only the manifest can change
+    if path == nil then
+        return differs(manifest.path, manifest.text)
     end
 
     local text = loaded_text[path] or attempted[path]
@@ -574,7 +615,56 @@ function module.file_changed(name: string): bool
         return false
     end
 
-    return differs(path, text) or differs(manifest.path, manifest.text)
+    if differs(path, text) or differs(manifest.path, manifest.text) then
+        return true
+    end
+
+    for extra, extra_text in pairs(extra_files[name] or {}) do
+        if differs(extra, extra_text) then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- Runs another file of the module, from its folder: load_file("OutfitManager/Outfit") runs
+-- <the manifest's folder>/OutfitManager/Outfit.pluto and gives what it returns. Not kept like a lib file
+-- (Atdar.loader.load): every call runs the file, so a reloaded module gets its files' new code. The file
+-- is watched by file_changed, and its functions' source is found like the entry's.
+-- An error in the file is the caller's: in a module's __construct or on_start it fails the module with the reason
+-- @param relative The file from the module's folder, without .pluto; can't go out of the folder
+-- @param name The module; the one whose file is running right now when not given
+function module.load_file(relative: string, name: ?string)
+
+    local id = name ?? loading?.id
+    local manifest = manifests[id]
+
+    if manifest == nil then
+        error($"[Modules] load_file '{relative}': '{tostring(id)}' isn't a module with a folder", 2)
+    end
+
+    local path, why = Atdar.loader.load("core/filesystem/safe_path").resolve(manifest.dir, $"{relative}.pluto")
+
+    if path == nil then
+        error($"[Module '{id}'] load_file '{relative}': {why}", 2)
+    end
+
+    local text = read_text(path)
+    local chunk, load_err = loadfile(path)
+
+    if not chunk then
+        error($"[Module '{id}'] load_file '{relative}': {load_err}", 2)
+    end
+
+    local result = Atdar.loader.measure(path, chunk)
+
+    loaded_text[path] = text
+    same_stamp[path] = nil
+    extra_files[id] ??= {}
+    extra_files[id][path] = text
+
+    return result
 end
 
 -- Reads a manifest and registers its module as a stand-in; the module's file isn't run. A manifest that can't be
@@ -609,6 +699,11 @@ local function register(path: string): bool
     table.insert(order, stand_in)
     index_deps(stand_in)
     files[id] = manifest.entry
+
+    -- Registered all the same, so the Modules list shows it with the reason
+    if manifest.entry == nil then
+        stand_in:fail($"{manifest.problem} ({path})")
+    end
 
     return true
 end
@@ -657,6 +752,16 @@ end
 function module.load_new(): int
 
     local before = #order
+
+    -- The modules registered without their entry file: started if it's there by now
+    for _, name in ipairs(module.names()) do
+
+        local manifest = manifests[name]
+
+        if manifest ~= nil and manifest.entry == nil and manifest_reader.read(manifest.path)?.entry ~= nil then
+            module.start_module(name)
+        end
+    end
 
     for _, dir in ipairs(dirs) do
         register_dir(dir)
@@ -739,16 +844,20 @@ function module.reload_module(name: string): bool
 
     -- Its file never ran: there's no old code to keep, the manifest is taken and the module started
     if not old.loaded then
-        unindex_deps(old)
-        old.deps = {}
-        old:_apply_manifest(manifest)
-        old.system = is_system_manifest(manifest)
-        index_deps(old)
-        manifests[name] = manifest
-        files[name] = manifest.entry
-        same_stamp[manifest.path] = nil
+        take_manifest(old, manifest)
         return module.start_module(name)
     end
+
+    -- The entry file is gone since: nothing to run, the code that runs stays
+    if manifest.entry == nil then
+        log:warn($"'{name}' not reloaded: {manifest.problem} ({manifest.path})")
+        return false
+    end
+
+    -- The other files it loads are loaded anew by the new code; the old ones come back if it fails
+    local old_extra = extra_files[name]
+
+    extra_files[name] = nil
 
     -- Dependents that were running, to start them again once the module is back
     local restart = {}
@@ -777,6 +886,7 @@ function module.reload_module(name: string): bool
 
         log:warn($"'{name}' not reloaded, the old version is back")
         register_at(old, index, previous.entry)
+        extra_files[name] = old_extra
     else
         -- The file registered it at the end; move it back to where it was
         unregister(fresh)

@@ -183,9 +183,36 @@ function module.key_of(module_name: string, fn_name: string): string
     return $"{module_name}.{fn_name}"
 end
 
+-- The function's name in its module: "create", or "outfit.capture" for a function of the module's object
+function module.full_name(fn: table): string
+
+    if fn.object == nil then
+        return fn.name
+    end
+
+    return $"{fn.object}.{fn.name}"
+end
+
+-- What the function is called on: the module, or the module's object the function is of
+-- @return {} when the object isn't there any more, so calling fails as a call does
+function module.target_of(mod: table, fn: table): table
+
+    if fn.object == nil then
+        return mod
+    end
+
+    local object = mod[fn.object]
+
+    if type(object) ~= "table" then
+        return {}
+    end
+
+    return object
+end
+
 -- What the module says of one of its functions (debug.functions.<name>): help, params, args, live
 function module.options_of(mod: table, fn: table): table
-    return (module.debug_of(mod).functions or {})[fn.name] or {}
+    return (module.debug_of(mod).functions or {})[module.full_name(fn)] or {}
 end
 
 -- What the module says of a parameter of the function, nil when nothing
@@ -216,7 +243,7 @@ local states = {}
 -- @return The function's state; its texts start as the module's default arguments (debug.functions.<name>.args)
 function module.state_of(mod: table, fn: table): table
 
-    local key = module.key_of(mod.name, fn.name)
+    local key = module.key_of(mod.name, module.full_name(fn))
 
     if states[key] == nil then
         local args = module.options_of(mod, fn).args
@@ -230,6 +257,11 @@ end
 
 -- How a notice names a function: "Module 1.create(model, coords)"
 local function notice_name(module_name: string, fn: table): string
+
+    if fn.object ~= nil then
+        return $"{module.short_name(module_name)}.{fn.object}.{module.signature(fn)}"
+    end
+
     return $"{module.short_name(module_name)}.{module.signature(fn)}"
 end
 
@@ -244,9 +276,9 @@ function module.call(module_name: string, fn: table, args: table, count: int): v
             return
         end
 
-        local mod = modules.get(module_name)
+        local target = module.target_of(modules.get(module_name), fn)
         local name = notice_name(module_name, fn)
-        local given = table.pack(pcall(mod[fn.name], mod, table.unpack(args, 1, count)))
+        local given = table.pack(pcall(target[fn.name], target, table.unpack(args, 1, count)))
 
         if not given[1] then
             -- An error, so it goes to Stand when Errors Always In Stand is on
@@ -254,7 +286,7 @@ function module.call(module_name: string, fn: table, args: table, count: int): v
             return
         end
 
-        results.show(module.key_of(module_name, fn.name), given)
+        results.show(module.key_of(module_name, module.full_name(fn)), given)
 
         if given.n <= 1 then
             log:notify(text("call.done"):format(name))
@@ -277,7 +309,9 @@ function module.call_typed(mod: table, fn: table): void
 
     -- The call goes into Call Function's history
     if Atdar.modules.is_running("CallFunction") then
-        Atdar.modules.get("CallFunction"):remember($"{mod.name}:{fn.name}", module.state_of(mod, fn))
+        local typed = fn.object ~= nil and $"{mod.name}.{fn.object}:{fn.name}" or $"{mod.name}:{fn.name}"
+
+        Atdar.modules.get("CallFunction"):remember(typed, module.state_of(mod, fn))
     end
 
     module.call(mod.name, fn, args, count)
@@ -342,7 +376,7 @@ end
 function module.start_loop(mod: table, fn: table, every: ?int): void
 
     local module_name = mod.name
-    local key = module.key_of(module_name, fn.name)
+    local key = module.key_of(module_name, module.full_name(fn))
     local name = notice_name(module_name, fn)
     local state = module.state_of(mod, fn)
     local run = { module = module_name, every = every, next = 0, shows_result = || -> state.show_result ~= false }
@@ -377,8 +411,9 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
         end
 
         -- How long a call takes, on screen (info text); Debug > Call Function > Settings decide what's shown
-        local given = call_loop.timed($"{module_name}.{fn.name}()", function()
-            return table.pack(pcall(current[fn.name], current, table.unpack(args, 1, count)))
+        local target = module.target_of(current, fn)
+        local given = call_loop.timed($"{module_name}.{module.full_name(fn)}()", function()
+            return table.pack(pcall(target[fn.name], target, table.unpack(args, 1, count)))
         end, state.show_time ~= false)
 
         if not given[1] then
@@ -401,7 +436,7 @@ end
 
 function module.stop_loop(mod: table, fn: table): void
 
-    local key = module.key_of(mod.name, fn.name)
+    local key = module.key_of(mod.name, module.full_name(fn))
     local name = notice_name(mod.name, fn)
 
     if loops[key] == nil then
@@ -417,7 +452,7 @@ end
 -- an interval). The switch following a loop starts nothing
 function module.set_loop(mod: table, fn: table, on: bool): void
 
-    local running = loops[module.key_of(mod.name, fn.name)] ~= nil
+    local running = loops[module.key_of(mod.name, module.full_name(fn))] ~= nil
 
     if on and not running then
         module.start_loop(mod, fn, nil)
@@ -468,7 +503,7 @@ end
 function module.keep_live(mod: table, fn: table, opened: function): void
 
     local module_name = mod.name
-    local key = module.key_of(module_name, fn.name)
+    local key = module.key_of(module_name, module.full_name(fn))
     local state = module.state_of(mod, fn)
     local next_call = 0
 
@@ -494,7 +529,7 @@ function module.keep_live(mod: table, fn: table, opened: function): void
             return true
         end
 
-        local current = modules.get(module_name)
+        local current = module.target_of(modules.get(module_name), fn)
         local given = table.pack(pcall(current[fn.name], current, table.unpack(args, 1, count)))
 
         if given[1] then
@@ -742,11 +777,13 @@ end
 --   none        the module has no functions at all
 --   categories  a list per category with functions in it (Getters, Setters...): { name, functions }
 --   loose       the functions in no category
+--   objects     the module's objects (Module.objects_of) with their functions: { name, functions }
 --   parts       the helpers named with _ and the private ones named with __: { key (their divider's string), functions }
 --   hooks       on_start, on_tick, on_stop to call by hand: { name (as shown), hook, tick (on_tick: a list to
 --               start and stop, not a button) }
 -- A function is { name, params, vararg, returns, sig, number }; number: its place among all of the module's
--- functions by name, hidden ones too, so hiding or grouping doesn't change its commands
+-- functions by name, hidden ones too, so hiding or grouping doesn't change its commands. A function of an object
+-- also has object (the field's name) and is numbered after the module's own
 function module.layout(mod: table): table
 
     local hidden = module.hidden_of(mod)
@@ -778,7 +815,38 @@ function module.layout(mod: table): table
         end
     end
 
-    local layout = { groups = {}, categories = {}, loose = {}, parts = {}, hooks = {} }
+    local layout = { groups = {}, categories = {}, loose = {}, objects = {}, parts = {}, hooks = {} }
+    local number = #numbered
+
+    for _, object in ipairs(Module.objects_of(mod)) do
+
+        local of_object = {}
+
+        for _, fn in ipairs(Module.functions_of(object.object)) do
+
+            local value = object.object[fn.name]
+
+            number += 1
+
+            -- A table of its own: the class's list is shared by every object of the class
+            if not hidden[$"{object.name}.{fn.name}"] then
+                table.insert(of_object, {
+                    name = fn.name,
+                    params = fn.params,
+                    vararg = fn.vararg,
+                    object = object.name,
+                    number = number,
+                    returns = source_parser.return_type(value),
+                    sig = arguments.signature(fn.params, source_parser.param_types(value), fn.vararg,
+                        source_parser.param_defaults(value)),
+                })
+            end
+        end
+
+        if not hidden[object.name] and #of_object > 0 then
+            table.insert(layout.objects, { name = object.name, functions = of_object })
+        end
+    end
 
     -- Functions put in a group: not again under Functions / Internal Functions
     local placed = {}
