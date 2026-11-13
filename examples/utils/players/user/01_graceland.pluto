@@ -8,7 +8,7 @@
 local graceland = Atdar.util.game.players.user.graceland
 
 -- The settings can be changed any time, before or after enable(). These are the defaults
-graceland.set_steering(true)        -- false: no ragdoll in a fall at all, no death, but no steering either
+graceland.set_steering(true)        -- false: no ragdoll in a fall at all, no death; the stick steers the plain fall (set_air_control)
 graceland.set_ragdoll_distance(8)   -- metres of a fall after which the ragdoll starts (from about 5)
 graceland.set_safe_landing(true)    -- false: the ragdoll lands as it is, and a long fall kills
 graceland.set_landing_time(0.5)     -- seconds before the ground (at the speed it has) the ragdoll is ended

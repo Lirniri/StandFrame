@@ -50,7 +50,7 @@ The player falls without dying and steers the fall with the stick. It works like
 
 | Setting | Default | What it does |
 |---|---|---|
-| `set_steering(toggle)` | `true` | Off: the ragdoll never starts in a fall, no death, no steering |
+| `set_steering(toggle)` | `true` | Whether a ragdoll starts in a fall after the ragdoll distance, and the stick steers it (when `set_air_control` is on). Off: no ragdoll in a fall at all, no death from it; the stick then steers the plain fall through the memory |
 | `set_ragdoll_distance(metres)` | `12` | The fall after which the ragdoll starts (5 at least, a smaller value is raised) |
 | `set_safe_landing(toggle)` | `true` | Off: the ragdoll lands as it is, and a long fall kills |
 | `set_landing_time(seconds)` | `0.5` | How long before the ground the ragdoll is ended: 27 m at 55 m/s, 6 m at 12 m/s (0.1 at least) |
@@ -62,8 +62,8 @@ The player falls without dying and steers the fall with the stick. It works like
 
 | Setting | Default | What it does |
 |---|---|---|
-| `set_memory_control(toggle)` | `true` | Steers the fall through the flags of the game's fall task (`Atdar.natives.memory.ped`), the way Stand's Graceland does: no ragdoll is needed. It reads the memory by the offsets of a build of the game; off gives the ragdoll steering only |
-| `set_beast_fall(toggle)` | `true` | Puts the flag `BEAST_FALL` of the fall task in the steered fall. In the game it did not show the arms-out animation (found by trying), so the bit is not the one of that animation: `Atdar.util.game.players.user.air_control.probe_bits()` goes through the bits of the flags, one at a time, to find it. Off: the steering and the damping only. Works with `set_memory_control` on, and can be switched in the middle of a fall |
+| `set_air_control(toggle)` | `true` | Whether the stick steers the fall: with `set_steering` on it steers the ragdoll (the ragdoll control), with it off the plain fall without a ragdoll (the flags of the game's fall task, like Stand's Graceland; the memory part reads the offsets of a build of the game). Off: no steering at all |
+| `set_beast_fall(toggle)` | `true` | Puts the flag `BEAST_FALL` of the fall task in the steered fall. In the game it did not show the arms-out animation (found by trying), so the bit is not the one of that animation: `Atdar.util.game.players.user.air_control.probe_bits()` goes through the bits of the flags, one at a time, to find it. Off: the steering and the damping only. Works with `set_air_control` on, and can be switched in the middle of a fall |
 | `set_flag_protection(toggle)` | `false` | A try: also uses the game's ped flags in a fall (impacts don't ragdoll the player, `NEVER_RAGDOLL` with steering off, the wall seen by `PED_HIT_WALL_LAST_FRAME`). Gives no steering |
 
 #### Common

@@ -14,7 +14,7 @@ local log = new Logger("Graceland")
 -- How it works (found by trying, see the notes at the functions): the game ragdolls the player after a fall
 -- of some distance, and GIVE_PLAYER_RAGDOLL_CONTROL lets him steer that ragdoll by the stick. A ragdoll hitting
 -- the ground at fall speed kills, so it is ended above the ground and the player lands on his feet.
--- With steering off the ragdoll never starts: only the death is off, and there is no air control.
+-- With steering off the ragdoll never starts: only the death is off, and the air control steers the plain fall.
 --
 -- Safe against what a simulation of the module on stand-ins for the game found (and what it did not): no ragdoll
 -- is started within 3 m and 3 frames of the ground (it would start and touch the ground in one game step), a new
@@ -78,7 +78,7 @@ local settings = {
     landing_time = 0.5,
     wall_protection = true,
     flag_protection = false,
-    memory_control = true,
+    air_control = true,
     beast_fall = true,
     facing = "camera",
     stuck_ragdoll_ms = 1500,
@@ -108,13 +108,14 @@ end
 -- What belongs to the steering through a ragdoll: it starts after a distance, is ended above the ground and on a wall,
 -- and the player is stood up after it
 
--- Whether the player steers a fall: a ragdoll starts after set_ragdoll_distance and the stick steers it, on by
--- default. Off: no ragdoll in a fall at all, no steering, and no death from it
+-- Whether a ragdoll starts in a fall (after set_ragdoll_distance), on by default. Off: no ragdoll in a fall at all, and
+-- no death from it; the stick then steers the plain fall through the memory (set_air_control). With it on the stick
+-- steers the ragdoll (set_air_control says whether)
 function module.set_steering(toggle: bool): void
     settings.steering = toggle
 end
 
--- The fall distance (metres) after which the ragdoll starts, 12 by default; used with steering on
+-- The fall distance (metres) after which the ragdoll starts, 12 by default; used when a ragdoll may start (see set_steering)
 -- @param metres From about 5
 function module.set_ragdoll_distance(metres: number): void
     settings.ragdoll_distance = math.max(metres, MIN_RAGDOLL_DISTANCE)
@@ -164,17 +165,18 @@ end
 
 -- What belongs to the fall without a ragdoll: the flags of the game, the memory steering of the fall task
 
--- Whether the fall task of the game is steered through the memory too (air_control: the flags Stand's own Graceland puts
--- in it, Atdar.natives.memory.ped.set_air_control), on by default: no ragdoll is needed to steer the fall then. It reads the
--- memory by the offsets of a build of the game (Atdar.natives.memory.task.offsets): if they are wrong nothing is found and
--- only the ragdoll steering is left, so off is the way back. It is for the plain fall, before the ragdoll starts or
--- without one (a big set_ragdoll_distance); look at the log with set_debug
-function module.set_memory_control(toggle: bool): void
-    settings.memory_control = toggle
+-- Whether the stick steers the fall, on by default: the one switch of the control, and set_steering says where it
+-- works. With steering on it steers the ragdoll (GIVE_PLAYER_RAGDOLL_CONTROL); with steering off it steers the plain fall
+-- without a ragdoll, through the flags of the game's fall task (the way Stand's own Graceland does,
+-- Atdar.natives.memory.ped.set_air_control). Off: no steering at all, the ragdoll control is taken away every frame. The memory part reads the offsets of a build of the game
+-- (Atdar.natives.memory.task.offsets): if they are wrong nothing is found and only the ragdoll steering is left;
+-- look at the log with set_debug
+function module.set_air_control(toggle: bool): void
+    settings.air_control = toggle
 end
 
 -- Whether the steered fall has the animation of the beast's fall (the arms out, the flag BEAST_FALL of the game's fall task),
--- on by default; off: the steering and the damping only. It is a flag of the fall task, so it works with set_memory_control
+-- on by default; off: the steering and the damping only. It is a flag of the fall task, so it works with set_air_control
 -- on, and it can be switched in the middle of a fall
 function module.set_beast_fall(toggle: bool): void
     settings.beast_fall = toggle
@@ -183,7 +185,7 @@ end
 -- Whether the game's own ped flags are used too in a fall, off by default (a try, none of the flags was tried in the
 -- game before). In the air, every frame: DISABLE_JUMP_RAGDOLL_ON_COLLISION, NEVER_DIE_FROM_CAPSULE_RAGDOLL_SETTINGS
 -- and DISABLE_MATERIAL_COLLISION_DAMAGE (reset flags); once per fall the config flags that block a ragdoll from the
--- hit of a ped, an object or a vehicle, put back as they were on the ground. With steering off also NEVER_RAGDOLL and
+-- hit of a ped, an object or a vehicle, put back as they were on the ground. With no ragdoll wanted (see set_steering) also NEVER_RAGDOLL and
 -- the config flag DONT_ACTIVATE_RAGDOLL_FROM_FALLING: no ragdoll in a fall, by the flags instead of by the distance.
 -- The wall is also seen by the reset flag PED_HIT_WALL_LAST_FRAME. The flags give no steering. (The config flag
 -- IS_STANDING tells the ground with or without this, lower than 4 m: it was seen as 0 in the air, 1 on the ground)
@@ -197,6 +199,17 @@ end
 -- FALL_LOG_MS in the air and right away at a ragdoll, a touch, the ground. One line each, "fall rag=0 can=1 ... vel=x,y,z stick=x,y dir=x,y"
 function module.set_debug(toggle: bool): void
     settings.debug = toggle
+end
+
+-- Whether a ragdoll may start in a fall: the steering setting says it, the air control has no part in it
+local function is_ragdoll_allowed(): bool
+    return settings.steering
+end
+
+-- Whether the stick steers a ragdoll: air_control is the one switch of the control, for a ragdoll and for the plain
+-- fall alike
+local function is_ragdoll_steered(): bool
+    return settings.air_control
 end
 
 -- Blocks or gives back the ragdoll once, not every frame
@@ -399,8 +412,8 @@ local function hold_flags(ped: int, airborne: bool): void
     flags.set_reset(ped, prf.NEVER_DIE_FROM_CAPSULE_RAGDOLL_SETTINGS, true)
     flags.set_reset(ped, prf.DISABLE_MATERIAL_COLLISION_DAMAGE, true)
 
-    -- With steering on a ragdoll is wanted: only the impacts are blocked, not the ragdoll of the fall itself
-    if not settings.steering then
+    -- With a ragdoll wanted only the impacts are blocked, not the ragdoll of the fall itself
+    if not is_ragdoll_allowed() then
         flags.set_reset(ped, prf.NEVER_RAGDOLL, true)
     end
 
@@ -414,7 +427,7 @@ local function hold_flags(ped: int, airborne: bool): void
         pcf.DONT_ACTIVATE_RAGDOLL_FROM_VEHICLE_IMPACT,
     }
 
-    if not settings.steering then
+    if not is_ragdoll_allowed() then
         table.insert(ids, pcf.DONT_ACTIVATE_RAGDOLL_FROM_FALLING)
     end
 
@@ -534,12 +547,14 @@ local function update_frame(): void
     state.last_ms = now
 end
 
--- Switches the memory steering (air_control) as the setting says, so a change of it is taken at once
+-- Switches the memory steering of the fall task (the air_control module) as the settings say, so a change of them is
+-- taken at once. It is the steering of the fall without a ragdoll, so it works only with steering off (with steering on
+-- the ragdoll is what the stick steers, see is_ragdoll_steered)
 local function sync_air_control(): void
 
     local air_control = Atdar.util.game.players.user.air_control
 
-    if settings.memory_control then
+    if settings.air_control and not settings.steering then
         air_control.set_debug(settings.debug)
         air_control.set_beast_fall(settings.beast_fall)
         air_control.enable()
@@ -579,7 +594,7 @@ local function apply(): void
     -- The ragdoll distance counts until the ragdoll is ended for the landing: after it the distance is the never
     -- one again, or the landing counts as a high fall (the ragdoll distance is small) and kills. The fall's distance
     -- so far is far below it
-    if settings.steering and not state.landing_done and not near_ground then
+    if is_ragdoll_allowed() and not state.landing_done and not near_ground then
         distance = settings.ragdoll_distance
     end
 
@@ -591,22 +606,27 @@ local function apply(): void
     -- blocked until the ground
     if state.landing_done then
         -- ended for the landing: nothing to change, the ragdoll stays blocked
-    elseif not settings.steering and airborne and not n_player.is_ragdoll(ped) then
+    elseif not is_ragdoll_allowed() and airborne and not n_player.is_ragdoll(ped) then
         set_ragdoll_blocked(ped, true)
-    elseif not airborne or settings.steering then
+    elseif not airborne or is_ragdoll_allowed() then
         set_ragdoll_blocked(ped, false)
     end
 
     end_stuck_ragdoll(ped, airborne)
 
-    -- The ragdoll control is on only while the ped is ragdolling, and given or taken once, not every frame
-    if settings.steering then
-        local ragdoll = n_player.is_ragdoll(ped)
+    -- The ragdoll control is given once, only while the ped is ragdolling and the stick steers the ragdoll
+    -- (is_ragdoll_steered). When it must not be there it is taken every frame, not only on a change: the game keeps it
+    -- from before (a reloaded script, another script or Stand that gave it) and a flag of ours can't tell
+    local steered = is_ragdoll_steered() and n_player.is_ragdoll(ped)
 
-        if ragdoll ~= state.control_given then
-            state.control_given = ragdoll
-            n_player.give_ragdoll_control(player, ragdoll)
+    if steered then
+        if not state.control_given then
+            state.control_given = true
+            n_player.give_ragdoll_control(player, true)
         end
+    else
+        state.control_given = false
+        n_player.give_ragdoll_control(player, false)
     end
 
     if settings.debug then
@@ -631,6 +651,7 @@ local function release(): void
     if n_player.is_ragdoll(ped) then
         Atdar.natives.entity.ped.task.clear(ped, 1)
     end
+
 
     if state.control_given then
         state.control_given = false
