@@ -1,14 +1,16 @@
 {
 	"name": "pluto-syntax-highlighting",
 	"displayName": "Pluto Syntax Highlighting",
-	"description": "Language support for Pluto, a Lua dialect: syntax highlighting, snippets, completion, hover, signature help, go to definition & outline.",
+	"description": "Language support for Pluto, a Lua dialect: syntax highlighting, snippets, completion, hover, signature help, go to definition, outline & live diagnostics.",
 	"keywords": [
 		"Pluto language",
 		"pluto",
 		"lua",
-		"intellisense"
+		"intellisense",
+		"diagnostics",
+		"linter"
 	],
-	"version": "0.12.0",
+	"version": "0.13.0",
 	"publisher": "calamity-inc",
 	"icon": "icon.png",
 	"repository": "https://github.com/PlutoLang/Syntax-Highlighting",
@@ -145,6 +147,32 @@
 					"default": true,
 					"description": "Suggest other words of the current document."
 				},
+				"pluto.outline.showFunctionBody": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show the contents of functions in the Outline and breadcrumbs: local variables, nested functions and callbacks (and calls, see `#pluto.outline.calls#`). When disabled, only classes, methods and function signatures are shown."
+				},
+				"pluto.outline.maxFileLines": {
+					"type": "integer",
+					"default": 1000,
+					"minimum": 0,
+					"markdownDescription": "In files with more lines than this, the contents of functions are left out of the Outline to keep the editor responsive, as if `#pluto.outline.showFunctionBody#` was disabled. `0` means no limit."
+				},
+				"pluto.outline.calls": {
+					"type": "string",
+					"enum": [
+						"none",
+						"statements",
+						"all"
+					],
+					"enumDescriptions": [
+						"Don't list calls.",
+						"List calls that are statements of their own, e.g. `util.toast(...)`, and `return` statements.",
+						"Also list calls inside of expressions, e.g. `ENTITY.GET_ENTITY_COORDS(...)` in `local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))`. Each called function is listed once per function."
+					],
+					"default": "none",
+					"markdownDescription": "List the calls and `return` statements inside of functions in the Outline, to see what a function does without opening it. At most 50 per function. Requires `#pluto.outline.showFunctionBody#`."
+				},
 				"pluto.outline.localVariables": {
 					"type": "boolean",
 					"default": true,
@@ -194,6 +222,24 @@
 					"type": "boolean",
 					"default": true,
 					"markdownDescription": "Insert the matching `end` (or `until`) when pressing Enter after a block opener such as `function`, `if ... then`, `for ... do`, `class` or `switch ... do`."
+				},
+				"pluto.diagnostics.enable": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show errors and warnings in the editor and the Problems panel: compiler errors (when a Pluto compiler is found, see `#pluto.diagnostics.compilerPath#`) and built-in checks (missing `require` targets, calls with too few arguments, problems in `info.json`)."
+				},
+				"pluto.diagnostics.compilerPath": {
+					"type": "string",
+					"default": "",
+					"scope": "machine-overridable",
+					"markdownDescription": "Path to the Pluto compiler used to check code without running it (`plutoc`, or the `pluto` interpreter). Supports `${workspaceFolder}`, `${userHome}` and `${env:NAME}`. When empty, a compiler inside the workspace is used (e.g. `pluto/*/plutoc.exe`, `tools/pluto/pluto.exe`, `bin/pluto`; the newest version wins), then `plutoc`/`pluto` from `PATH`. If none is found, only the built-in checks run."
+				},
+				"pluto.diagnostics.debounceMs": {
+					"type": "number",
+					"default": 400,
+					"minimum": 0,
+					"maximum": 10000,
+					"description": "Delay in milliseconds after the last edit before a Pluto file is checked again."
 				}
 			}
 		}
@@ -203,10 +249,20 @@
 		"onLanguage:pluto",
 		"onCommand:pluto-syntax-highlighting.run",
 		"onCommand:pluto-syntax-highlighting.lint",
-		"onCommand:pluto-syntax-highlighting.reindex"
+		"onCommand:pluto-syntax-highlighting.reindex",
+		"workspaceContains:**/*.pluto"
 	],
 	"devDependencies": {
 		"vscode-oniguruma": "^2.0.1",
 		"vscode-textmate": "^9.2.0"
+	},
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": "limited",
+			"description": "In untrusted workspaces no Pluto compiler is run; built-in checks still work.",
+			"restrictedConfigurations": [
+				"pluto.diagnostics.compilerPath"
+			]
+		}
 	}
 }

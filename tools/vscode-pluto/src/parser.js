@@ -206,10 +206,16 @@ const RESERVED = new Set([
  */
 
 /**
- * @param {string} text
- * @returns {{ symbols: PlutoSymbol[], blocks: { kind: string, startLine: number, endLine: number }[], unclosed: number, returnName: string|null, requires: { module: string, line: number }[], lineCount: number }}
+ * A call or return statement inside a function body, collected for the Outline.
+ * @typedef {{ kind: "call"|"return", name: string, detail: string, callee?: string, line: number, col: number, endLine: number, statement: boolean, hasCallback?: boolean }} BodyItem
  */
-function parse(text)
+
+/**
+ * @param {string} text
+ * @param {{ calls?: boolean }} [options] `calls`: also collect calls and returns inside of functions.
+ * @returns {{ symbols: PlutoSymbol[], blocks: { kind: string, startLine: number, endLine: number }[], unclosed: number, returnName: string|null, requires: { module: string, line: number }[], lineCount: number, calls?: BodyItem[] }}
+ */
+function parse(text, options)
 {
 	const tokens = tokenize(text);
 	const lines = text.split(/\r?\n/);
@@ -218,6 +224,9 @@ function parse(text)
 	const blocks = [];
 	const requires = [];
 	let returnName = null;
+	const collectCalls = !!(options && options.calls);
+	/** @type {BodyItem[]} */
+	const calls = [];
 
 	// Unified stack of open blocks and table constructors.
 	/** @type {{ kind: string, startLine: number, sym?: PlutoSymbol, awaiting?: string|null, name?: string|null, locals: PlutoSymbol[], scoped?: boolean }[]} */
@@ -696,6 +705,82 @@ function parse(text)
 		return out;
 	};
 
+	const insideFunction = () => stack.some(b => b.kind == "function");
+
+	const truncate = (s, max) => s.length > max ? s.slice(0, max - 1) + "…" : s;
+
+	// Records the call whose argument list opens at idx, e.g. `ENTITY.GET_ENTITY_COORDS(entity)`.
+	const recordCall = function (idx)
+	{
+		if (!isId(idx - 1) || !insideFunction())
+		{
+			return;
+		}
+		let j = idx - 1;
+		const parts = [tokens[j].v];
+		while ((isP(j - 1, ".") || isP(j - 1, ":") || isP(j - 1, "?.")) && isId(j - 2))
+		{
+			parts.unshift(tokens[j - 2].v, tokens[j - 1].v == ":" ? ":" : ".");
+			j -= 2;
+		}
+		// A receiver that isn't a plain name, e.g. `foo():bar()` or `t[1].x()`.
+		const complexReceiver = isP(j - 1, ".") || isP(j - 1, ":") || isP(j - 1, "?.");
+		const before = tokens[j - 1];
+		if (before && before.t == "id" && before.v == "function")
+		{
+			return; // declaration, not a call
+		}
+		if (parts.length == 1 && RESERVED.has(parts[0]) && parts[0] != "self" && parts[0] != "parent")
+		{
+			return; // `if (`, `return (`, `and (`, ...
+		}
+		const isNew = !!before && before.t == "id" && (before.v == "new" || before.v == "pluto_new");
+		const statement = !isNew && !complexReceiver && (!before || before.line < tokens[j].line || (before.t == "p" && before.v == ";")
+			|| (before.t == "id" && ["then", "do", "else", "repeat"].includes(before.v)));
+
+		// Arguments, as far as they go on this line.
+		const line = tokens[idx].line;
+		let depth = 0;
+		let close = -1;
+		let last = idx;
+		let hasCallback = false;
+		for (let k = idx; k < tokens.length && tokens[k].line == line; ++k)
+		{
+			const tk = tokens[k];
+			last = k;
+			if (tk.t == "id" && tk.v == "function")
+			{
+				hasCallback = true;
+			}
+			else if (tk.t == "p" && tk.v == "->")
+			{
+				hasCallback = true;
+			}
+			else if (tk.t == "p" && "({[".includes(tk.v))
+			{
+				++depth;
+			}
+			else if (tk.t == "p" && ")}]".includes(tk.v) && --depth == 0)
+			{
+				close = k;
+				break;
+			}
+		}
+		const args = close != -1 ? sliceTokens(idx + 1, close) : sliceTokens(idx + 1, last + 1) + " …";
+		const callee = (complexReceiver ? "…" : "") + parts.join("");
+		calls.push({
+			kind: "call",
+			name: (isNew ? "new " : "") + callee + "()",
+			detail: "(" + truncate(args, 60) + ")",
+			callee,
+			line: tokens[j].line,
+			col: tokens[j].col,
+			endLine: tokens[j].line,
+			statement,
+			hasCallback: hasCallback || undefined,
+		});
+	};
+
 	const declareAnonymous = function (idx)
 	{
 		const sym = makeSym({ name: anonymousName(idx), kind: "function", anonymous: true }, tokens[idx]);
@@ -893,6 +978,10 @@ function parse(text)
 					continue;
 				}
 			}
+			if (collectCalls && t.v == "(")
+			{
+				recordCall(i);
+			}
 			++i;
 			continue;
 		}
@@ -902,7 +991,7 @@ function parse(text)
 			// require "module" / require("module")
 			if (isId(i - 1, "require") || (isP(i - 1, "(") && isId(i - 2, "require")))
 			{
-				requires.push({ module: t.v, line: t.line });
+				requires.push({ module: t.v, line: t.line, col: t.col, endCol: t.col + (t.end - t.off) });
 			}
 			++i;
 			continue;
@@ -1485,6 +1574,14 @@ function parse(text)
 			{
 				returnName = tokens[i + 1].v;
 			}
+			if (collectCalls && insideFunction())
+			{
+				const next = tokens[i + 1];
+				const values = next && next.line == t.line && !(next.t == "id" && ["end", "else", "elseif", "until", "case", "default"].includes(next.v))
+					? initializers(i + 1).join(", ")
+					: "";
+				calls.push({ kind: "return", name: "return", detail: values, line: t.line, col: t.col, endLine: t.line, statement: true });
+			}
 			++i;
 			continue;
 
@@ -1597,7 +1694,12 @@ function parse(text)
 		pop(lastLine);
 	}
 
-	return { symbols, blocks, unclosed, returnName, requires, lineCount: lines.length };
+	const result = { symbols, blocks, unclosed, returnName, requires, lineCount: lines.length };
+	if (collectCalls)
+	{
+		result.calls = calls;
+	}
+	return result;
 }
 
 /**

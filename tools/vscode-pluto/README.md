@@ -12,6 +12,11 @@ Besides syntax highlighting and snippets, the VS Code extension provides languag
 - **Go to Definition** (`F12` / `Ctrl+Click`) for classes, methods, functions, variables, and the file behind `require("...")`.
 - **Outline & breadcrumbs**, **Go to Symbol in Workspace** (`Ctrl+T`), and **folding** of blocks, comments and `--#region` markers.
 - **Automatic `end`** when pressing Enter after `function`, `if ... then`, `for ... do`, `while ... do`, `class`, `switch ... do`, etc.
+- **Live diagnostics** (squiggles and the Problems panel):
+  - errors and warnings of the Pluto compiler, which checks the code without running it (`plutoc -p -`; with only the `pluto` interpreter, the code is compiled with `load` and never called);
+  - built-in checks that need no compiler: `require("...")` of a module that doesn't exist in the workspace, calls with fewer arguments than the function has required parameters (parameters with `?` or `= default` are optional), and in `info.json`: a missing `id`, an `entry` file that doesn't exist, and `dependencies` with unknown ids.
+
+  The compiler is taken from `pluto.diagnostics.compilerPath`; when that is empty, from the workspace (`pluto/*/plutoc.exe`, `bin/pluto/*/plutoc.exe`, `tools/pluto/...`; the newest version wins, `plutoc` before `pluto`), then from `PATH`. If none is found, only the built-in checks run. The compiler in use is logged in the **Pluto** output channel. In untrusted workspaces no compiler is run.
 
 All `.pluto` and `.lua` files of the workspace are indexed in the background and kept up to date as you edit. Files matched by `.gitignore`, `.plutoignore` or the exclude settings below are left out: they don't show up in completion, hover or Go to Definition of other files, and the index follows along when an ignore file changes. An excluded file that you open still gets all features for its own code. This is a lightweight index, not a full language server: types are only inferred from type hints, `new Class(...)` and `require`.
 
@@ -42,12 +47,18 @@ All `.pluto` and `.lua` files of the workspace are indexed in the background and
 | `pluto.completion.documentWords` | `true` | Suggest other words of the current document. |
 | `pluto.autoCloseBlocks` | `true` | Insert `end` / `until` on Enter. |
 | `pluto.hover.sourcePath` | `short` | How links to declarations in other files look: `short`, `relative` or `none`. |
+| `pluto.outline.showFunctionBody` | `true` | Show the contents of functions in the Outline (locals, nested functions, callbacks, calls). |
+| `pluto.outline.maxFileLines` | `1000` | In larger files, show only classes, methods and function signatures. `0` = no limit. |
+| `pluto.outline.calls` | `none` | List calls inside functions: `none`, `statements` (call statements and `return`), or `all` (also calls inside expressions, once per callee). |
 | `pluto.outline.localVariables` | `true` | Show variables declared inside functions in the Outline. |
 | `pluto.outline.loopVariables` | `false` | Show `for` loop variables in the Outline. |
 | `pluto.outline.parameters` | `false` | Show function parameters in the Outline. |
 | `pluto.outline.anonymousFunctions` | `true` | Show callbacks such as `scheduler:add() callback` in the Outline. |
 | `pluto.outline.fields` | `true` | Show `self.x = ...` fields as class members in the Outline. |
 | `pluto.outline.showValues` | `true` | Show initial values next to variables and fields, e.g. `count = 0`. |
+| `pluto.diagnostics.enable` | `true` | Show compiler errors and built-in checks in the editor and the Problems panel. |
+| `pluto.diagnostics.compilerPath` | `""` | Path to `plutoc`/`pluto`, e.g. `${workspaceFolder}/bin/pluto/0.13.2/plutoc.exe`. Empty = search the workspace, then `PATH`. |
+| `pluto.diagnostics.debounceMs` | `400` | Delay after the last edit before a file is checked again. |
 
 ### Commands
 

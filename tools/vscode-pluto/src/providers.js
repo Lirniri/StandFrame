@@ -18,6 +18,9 @@ const SYMBOL_KINDS = {
 	enumMember: vscode.SymbolKind.EnumMember,
 };
 
+/** Upper bound of calls/returns listed under a single function in the Outline. */
+const MAX_CALLS_PER_FUNCTION = 50;
+
 const COMPLETION_KINDS = {
 	class: vscode.CompletionItemKind.Class,
 	function: vscode.CompletionItemKind.Function,
@@ -731,12 +734,28 @@ function createProviders(service)
 				anonymousFunctions: config.get("outline.anonymousFunctions", true),
 				fields: config.get("outline.fields", true),
 				showValues: config.get("outline.showValues", true),
+				calls: config.get("outline.calls", "none"),
 			};
+			// Contents of function bodies, unless switched off or the file is too large for it.
+			const maxFileLines = Number(config.get("outline.maxFileLines", 1000)) || 0;
+			const body = config.get("outline.showFunctionBody", true) && !(maxFileLines > 0 && document.lineCount > maxFileLines);
+			if (!body)
+			{
+				Object.assign(opt, { localVariables: false, loopVariables: false, parameters: false, anonymousFunctions: false, calls: "none" });
+			}
 			const lastLine = document.lineCount - 1;
 			const isFileLevel = (sym) => !sym.local || sym.scopeEnd == Number.MAX_SAFE_INTEGER;
 
 			const kindOf = function (sym)
 			{
+				if (sym.kind == "call")
+				{
+					return vscode.SymbolKind.Event;
+				}
+				if (sym.kind == "return")
+				{
+					return vscode.SymbolKind.Operator;
+				}
 				if (sym.kind == "variable" || sym.kind == "field")
 				{
 					if (sym.module)
@@ -765,6 +784,10 @@ function createProviders(service)
 
 			const detailOf = function (sym)
 			{
+				if (sym.kind == "call" || sym.kind == "return")
+				{
+					return sym.detail;
+				}
 				const parts = [];
 				if (sym.visibility && sym.visibility != "public")
 				{
@@ -810,7 +833,7 @@ function createProviders(service)
 				const line = Math.min(sym.line, lastLine);
 				const range = new vscode.Range(line, 0, endLine, document.lineAt(endLine).text.length);
 				const lineLength = document.lineAt(line).text.length;
-				const nameLength = sym.anonymous ? (sym.lambda ? 1 : "function".length) : sym.name.length;
+				const nameLength = sym.nameLength || (sym.anonymous ? (sym.lambda ? 1 : "function".length) : sym.name.length);
 				const selection = new vscode.Range(line, Math.min(sym.col, lineLength), line, Math.min(sym.col + nameLength, lineLength));
 				const node = new vscode.DocumentSymbol(name || sym.name || "?", detailOf(sym), kindOf(sym), range, selection);
 				if (sym.doc && /@deprecated\b/i.test(sym.doc) && vscode.SymbolTag)
@@ -838,6 +861,10 @@ function createProviders(service)
 				{
 					return opt.fields;
 				}
+				if (!body && sym.local && !isFileLevel(sym))
+				{
+					return false; // declared inside of a function (or another block)
+				}
 				if (sym.kind == "variable")
 				{
 					if (sym.loopVar)
@@ -848,6 +875,22 @@ function createProviders(service)
 				}
 				return true;
 			});
+			// Calls and returns inside of function bodies: "statements" or "all".
+			if (opt.calls == "statements" || opt.calls == "all")
+			{
+				for (const c of file.calls || [])
+				{
+					if (c.kind == "call" && opt.calls == "statements" && !c.statement)
+					{
+						continue;
+					}
+					if (c.hasCallback && opt.anonymousFunctions)
+					{
+						continue; // shown as `callee() callback` already
+					}
+					relevant.push(Object.assign({}, c, { nameLength: c.callee ? c.callee.length : c.name.length }));
+				}
+			}
 			const containerSyms = new Set();
 			for (const sym of relevant)
 			{
@@ -929,6 +972,23 @@ function createProviders(service)
 					nodes.push({ sym, node });
 				}
 			}
+			// Calls per function are capped, and in "all" mode each callee is listed once.
+			const bodyItems = new Map();
+			const keepBodyItem = function (parentNode, item)
+			{
+				let seen = bodyItems.get(parentNode);
+				if (!seen)
+				{
+					seen = new Set();
+					bodyItems.set(parentNode, seen);
+				}
+				if (seen.size >= MAX_CALLS_PER_FUNCTION || (opt.calls == "all" && item.kind == "call" && seen.has(item.name)))
+				{
+					return false;
+				}
+				seen.add(item.kind == "call" ? item.name : "return@" + item.line + ":" + item.col);
+				return true;
+			};
 			// Nest declarations inside the function that contains them.
 			// Single pass in source order, with a stack of the functions that are still open.
 			const nodeOf = new Map(nodes.map(n => [n.sym, n.node]));
@@ -971,6 +1031,13 @@ function createProviders(service)
 				{
 					open.push(entry);
 				}
+				if (entry.sym.kind == "call" || entry.sym.kind == "return")
+				{
+					if (!parent || !keepBodyItem(parent.node, entry.sym))
+					{
+						continue;
+					}
+				}
 				if (parent && parent.node.range.contains(entry.node.range))
 				{
 					parent.node.children.push(entry.node);
@@ -978,6 +1045,17 @@ function createProviders(service)
 				else
 				{
 					roots.push(entry.node);
+				}
+			}
+			if (!body)
+			{
+				// Only signatures: nothing from inside of function bodies.
+				for (const entry of nodes)
+				{
+					if (entry.sym.kind == "function" || entry.sym.kind == "method")
+					{
+						entry.node.children = [];
+					}
 				}
 			}
 			// Source order at every level.

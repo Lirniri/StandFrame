@@ -110,7 +110,7 @@ const service = {
 	analyzer,
 	getRecord(document)
 	{
-		return index.setFile(document.uri.toString(), document.uri.fsPath, document.getText());
+		return index.setFile(document.uri.toString(), document.uri.fsPath, document.getText(), false, { calls: true });
 	},
 };
 const providers = createProviders(service);
@@ -612,6 +612,92 @@ test("outline: locals, callbacks, constants and settings", function ()
 	}
 });
 
+test("outline: function bodies, calls and the large-file guard", function ()
+{
+	const source = [
+		"local module = {}",
+		"function module.get_coords(entity: int)",
+		"    local coords = v3.new(ENTITY.GET_ENTITY_COORDS(entity))",
+		"    util.toast(\"x\")",
+		"    util.toast(\"y\")",
+		"    scheduler:add(function()",
+		"        log(\"inner\")",
+		"    end)",
+		"    if not coords then return nil end",
+		"    return coords",
+		"end",
+		"function module.get_health(entity: int): int",
+		"    return ENTITY.GET_ENTITY_HEALTH(entity)",
+		"end",
+	].join("\n");
+	const document = vscode.createDocument("/ws/body.pluto", source);
+	const K = vscode.SymbolKind;
+	const flat = (nodes, depth = 0) => nodes.flatMap(n => [[depth, n.name, n.detail], ...flat(n.children, depth + 1)]);
+	const outline = () => flat(providers.documentSymbolProvider.provideDocumentSymbols(document));
+	const reset = () => Object.keys(vscode.config).forEach(k => delete vscode.config[k]);
+	try
+	{
+		// Default: locals and callbacks, no calls.
+		assert.deepStrictEqual(outline(), [
+			[0, "module", "= {}"],
+			[1, "get_coords", "(entity: int)"],
+			[2, "coords", "= v3.new(ENTITY.GET_ENTITY_COORDS(entity))"],
+			[2, "scheduler:add() callback", "()"],
+			[1, "get_health", "(entity: int): int"],
+		]);
+
+		// Statement calls and returns; the call with a callback is represented by the callback.
+		vscode.config["outline.calls"] = "statements";
+		assert.deepStrictEqual(outline(), [
+			[0, "module", "= {}"],
+			[1, "get_coords", "(entity: int)"],
+			[2, "coords", "= v3.new(ENTITY.GET_ENTITY_COORDS(entity))"],
+			[2, "util.toast()", "(\"x\")"],
+			[2, "util.toast()", "(\"y\")"],
+			[2, "scheduler:add() callback", "()"],
+			[3, "log()", "(\"inner\")"],
+			[2, "return", "nil"],
+			[2, "return", "coords"],
+			[1, "get_health", "(entity: int): int"],
+			[2, "return", "ENTITY.GET_ENTITY_HEALTH(entity)"],
+		]);
+		const fn =providers.documentSymbolProvider.provideDocumentSymbols(document)[0].children[0];
+		assert.strictEqual(fn.children.find(c => c.name == "util.toast()").kind, K.Event);
+		assert.strictEqual(fn.children.find(c => c.name == "return").kind, K.Operator);
+
+		// All calls, each callee once per function.
+		vscode.config["outline.calls"] = "all";
+		const all = outline().filter(e => e[1].endsWith("()")).map(e => e[0] + " " + e[1]);
+		assert.deepStrictEqual(all, ["2 v3.new()", "2 ENTITY.GET_ENTITY_COORDS()", "2 util.toast()", "3 log()", "2 ENTITY.GET_ENTITY_HEALTH()"]);
+
+		// Large-file guard: only signatures.
+		const signaturesOnly = [
+			[0, "module", "= {}"],
+			[1, "get_coords", "(entity: int)"],
+			[1, "get_health", "(entity: int): int"],
+		];
+		vscode.config["outline.maxFileLines"] = 10;
+		assert.deepStrictEqual(outline(), signaturesOnly);
+		vscode.config["outline.maxFileLines"] = 0; // no limit
+		assert(outline().length > 3);
+		vscode.config["outline.maxFileLines"] = 1000;
+		vscode.config["outline.showFunctionBody"] = false;
+		assert.deepStrictEqual(outline(), signaturesOnly);
+	}
+	finally
+	{
+		reset();
+	}
+});
+
+test("parser: calls are only collected on request", function ()
+{
+	const src = "function f()\n  foo(1)\nend\nbar()\n";
+	assert.strictEqual(parse(src).calls, undefined);
+	const calls = parse(src, { calls: true }).calls;
+	assert.deepStrictEqual(calls.map(c => c.name), ["foo()"], "calls outside of functions are skipped");
+});
+
 test("folding provider", function ()
 {
 	const document = vscode.createDocument("/ws/lib/human.pluto", FILES["/ws/lib/human.pluto"]);
@@ -858,6 +944,180 @@ function createFakeWorkspace(files)
 }
 
 const asyncTests = [];
+// ---------------------------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------------------------
+
+const { lintSource, lintManifest } = require("../src/lint");
+const compiler = require("../src/compiler");
+
+function lint(text, options)
+{
+	const record = index.setFile(vscode.Uri.file("/ws/lintme.pluto").toString(), "/ws/lintme.pluto", text);
+	try
+	{
+		return lintSource(text, record, analyzer, options);
+	}
+	finally
+	{
+		index.removeFile(vscode.Uri.file("/ws/lintme.pluto").toString());
+	}
+}
+
+test("lint: broken require paths", function ()
+{
+	const problems = lint([
+		"local util = require(\"lib.util\")",
+		"local chat = require \"chat-module\"",
+		"local json = require(\"pluto:json\")",
+		"local crypto = require \"crypto\"",
+		"local nope = require(\"lib/missing\")",
+		"local disk = require(\"ondisk\")",
+	].join("\n"), { exists: p => p == "/ws/ondisk.lua", searchDirs: [] });
+	assert.deepStrictEqual(problems.map(p => [p.code, p.line, p.col, p.endCol]), [["missing-module", 4, 21, 34]]);
+	assert.strictEqual(problems[0].severity, "warning");
+	assert(problems[0].message.includes("lib/missing"));
+});
+
+test("lint: calls with too few arguments", function ()
+{
+	const problems = lint([
+		"greet()",                                  // 0: who missing
+		"greet(\"bob\")",                           // 1: ok, loud is optional
+		"local h = new Human()",                    // 2: name missing
+		"local h2 = new Human(\"x\")",              // 3: ok, age has a default
+		"Human.create()",                           // 4: name missing
+		"local u = require(\"lib.util\")",
+		"u.add(1)",                                 // 6: b missing
+		"u:method()",                               // 7: x missing
+		"u.method(u, 1)",                           // 8: ok
+		"greet(...)",                               // 9: unknown count
+		"greet(get())",                             // 10: unknown count
+		"local function f(a, b) end",
+		"f(1)",                                     // 12: b missing
+		"local g = 5",
+		"unknownThing.call()",                      // 14: unknown callee
+		"function greet2(a) end",                   // 15: declaration
+		"local x = { greet() }",                    // 16: who missing
+		"greet((get()))",                           // 17: ok, exactly one value
+	].join("\n"));
+	assert.deepStrictEqual(problems.map(p => p.line), [0, 2, 4, 6, 7, 12, 16]);
+	assert(problems.every(p => p.code == "missing-arguments" && p.severity == "warning"));
+	assert(/'greet' expects at least 1 argument but got 0\. Required: who\./.test(problems[0].message), problems[0].message);
+	assert(problems[1].message.includes("new Human"), problems[1].message);
+	assert.strictEqual(problems[1].col, 10);
+});
+
+test("lint: info.json manifests", function ()
+{
+	const exists = p => p == "/ws/mods/new/main.pluto";
+	const ok = lintManifest(JSON.stringify({ id: "new", entry: "main.pluto", dependencies: ["chat-module"] }, null, "\t"), "/ws/mods/new/info.json", index, { exists });
+	assert.deepStrictEqual(ok, []);
+	const text = "{\n\t\"entry\": \"start.pluto\",\n\t\"dependencies\": [\"chat-module\", \"ghost\"]\n}";
+	const bad = lintManifest(text, "/ws/mods/new/info.json", index, { exists });
+	assert.deepStrictEqual(bad.map(p => [p.code, p.severity, p.line]), [
+		["manifest-id", "error", 0],
+		["manifest-entry", "error", 1],
+		["manifest-dependency", "warning", 2],
+	]);
+	assert.deepStrictEqual([bad[2].col, bad[2].endCol], [33, 40]);
+	// An unrelated info.json is left alone.
+	assert.deepStrictEqual(lintManifest("{\"name\": \"x\"}", "/elsewhere/info.json", index, {}), []);
+	// The entry file can also be an indexed file.
+	assert.deepStrictEqual(lintManifest("{\"id\": \"c\", \"entry\": \"init.pluto\"}", "/ws/mods/chat/info.json", index, {}), []);
+});
+
+test("compiler: output parsing", function ()
+{
+	const lines = ["local x = 1", "if x then", "  print(x y)", "end"];
+	const out = compiler.parseCompilerOutput([
+		"C:\\tools\\plutoc.exe: stdin:3: ')' expected near 'y'",
+		"stdin:1: warning: unused local 'x' [unused]",
+		"    1 | local x = 1",
+		"      |       ^ here: declared here",
+		"\x1b[31mstdin:4: syntax error: unexpected 'end'\x1b[0m",
+	].join("\r\n"), lines);
+	assert.deepStrictEqual(out.map(p => [p.line, p.severity, p.col, p.endCol]), [
+		[2, "error", 10, 11],
+		[0, "warning", 6, 7],
+		[3, "error", null, null],
+	]);
+	assert.strictEqual(out[0].message, "')' expected near 'y'");
+	assert(out[1].message.startsWith("unused local 'x' [unused]"), out[1].message);
+	assert.strictEqual(out[2].message, "syntax error: unexpected 'end'");
+	assert.deepStrictEqual(compiler.parseCompilerOutput("", lines), []);
+
+	// Real Pluto 0.13 output: excerpts are printed without indentation, warnings have a prefix.
+	const src = ["local function f()", "  local a = 1", "  local a = 2", "  print(a b)", "end"];
+	const real = compiler.parseCompilerOutput([
+		"Pluto warning: stdin:3: duplicate local declaration [var-shadow]",
+		"    3 | local a = 2",
+		"      | ^^^^^^^^^^^ here: this shadows the initial declaration of 'a' on line 2.",
+		"C:\\Program Files\\pluto\\plutoc.exe: stdin:4: ')' expected near 'b'",
+		"    4 | print(a b)",
+		"      |         ^ here: this is invalid syntax.",
+	].join("\n"), src);
+	assert.deepStrictEqual(real.map(p => [p.line, p.severity, p.col, p.endCol]), [[2, "warning", 2, 13], [3, "error", 10, 11]]);
+	assert.strictEqual(real[0].message, "duplicate local declaration [var-shadow] (this shadows the initial declaration of 'a' on line 2.)");
+});
+
+testAsync("compiler: a real plutoc checks stdin without running it (skipped when not installed)", async function ()
+{
+	const found = compiler.findOnPath();
+	if (!found)
+	{
+		return;
+	}
+	const bad = await compiler.runCheck(found, "os.exit(3)\nlocal x = (\n").promise;
+	const problems = compiler.parseCompilerOutput(bad.output, ["os.exit(3)", "local x = ("]);
+	assert.notStrictEqual(bad.code, 3, "the code must not run");
+	assert.strictEqual(problems.length, 1, bad.output);
+	assert.strictEqual(problems[0].severity, "error");
+	const good = await compiler.runCheck(found, "os.exit(3)\n").promise;
+	assert.strictEqual(good.code, 0, good.output);
+	assert.deepStrictEqual(compiler.parseCompilerOutput(good.output, []), []);
+});
+
+test("compiler: discovery prefers settings, then the newest local compiler, then PATH", function ()
+{
+	const os = require("os");
+	const exe = process.platform == "win32" ? ".exe" : "";
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "pluto-ws-"));
+	const bin = fs.mkdtempSync(path.join(os.tmpdir(), "pluto-path-"));
+	const touch = function (p)
+	{
+		fs.mkdirSync(path.dirname(p), { recursive: true });
+		fs.writeFileSync(p, "");
+		fs.chmodSync(p, 0o755);
+		return p;
+	};
+	try
+	{
+		assert.deepStrictEqual(compiler.findCompiler({ workspaceFolders: [root], envPath: "" }), { path: null, source: null, problem: undefined });
+		const onPath = touch(path.join(bin, "pluto" + exe));
+		assert.deepStrictEqual(compiler.findCompiler({ workspaceFolders: [root], envPath: bin }), { path: onPath, source: "path", problem: undefined });
+		touch(path.join(root, "pluto", "0.9.4", "plutoc" + exe));
+		const newest = touch(path.join(root, "pluto", "0.10.1", "plutoc" + exe));
+		touch(path.join(root, "pluto", "0.10.1", "pluto" + exe));
+		touch(path.join(root, "src", "pluto" + exe)); // not a known folder
+		assert.strictEqual(compiler.findCompiler({ workspaceFolders: [root], envPath: bin }).path, newest);
+		const custom = touch(path.join(root, "custom", "my-pluto" + exe));
+		const fromSetting = compiler.findCompiler({ configured: "${workspaceFolder}/custom/my-pluto" + exe, workspaceFolders: [root], envPath: bin });
+		assert.deepStrictEqual([fromSetting.path, fromSetting.source], [custom, "setting"]);
+		const broken = compiler.findCompiler({ configured: "${workspaceFolder}/nope" + exe, workspaceFolders: [root], envPath: bin });
+		assert.deepStrictEqual([broken.path, broken.source], [newest, "workspace"]);
+		assert(broken.problem.includes("not an executable"));
+		assert.strictEqual(compiler.findCompiler({ workspaceFolders: [root], envPath: bin, allowWorkspace: false }).path, onPath);
+		assert.deepStrictEqual(compiler.checkArgs(newest), ["-p", "-"]);
+		assert.strictEqual(compiler.checkArgs(onPath)[0], "-e");
+	}
+	finally
+	{
+		fs.rmSync(root, { recursive: true, force: true });
+		fs.rmSync(bin, { recursive: true, force: true });
+	}
+});
+
 function testAsync(name, fn)
 {
 	asyncTests.push({ name, fn });

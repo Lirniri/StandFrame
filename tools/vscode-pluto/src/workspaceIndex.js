@@ -46,11 +46,12 @@ class WorkspaceIndex
 	 * @param {string} path File system path.
 	 * @param {string} text
 	 * @param {boolean} [excluded] Keep the file out of the shared index.
+	 * @param {{ calls?: boolean }} [options] Parser options; `calls` is only needed for open documents.
 	 * @returns {FileRecord}
 	 */
-	setFile(key, path, text, excluded)
+	setFile(key, path, text, excluded, options)
 	{
-		const parsed = parse(text);
+		const parsed = parse(text, options);
 		/** @type {FileRecord} */
 		const record = Object.assign(parsed, { key, path: normalizePath(path), excluded: !!excluded });
 		for (const sym of record.symbols)

@@ -253,7 +253,7 @@ module.exports = {
 	FoldingRange,
 	RelativePattern,
 	SymbolInformation: Simple,
-	SymbolKind: enumOf("File", "Module", "Namespace", "Package", "Class", "Method", "Property", "Field", "Constructor", "Enum", "Interface", "Function", "Variable", "Constant", "String", "Number", "Boolean", "Array", "Object", "Key", "Null", "EnumMember"),
+	SymbolKind: enumOf("File", "Module", "Namespace", "Package", "Class", "Method", "Property", "Field", "Constructor", "Enum", "Interface", "Function", "Variable", "Constant", "String", "Number", "Boolean", "Array", "Object", "Key", "Null", "EnumMember", "Struct", "Event", "Operator", "TypeParameter"),
 	CompletionItemKind: enumOf("Text", "Method", "Function", "Constructor", "Field", "Variable", "Class", "Interface", "Module", "Property", "Unit", "Value", "Enum", "Keyword", "Snippet", "Color", "File", "Reference", "Folder", "EnumMember", "Constant"),
 	CompletionItemTag: { Deprecated: 1 },
 	SymbolTag: { Deprecated: 1 },

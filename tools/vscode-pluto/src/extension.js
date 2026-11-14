@@ -11,6 +11,7 @@ const { WorkspaceIndex } = require("./workspaceIndex");
 const { Analyzer } = require("./analysis");
 const { createProviders, lineContext } = require("./providers");
 const { WorkspaceFilter } = require("./workspaceFilter");
+const { registerDiagnostics } = require("./diagnostics");
 
 const SELECTOR = [{ language: "pluto" }];
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -41,10 +42,11 @@ class LanguageService
 		const key = document.uri.toString();
 		const excluded = this.filter.isExcluded(document.uri);
 		let record = this.index.getFile(key);
-		if (!record || this._versions.get(key) !== document.version || record.excluded !== excluded)
+		// Records read from disk lack the call list the Outline needs, so re-parse them once opened.
+		if (!record || this._versions.get(key) !== document.version || record.excluded !== excluded || !record.calls)
 		{
 			this._versions.set(key, document.version);
-			record = this.index.setFile(key, document.uri.fsPath, document.getText(), excluded);
+			record = this.index.setFile(key, document.uri.fsPath, document.getText(), excluded, { calls: true });
 		}
 		this.index.setCurrent(record);
 		return record;
@@ -517,12 +519,15 @@ function activate(context)
 		watcher.onDidDelete(uri => service.removeUri(uri))
 	);
 
-	vscode.window.setStatusBarMessage("$(sync~spin) Pluto: indexing workspace…", service.scan().catch(function (e)
+	const indexed = service.scan().catch(function (e)
 	{
 		console.error("Pluto: failed to index workspace", e);
-	}));
+	});
+	vscode.window.setStatusBarMessage("$(sync~spin) Pluto: indexing workspace…", indexed);
 
-	return { service };
+	const diagnostics = registerDiagnostics(context, service, indexed);
+
+	return { service, diagnostics };
 }
 
 function deactivate() {}
