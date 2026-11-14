@@ -1,0 +1,32 @@
+Pluto.tmbundle/info.plist
+Pluto.tmbundle/Snippets/**.tmSnippet
+node_modules/
+.gitignore
+.gitattributes
+*.sublime-build
+visual-check.*
+*.pluto
+
+# Development only
+.github/
+.claude/
+.vscode/
+scripts/
+test/
+test.js
+package-lock.json
+*.vsix
+*.zip
+
+# Left behind when working from an installed copy of the extension
+.vsixmanifest
+LICENSE.txt
+
+# VSIX
+.vs/
+bin/
+obj/
+*.pkgdef
+*.csproj
+*.sln
+source.extension.vsixmanifest

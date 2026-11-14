@@ -1,0 +1,45 @@
+
+class Human extends Entity
+	static function sayHello()
+	end
+end
+local h = new Human(1 + 2);
+print(h.name .. "\n");
+h:sayHello()
+
+enum begin end
+enum Suit begin end
+enum class colours begin end
+
+switch 3 do
+	default:
+	case 3: break
+end
+
+function f(a: ?string = "I say 'Hello'"): void end
+
+h?.name ?? "John"
+a ? b : c
+a?[42]
+
+goto label;
+::label::
+
+
+--- My summary
+-- @param p1 first parameter
+-- @return something
+-- @see other function
+
+
+$type StringOrNumber = string|number
+$type Point = { x: number, y: number }
+$type Point = { x: number; y: number }
+$type Callback = function(a: string): int
+
+local f: function(a: string): int = tonumber
+local function f(cb: function(a: string): int) end
+
+local p: { x: number, y: number } = { x = 1, y = 2 }
+local p: { x: number; y: number } = { x = 1, y = 2 }
+local function f(cb: { a: string }) end

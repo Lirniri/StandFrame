@@ -1,0 +1,9 @@
+node_modules/
+
+# VSIX
+.vs/
+bin/
+obj/
+
+# VS Code extension
+*.vsix

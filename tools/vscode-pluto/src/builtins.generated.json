@@ -1,0 +1,3875 @@
+{
+	"libs": {
+		"assert": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"base32": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"base64": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"bigint": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"buffer": {
+			"require": true,
+			"doc": "The buffer class — available via `require` — is a fast intermediate storage for incrementally-constructed strings."
+		},
+		"cat": {
+			"require": true,
+			"doc": "The CaT module is available via `require \"pluto:cat\"` and provides encoding and decoding for [the Colons and Tabs format](https://docs.soup.do/user/cat)."
+		},
+		"canvas": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"coroutine": {
+			"require": false,
+			"doc": "This page documents the changes & additions to the `coroutine` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"crypto": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"ffi": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"http": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"io": {
+			"require": false,
+			"doc": "This page documents the changes & additions to the `io` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"json": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"math": {
+			"require": false,
+			"doc": "This page documents the changes & additions to the `math` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"os": {
+			"require": false,
+			"doc": "This page documents the changes & additions to the `os` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"regex": {
+			"require": true,
+			"doc": "The Regex module is available via `require \"pluto:regex\"` and provides [Soup's flavor](https://github.com/calamity-inc/Soup/blob/senpai/docs/user/regex.md) of the popular string matching language."
+		},
+		"scheduler": {
+			"require": true,
+			"doc": "The scheduler class — available via `require` — can be used to easily set up coroutine-based cooperative multitasking."
+		},
+		"socket": {
+			"require": true,
+			"doc": "Must be included via `require`. This library is not available in WASM builds of Pluto."
+		},
+		"string": {
+			"require": false,
+			"doc": "This page documents the `string` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"table": {
+			"require": false,
+			"doc": "This page documents the changes & additions to the `table` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"url": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"utf8": {
+			"require": false,
+			"doc": "This page documents the `utf8` library in Pluto, which is built on top of Lua 5.5's."
+		},
+		"vector3": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"wasm": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		},
+		"xml": {
+			"require": true,
+			"doc": "Must be included via `require`."
+		}
+	},
+	"functions": [
+		{
+			"name": "assert.isnil",
+			"doc": "Asserts that `value` is `nil`",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value which *should* be nil."
+				}
+			]
+		},
+		{
+			"name": "assert.istrue",
+			"doc": "Asserts that `value` is `true`.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value which *should* be `true`."
+				}
+			]
+		},
+		{
+			"name": "assert.isfalse",
+			"doc": "Asserts that `value` is `false`.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value which *should* be `false`."
+				}
+			]
+		},
+		{
+			"name": "assert.falsy",
+			"doc": "Asserts that `value` is a \"falsy\" value. Falsy means the value is `nil` or `false`.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value which *should* be falsy."
+				}
+			]
+		},
+		{
+			"name": "assert.truthy",
+			"doc": "Asserts that `value` is a \"truthy\" value. This is the inverse of \"falsy\", a.k.a, any value that isn't `nil` or `false` is truthy.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value which *should* be truthy, a.k.a it *should not* be `nil` or `false`."
+				}
+			]
+		},
+		{
+			"name": "assert.notnil",
+			"doc": "Asserts that `value` is not `nil`.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value which should *not* be `nil`."
+				}
+			]
+		},
+		{
+			"name": "assert.equal",
+			"doc": "Asserts that `value1` is equal to `value2`.",
+			"params": [
+				{
+					"name": "value1",
+					"doc": "The first value."
+				},
+				{
+					"name": "value2",
+					"doc": "The second value."
+				}
+			]
+		},
+		{
+			"name": "assert.nequal",
+			"doc": "Asserts that `value1` is *not* equal to `value2`.",
+			"params": [
+				{
+					"name": "value1",
+					"doc": "The first value."
+				},
+				{
+					"name": "value2",
+					"doc": "The second value."
+				}
+			]
+		},
+		{
+			"name": "assert.less",
+			"doc": "Asserts that `value1` is less than `value2`.",
+			"params": [
+				{
+					"name": "value1",
+					"doc": "The first number."
+				},
+				{
+					"name": "value2",
+					"doc": "The second number."
+				}
+			]
+		},
+		{
+			"name": "assert.lesseq",
+			"doc": "Asserts that `value1` is less than or equal to `value2`.",
+			"params": [
+				{
+					"name": "value1",
+					"doc": "The first number."
+				},
+				{
+					"name": "value2",
+					"doc": "The second number."
+				}
+			]
+		},
+		{
+			"name": "assert.greater",
+			"doc": "Asserts that `value1` is greater than `value2`.",
+			"params": [
+				{
+					"name": "value1",
+					"doc": "The first number."
+				},
+				{
+					"name": "value2",
+					"doc": "The second number."
+				}
+			]
+		},
+		{
+			"name": "assert.greatereq",
+			"doc": "Asserts that `value1` is greater than or equal to `value2`.",
+			"params": [
+				{
+					"name": "value1",
+					"doc": "The first number."
+				},
+				{
+					"name": "value2",
+					"doc": "The second number."
+				}
+			]
+		},
+		{
+			"name": "assert.noerror",
+			"doc": "Asserts that `callback` does not raise an error when called.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": "A function reference."
+				},
+				{
+					"name": "...",
+					"doc": "`...` — Any other parameters passed to this function will be passed to the `callback`."
+				}
+			]
+		},
+		{
+			"name": "assert.haserror",
+			"doc": "Asserts that `callback` does raise an error when called.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": "A function reference."
+				},
+				{
+					"name": "...",
+					"doc": "`...` — Any other parameters passed to this function will be passed to the `callback`."
+				}
+			]
+		},
+		{
+			"name": "assert.searcherror",
+			"doc": "Asserts that `callback` raises an error, and that `substring` is present within the error message.",
+			"params": [
+				{
+					"name": "substring",
+					"doc": "The substring that should be inside of the error message."
+				},
+				{
+					"name": "callback",
+					"doc": "A function reference."
+				},
+				{
+					"name": "...",
+					"doc": "`...` — Any other parameters passed to this function will be passed to the `callback`."
+				}
+			]
+		},
+		{
+			"name": "assert.contains",
+			"doc": "Asserts that `element` is contained inside of `container` by using Pluto's modified `in` operator.\nIt's important to understand the type constraints of `in` to understand the type constraints here.",
+			"params": [
+				{
+					"name": "element",
+					"doc": "The element to search for. If `container` is a string, `element` must be a string. If `container` is a table, `element` can be any type."
+				},
+				{
+					"name": "container",
+					"doc": "The container that `element` should be inside of. The `container` should be a string or table."
+				}
+			]
+		},
+		{
+			"name": "base32.encode",
+			"doc": "Returns an encoded base32 string.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A string of data to encode."
+				},
+				{
+					"name": "pad?",
+					"doc": "Whether or not to apply padding. Defaults to `true`."
+				}
+			]
+		},
+		{
+			"name": "base32.decode",
+			"doc": "Returns a decoded base32 string.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A string of base32 data to decode."
+				}
+			]
+		},
+		{
+			"name": "base64.encode",
+			"doc": "Returns a base64-encoded string.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A string of data to encode."
+				},
+				{
+					"name": "pad?",
+					"doc": "Whether or not to apply padding. Defaults to `true`."
+				}
+			]
+		},
+		{
+			"name": "base64.decode",
+			"doc": "Returns a decoded base64 string.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A string of base64 data."
+				}
+			]
+		},
+		{
+			"name": "base64.urlencode",
+			"doc": "Returns a base64url-encoded string. This variant is sometimes refered to as filename safe base64.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A string of data to encode."
+				},
+				{
+					"name": "pad?",
+					"doc": "Whether or not to apply padding. Defaults to `false`."
+				}
+			]
+		},
+		{
+			"name": "base64.urldecode",
+			"doc": "Similar to `base64.decode` except for base64url.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A string of base64 data."
+				}
+			]
+		},
+		{
+			"name": "bigint.new",
+			"doc": "To instantiate a bigint, you can call the `bigint.new` function, or use the `new` operator.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The decimal value of the bigint."
+				}
+			]
+		},
+		{
+			"name": "bigint.tostring",
+			"doc": "As seen above, the `__tostring` metamethod provides a string representation of the Bigint in decimal.",
+			"params": null,
+			"aliases": []
+		},
+		{
+			"name": "bigint.hex",
+			"doc": "Provides a hexadecimal representation of the Bigint.",
+			"params": null
+		},
+		{
+			"name": "bigint.binary",
+			"doc": "Provides a binary representation of the Bigint.",
+			"params": null
+		},
+		{
+			"name": "bigint.add",
+			"doc": "Adds two bigints together. Returns a new bigint.",
+			"params": null,
+			"aliases": []
+		},
+		{
+			"name": "bigint.sub",
+			"doc": "Performs subtraction on two bigints. Returns a new bigint.",
+			"params": null,
+			"aliases": []
+		},
+		{
+			"name": "bigint.mul",
+			"doc": "Performs multiplication on two bigints. Returns a new bigint.",
+			"params": null,
+			"aliases": []
+		},
+		{
+			"name": "bigint.div",
+			"doc": "Performs division on two bigints. Returns two new bigints: quotient and remainder.",
+			"params": null
+		},
+		{
+			"name": "bigint.mod",
+			"doc": "Performs divison on two bigints. Returns a new bigint with the remainder.",
+			"params": null,
+			"aliases": []
+		},
+		{
+			"name": "bigint.abs",
+			"doc": "Returns a new bigint with the sign bit zeroed.",
+			"params": null
+		},
+		{
+			"name": "bigint.pow",
+			"doc": "Performs expontentiation on two bigints. Returns a new bigint.",
+			"params": null,
+			"aliases": []
+		},
+		{
+			"name": "bigint.gcd",
+			"doc": "Computes the greates common divisor shared by 2 bigints.",
+			"params": null
+		},
+		{
+			"name": "bigint.bitlength",
+			"doc": "Returns the position of the most significant set bit as a plain integer.",
+			"params": null
+		},
+		{
+			"name": "bigint.isprobableprime",
+			"doc": "Non-deterministically check if a number is prime.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The bigint."
+				},
+				{
+					"name": "n",
+					"doc": "Number of Miller-Rabin iterations to perform."
+				}
+			]
+		},
+		{
+			"name": "bigint.export",
+			"doc": "Exports the bigint to a big-endian binary string.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The bigint."
+				},
+				{
+					"name": "n",
+					"doc": "The minimum number of bytes to return."
+				}
+			]
+		},
+		{
+			"name": "bigint.import",
+			"doc": "Creates a bigint from a big-endian binary string.",
+			"params": null
+		},
+		{
+			"name": "buffer.new",
+			"doc": "Creates a new buffer instance.",
+			"params": null
+		},
+		{
+			"name": "buffer.append",
+			"doc": "Appends a string to a buffer instance.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The buffer instance."
+				},
+				{
+					"name": "str",
+					"doc": "The string to append."
+				}
+			]
+		},
+		{
+			"name": "buffer.tostring",
+			"doc": "Converts the buffer into a string.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The buffer instance."
+				}
+			],
+			"returns": "A string.",
+			"aliases": []
+		},
+		{
+			"name": "cat.encode",
+			"doc": "Returns a string of CaT.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The table to encode in CaT."
+				}
+			]
+		},
+		{
+			"name": "cat.decode",
+			"doc": "Returns a table representing the CaT data.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The CaT data to decode."
+				},
+				{
+					"name": "presentation",
+					"doc": "How to represent the data as a table. Can be \"flat\", \"flatwithorder\", or \"full\" (default)."
+				}
+			]
+		},
+		{
+			"name": "canvas.new",
+			"doc": "Creates a new canvas instance.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "Width."
+				},
+				{
+					"name": "arg2",
+					"doc": "Height."
+				}
+			]
+		},
+		{
+			"name": "canvas.bmp",
+			"doc": "Creates a new canvas instance based on a BMP image.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The BMP image as a string."
+				}
+			]
+		},
+		{
+			"name": "canvas.qrcode",
+			"doc": "Creates a new canvas instance containing a QR code.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to be encoded."
+				},
+				{
+					"name": "options?",
+					"doc": "An optional table of options."
+				}
+			]
+		},
+		{
+			"name": "canvas.get",
+			"doc": "Gets the color of the pixel at the given coordinates.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				},
+				{
+					"name": "arg2",
+					"doc": "The X coordinate."
+				},
+				{
+					"name": "arg3",
+					"doc": "The Y coordinate."
+				}
+			],
+			"returns": "The color as an integer."
+		},
+		{
+			"name": "canvas.set",
+			"doc": "Sets the color of the pixel at the given coordinates.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				},
+				{
+					"name": "arg2",
+					"doc": "The X coordinate."
+				},
+				{
+					"name": "arg3",
+					"doc": "The Y coordinate."
+				},
+				{
+					"name": "value",
+					"doc": "The color as an integer."
+				}
+			]
+		},
+		{
+			"name": "canvas.fill",
+			"doc": "Sets every pixel to the given color.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				},
+				{
+					"name": "value",
+					"doc": "The color as an integer."
+				}
+			]
+		},
+		{
+			"name": "canvas.size",
+			"doc": "Get the size of a canvas.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				}
+			],
+			"returns": "1. Width.\n1. Height."
+		},
+		{
+			"name": "canvas.mulsize",
+			"doc": "Multiplies the size of a canvas.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				},
+				{
+					"name": "arg2",
+					"doc": "The multiplier. Must be 2 or higher."
+				}
+			]
+		},
+		{
+			"name": "canvas.tobmp",
+			"doc": "Convert a canvas to a BMP image.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				}
+			],
+			"returns": "A string."
+		},
+		{
+			"name": "canvas.topng",
+			"doc": "Convert a canvas to a PNG image.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				}
+			],
+			"returns": "A string."
+		},
+		{
+			"name": "canvas.tobwstring",
+			"doc": "Convert a canvas to a black and white unicode string. This requires the height of the canvas to be an even number; if it is not, a black line will be added to the bottom of the canvas.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The canvas instance."
+				},
+				{
+					"name": "arg2",
+					"doc": "The color to be \"white.\" Any other color will be \"black.\""
+				}
+			],
+			"returns": "A string."
+		},
+		{
+			"name": "coroutine.xresume",
+			"doc": "An alternative to coroutine.resume that rethrows any errors thrown by the coroutine.",
+			"params": null
+		},
+		{
+			"name": "coroutine.sleep",
+			"doc": "Yields the current coroutine for the given number of milliseconds.",
+			"params": [
+				{
+					"name": "n",
+					"doc": "The number of milliseconds to yield for."
+				}
+			]
+		},
+		{
+			"name": "crypto.lua",
+			"doc": "Hash a string using Lua's version of the DJB2 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.djb2",
+			"doc": "Hash a string using the DJB2 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.fnv1",
+			"doc": "Hash a string using the 64-bit FNV1 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.fnv1a",
+			"doc": "Hash a string using the 64-bit FNV1A non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.fnv1a32",
+			"doc": "Hash a string using the 32-bit FNV1A non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.joaat",
+			"doc": "Hash a string using the JOAAT non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.sdbm",
+			"doc": "Hash a string using the SDBM non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.crc32",
+			"doc": "Hash a string using the CRC32 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "value?",
+					"doc": "The initial value for the hash. By default, this is zero."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.crc32c",
+			"doc": "Hash a string using the CRC32C non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "value?",
+					"doc": "The initial value for the hash. By default, this is zero."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.adler32",
+			"doc": "Hash a string using the Adler-32 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "value?",
+					"doc": "The initial value for the hash. By default, this is zero."
+				}
+			]
+		},
+		{
+			"name": "crypto.lookup3",
+			"doc": "Hash a string using the Lookup3 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "value?",
+					"doc": "The initial value for the hash. By default, this is zero."
+				}
+			]
+		},
+		{
+			"name": "crypto.times33",
+			"doc": "Hash a string using the Times33 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.murmur1",
+			"doc": "Hash a string using the Murmur1 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.murmur2",
+			"doc": "Hash a string using the Murmur2 non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.murmur2a",
+			"doc": "Hash a string using the Murmur2A non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			],
+			"returns": "An integer between 0 and 0xffffffff, inclusive."
+		},
+		{
+			"name": "crypto.murmur64a",
+			"doc": "Hash a string using the Murmur64A non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.murmur64b",
+			"doc": "Hash a string using the Murmur64A non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.murmur2neutral",
+			"doc": "Hash a string using the Murmur2Neutral non-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				}
+			]
+		},
+		{
+			"name": "crypto.md5",
+			"doc": "Hash a string using the MD5 semi-cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.sha1",
+			"doc": "Hash a string using the SHA-1 cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.sha256",
+			"doc": "Hash a string using the SHA-256 cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.sha384",
+			"doc": "Hash a string using the SHA-384 cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.sha512",
+			"doc": "Hash a string using the SHA-512 cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.ripemd160",
+			"doc": "Hash a string using the RIPEMD-160 cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.hmac",
+			"doc": "Authenticates a message using the HMAC construction with the given hash algorithm.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The hash algorithm to use. `\"sha1\"`, `\"sha256\"`, `\"sha384\"`, or `\"sha512\"`."
+				},
+				{
+					"name": "key",
+					"doc": "The secret key."
+				},
+				{
+					"name": "arg2",
+					"doc": "The message to authenticate."
+				},
+				{
+					"name": "str?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.whirlpool",
+			"doc": "Hash a string using the Whirlpool cryptographic hashing algorithm.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to hash."
+				},
+				{
+					"name": "str2?",
+					"doc": "When set to true, returns raw binary data. false outputs lowercase hex digits. By default, this is false."
+				}
+			]
+		},
+		{
+			"name": "crypto.random",
+			"doc": "This is a cryptographically secure PRNG, assuming the platform's implementation of the underlying primitive is secure.",
+			"params": [],
+			"returns": "A random lua integer, in the given range."
+		},
+		{
+			"name": "crypto.encrypt",
+			"doc": "",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The data to be encrypted."
+				},
+				{
+					"name": "mode",
+					"doc": "\"aes-cbc-pkcs7\" or \"aes-cfb-pkcs7\" for PKCS#7 padding, or \"aes-cbc\" or \"aes-cfb\" if you know what you're doing."
+				},
+				{
+					"name": "key",
+					"doc": "Must have a length of 16, 24 or 32 for 128-, 192-, or 256-bit AES, respectively."
+				},
+				{
+					"name": "iv",
+					"doc": "Must have a length of 16."
+				}
+			],
+			"overloaded": true
+		},
+		{
+			"name": "crypto.decrypt",
+			"doc": "",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The ciphertext to decrypt."
+				},
+				{
+					"name": "mode",
+					"doc": "\"aes-cbc-pkcs7\" or \"aes-cfb-pkcs7\" for PKCS#7 padding, or \"aes-cbc\" or \"aes-cfb\" if you know what you're doing."
+				},
+				{
+					"name": "key",
+					"doc": "Must have a length of 16, 24 or 32 for 128-, 192-, or 256-bit AES, respectively."
+				},
+				{
+					"name": "iv",
+					"doc": "Must have a length of 16."
+				}
+			],
+			"overloaded": true
+		},
+		{
+			"name": "crypto.generatekeypair",
+			"doc": "",
+			"params": [
+				{
+					"name": "mode",
+					"doc": "Must be \"rsa\"."
+				},
+				{
+					"name": "bits",
+					"doc": "A positive integer for a strict bit-length requirement, or a negative integer for a lax requirement. Common values are `1024`, `2048`, and `4096`."
+				}
+			],
+			"overloaded": true
+		},
+		{
+			"name": "crypto.derive",
+			"doc": "Derives a public key from a private key.",
+			"params": [
+				{
+					"name": "mode",
+					"doc": "Must be \"rsa\"."
+				},
+				{
+					"name": "key",
+					"doc": "The private key containing `p` and `q`."
+				}
+			],
+			"returns": "The public key corresponding to the private key."
+		},
+		{
+			"name": "crypto.exportkey",
+			"doc": "Exports a private key.",
+			"params": [
+				{
+					"name": "key",
+					"doc": "The key to export."
+				},
+				{
+					"name": "arg",
+					"doc": "The exchange format to use. Only \"pem\" is supported right now."
+				}
+			]
+		},
+		{
+			"name": "crypto.importkey",
+			"doc": "Imports a private key.",
+			"params": null
+		},
+		{
+			"name": "crypto.sign",
+			"doc": "Signs a message as per the PKCS#1 v1.5 scheme.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The data to sign."
+				},
+				{
+					"name": "mode",
+					"doc": "\"rsa-sha256\" or \"rsa-sha1\"."
+				},
+				{
+					"name": "key",
+					"doc": "The private key to use."
+				}
+			]
+		},
+		{
+			"name": "crypto.verify",
+			"doc": "Verifies a message as per the PKCS#1 v1.5 scheme.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The data that was signed."
+				},
+				{
+					"name": "mode",
+					"doc": "\"rsa-sha256\" or \"rsa-sha1\"."
+				},
+				{
+					"name": "key",
+					"doc": "The public key corresponding to the signer's private key."
+				},
+				{
+					"name": "signature",
+					"doc": "The signature produced by the \"sign\" procedure."
+				}
+			]
+		},
+		{
+			"name": "crypto.x25519",
+			"doc": "Performs an X25519 Diffie-Hellman exchange on Curve25519.",
+			"params": [
+				{
+					"name": "private",
+					"doc": "The local 32-byte private key."
+				},
+				{
+					"name": "public",
+					"doc": "The peer's 32-byte public key."
+				}
+			]
+		},
+		{
+			"name": "crypto.decompress",
+			"doc": "Decompresses a compressed string.",
+			"params": null,
+			"returns": "1. The decompressed string.\n2. A table with extra information: `compressed_size`, `checksum_present`, `checksum_mismatch` (not present with algorithm=\"lzf\")"
+		},
+		{
+			"name": "crypto.compress",
+			"doc": "Compresses a string.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The string to compress."
+				},
+				{
+					"name": "algo",
+					"doc": "The algorithm to use. Must be \"lzf\"."
+				}
+			],
+			"returns": "The compressed string."
+		},
+		{
+			"name": "ffi.open",
+			"doc": "Loads a DLL/SO (dynamic link library/shared object). This function is not available in WASM builds of Pluto.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "The name of the library which is to be located by the operating system. A relative or absolute path also works."
+				}
+			],
+			"returns": "An FFI library instance."
+		},
+		{
+			"name": "ffi.struct",
+			"doc": "Parses a subset of C for a struct.",
+			"params": null,
+			"returns": "An FFI Struct Type instance."
+		},
+		{
+			"name": "ffi.new",
+			"doc": "Instantiate an FFI Struct Type by name or instance.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "An FFI Struct Type instance or the name of one stored on the FFI library itself."
+				}
+			],
+			"returns": "A new instance of the struct."
+		},
+		{
+			"name": "ffi.cdef",
+			"doc": "Parses a subset of C for structs to be stored on the FFI library itself.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The C source code."
+				}
+			]
+		},
+		{
+			"name": "ffi.sizeof",
+			"doc": "Measures the size of an FFI Struct Type.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "An FFI Struct Type instance, the name of a struct stored on the FFI library itself, or an instance of the struct."
+				}
+			],
+			"returns": "The size in bytes."
+		},
+		{
+			"name": "ffi.offsetof",
+			"doc": "Measures the offset of a field on an FFI Struct Type.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "An FFI Struct Type instance, the name of a struct stored on the FFI library itself, or an instance of the struct."
+				},
+				{
+					"name": "arg2",
+					"doc": "The name of the field."
+				}
+			],
+			"returns": "The offset in bytes."
+		},
+		{
+			"name": "ffi.nullptr",
+			"doc": "This constant can be used to give `0` to a \"ptr\"-type argument."
+		},
+		{
+			"name": "ffi.alloc",
+			"doc": "Creates a userdata with the given size.",
+			"params": [
+				{
+					"name": "n",
+					"doc": "The size in bytes."
+				}
+			],
+			"returns": "A new userdata."
+		},
+		{
+			"name": "ffi.write",
+			"doc": "Copies data from a string to a userdata.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string."
+				},
+				{
+					"name": "arg",
+					"doc": "The userdata."
+				}
+			]
+		},
+		{
+			"name": "ffi.read",
+			"doc": "Turns a userdata into a string.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The userdata."
+				}
+			],
+			"returns": "A string."
+		},
+		{
+			"name": "ffi.callback",
+			"doc": "Creates a function pointer callable from native code. This function is only available on x86, x86_64, and aarch64.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The return type. Can be \"void\", \"i8\", \"i16\", \"i32\", \"i64\", \"u8\", \"u16\", \"u32\", \"u64\", \"f32\", \"f64\", \"ptr\" or \"str\"."
+				},
+				{
+					"name": "arg2",
+					"doc": "The argument type(s)."
+				},
+				{
+					"name": "callback",
+					"doc": "The Pluto function to execute."
+				}
+			],
+			"returns": "An FFI Callback instance."
+		},
+		{
+			"name": "ffi.wrap",
+			"doc": "Creates a function wrapper.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The return type. Can be \"void\", \"i8\", \"i16\", \"i32\", \"i64\", \"u8\", \"u16\", \"u32\", \"u64\", \"f32\", \"f64\", \"ptr\" or \"str\"."
+				},
+				{
+					"name": "arg2",
+					"doc": "The name of the function."
+				},
+				{
+					"name": "arg3",
+					"doc": "The argument type(s). Can be \"i8\", \"i16\", \"i32\", \"i64\", \"u8\", \"u16\", \"u32\", \"u64\", \"f32\", \"f64\", \"ptr\" or \"str\"."
+				}
+			],
+			"returns": "A new function wrapper instance, which can be called.",
+			"method": true
+		},
+		{
+			"name": "ffi.value",
+			"doc": "Gets an exported value and interprets it using the given type.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The type. Can be \"i8\", \"i16\", \"i32\", \"i64\", \"u8\", \"u16\", \"u32\", \"u64\", \"f32\", \"f64\", \"ptr\" or \"str\"."
+				},
+				{
+					"name": "arg2",
+					"doc": "The name of the export."
+				}
+			],
+			"returns": "The interpreted value.",
+			"method": true
+		},
+		{
+			"name": "ffi.blocking",
+			"doc": "Gets or sets whether native calls from non-Pluto threads block until processed.",
+			"params": [
+				{
+					"name": "flag?",
+					"doc": "(optional) A boolean."
+				}
+			],
+			"returns": "The current state if no parameter is provided.",
+			"method": true
+		},
+		{
+			"name": "ffi.tick",
+			"doc": "Processes pending callback invocations queued from other threads.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "ffi.defaultreturn",
+			"doc": "Gets or sets the value returned to native code while callbacks are queued in non-blocking mode.",
+			"params": [
+				{
+					"name": "value?",
+					"doc": "(optional) The value to return."
+				}
+			],
+			"returns": "The current default return value if no parameter is provided.",
+			"method": true
+		},
+		{
+			"name": "ffi.callcount",
+			"doc": "Returns the number of times the callback has been invoked.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "_PVERSION",
+			"doc": "`_PVERSION` is the global to check your current version of Pluto."
+		},
+		{
+			"name": "package.path",
+			"doc": "`package.path` is modified to also search for `.pluto` files."
+		},
+		{
+			"name": "dumpvar",
+			"doc": "A debug function designed to dump values into human-readable formats.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value to dump."
+				}
+			],
+			"returns": "A string representation of the value."
+		},
+		{
+			"name": "exportvar",
+			"doc": "Similar to dumpvar, but returns valid Lua/Pluto code. May error if the value can not be represented accordingly.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The value to dump."
+				}
+			]
+		},
+		{
+			"name": "range",
+			"doc": "Returns a table of numbers in the given range.",
+			"params": [
+				{
+					"name": "from",
+					"doc": ""
+				},
+				{
+					"name": "to?",
+					"doc": ""
+				},
+				{
+					"name": "step?",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "compareversions",
+			"doc": "Performs a three-way comparison on 2 version numbers, similar to the Spaceship Operator.\nNote that pre-release versions (e.g. with `-dev` suffix) are considered to be _less than_ their final counterparts.",
+			"params": [
+				{
+					"name": "a",
+					"doc": ""
+				},
+				{
+					"name": "b",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "wcall",
+			"doc": "Calls the given function and returns a string of warnings raised by it.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": ""
+				},
+				{
+					"name": "...",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "sdiv",
+			"doc": "Performs a standard integer division (signed and unsigned).",
+			"params": [
+				{
+					"name": "a",
+					"doc": ""
+				},
+				{
+					"name": "b",
+					"doc": ""
+				}
+			],
+			"aliases": [
+				"udiv"
+			]
+		},
+		{
+			"name": "udiv",
+			"doc": "Performs a standard integer division (signed and unsigned).",
+			"params": [
+				{
+					"name": "a",
+					"doc": ""
+				},
+				{
+					"name": "b",
+					"doc": ""
+				}
+			],
+			"aliases": [
+				"sdiv"
+			]
+		},
+		{
+			"name": "smod",
+			"doc": "Performs a standard integer modulo operation (signed and unsigned).",
+			"params": [
+				{
+					"name": "a",
+					"doc": ""
+				},
+				{
+					"name": "b",
+					"doc": ""
+				}
+			],
+			"aliases": [
+				"umod"
+			]
+		},
+		{
+			"name": "umod",
+			"doc": "Performs a standard integer modulo operation (signed and unsigned).",
+			"params": [
+				{
+					"name": "a",
+					"doc": ""
+				},
+				{
+					"name": "b",
+					"doc": ""
+				}
+			],
+			"aliases": [
+				"smod"
+			]
+		},
+		{
+			"name": "callonce",
+			"doc": "Calls the given function exactly once and then caches its return value.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "http.request",
+			"doc": "Performs an HTTP request.",
+			"params": [
+				{
+					"name": "url",
+					"doc": "The URL to send a request to as a string. This parameter is optional in the sense that the options table (parameter 2) can be parameter 1 instead, but must have the \"url\" option then."
+				},
+				{
+					"name": "options?",
+					"doc": "The table of options. This parameter is optional if a URL was given."
+				}
+			],
+			"returns": "On success:\n1. The response body as a string.\n2. The status code as an integer.\n3. A table of response headers. Empty in WASM builds of Pluto.\n4. The status text as a string."
+		},
+		{
+			"name": "http.hasconnection",
+			"doc": "Queries if a keep-alive connection is available for a remote. This function is not available in WASM builds of Pluto.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A partial URL identifying the remote. Partial because only the protocol, host, and port are used; additional components such as path are ignored."
+				}
+			]
+		},
+		{
+			"name": "http.closeconnections",
+			"doc": "Closes all keep-alive connections like when closing the Lua state but in a non-blocking way. This function does nothing in WASM builds of Pluto.",
+			"params": []
+		},
+		{
+			"name": "io.rename",
+			"doc": "A variant of Lua's `os.rename` that raises an error on failure and instead has no return values.",
+			"params": [
+				{
+					"name": "oldname",
+					"doc": ""
+				},
+				{
+					"name": "newname",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "io.remove",
+			"doc": "A variant of Lua's `os.remove` that raises an error on failure and instead has no return values.",
+			"params": [
+				{
+					"name": "path",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "io.copy",
+			"doc": "Copy a file to another file, creating a new file if needed.",
+			"params": [
+				{
+					"name": "from",
+					"doc": "A string path or file stream."
+				},
+				{
+					"name": "to",
+					"doc": "A path towards the file to copy into."
+				}
+			]
+		},
+		{
+			"name": "io.part",
+			"doc": "Extracts the parts of a path.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				},
+				{
+					"name": "part?",
+					"doc": "Optionally, which part to return, \"parent\" or \"name\"."
+				}
+			],
+			"returns": "The extracted part(s) of the path."
+		},
+		{
+			"name": "io.isdir",
+			"doc": "Returns: A boolean indicating if the path led toward a directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				}
+			],
+			"returns": "A boolean indicating if the path led toward a directory."
+		},
+		{
+			"name": "io.isfile",
+			"doc": "Returns: A boolean indicating if the path led towards a file.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				}
+			],
+			"returns": "A boolean indicating if the path led towards a file."
+		},
+		{
+			"name": "io.exists",
+			"doc": "Returns: A boolean indicating if the path led towards an existing file or directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				}
+			],
+			"returns": "A boolean indicating if the path led towards an existing file or directory."
+		},
+		{
+			"name": "io.makedir",
+			"doc": "Create a directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "The path for the new directory."
+				}
+			],
+			"returns": "A boolean indicating if the directory was successfully created.",
+			"aliases": [
+				"io.mkdir"
+			]
+		},
+		{
+			"name": "io.mkdir",
+			"doc": "Create a directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "The path for the new directory."
+				}
+			],
+			"returns": "A boolean indicating if the directory was successfully created.",
+			"aliases": [
+				"io.makedir"
+			]
+		},
+		{
+			"name": "io.listdir",
+			"doc": "List all the files within a directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path to the directory."
+				},
+				{
+					"name": "recursive?",
+					"doc": "A boolean indicating whether or not to recurse sub-directories."
+				}
+			],
+			"returns": "An index-based table containing file paths.",
+			"aliases": [
+				"io.scandir"
+			]
+		},
+		{
+			"name": "io.scandir",
+			"doc": "List all the files within a directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path to the directory."
+				},
+				{
+					"name": "recursive?",
+					"doc": "A boolean indicating whether or not to recurse sub-directories."
+				}
+			],
+			"returns": "An index-based table containing file paths.",
+			"aliases": [
+				"io.listdir"
+			]
+		},
+		{
+			"name": "io.makedirs",
+			"doc": "Creates a directory and all the non-existing parent directories in the given path.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "The string path for your new directory."
+				}
+			],
+			"aliases": [
+				"io.mkdirs"
+			]
+		},
+		{
+			"name": "io.mkdirs",
+			"doc": "Creates a directory and all the non-existing parent directories in the given path.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "The string path for your new directory."
+				}
+			],
+			"aliases": [
+				"io.makedirs"
+			]
+		},
+		{
+			"name": "io.absolute",
+			"doc": "Convert a relative path into an absolute one.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				},
+				{
+					"name": "canonical?",
+					"doc": "An optional bool if the path should be canonicalized. A canonical path does not go through symlinks."
+				}
+			],
+			"returns": "A string representing the new file path."
+		},
+		{
+			"name": "io.relative",
+			"doc": "Convert an absolute path into a relative one.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				},
+				{
+					"name": "base?",
+					"doc": ""
+				}
+			],
+			"returns": "A string representing the new file path."
+		},
+		{
+			"name": "io.contents",
+			"doc": "Get or set a file's contents.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				},
+				{
+					"name": "contents?",
+					"doc": "The desired content. If this parameter is absent, this function works as a *getter.*"
+				}
+			],
+			"returns": "If this function is acting as a *getter*, it will return the file's contents or `nil` if there was an error.\nThis function is not only easier to use than the traditional `io.open` approach, it also performs significantly better."
+		},
+		{
+			"name": "io.filesize",
+			"doc": "Fetch the size of a file in bytes.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				}
+			]
+		},
+		{
+			"name": "io.writetime",
+			"doc": "Get or set a file's modification time.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream."
+				},
+				{
+					"name": "time?",
+					"doc": "The desired timestamp. If this parameter is absent, this function works as a *getter.*"
+				}
+			],
+			"returns": "If this function is acting as a *getter*, it will return the file's last write time as seconds since the UNIX epoch.\nThis example adds an hour (= 60 minutes = 3600 seconds) to the last write time of \"foo.txt\" (or errors if that file does not exist)."
+		},
+		{
+			"name": "io.currentdir",
+			"doc": "Get or set the current working directory.",
+			"params": [
+				{
+					"name": "path?",
+					"doc": "A path to the desired current working directory. If this parameter is absent, this function works as a *getter.*"
+				}
+			],
+			"returns": "If this function is acting as a *getter*, it will return the current working directory.",
+			"aliases": [
+				"io.chdir",
+				"io.cwd"
+			]
+		},
+		{
+			"name": "io.chdir",
+			"doc": "Get or set the current working directory.",
+			"params": [
+				{
+					"name": "path?",
+					"doc": "A path to the desired current working directory. If this parameter is absent, this function works as a *getter.*"
+				}
+			],
+			"returns": "If this function is acting as a *getter*, it will return the current working directory.",
+			"aliases": [
+				"io.currentdir",
+				"io.cwd"
+			]
+		},
+		{
+			"name": "io.cwd",
+			"doc": "Get or set the current working directory.",
+			"params": [
+				{
+					"name": "path?",
+					"doc": "A path to the desired current working directory. If this parameter is absent, this function works as a *getter.*"
+				}
+			],
+			"returns": "If this function is acting as a *getter*, it will return the current working directory.",
+			"aliases": [
+				"io.currentdir",
+				"io.chdir"
+			]
+		},
+		{
+			"name": "io.chmod",
+			"doc": "Get or set file permissions on Unix-like systems.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "A string path or file stream. If this parameter is absent, this function works as an *availability check*."
+				},
+				{
+					"name": "mode?",
+					"doc": "The desired mode/permissions. If this parameter is absent, this function works as a *getter*."
+				}
+			],
+			"returns": "If this function is acting as an *availability check*, it will return a boolean."
+		},
+		{
+			"name": "io.unique",
+			"doc": "Generate a unique file name by appending a number when a conflict occurs.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The base file name without extension."
+				},
+				{
+					"name": "arg2",
+					"doc": "The file extension."
+				}
+			],
+			"returns": "A string representing a file name that does not already exist."
+		},
+		{
+			"name": "io.symlink",
+			"doc": "Create a symbolic link pointing to a file or directory.",
+			"params": [
+				{
+					"name": "path",
+					"doc": "The path that the link will point to."
+				},
+				{
+					"name": "path2",
+					"doc": "The path where the symlink will be created."
+				}
+			]
+		},
+		{
+			"name": "json.encode",
+			"doc": "Returns a string of JSON or MessagePack.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A boolean, number, string, or table to encode as JSON."
+				},
+				{
+					"name": "format?",
+					"doc": "Can be `\"compact\"`, `\"pretty\"`, or `\"msgpack\"`. Defaults to `\"compact\"`."
+				}
+			]
+		},
+		{
+			"name": "json.decode",
+			"doc": "Returns multiple potential types. If you pass a serialized boolean, number, or string, then it will return the same type. If you pass a complex JSON object, it will return a table.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The JSON or MessagePack data to decode."
+				},
+				{
+					"name": "flags?",
+					"doc": "Options to augment the return value. Multiple options can be combined with bitwise OR (`|`). Defaults to `0`."
+				}
+			]
+		},
+		{
+			"name": "math.isnan",
+			"doc": "Checks if a number is NaN.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The number to check."
+				}
+			]
+		},
+		{
+			"name": "math.clz",
+			"doc": "Returns the number of leading zero bits in an integer's binary representation.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The integer to inspect."
+				}
+			]
+		},
+		{
+			"name": "math.ctz",
+			"doc": "Returns the number of trailing zero bits in an integer's binary representation.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The integer to inspect."
+				}
+			]
+		},
+		{
+			"name": "math.popcnt",
+			"doc": "Returns the number of set bits in an integer's binary representation.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The integer to inspect."
+				}
+			]
+		},
+		{
+			"name": "math.round",
+			"doc": "Rounds a number to the nearest integer.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The number to round."
+				}
+			]
+		},
+		{
+			"name": "math.trunc",
+			"doc": "Truncates the fractional part of a number, returning the integer portion toward zero.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The number to truncate."
+				}
+			]
+		},
+		{
+			"name": "math.cbrt",
+			"doc": "Returns the cube root of a number.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The number to take the cube root of."
+				}
+			]
+		},
+		{
+			"name": "math.hypot",
+			"doc": "Returns the square root of the sum of squares of its arguments.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "Two numbers representing orthogonal components."
+				}
+			]
+		},
+		{
+			"name": "math.atan2",
+			"doc": "An alias for the `math.atan` function.",
+			"params": null
+		},
+		{
+			"name": "math.inf",
+			"doc": "An alias for the `math.huge` constant."
+		},
+		{
+			"name": "os.platform",
+			"doc": "`os.platform` is a global string containing the host platform. Can be \"windows\", \"emscripten\", \"linux\", \"macos\", \"android\", or \"unknown\"."
+		},
+		{
+			"name": "os.arch",
+			"doc": "`os.arch` is a global string containing the host CPU architecture as well as the bit width, separated by a comma. For example, it would be `x86, 64-bit` for x86_64, `arm, 64-bit` for ARM64, and `wasm, 32-bit` for a typical WebAssembly environment."
+		},
+		{
+			"name": "os.sleep",
+			"doc": "",
+			"params": [
+				{
+					"name": "ms",
+					"doc": "The amount of milliseconds to sleep for."
+				}
+			]
+		},
+		{
+			"name": "os.nanos",
+			"doc": "All of these return their respective times since implementation-specific epoch.",
+			"params": null,
+			"aliases": [
+				"os.micros",
+				"os.millis",
+				"os.seconds"
+			]
+		},
+		{
+			"name": "os.micros",
+			"doc": "All of these return their respective times since implementation-specific epoch.",
+			"params": null,
+			"aliases": [
+				"os.nanos",
+				"os.millis",
+				"os.seconds"
+			]
+		},
+		{
+			"name": "os.millis",
+			"doc": "All of these return their respective times since implementation-specific epoch.",
+			"params": null,
+			"aliases": [
+				"os.nanos",
+				"os.micros",
+				"os.seconds"
+			]
+		},
+		{
+			"name": "os.seconds",
+			"doc": "All of these return their respective times since implementation-specific epoch.",
+			"params": null,
+			"aliases": [
+				"os.nanos",
+				"os.micros",
+				"os.millis"
+			]
+		},
+		{
+			"name": "os.unixseconds",
+			"doc": "Returns seconds since UNIX epoch.",
+			"params": null
+		},
+		{
+			"name": "os.dnsresolve",
+			"doc": "Asks the operating system to perform a DNS lookup.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The DNS record type, e.g. `\"A\"` for IPv4 or `\"AAAA\"` for IPv6."
+				},
+				{
+					"name": "arg2",
+					"doc": "The domain name to query."
+				}
+			],
+			"returns": "An array of tables describing each record. Each table contains a `type` and `data` field."
+		},
+		{
+			"name": "os.rename",
+			"doc": "Although we'd rather these functions be in the IO library, these Lua variants are retained, but modified to assume UTF-8 path encoding for the same cross-platform consistency the IO library has.",
+			"params": null,
+			"aliases": [
+				"os.remove"
+			]
+		},
+		{
+			"name": "os.remove",
+			"doc": "Although we'd rather these functions be in the IO library, these Lua variants are retained, but modified to assume UTF-8 path encoding for the same cross-platform consistency the IO library has.",
+			"params": null,
+			"aliases": [
+				"os.rename"
+			]
+		},
+		{
+			"name": "os.execute",
+			"doc": "These functions have also been patched to use UTF-8 on Windows.",
+			"params": null,
+			"aliases": [
+				"os.getenv"
+			]
+		},
+		{
+			"name": "os.getenv",
+			"doc": "These functions have also been patched to use UTF-8 on Windows.",
+			"params": null,
+			"aliases": [
+				"os.execute"
+			]
+		},
+		{
+			"name": "regex.new",
+			"doc": "Parses a pattern and creates an instance for it.",
+			"params": [
+				{
+					"name": "pattern",
+					"doc": "The regex to be *compiled*. Note that this must be a full pattern with a start and end delimiter (commonly `/`). Flags may optionally be present after the end delimiter."
+				}
+			],
+			"returns": "A pattern instance."
+		},
+		{
+			"name": "regex.match",
+			"doc": "Attempts to match a pattern instance.",
+			"params": [
+				{
+					"name": "pattern",
+					"doc": "The pattern instance."
+				},
+				{
+					"name": "str",
+					"doc": ""
+				}
+			],
+			"returns": "A table with an index/key for each matching group or nil if no matches."
+		},
+		{
+			"name": "regex.search",
+			"doc": "Looks for a match of the regex in a string.",
+			"params": [
+				{
+					"name": "pattern",
+					"doc": "The pattern instance."
+				},
+				{
+					"name": "str",
+					"doc": "The string to search in."
+				},
+				{
+					"name": "index?",
+					"doc": "The offset to start searching at. Defaults to 1."
+				}
+			],
+			"returns": "On success:\n1. The start offset.\n2. The end offset."
+		},
+		{
+			"name": "regex.replace",
+			"doc": "Replaces the first or all matches in a string, depending on the 'g' flag.",
+			"params": [
+				{
+					"name": "pattern",
+					"doc": "The pattern instance."
+				},
+				{
+					"name": "str",
+					"doc": "The string to search in."
+				},
+				{
+					"name": "str2",
+					"doc": "The replacement string."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "regex.substitute",
+			"doc": "Substitutes the first or all matches in a string, depending on the 'g' flag.",
+			"params": [
+				{
+					"name": "pattern",
+					"doc": "The pattern instance."
+				},
+				{
+					"name": "str",
+					"doc": "The string to search in."
+				},
+				{
+					"name": "index",
+					"doc": "The substitution string. The substitution can reference capturing groups by their index, e.g. `$1` for capturing group 1. Use `$$` to produce `$`."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "scheduler.add",
+			"doc": "The `add` method can be used to turn a function into a coroutine. The coroutine is resumed once, added to the scheduler, and returned.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": ""
+				}
+			],
+			"method": true
+		},
+		{
+			"name": "scheduler.addloop",
+			"doc": "The `addloop` method is a wrapper for the `add` method that keeps invoking the given function until it returns false.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": ""
+				}
+			],
+			"method": true
+		},
+		{
+			"name": "scheduler.run",
+			"doc": "The `run` method activates the scheduler. The scheduler resumes all coroutines and then calls its yieldfunc until either all coroutines are finished, or a coroutine throws an error — in which case it is rethrown.",
+			"params": [],
+			"method": true
+		},
+		{
+			"name": "scheduler.yieldfunc",
+			"doc": "`yieldfunc` is a property on the scheduler that can be used to customize how the scheduler itself yields. By default, this is a function calling `os.sleep(1)`.",
+			"method": true
+		},
+		{
+			"name": "scheduler.errorfunc",
+			"doc": "`errorfunc` is a property on the scheduler that can optionally be set to customize how the scheduler reports errors in its coroutines. By default, this is `nil`, in which case any coroutine errors are rethrown (via `coroutine.xresume`).",
+			"method": true
+		},
+		{
+			"name": "socket.connect",
+			"doc": "Creates a new connection to the given endpoint.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The host to connect to. Either an IPv4 or IPv6 address, or a domain name resolving to one."
+				},
+				{
+					"name": "arg2",
+					"doc": "The port to contact the host on."
+				},
+				{
+					"name": "arg3?",
+					"doc": "The transport to use, \"tcp\" or \"udp\". Defaults to \"tcp\"."
+				}
+			],
+			"returns": "A socket instance on success. Nil on failure."
+		},
+		{
+			"name": "socket.listen",
+			"doc": "Creates a new listener for the given port.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "Either an int with the port to listen on or a string such as `1.2.3.4:567` for systems with multiple public-facing addresses."
+				}
+			],
+			"returns": "A listener instance on success. Nil on failure."
+		},
+		{
+			"name": "socket.bind",
+			"doc": "A convenience function that wraps `socket.listen`, automatically accepting new clients and spinning up a coroutine for them.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "A scheduler instance."
+				},
+				{
+					"name": "str",
+					"doc": "Either an int with the port to listen on or a string such as `1.2.3.4:567` for systems with multiple public-facing addresses."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback function that will be called in a new coroutine for each client socket."
+				}
+			],
+			"returns": "The coroutine that was created and added to the scheduler."
+		},
+		{
+			"name": "socket.udpserver",
+			"doc": "Creates a pseudo-socket to listen for UDP datagrams on the given port.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "Either an int with the port to listen on or a string such as `1.2.3.4:567` for systems with multiple public-facing addresses."
+				}
+			],
+			"returns": "A pseudo-socket which can `recv` UDP datagrams and then `send` a response."
+		},
+		{
+			"name": "socket.send",
+			"doc": "Sends data on a socket.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				},
+				{
+					"name": "str",
+					"doc": "The data to send."
+				}
+			]
+		},
+		{
+			"name": "socket.recv",
+			"doc": "Receive data from a socket.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			],
+			"returns": "- If the socket is open: The oldest chunk of data received on the transport layer (TCP packet) or crypto layer (TLS record) as a string.\n- If the socket is closed: Nil."
+		},
+		{
+			"name": "socket.peek",
+			"doc": "Look at received data without consuming it.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instances."
+				}
+			],
+			"returns": "Either the string that would be returned next by `socket.recv` or nothing if there is no message in the receive buffer."
+		},
+		{
+			"name": "socket.unrecv",
+			"doc": "Pushes a chunk of data to the front of the receive buffer, making it oldest for the purposes of `socket.recv`.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				},
+				{
+					"name": "str",
+					"doc": "The data to push."
+				}
+			]
+		},
+		{
+			"name": "socket.starttls",
+			"doc": "Attempts to add the TLS crypto layer to the socket, making the transport layer a sole carrier for TLS traffic.",
+			"params": null,
+			"returns": "`true` on success and, if ALPN is used, the selected protocol. On failure, returns `false` and the socket is closed. If the socket is already using TLS, returns `nil`."
+		},
+		{
+			"name": "socket.close",
+			"doc": "Closes a socket.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			]
+		},
+		{
+			"name": "socket.getpeer",
+			"doc": "Get information about the other end of a connection.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			],
+			"returns": "1. The IP address as a string.\n2. The port."
+		},
+		{
+			"name": "socket.setpeer",
+			"doc": "Sets the endpoint of a UDP socket.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				},
+				{
+					"name": "arg2",
+					"doc": "The IP address."
+				},
+				{
+					"name": "arg3",
+					"doc": "The port."
+				}
+			]
+		},
+		{
+			"name": "socket.getside",
+			"doc": "Get which side of the connection a socket is.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			],
+			"returns": "Either \"client\" or \"server\"."
+		},
+		{
+			"name": "socket.istls",
+			"doc": "Check if a connection is encrypted.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			]
+		},
+		{
+			"name": "socket.isudp",
+			"doc": "Check if a connection is using UDP transport.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			]
+		},
+		{
+			"name": "socket.isopen",
+			"doc": "Check if a connection is still open.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The socket instance."
+				}
+			]
+		},
+		{
+			"name": "socket.accept",
+			"doc": "Accepts an incoming client connection, waiting until there is one.",
+			"params": null,
+			"returns": "A new socket instance. The socket can be used as per usual, with the exception of the starttls function being unavailable.",
+			"method": true
+		},
+		{
+			"name": "socket.hasconnection",
+			"doc": "Checks if there is an incoming client connection. If this function returns true, the next call to `accept` is guaranteed not to block or yield.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "string.split",
+			"doc": "Splits a string by a separator.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to split."
+				},
+				{
+					"name": "separator",
+					"doc": "The separator to split the string by."
+				},
+				{
+					"name": "limit?",
+					"doc": "An optional limit for the returned table size."
+				}
+			],
+			"returns": "A table."
+		},
+		{
+			"name": "string.rfind",
+			"doc": "Identical to the base Lua string.find in every way, except it searches right-to-left instead of left-to-right.",
+			"params": [
+				{
+					"name": "str",
+					"doc": ""
+				},
+				{
+					"name": "pattern",
+					"doc": ""
+				},
+				{
+					"name": "init?",
+					"doc": ""
+				},
+				{
+					"name": "plain?",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "string.strip",
+			"doc": "Strips or trims characters from both ends of a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to strip."
+				},
+				{
+					"name": "chars?",
+					"doc": "A string of characters to strip. Defaults to ` \\n\\r\\t\\v\\0`."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "string.lstrip",
+			"doc": "Strips or trims characters from the left side of a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to strip."
+				},
+				{
+					"name": "chars?",
+					"doc": "A string of characters to strip. Defaults to ` \\n\\r\\t\\v\\0`."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "string.rstrip",
+			"doc": "Strips or trims characters from the right side of a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to strip."
+				},
+				{
+					"name": "chars?",
+					"doc": "A string of characters to strip. Defaults to ` \\n\\r\\t\\v\\0`."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "string.isascii",
+			"doc": "Checks if a string is entirely composed of ASCII characters.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				}
+			]
+		},
+		{
+			"name": "string.islower",
+			"doc": "Checks if a string is entirely composed of lowercase characters.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				}
+			]
+		},
+		{
+			"name": "string.isalpha",
+			"doc": "Checks if a string is entirely composed of alphabetic characters.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				}
+			]
+		},
+		{
+			"name": "string.isupper",
+			"doc": "Checks if a string is entirely composed of uppercase characters.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				}
+			]
+		},
+		{
+			"name": "string.isalnum",
+			"doc": "Checks if a string is entirely composed of alphanumeric characters.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				}
+			]
+		},
+		{
+			"name": "string.iswhitespace",
+			"doc": "Checks if this string is entirely composed of whitespace characters.",
+			"params": [
+				{
+					"name": "str",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "string.uformat",
+			"doc": "Same as string.format, but performs the operation under the `en_US.UTF-8` locale. Ensures the same result on all systems.",
+			"params": [
+				{
+					"name": "format",
+					"doc": ""
+				},
+				{
+					"name": "...",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "string.replace",
+			"doc": "Replace substrings with another substring. Similar to `string.gsub`, but it operates on plain-text and is not burdened by a pattern capture limit.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to modify."
+				},
+				{
+					"name": "from",
+					"doc": "The substring to replace."
+				},
+				{
+					"name": "to",
+					"doc": "The replacement substring."
+				},
+				{
+					"name": "limit?",
+					"doc": "The maximum number of replacements you wish to occur. The default value is `0`, which means \"infinite\". If you pass `1`, this leads to a maximum of one replacement, and so on."
+				}
+			]
+		},
+		{
+			"name": "string.truncate",
+			"doc": "Truncates a given string to a specified length. If an elipsis is desired and the string was actually truncated, the last three characters of the resultant string will be replaced with an elipsis.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to truncate."
+				},
+				{
+					"name": "length",
+					"doc": "The desired length of the truncated string."
+				},
+				{
+					"name": "fromend?",
+					"doc": "A boolean indicating whether or not to replace the last three character of the string with `...` **if** it is truncated. This is `false` by default."
+				}
+			],
+			"returns": "The truncated string."
+		},
+		{
+			"name": "string.contains",
+			"doc": "Checks if a string contains a substring.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				},
+				{
+					"name": "substring",
+					"doc": "The substring to check for."
+				}
+			]
+		},
+		{
+			"name": "string.casefold",
+			"doc": "Compares two strings, agnostic of any capitalization.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The first string to compare."
+				},
+				{
+					"name": "other",
+					"doc": "The second string to compare."
+				}
+			]
+		},
+		{
+			"name": "string.formatint",
+			"doc": "This function makes an integer easier to read by inserting `separator` every `N` characters. It can handle strings representing integers, making it suitable for BigInt modules or any integer beyond Lua's representation limits. If you provide a string, it should consist solely of digits. A single unary operator is permitted at the beginning of the string to indicate whether it's a negative or positive number.",
+			"params": [
+				{
+					"name": "int",
+					"doc": "The integer or string input."
+				},
+				{
+					"name": "separator?",
+					"doc": "The `separator` to use. This must be a single-character string."
+				},
+				{
+					"name": "group?",
+					"doc": "The grouping of each digit pair. This is `N`."
+				}
+			]
+		},
+		{
+			"name": "string.partition",
+			"doc": "Splits a string once, on the first occurance of a separator.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to partition."
+				},
+				{
+					"name": "separator",
+					"doc": "The separator to partition the string by."
+				},
+				{
+					"name": "fromend?",
+					"doc": "A boolean specifying whether to search from the right. By default, this is false, which starts at the left."
+				}
+			],
+			"returns": "Two strings: A substring for all the content before the first occurance of `sep`, and another substring for all the content afterwards."
+		},
+		{
+			"name": "string.endswith",
+			"doc": "Checks if a string ends with a suffix.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				},
+				{
+					"name": "suffix",
+					"doc": "The substring suffix to check for."
+				}
+			]
+		},
+		{
+			"name": "string.startswith",
+			"doc": "Checks if a string starts with a prefix.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to check."
+				},
+				{
+					"name": "prefix",
+					"doc": "The substring prefix to check for."
+				}
+			]
+		},
+		{
+			"name": "string.tohex",
+			"doc": "Converts a (binary) string to a hex representation.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to convert."
+				},
+				{
+					"name": "spaces?",
+					"doc": "An optional bool to indicate that spaces should be used."
+				},
+				{
+					"name": "uppercase?",
+					"doc": "An optional bool to indicate that the result should be upper-cased."
+				}
+			],
+			"returns": "A new string."
+		},
+		{
+			"name": "string.fromhex",
+			"doc": "Converts a hex string to binary.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to convert."
+				}
+			],
+			"returns": "A new string."
+		},
+		{
+			"name": "string.span",
+			"doc": "Returns a substring from a starting position and length. This differs from string.sub, which takes a start and end position.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string."
+				},
+				{
+					"name": "index",
+					"doc": "The starting position."
+				},
+				{
+					"name": "n",
+					"doc": "The length."
+				}
+			],
+			"returns": "The substring."
+		},
+		{
+			"name": "string.format",
+			"doc": "Formats a string according to a format string and a list of values, similar to C's `sprintf`. The format string contains conversion specifications (introduced by `%`) that are replaced by the corresponding values.",
+			"params": [
+				{
+					"name": "format",
+					"doc": ""
+				},
+				{
+					"name": "...",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "string.upper",
+			"doc": "Creates an uppercased copy of a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to convert."
+				},
+				{
+					"name": "index?",
+					"doc": "The index of the character to capitalize. **(Added by Pluto)**"
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "string.lower",
+			"doc": "Creates a lowercased copy of a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to convert."
+				},
+				{
+					"name": "index?",
+					"doc": "The index of the character to lowercase. **(Added by Pluto)**"
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "string.byte",
+			"doc": "Returns the internal numeric codes of the characters `s[i]` through `s[j]`.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string (`s`)."
+				},
+				{
+					"name": "i?",
+					"doc": "The starting index (`i`). Defaults to `1`. Negative indices count from the end of the string."
+				},
+				{
+					"name": "j?",
+					"doc": "The ending index (`j`). Defaults to the starting index."
+				}
+			],
+			"returns": "The numeric codes of the characters in the range, as multiple values. Returns no values if the range is empty."
+		},
+		{
+			"name": "string.char",
+			"doc": "Receives zero or more integers and returns a string whose bytes have those numeric codes.",
+			"params": [
+				{
+					"name": "...",
+					"doc": "The integer codes, each in the range `[0, 255]`."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "string.dump",
+			"doc": "Returns a binary string containing a precompiled version of the function `f`. The string can later be passed to `load` to recreate the function.",
+			"params": [
+				{
+					"name": "callback",
+					"doc": "The Lua function to dump. C functions cannot be dumped."
+				},
+				{
+					"name": "arg?",
+					"doc": "An optional bool indicating if debug information should be removed from the result."
+				}
+			],
+			"returns": "A binary string."
+		},
+		{
+			"name": "string.find",
+			"doc": "Looks for the first match of a pattern in a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to search."
+				},
+				{
+					"name": "pattern",
+					"doc": "The [pattern](https://www.lua.org/manual/5.5/manual.html#6.5.1) to search for."
+				},
+				{
+					"name": "init?",
+					"doc": "An optional starting position. Defaults to `1`. Negative values count from the end of the string."
+				},
+				{
+					"name": "plain?",
+					"doc": "An optional bool to indicate if the pattern should be treated as plain text rather than a Lua pattern."
+				}
+			],
+			"returns": "The start and end indices of the first match, followed by any captures from the pattern. Returns `nil` if there is no match."
+		},
+		{
+			"name": "string.gsub",
+			"doc": "Returns a copy of a string in which some or all occurrences of a pattern have been replaced.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to modify."
+				},
+				{
+					"name": "pattern",
+					"doc": "The [pattern](https://www.lua.org/manual/5.5/manual.html#6.5.1) to search for."
+				},
+				{
+					"name": "repl",
+					"doc": "The replacement. This may be a string, a table, or a function:"
+				},
+				{
+					"name": "limit?",
+					"doc": "An optional maximum number of substitutions."
+				}
+			],
+			"returns": "The new string, and the total number of matches that were found."
+		},
+		{
+			"name": "string.len",
+			"doc": "Returns the length of a string, in bytes. Embedded zeros are counted.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string."
+				}
+			],
+			"returns": "The length of the string."
+		},
+		{
+			"name": "string.match",
+			"doc": "Looks for the first match of `pattern` in the string `s`.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to search."
+				},
+				{
+					"name": "pattern",
+					"doc": "The [pattern](https://www.lua.org/manual/5.5/manual.html#6.5.1) to search for."
+				},
+				{
+					"name": "init?",
+					"doc": "An optional starting position. Defaults to `1`. Negative values count from the end of the string."
+				}
+			],
+			"returns": "If the pattern has captures, the captured values. Otherwise, the whole match. Returns `nil` if there is no match."
+		},
+		{
+			"name": "string.rep",
+			"doc": "Returns a string that is the concatenation of several copies of a given string, with an optional separator.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to repeat."
+				},
+				{
+					"name": "n",
+					"doc": "The number of copies."
+				},
+				{
+					"name": "separator?",
+					"doc": "An optional separator string placed between each copy. Defaults to the empty string."
+				}
+			],
+			"returns": "The new string. Returns an empty string if `n` is less than or equal to zero."
+		},
+		{
+			"name": "string.reverse",
+			"doc": "Returns reversed copy of a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to reverse."
+				}
+			],
+			"returns": "The reversed string."
+		},
+		{
+			"name": "string.sub",
+			"doc": "Returns the substring of `s` that starts at `i` and continues until `j`.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string (`s`)."
+				},
+				{
+					"name": "i",
+					"doc": "The starting index (`i`). Negative indices count from the end of the string."
+				},
+				{
+					"name": "j?",
+					"doc": "The ending index (`j`). Defaults to `-1`, the end of the string."
+				}
+			],
+			"returns": "The substring."
+		},
+		{
+			"name": "string.pack",
+			"doc": "These functions serialize and deserialize values to and from binary strings, according to a format string.",
+			"params": null,
+			"aliases": [
+				"string.unpack",
+				"string.packsize"
+			]
+		},
+		{
+			"name": "string.unpack",
+			"doc": "These functions serialize and deserialize values to and from binary strings, according to a format string.",
+			"params": null,
+			"aliases": [
+				"string.pack",
+				"string.packsize"
+			]
+		},
+		{
+			"name": "string.packsize",
+			"doc": "These functions serialize and deserialize values to and from binary strings, according to a format string.",
+			"params": null,
+			"aliases": [
+				"string.pack",
+				"string.unpack"
+			]
+		},
+		{
+			"name": "table.sort",
+			"doc": "This function was modified to return the input table instead of `nil`, such that:\nWill not result in `t` becoming `nil`.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				},
+				{
+					"name": "comparator?",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "table.sorted",
+			"doc": "Copying variant of `table.sort`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				},
+				{
+					"name": "comparator?",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "table.size",
+			"doc": "Returns the number of elements in the table, counting both the array part and hash part.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to check."
+				}
+			]
+		},
+		{
+			"name": "table.clear",
+			"doc": "Remove all elements from the table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to clear."
+				}
+			]
+		},
+		{
+			"name": "table.contains",
+			"doc": "Checks if this table contains an element.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to check."
+				},
+				{
+					"name": "value",
+					"doc": "The element to check for."
+				}
+			],
+			"returns": "The index or key if found, otherwise `nil`."
+		},
+		{
+			"name": "table.find",
+			"doc": "Search a table for an element, returning its value.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to check."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback function responsible for checking each element."
+				}
+			],
+			"returns": "The element if found, otherwise `nil`."
+		},
+		{
+			"name": "table.findkey",
+			"doc": "Search a table for an element, returning its key/index.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to check."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback function responsible for checking each element."
+				}
+			],
+			"returns": "The key/index if found, otherwise `nil`.",
+			"aliases": [
+				"table.findindex"
+			]
+		},
+		{
+			"name": "table.findindex",
+			"doc": "Search a table for an element, returning its key/index.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to check."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback function responsible for checking each element."
+				}
+			],
+			"returns": "The key/index if found, otherwise `nil`.",
+			"aliases": [
+				"table.findkey"
+			]
+		},
+		{
+			"name": "table.reverse",
+			"doc": "Reverses the array elements of a table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to reverse."
+				}
+			],
+			"returns": "The input table."
+		},
+		{
+			"name": "table.reversed",
+			"doc": "Copying variant of `table.reverse`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "table.reorder",
+			"doc": "Reorders the array portion of a table so it becomes a continuous array with no holes.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			],
+			"returns": "The input table."
+		},
+		{
+			"name": "table.reordered",
+			"doc": "Copying variant of `table.reorder`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "table.foreach",
+			"doc": "Note that this function is not the same as the Lua function that was deprecated/removed in 5.1.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback to be called for every element."
+				}
+			]
+		},
+		{
+			"name": "table.filter",
+			"doc": "Filters away keys (both array and non-array) that fail to meet the condition established by `callback`. Elimination is done by setting the value to `nil`, consider using `table.reorder` if you want a continuous array after filtering.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback responsible for deciding which keys to keep or remove. This should return `false` or `nil` if you want the key to be eliminated."
+				}
+			],
+			"returns": "The input table."
+		},
+		{
+			"name": "table.filtered",
+			"doc": "Copying variant of `table.filter`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				},
+				{
+					"name": "callback",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "table.map",
+			"doc": "Remaps every key to a new value, provided by the `callback` function.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback responsible for producing the updated values."
+				}
+			],
+			"returns": "The input table.\nIn this example, we first use the `tonumber` function to turn the strings into numbers, then add 1 to them. (Although the first step is not needed in Lua/Pluto since the `+` operator would take care of it, it is used here for demonstration purposes.)"
+		},
+		{
+			"name": "table.mapped",
+			"doc": "Copying variant of `table.map`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				},
+				{
+					"name": "callback",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "table.reduce",
+			"doc": "For every value stored in the table, computes `accumulator = f(accumulator, value)`, returning the accumulator at the end.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback responsible for producing the updated accumulator."
+				},
+				{
+					"name": "initial?",
+					"doc": "The initial value of accumulator. If absent, the accumulator is initialized with `0`."
+				}
+			],
+			"returns": "The accumulator."
+		},
+		{
+			"name": "table.min",
+			"doc": "Returns the smallest value stored in the table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.max",
+			"doc": "Returns the largest value stored in the table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.checkall",
+			"doc": "Runs the given function against all elements, returning true if all of them match.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "callback",
+					"doc": "The callback responsible for checking each element."
+				}
+			]
+		},
+		{
+			"name": "table.keys",
+			"doc": "Returns a new array-like table containing all keys from the table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.values",
+			"doc": "Returns a new array-like table containing all values from the table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.countvalues",
+			"doc": "Returns a key-value based table which describes how many times a value appears inside of a table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.dedup",
+			"doc": "Sets any keys with a duplicate value in the table to nil.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			],
+			"aliases": [
+				"table.deduplicate"
+			]
+		},
+		{
+			"name": "table.deduplicate",
+			"doc": "Sets any keys with a duplicate value in the table to nil.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			],
+			"aliases": [
+				"table.dedup"
+			]
+		},
+		{
+			"name": "table.deduped",
+			"doc": "Copying variant of `table.dedup`/`table.deduplicate`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				}
+			],
+			"aliases": [
+				"table.deduplicated"
+			]
+		},
+		{
+			"name": "table.deduplicated",
+			"doc": "Copying variant of `table.dedup`/`table.deduplicate`; returns a new table instead of modifying the input table. Note that nested tables will not be copied.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				}
+			],
+			"aliases": [
+				"table.deduped"
+			]
+		},
+		{
+			"name": "table.chunk",
+			"doc": "Generates a new table which collects the values of the input and represents them in chunks of a specified size.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "size",
+					"doc": "The desired `size` of each chunk."
+				}
+			]
+		},
+		{
+			"name": "table.invert",
+			"doc": "Generates a new table with an inverse key-value relationship to the input table.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.back",
+			"doc": "Returns the last element of a table. This is functionally identical to `t[#t]`.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				}
+			]
+		},
+		{
+			"name": "table.slice",
+			"doc": "Returns a new table composed of the elements between the specified range. This is intended to be used on sequences.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "start",
+					"doc": "The starting index."
+				},
+				{
+					"name": "stop?",
+					"doc": "The ending index. This is optional. By default, this is the length of the table."
+				}
+			]
+		},
+		{
+			"name": "table.modget",
+			"doc": "Returns an element by index with wrap-around.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "index",
+					"doc": "The index to get."
+				}
+			]
+		},
+		{
+			"name": "table.modset",
+			"doc": "Updates an element by index with wrap-around.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table."
+				},
+				{
+					"name": "index",
+					"doc": "The index to set."
+				},
+				{
+					"name": "value",
+					"doc": "The value to set."
+				}
+			]
+		},
+		{
+			"name": "table.clone",
+			"doc": "Creates a copy of a table, optionally cloning nested tables up to a specified depth.",
+			"params": [
+				{
+					"name": "t",
+					"doc": "The table to clone."
+				},
+				{
+					"name": "arg?",
+					"doc": "The depth to clone to. Defaults to 100."
+				}
+			],
+			"returns": "A new table containing the cloned values."
+		},
+		{
+			"name": "table.isarray",
+			"doc": "Checks if a table is an array, meaning it only has positive integer keys with no holes between 1 and its size.",
+			"params": [
+				{
+					"name": "t",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "url.encode",
+			"doc": "Returns a URL-encoded string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to be encoded."
+				},
+				{
+					"name": "encodespaces?",
+					"doc": ""
+				}
+			]
+		},
+		{
+			"name": "url.decode",
+			"doc": "Returns a plain string from URL-decoding the input string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to be decoded."
+				}
+			]
+		},
+		{
+			"name": "url.parse",
+			"doc": "Splits a URL into its constituent parts.",
+			"params": [
+				{
+					"name": "url",
+					"doc": "The URL to be dissected."
+				}
+			]
+		},
+		{
+			"name": "utf8.char",
+			"doc": "Constructs a concatenation of UTF-8 byte sequences for the given codepoints.",
+			"params": [
+				{
+					"name": "value",
+					"doc": "The code points, each an integer."
+				}
+			],
+			"returns": "The new string."
+		},
+		{
+			"name": "utf8.charpattern",
+			"doc": "A pattern (a string, not a function) that matches exactly one UTF-8 byte sequence, assuming that the subject is a valid UTF-8 string. It is equal to `\"[\\0-\\x7F\\xC2-\\xFD][\\x80-\\xBF]*\"`. See the [pattern](https://www.lua.org/manual/5.5/manual.html#6.5.1) documentation for details."
+		},
+		{
+			"name": "utf8.codes",
+			"doc": "Iterates over all UTF-8 characters in a string.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string to iterate over."
+				},
+				{
+					"name": "arg?",
+					"doc": "An optional bool that indicates if code points up to `0x7FFFFFFF` should be accepted. Defaults to false."
+				}
+			]
+		},
+		{
+			"name": "utf8.codepoint",
+			"doc": "Returns the code points (as integers) from all characters in a string that start between byte positions `i` and `j`, both included.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string (`s`)."
+				},
+				{
+					"name": "index?",
+					"doc": "The starting byte position (`i`). Defaults to `1`."
+				},
+				{
+					"name": "index2?",
+					"doc": "The ending byte position (`j`). Defaults to `i`."
+				},
+				{
+					"name": "arg?",
+					"doc": "An optional bool that indicates if code points up to `0x7FFFFFFF` should be accepted. Defaults to false."
+				}
+			],
+			"returns": "The code points, as multiple values."
+		},
+		{
+			"name": "utf8.len",
+			"doc": "Returns the number of UTF-8 characters in a string that start between positions `i` and `j`, both inclusive.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string (`s`)."
+				},
+				{
+					"name": "index?",
+					"doc": "The starting byte position (`i`). Defaults to `1`."
+				},
+				{
+					"name": "index2?",
+					"doc": "The ending byte position (`j`). Defaults to `-1`."
+				},
+				{
+					"name": "arg?",
+					"doc": "An optional bool that indicates if code points up to `0x7FFFFFFF` should be accepted. Defaults to false."
+				}
+			],
+			"returns": "The number of characters. If an invalid byte sequence is found, returns `nil` followed by the position of the first invalid byte."
+		},
+		{
+			"name": "utf8.offset",
+			"doc": "Returns the position of the `n`-th character of a string, counting from byte position `i`, as two integers: the byte index where its encoding starts, and the byte index where it ends.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The string (`s`). This function assumes it is a valid UTF-8 string."
+				},
+				{
+					"name": "index",
+					"doc": "The character index (`n`). A negative value counts characters backwards from `i`. As a special case, when `n` is 0 the function returns the start and end of the encoding of the character that contains the `i`-th byte of `s`."
+				},
+				{
+					"name": "index2?",
+					"doc": "The starting byte position (`i`). Defaults to `1` when `n` is non-negative, and `#s + 1` otherwise."
+				}
+			],
+			"returns": "The start and end byte indices of the character, or `nil` if the character is neither in the string nor right after its end."
+		},
+		{
+			"name": "vector3.magnitude",
+			"doc": "To get the magnitude of a vector, you can either use the unary length operator (`#`) or call the `magnitude` method:",
+			"params": null,
+			"method": true,
+			"aliases": []
+		},
+		{
+			"name": "vector3.distance",
+			"doc": "Calculates the distance between this vector and another provided instance.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.sum",
+			"doc": "Computes the sum of the `x`, `y` and `z` fields.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.min",
+			"doc": "Returns the value of axis with the lowest value.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.max",
+			"doc": "Returns the value of axis with the highest value.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.dot",
+			"doc": "Computes the [dot product](https://en.wikipedia.org/wiki/Dot_product) with the Vector3 given as an argument.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.abs",
+			"doc": "Returns a new Vector3 instance with each axis being an absolute value.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.normalized",
+			"doc": "Returns a new Vector3 instance that is a unit vector equivalent.",
+			"params": null,
+			"method": true,
+			"aliases": [
+				"normalised"
+			]
+		},
+		{
+			"name": "vector3.normalised",
+			"doc": "Returns a new Vector3 instance that is a unit vector equivalent.",
+			"params": null,
+			"method": true,
+			"aliases": [
+				"normalized"
+			]
+		},
+		{
+			"name": "vector3.torot",
+			"doc": "Returns a rotation vector based on the direction given by the current vector.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.lookat",
+			"doc": "Returns a rotation vector based on the position given by the current vector and argument.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "vector3.todir",
+			"doc": "Returns a direction vector based on the rotation given by the current vector.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "wasm.instantiate",
+			"doc": "Instantiates a WASM module.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The WASM binary string."
+				}
+			],
+			"returns": "A module instance."
+		},
+		{
+			"name": "wasm.describe",
+			"doc": "Lists imports and exports of a WASM module.",
+			"params": [
+				{
+					"name": "str",
+					"doc": "The WASM binary string."
+				}
+			],
+			"returns": "A table with the keys \"imports\" and \"exports\", the values of which will be array tables, themselves containing tables with \"name\" and \"kind\" properties. \"kind\" will be \"function\", \"global\", \"table\" or \"memory\"."
+		},
+		{
+			"name": "wasm.global.new",
+			"doc": "Creates a WASM global which can be imported by one or more WASM module instance.",
+			"params": [
+				{
+					"name": "arg?",
+					"doc": "The type of the global. Can be `i32`, `i64`, `f32`, `f64`, or `externref`, with an optional `mut` prefix."
+				},
+				{
+					"name": "value?",
+					"doc": "The initial value of the global. Defaults to 0/null."
+				}
+			],
+			"returns": "The created WASM global instance."
+		},
+		{
+			"name": "wasm.table.new",
+			"doc": "Creates a WASM table which can be imported by one or more WASM module instance.",
+			"params": [
+				{
+					"name": "arg",
+					"doc": "The element type. Can be `funcref` or `externref`."
+				},
+				{
+					"name": "n",
+					"doc": "The initial size of the table."
+				},
+				{
+					"name": "limit?",
+					"doc": "The maximum size of the table. Defaults to 0x10000."
+				},
+				{
+					"name": "t?",
+					"doc": "Whether the table is 64-bit. Defaults to false. Note that 32-bit builds of Pluto don't support the memory64 proposal."
+				}
+			],
+			"returns": "The created WASM table instance."
+		},
+		{
+			"name": "wasm.memory.new",
+			"doc": "Creates a WASM memory which can be imported by one or more WASM module instance.",
+			"params": [
+				{
+					"name": "n",
+					"doc": "The initial size of the memory, in pages (1 page = 0x10000 bytes)."
+				},
+				{
+					"name": "limit?",
+					"doc": "The maximum size of the memory, in pages. Defaults to 0x10000."
+				},
+				{
+					"name": "flag?",
+					"doc": "Whether the memory is 64-bit. Defaults to false. Note that 32-bit builds of Pluto don't support the memory64 proposal."
+				}
+			],
+			"returns": "The created WASM memory instance."
+		},
+		{
+			"name": "wasm.call",
+			"doc": "Calls the named exported function, with optional arguments following the name.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "wasm.write",
+			"doc": "Writes to the module's memory at the given offset with the given binary string.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "wasm.read",
+			"doc": "Reads from the module's memory at the given offset for the given amount of bytes and returns a binary string.",
+			"params": null,
+			"method": true
+		},
+		{
+			"name": "xml.encode",
+			"doc": "Returns a string of XML.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "A table or string to encode as XML."
+				},
+				{
+					"name": "pretty?",
+					"doc": "Whether to return a human-readable string of XML. Defaults to `false`."
+				}
+			]
+		},
+		{
+			"name": "xml.decode",
+			"doc": "Returns a table representing the XML data.",
+			"params": [
+				{
+					"name": "data",
+					"doc": "The XML data to decode."
+				},
+				{
+					"name": "parser",
+					"doc": "Which parser to use against the data. Can be \"html\", \"xml\" (default), or \"lax\" (XML but accepts attributes without `=`)."
+				}
+			]
+		}
+	]
+}

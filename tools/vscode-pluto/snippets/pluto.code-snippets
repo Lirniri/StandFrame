@@ -1,0 +1,167 @@
+{
+	// Short-hand snippets for Pluto. The keyword-based snippets (class, switch, for, if, ...)
+	// live in Pluto.tmbundle/Snippets/_vscode.code-snippets.
+
+	"class with constructor": {
+		"prefix": ["class", "cls"],
+		"body": [
+			"class ${1:ClassName}",
+			"\tfunction __construct(${2:...})",
+			"\t\t${3:-- body}",
+			"\tend",
+			"",
+			"\tfunction ${4:method}(${5})",
+			"\t\t${0}",
+			"\tend",
+			"end"
+		],
+		"description": "Class with a constructor and a method"
+	},
+	"class extends with constructor": {
+		"prefix": "cls_ext",
+		"body": [
+			"class ${1:ClassName} extends ${2:ParentClass}",
+			"\tfunction __construct(${3:...})",
+			"\t\tparent:__construct(${4:...})",
+			"\t\t${0:-- body}",
+			"\tend",
+			"end"
+		],
+		"description": "Class extending another class, calling the parent constructor"
+	},
+	"function": {
+		"prefix": "fn",
+		"body": [
+			"function ${1:name}(${2})",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "Function declaration"
+	},
+	"local function": {
+		"prefix": ["lfn", "fn"],
+		"body": [
+			"local function ${1:name}(${2})",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "Local function declaration"
+	},
+	"typed function": {
+		"prefix": ["fnt", "fn"],
+		"body": [
+			"function ${1:name}(${2:arg}: ${3:string}): ${4:void}",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "Function declaration with type hints"
+	},
+	"lambda": {
+		"prefix": ["lambda", "fn"],
+		"body": "|${1:args}| -> ${0:expression}",
+		"description": "Lambda expression"
+	},
+	"switch/case/break/default": {
+		"prefix": "switch",
+		"body": [
+			"switch ${1:value} do",
+			"\tcase ${2:1}:",
+			"\t\t${3:-- body}",
+			"\t\tbreak",
+			"\tdefault:",
+			"\t\t${0:-- body}",
+			"end"
+		],
+		"description": "Switch block with a case and a default"
+	},
+	"try (pcall)": {
+		"prefix": "try",
+		"body": [
+			"local ${1:ok}, ${2:err} = pcall(function()",
+			"\t${3:-- body}",
+			"end)",
+			"if not ${1:ok} then",
+			"\t${0:print(${2:err})}",
+			"end"
+		],
+		"description": "Protected call. Works in every Pluto version"
+	},
+	"try (xpcall with traceback)": {
+		"prefix": "try",
+		"body": [
+			"xpcall(|| -> do",
+			"\t${1:-- body}",
+			"end, |${2:e}| -> do",
+			"\t${0:print(debug.traceback(${2:e}))}",
+			"end)"
+		],
+		"description": "Protected call with an error handler"
+	},
+	"try/catch/end (removed from Pluto)": {
+		"prefix": "try",
+		"body": [
+			"try",
+			"\t${1:-- body}",
+			"catch ${2:e} then",
+			"\t${0:-- handle error}",
+			"end"
+		],
+		"description": "try/catch statement. Deprecated in Pluto 0.12.2 and removed afterwards; only for older Pluto versions"
+	},
+	"for i = 1, n": {
+		"prefix": "fori",
+		"body": [
+			"for ${1:i} = ${2:1}, ${3:#t} do",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "Numeric for loop"
+	},
+	"for k, v in pairs": {
+		"prefix": "forp",
+		"body": [
+			"for ${1:k}, ${2:v} in pairs(${3:t}) do",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "Loop over all key-value pairs of a table"
+	},
+	"for i, v in ipairs": {
+		"prefix": "forip",
+		"body": [
+			"for ${1:i}, ${2:v} in ipairs(${3:t}) do",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "Loop over the array part of a table"
+	},
+	"for t as v": {
+		"prefix": "fora",
+		"body": [
+			"for ${1:t} as ${2:v} do",
+			"\t${0:-- body}",
+			"end"
+		],
+		"description": "For-as loop over the values of a table"
+	},
+	"enum": {
+		"prefix": "enum",
+		"body": [
+			"enum ${1:Name} begin",
+			"\t${2:FIRST},",
+			"\t${0:SECOND}",
+			"end"
+		],
+		"description": "Enumeration"
+	},
+	"require pluto module": {
+		"prefix": ["req", "require"],
+		"body": "local ${1:json} = require \"pluto:${1:json}\"${0}",
+		"description": "Require a built-in Pluto module"
+	},
+	"pluto_use": {
+		"prefix": "pluto_use",
+		"body": "pluto_use \"${1:0.6.0}\"${0}",
+		"description": "Enable the keywords of a given Pluto version"
+	}
+}

@@ -1,0 +1,26 @@
+*.json linguist-detectable
+*.tmPreferences linguist-detectable
+*.code-snippets linguist-detectable
+*.tmSnippet linguist-detectable
+*.tmLanguage linguist-detectable
+*.plist linguist-detectable
+visual-*.* -linguist-detectable
+
+# Sublime Text Package
+.vs/ export-ignore
+bin/ export-ignore
+obj/ export-ignore
+.vscodeignore export-ignore
+Pluto.tmbundle/Snippets/*.code-snippets export-ignore
+*.png export-ignore
+*.json export-ignore
+visual-*.* export-ignore
+*.pluto export-ignore
+*.js export-ignore
+*.pkgdef export-ignore
+*.csproj export-ignore
+*.sln export-ignore
+src/ export-ignore
+scripts/ export-ignore
+test/ export-ignore
+snippets/ export-ignore
