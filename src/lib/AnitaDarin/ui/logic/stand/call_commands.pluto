@@ -3,15 +3,18 @@
 -- The commands of the script's own that the Stand command box understands in the brackets of the Function Name
 -- (util.toast(asstr(#1))). Only there: they are not functions of the script. The names they go by are in
 -- store/<script>/core/call_function/system/command.json, an id -> its names:
---     { "as_text": ["asstr", "asstring"] }
+--     { "as_str": ["asstr", "asstring"] }
 --
---   as_text       asstr(#1, #2)        each argument as a text; the function is called with the texts
---   as_text_only  asstr_only(#1, #2)   the same, but nothing is called: the function's name and each argument's
---                                      name with what's in it are shown as a notice
---   all_as_text   allasstr             every argument of the function (no #N needed) as a text, the notice with
---                                      the name and the arguments, and the function is called with the texts
---   all_as_text_only                   the notice only, nothing is called
--- allasstr may be written with or without brackets. A name may have a dot (asstr.only): it is one name there.
+--   as_str            asstr(#1, #2)     each argument as a text; the function is called with the texts
+--   as_int            asint(#1, #2)     each argument as a whole number; the function is called with them
+--   as_text           astext(#1, #2)    nothing is called: the function's name and each parameter's name with what's
+--                                       in its field are shown as a notice
+--   all_as_str        allasstr()        every parameter of the function (no #N needed) as a text, the notice with the
+--                                       name and the parameters, and the function is called with the texts
+--   all_as_int        allasint()        the same as allasstr, with whole numbers; what is not a number (a text) is
+--                                       given as it is
+--   all_as_text       allastext()       the notice only, nothing is called
+-- A command of all may be written with or without brackets. A name may have a dot (as.text): it is one name there.
 --
 --   local cmd = { name = "toast", sig = sig, field = |number| -> value,
 --                 inspect = |key, label| -> "label = typed: result",
@@ -21,11 +24,20 @@
 
 local module = {}
 
--- The command ids that take no arguments of their own: all the function's
-local ALL = { all_as_text = true, all_as_text_only = true }
+-- The commands by their ids in the file: all - every parameter of the function, not the ones written; only - nothing
+-- is called, the notice is all there is; notice - the notice with the name and the parameters is shown; int - the
+-- arguments are whole numbers, not texts
+local KINDS = {
+    as_str = {},
+    as_int = { int = true },
+    as_text = { only = true, notice = true },
+    all_as_str = { all = true, notice = true },
+    all_as_int = { all = true, notice = true, int = true },
+    all_as_text = { all = true, only = true, notice = true },
+}
 
--- Ids that call nothing
-local ONLY = { as_text_only = true, all_as_text_only = true }
+-- Strings under "arguments"
+local text = select(2, Atdar.loader.load("core/i18n").scope("arguments"))
 
 -- The arguments as texts; nil stays nil (it is "not given")
 local function as_texts(args: table, count: int): table
@@ -72,11 +84,31 @@ local function notice_of(cmd: table): string
     return notice
 end
 
--- Runs a command: its own arguments, or (for the ones of all) every field of the function
--- @return The texts and how many to call with
-local function run(id: string, cmd: table, args: table, count: int)
+-- The arguments as whole numbers; nil stays nil. What can't be one is told, or with soft left as it is
+-- (the commands of all take the parameters that are texts too)
+local function as_ints(args: table, count: int, soft: bool): table
+    local numbers = {}
 
-    if ALL[id] then
+    for i = 1, count do
+        if args[i] ~= nil then
+            numbers[i] = math.tointeger(tonumber(args[i]))
+
+            if numbers[i] == nil and soft then
+                numbers[i] = args[i]
+            elseif numbers[i] == nil then
+                error(text("errors.not_integer"):format(tostring(args[i])), 0)
+            end
+        end
+    end
+
+    return numbers
+end
+
+-- Runs a command: its own arguments, or (for the ones of all) every parameter of the function
+-- @return The values to call with and how many
+local function run(kind: table, cmd: table, args: table, count: int)
+
+    if kind.all then
         count = #cmd.sig.params
         args = {}
 
@@ -85,23 +117,29 @@ local function run(id: string, cmd: table, args: table, count: int)
         end
     end
 
-    cmd.only = ONLY[id] == true
+    cmd.only = kind.only == true
 
-    -- Plain asstr says nothing: it only changes what the function gets
-    if ALL[id] or cmd.only then
+    if kind.notice then
         cmd.notice = notice_of(cmd)
     end
 
-    local texts = as_texts(args, count)
+    local converted = nil
+
+    if kind.int then
+        converted = as_ints(args, count, kind.all == true)
+    else
+        converted = as_texts(args, count)
+    end
+
     local last = 0
 
     for i = 1, count do
-        if texts[i] ~= nil then
+        if converted[i] ~= nil then
             last = i
         end
     end
 
-    return texts, last
+    return converted, last
 end
 
 -- The names -> id, from the file's id -> names
@@ -127,16 +165,16 @@ end
 -- @param cmd The call: name, sig, field(number); notice and only are set on it by what ran
 function module.function_of(name: string, aliases: table, cmd: table)
 
-    local id = aliases[name]
+    local kind = KINDS[aliases[name]]
 
-    if id == nil or (not ALL[id] and not id:match("^as_text")) then
+    if kind == nil then
         return nil
     end
 
     return function(...)
         local args = table.pack(...)
-        local texts, count = run(id, cmd, args, args.n)
-        return table.unpack(texts, 1, count)
+        local converted, count = run(kind, cmd, args, args.n)
+        return table.unpack(converted, 1, count)
     end
 end
 
@@ -144,7 +182,9 @@ end
 function module.with_brackets(template: string, aliases: table): string
 
     local filled = template:gsub("%f[%w_]([%w_%.]+)%f[^%w_%.]()", function(word, position)
-        if ALL[aliases[word]] and template:sub(position):match("^%s*%(") == nil then
+        local kind = KINDS[aliases[word]]
+
+        if kind ~= nil and kind.all and template:sub(position):match("^%s*%(") == nil then
             return word .. "()"
         end
     end)

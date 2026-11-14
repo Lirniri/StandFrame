@@ -731,7 +731,8 @@
             "wrong_type": "%s: нужен тип «%s», а получен «%s».",
             "bare_word": "Слово без кавычек - это текст: чтобы вызвать функцию, напиши её со скобками (user_ped()).",
             "no_value": "вызов ничего не вернул там, где нужно значение (функция ничего не возвращает)",
-            "no_field": "#%d: такого аргумента нет (у функции их %d)"
+            "no_field": "#%d: такого аргумента нет (у функции их %d)",
+            "not_integer": "%s нельзя сделать целым числом"
         },
         "call": {
             "expression": "Выражение",
@@ -895,7 +896,7 @@
             },
             "function": {
                 "name": "Имя функции",
-                "help": "Путь через точку. Таблицы Stand: util.toast, entities.get_user_vehicle_as_handle. Таблицы скрипта: game.repair_vehicle; те, что названы как у Stand, доступны через Atdar в начале: Atdar.util.hash. Первым может быть имя модуля: VehicleManager.get. С двоеточием функция вызывается как метод: VehicleManager:get. Имя без пути ищет функцию, в том числе среди нативов скрипта: set_explosive_melee_this_frame. В скобках #1, #2 - значения полей аргументов: util.toast(#1), util.toast(tostring(#1)). asstr(#1): аргумент текстом; allasstr: все аргументы текстом, с уведомлением о них; asstr_only и allasstr_only ничего не вызывают, а только показывают имя и аргументы"
+                "help": "Путь через точку. Таблицы Stand: util.toast, entities.get_user_vehicle_as_handle. Таблицы скрипта: game.repair_vehicle; те, что названы как у Stand, доступны через Atdar в начале: Atdar.util.hash. Первым может быть имя модуля: VehicleManager.get. С двоеточием функция вызывается как метод: VehicleManager:get. Имя без пути ищет функцию, в том числе среди нативов скрипта: set_explosive_melee_this_frame. В скобках #1, #2 - значения полей аргументов: util.toast(#1), util.toast(tostring(#1)). asstr(#1): аргумент текстом; asint(#1): целым числом; allasstr(): все аргументы текстом, с уведомлением о них; astext и allastext ничего не вызывают, а только показывают имя и аргументы"
             },
             "args": {
                 "name": "Аргумент",
