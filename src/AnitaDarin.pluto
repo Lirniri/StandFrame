@@ -6,12 +6,30 @@ pluto_use "0.13.2"
 local ATDAR_NAME <const> = SCRIPT_NAME
 
 
-_G.Atdar = {
+-- name isn't stored in the table, so every write to it reaches __newindex
+-- (a key that exists is written directly and never gets there)
+_G.Atdar = setmetatable({
     ui = {},
-    -- SCRIPT_NAME is this file's name without the extension, so a renamed script finds its lib/store/resources folders of the same name
-    name = ATDAR_NAME,
     debug = false, -- will be set from the active profile once profile.pluto loads
-}
+}, {
+    __index = function(_, key)
+        if key == "name" then
+            return ATDAR_NAME
+        end
+        return nil
+    end,
+    __newindex = function(self, key, value)
+        
+        -- Not an error: the script goes on with the old name, and the notice says where it was tried
+        if key == "name" then
+            local caller = debug.getinfo(2, "Sl")
+            util.toast($"Atdar.name can't be changed ({caller.short_src}:{caller.currentline})")
+            return
+        end
+
+        rawset(self, key, value)
+    end,
+})
 
 
 local ok, err = xpcall(function()
