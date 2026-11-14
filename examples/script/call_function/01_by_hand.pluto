@@ -1,0 +1,44 @@
+-- EXAMPLE 1: your own functions to call by hand, in Debug > Call Function > Call A Function.
+--
+-- This is a code file of your own: it returns a table, and its functions are reached through Atdar.user_script.
+-- Save it as "demo": copy it to store/AnitaDarin/core/call_function/demo.pluto, or write it in Debug > Files Editor >
+-- User Code (Create File, then Add Line for each line). Then type in Function Name:
+--
+--   Atdar.user_script.demo.add(5)                    calls it; Variable: 5, the second call 10
+--   Atdar.user_script.demo.add                       no brackets: only read, its Parameters (2) and the return type
+--   Atdar.user_script.demo.total                     a variable is read the same way
+--   Atdar.user_script.demo{}                         {} at the end opens the table in the Value list
+--   Atdar.user_script.demo                           without {} the table is only looked at
+--
+-- A function with typed parameters gets a field for each of them, by the type written in the code. After a name is
+-- typed the fields are in the Arguments list, and the Call Template shows what the brackets hold
+
+local module = {}
+
+module.total = 0
+
+-- Not a function: a table, opened with {} at the end of the name
+module.limits = { low = 1, high = 10 }
+
+-- Two fields: Number (starts at 0) and Text (?string: it may be left empty, and the code gives it a default)
+function module.add(amount: int, note: ?string = "x"): int
+    module.total += amount
+    util.log($"add {amount} ({note}), total {module.total}")
+    return module.total
+end
+
+-- Number fields start at 0, so none of them is required
+function module.is_between(value: number, low: number = 1, high: number = 10): bool
+    return value >= low and value <= high
+end
+
+-- Text has no start value and no ?: it is required, an empty field is an error. Boolean accepts only true or false
+function module.shout(text: string, loud: bool = false): string
+    if loud then
+        return text:upper() .. "!"
+    end
+
+    return text
+end
+
+return module

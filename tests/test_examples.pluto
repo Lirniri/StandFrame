@@ -251,4 +251,77 @@ stand.click(stand.child(ref_tools, "Run Ping"))
 stand.check(#stand.triggered == 1 and stand.triggered[1]:find("refsping", 1, true) ~= nil, "a command run as typed")
 stand.check(stand.child(ref_tools, "Code: ****") ~= nil, "a spoiler in options form")
 
+-- ─── call_function/ ──────────────────────────────────────────────────────────
+
+if _G.v3 == nil then
+    _G.v3 = { new = |x, y, z| -> { x = x, y = y, z = z } }
+end
+
+local call_dir = $"{stand.ROOT}/examples/script/call_function/"
+local arguments = Atdar.loader.load("ui/logic/stand/arguments")
+
+-- 01_by_hand: a code file for Atdar.user_script; its parameters give the fields
+local demo = assert(loadfile($"{call_dir}01_by_hand.pluto"))()
+stand.equal(demo.add(5), 5, "01: add(5)")
+stand.equal(demo.add(5, "again"), 10, "and the total goes on")
+stand.equal(demo.total, 10, "a variable of the table")
+stand.equal(demo.limits.high, 10, "a table in the table, opened with {}")
+stand.equal(demo.shout("hi", true), "HI!", "shout")
+stand.equal(demo.is_between(5), true, "is_between")
+local add_sig = arguments.signature_of(demo.add)
+stand.equal(arguments.params_text(add_sig), "amount, note", "add's parameters")
+stand.equal(add_sig.params[1].type .. " " .. add_sig.params[2].type, "int ?string", "with the types written in the code")
+stand.equal(add_sig.params[2].default, "\"x\"", "and the default as written")
+local shout_sig = arguments.signature_of(demo.shout)
+local _, _, no_text = arguments.read(shout_sig, {})
+stand.check(no_text ~= nil and no_text:find("text", 1, true) ~= nil, "a Text field without a default is required")
+local _, _, not_boolean = arguments.read(shout_sig, { "hi", "yes" })
+stand.check(not_boolean ~= nil and not_boolean:find("loud", 1, true) ~= nil, "a Boolean takes true or false only")
+local _, shout_count, shout_error = arguments.read(shout_sig, { "hi", "true" })
+stand.check(shout_count == 2 and shout_error == nil, "and true is fine")
+
+-- 02_arguments: what the fields give for what is typed in them
+stand.clear_logs()
+run_example("call_function/02_arguments")
+stand.check(stand.find_log("util.toast is only read, brackets: nil"), "02: no brackets, only read")
+stand.check(stand.find_log("util.toast is called with (hi, 5)"), "brackets: called, with these arguments")
+stand.check(stand.find_log("Atdar.util is opened: true"), "braces: a table to open")
+stand.check(stand.find_log("set_speed(speed, boost), move(position, steps)"), "the parameters of a function")
+stand.check(stand.find_log("set_speed reads 2.5, false (2 given)"), "a field never typed starts with its default")
+stand.check(stand.find_log("boost: true or false is needed"), "strict: a word is no boolean")
+stand.check(stand.find_log("speed: a number is needed"), "strict: a word is no number")
+stand.check(stand.find_log("second: the argument is required"), "strict: a required argument")
+stand.check(stand.find_log("(speed, boost) takes 2 argument(s), got 3"), "strict: too many arguments")
+stand.check(stand.find_log("there is no such argument (the function has 2)"), "#3 with two fields")
+stand.check(stand.find_log("move reads the vector 1, 2, 3 and 2 steps (2 given)"), "a vector, and a call as an argument")
+stand.check(stand.find_log("z = math.floor(3.7)"), "an axis that is a call stays as written")
+stand.check(stand.find_log("brackets made from the fields: #1, #2"), "the brackets follow the fields")
+stand.check(stand.find_log("join(#2, #1) gets right, left"), "#2, #1: the order of the brackets")
+
+-- 03_module_functions: a module of every kind of parameter, in the Modules list and Call Function
+stand.equal(modules.load_dir(call_dir), 1, "03: its manifest registers the module")
+modules.start()
+local shop = modules.get("ExampleShop")
+stand.equal(shop.status, "running", "ExampleShop runs")
+local shop_names = {}
+for _, fn in ipairs(Module.functions_of(shop)) do
+    table.insert(shop_names, fn.name)
+end
+table.sort(shop_names)
+stand.equal(table.concat(shop_names, ", "), "count, move_to, set_caption, set_open, set_speed, sum, tag",
+    "its functions for the Modules list")
+local shop_kinds = {}
+for _, name in { "set_speed", "set_open", "set_caption", "move_to", "sum", "tag" } do
+    table.insert(shop_kinds, arguments.kind_of(arguments.signature_of(shop[name], true).params[1].type))
+end
+stand.equal(table.concat(shop_kinds, ", "), "float, boolean, string, vector3, table, string", "a field kind per parameter")
+local tag_sig = arguments.signature_of(shop.tag, true)
+stand.equal(arguments.params_text(tag_sig), "name, note", "the owner's self isn't a field")
+stand.equal(shop:sum({ 1, 2, 3 }), 6, "sum")
+stand.equal(shop:tag("a"), "a", "tag without a note")
+stand.equal(shop:tag("b", "new"), "b (new)", "tag with one")
+stand.equal(shop:count(), 2, "count")
+local found, method, owner = Atdar.parsers.proglang.pluto.path.resolve("ExampleShop:sum")
+stand.check(found and type(method) == "function" and owner == shop, "ExampleShop:sum names the method, its owner is the module")
+
 stand.finish()

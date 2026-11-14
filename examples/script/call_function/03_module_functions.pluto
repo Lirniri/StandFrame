@@ -1,0 +1,84 @@
+-- EXAMPLE 3: a module's functions to call by hand, in the Modules list and in Call Function.
+--
+-- Settings > Debug > Modules > ExampleShop > Function Call lists the functions of the class, each a list with
+-- Arguments (a field per parameter, by its type), the Call Template field (the same rules as the Function Name of Call
+-- A Function: brackets, #1, #2, the commands asstr / asint / allasstr()) and Call, Loop and the rest.
+--
+-- The functions below take every kind of parameter: int, float, bool, string, vector3, table, and ?string with a default.
+-- Try them with the fields, or in the Call Template:
+--
+--   set_speed(2.5)          Float Number
+--   set_open(true)          Boolean: true or false only
+--   set_caption(shop)       Text: the text as it is, without quotes
+--   move_to(v3.new(1, 2, 3))   3D Vector: a list with the whole vector, then x, y, z (1, 2, 3 in its field)
+--   sum({1, 2, 3})          Table: the values, or an expression that gives a table (1, 2, 3 in its field)
+--   tag(shop)               Text; the ?string note may stay empty
+--   count()                 no parameters: nothing to type, Call calls it
+--
+-- To call one from Call Function, type ExampleShop:sum({1, 2, 3}) in the Function Name (a colon: the module is the
+-- owner of the method), or put ExampleShop:sum in Functions with Add: it gets the same fields and its own Call
+-- Template. The id has no dot on purpose: a name with one couldn't be told from a path of tables.
+--
+-- The module needs a manifest next to it, 03_module_functions.info.json (see ../modules/README.md)
+
+local Module = Atdar.loader.load("core/module")
+
+local class Shop extends Module
+    function __construct()
+        parent:__construct({ name = "ExampleShop" })
+        -- Not enabled or label: those are the Module's own
+        self.speed = 1.0
+        self.open = false
+        self.caption = ""
+        self.tags = {}
+    end
+
+    function set_speed(speed: float = 1.5): float
+        self.speed = speed
+        return self.speed
+    end
+
+    function set_open(on: bool): bool
+        self.open = on
+        return self.open
+    end
+
+    function set_caption(text: string): string
+        self.caption = text
+        return self.caption
+    end
+
+    function move_to(position: vector3): vector3
+        self.position = position
+        return self.position
+    end
+
+    function sum(values: table): number
+        local total = 0
+
+        for _, value in ipairs(values) do
+            total += value
+        end
+
+        return total
+    end
+
+    -- A parameter with ? may stay empty; the default of the code is what its field starts with
+    function tag(name: string, note: ?string = "none"): string
+        local line = name
+
+        if note ~= nil then
+            line ..= $" ({note})"
+        end
+
+        table.insert(self.tags, line)
+        return line
+    end
+
+    -- No parameters: no Arguments list, no Call Template; Call calls it at once
+    function count(): int
+        return #self.tags
+    end
+end
+
+return Atdar.modules.add(new Shop())

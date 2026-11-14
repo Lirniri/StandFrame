@@ -13,6 +13,7 @@ English and Russian.
 | [basics/](script/basics/) | The foundation needed everywhere: log and notifications, profile, translations, JSON files, natives, checks, parsers and colours |
 | [modules/](script/modules/) | Modules: internal parts of the script that it starts by itself (no menu item) |
 | [features/](script/features/) | Features: what the user switches on and off or clicks in the menu |
+| [call_function/](script/call_function/) | Calling functions by hand: Debug > Call Function (the Function Name's rules, arguments, vectors, `#N`, commands) and a module's Function Call list |
 | [menu/](script/menu/) | Menu files: `MenuNode` items, features in the menu, the settings section, module debugging in your own menu, ready-made helpers |
 | [pack/](script/pack/) | A complete menu pack, `ExamplePack`: info.json, features, menu, translations, copied and loaded as a whole |
 | [utils/](script/utils/) | What is built on natives in `Atdar.util.game`: Graceland (a fall from any height, steered with the stick), the player's functions (`auto_heal`, `levitate`, `freecam` ...), the world (clock, clouds, timecycle), game helpers, `tools.states` |
@@ -74,5 +75,5 @@ The ready example files the lessons point to are in the folders of the table abo
 3. Restart the script in Stand; a module can simply be reloaded with "Reload" in Settings > Debug > Modules.
 
 `python tests/run.py` checks every example's syntax. `test_examples` also runs the module, feature, pack and menu-helper
-examples, plus basics `06_check` and `07_parsers_and_colors`, against Stand stubs. The native examples' wrapper names
+examples, plus basics `06_check` and `07_parsers_and_colors` and the `call_function` examples, against Stand stubs. The native examples' wrapper names
 are checked, but their game calls aren't run; the other basics examples are syntax-checked only.

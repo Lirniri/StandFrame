@@ -1,0 +1,98 @@
+-- EXAMPLE 2: arguments in detail, as the argument fields of Debug > Call Function work them out.
+--
+-- Each parameter of a function gets a field by the type written in the code, and what's typed in it is read as Lua.
+-- The same code is behind the Arguments list of Call A Function, of a function added to Functions and of a module's
+-- function in the Modules list (lib/AnitaDarin/ui/logic/stand/arguments): here it is called by hand, to see what a field
+-- gives for what is typed in it.
+--
+-- In the menu the same works in the brackets of the Function Name or of the Call Template field:
+--
+--   Atdar.user_script.demo.shout(hi, true)           the arguments typed in the brackets go to the fields
+--   Atdar.user_script.demo.shout(#1, true)           #1 is the field 1: its value goes there
+--   Atdar.user_script.demo.is_between(#3, #1, #2)    the fields in another order
+--   Atdar.util.toast(#1(>1))                         #1 holds a call (user_ped() and so on) with its argument 1 filled
+--   Atdar.util.toast(asstr(#1))                      the commands: asstr, asint, allasstr(), astext, allastext()
+--   a vector's axes: 1, 2, 3, or any of them a call: 1, 2, math.floor(3.7)
+
+local arguments = Atdar.loader.load("ui/logic/stand/arguments")
+local call_template = Atdar.loader.load("ui/logic/stand/call_template")
+
+local function set_speed(speed: float, boost: bool = false): float
+    return speed
+end
+
+local function join(first: string, second: string): string
+    return first .. second
+end
+
+local function move(position: vector3, steps: int = 1): vector3
+    return position
+end
+
+-- ─── The Function Name ───────────────────────────────────────────────────────
+
+-- What the Function Name is cut into first: the path, the text in its brackets (nil without brackets: the function is
+-- only read, not called), and whether it ended with {} (a table to open in the Value list)
+local path = Atdar.parsers.proglang.pluto.path
+local named, brackets = path.split("util.toast(hi, 5)")
+util.log($"with brackets: {named} is called with ({brackets})")
+local plain, no_brackets = path.split("util.toast")
+util.log($"without: {plain} is only read, brackets: {tostring(no_brackets)}")
+local table_name, _, is_opened = path.split("Atdar.util{}")
+util.log($"a table with braces: {table_name} is opened: {tostring(is_opened)}")
+
+-- ─── The fields ──────────────────────────────────────────────────────────────
+
+-- A field per parameter, by its type: float is Float Number, bool is Boolean, vector3 is 3D Vector
+local speed_sig = arguments.signature_of(set_speed)
+local join_sig = arguments.signature_of(join)
+local move_sig = arguments.signature_of(move)
+util.log($"set_speed({arguments.params_text(speed_sig)}), move({arguments.params_text(move_sig)})")
+
+-- A field never typed in starts with its default (boost = false), a Boolean without one with false, a Number with 0
+local args, count = arguments.read(speed_sig, { "2.5" })
+util.log($"set_speed reads {args[1]}, {tostring(args[2])} ({count} given)")
+
+-- ─── Strict checks ───────────────────────────────────────────────────────────
+
+-- A Boolean takes true or false, a Number a number; a word is text, and a text isn't either
+local _, _, wrong_boolean = arguments.read(speed_sig, { "2.5", "yes" })
+util.log($"strict: {wrong_boolean}")
+local _, _, wrong_number = arguments.read(speed_sig, { "fast" })
+util.log($"strict: {wrong_number}")
+
+-- Text has no start value: a parameter of it without ? must be given
+local _, _, missing = arguments.read(join_sig, { "left" })
+util.log($"required: {missing}")
+
+-- Brackets with more arguments than the function has parameters
+local _, _, too_many = arguments.read_template(speed_sig, { "1" }, "#1, #2, #1")
+util.log($"too many: {too_many}")
+
+-- A #N the function has no field for
+local _, _, no_field = arguments.read_template(speed_sig, { "1" }, "#3")
+util.log($"no field: {no_field}")
+
+-- ─── Vectors and calls in arguments ──────────────────────────────────────────
+
+-- A vector: three numbers, or an expression that gives one. A call can stand where a number does
+local moved, moved_count = arguments.read(move_sig, { "1, 2, 3", "math.floor(2.7)" })
+local position = moved[1]
+local numbers = string.format("%g, %g, %g", position.x, position.y, position.z)
+util.log($"move reads the vector {numbers} and {moved[2]} steps ({moved_count} given)")
+
+-- The vector's list in the menu: the whole vector, then x, y, z. An axis that is a call stays as written, the line
+-- under them shows what it gives. The whole vector can be a call too:
+-- Atdar.natives.entity.get_coords(user_ped())
+local vector = arguments.vector_in("v3.new(1, 2, math.floor(3.7))")
+util.log($"axes as written: x = {vector.x}, y = {vector.y}, z = {vector.z}")
+
+-- ─── #N in the brackets ──────────────────────────────────────────────────────
+
+-- The brackets show what the fields hold: #1, #2 for the filled fields
+local fields = { "left", "right" }
+util.log($"brackets made from the fields: {call_template.auto_of(join_sig, fields)}")
+
+-- What's typed in the brackets decides the order; the fields are read in it
+local swapped = arguments.read_template(join_sig, fields, "#2, #1")
+util.log($"join(#2, #1) gets {swapped[1]}, {swapped[2]}")
