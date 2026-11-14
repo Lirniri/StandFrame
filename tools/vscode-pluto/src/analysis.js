@@ -85,6 +85,98 @@ function chainAt(lineText, col)
 	};
 }
 
+/** Built-in Pluto/Lua types that can appear in type hints. */
+const PRIMITIVE_TYPES = new Map([
+	["int", "Integer number, a subtype of `number`."],
+	["integer", "Integer number, a subtype of `number`."],
+	["number", "Number: an integer or a floating-point number."],
+	["float", "Floating-point number, a subtype of `number`."],
+	["string", "Immutable sequence of bytes. String values have the methods of the `string` library, e.g. `s:upper()`."],
+	["bool", "Boolean: `true` or `false`."],
+	["boolean", "Boolean: `true` or `false`."],
+	["table", "Table: associative array, the only data structure of Pluto/Lua. See the `table` library."],
+	["function", "Function or callable value."],
+	["userdata", "Userdata: a value managed by the host application or a C library."],
+	["thread", "Coroutine."],
+	["nil", "The absence of a value."],
+	["void", "No return value."],
+	["any", "Any type."],
+]);
+
+/**
+ * Whether the word at [start, end) of a line is (part of) a type hint, e.g. `int` in
+ * `ped: int = 0`, `function f(): bool`, `x: ?string|int` or `-> bool`.
+ * `obj:method(...)` is a method call, not a type hint: in Lua, `a:b` must be followed by call arguments.
+ * @param {string} lineText
+ * @param {number} start
+ * @param {number} end
+ * @returns {{ word: string, primitive: boolean }|null}
+ */
+function typeAnnotationAt(lineText, start, end)
+{
+	const word = lineText.slice(start, end);
+	const primitive = PRIMITIVE_TYPES.has(word);
+	const after = lineText.slice(end).replace(/^\s+/, "");
+	let k = start - 1;
+	const skipSpace = function ()
+	{
+		while (k >= 0 && /\s/.test(lineText[k]))
+		{
+			--k;
+		}
+	};
+	let direct = true; // the word follows `:` directly, without `?` or a union in between
+	for (;;)
+	{
+		skipSpace();
+		while (k >= 0 && lineText[k] == "?")
+		{
+			--k;
+			direct = false;
+			skipSpace();
+		}
+		if (lineText[k] != "|")
+		{
+			break;
+		}
+		// Union: `int|string`. The `|` must follow another type name (and not open a lambda).
+		let j = k - 1;
+		while (j >= 0 && /\s/.test(lineText[j]))
+		{
+			--j;
+		}
+		const wordEnd = j;
+		while (j >= 0 && IDENT_CHAR.test(lineText[j]))
+		{
+			--j;
+		}
+		if (wordEnd == j)
+		{
+			return null;
+		}
+		k = j;
+		direct = false;
+	}
+	if (lineText[k] == ">" && lineText[k - 1] == "-")
+	{
+		// `-> bool`; lambda bodies (`|x| -> x`) are expressions, so only built-in types count.
+		return primitive && !/^[.:([]/.test(after) ? { word, primitive } : null;
+	}
+	if (lineText[k] != ":" || lineText[k - 1] == ":")
+	{
+		return null;
+	}
+	if (direct && /^(?:\(|"|'|\{|\[=*\[)/.test(after))
+	{
+		return null; // obj:method(...)
+	}
+	if (primitive && /^(?:\.|:(?!:))/.test(after))
+	{
+		return null; // e.g. `cond ? x : string.format(...)`
+	}
+	return { word, primitive };
+}
+
 /**
  * If the cursor is inside the string of a `require`, returns the module name and its range.
  * @param {string} lineText
@@ -565,4 +657,4 @@ function findCall(text)
 	return null;
 }
 
-module.exports = { Analyzer, chainBefore, chainAt, requireAt, findCall, normalizeType, splitChain };
+module.exports = { Analyzer, chainBefore, chainAt, requireAt, findCall, normalizeType, splitChain, typeAnnotationAt, PRIMITIVE_TYPES };

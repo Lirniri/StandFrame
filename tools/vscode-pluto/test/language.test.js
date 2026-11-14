@@ -17,7 +17,7 @@ Module._load = function (request, ...rest)
 
 const { parse, formatSignature, computeFolding } = require("../src/parser");
 const { WorkspaceIndex } = require("../src/workspaceIndex");
-const { Analyzer, findCall, chainAt, chainBefore } = require("../src/analysis");
+const { Analyzer, findCall, chainAt, chainBefore, typeAnnotationAt } = require("../src/analysis");
 const builtins = require("../src/builtins");
 const { createProviders } = require("../src/providers");
 const { closerFor } = require("../src/extension");
@@ -944,6 +944,181 @@ function createFakeWorkspace(files)
 }
 
 const asyncTests = [];
+test("hover/definition: built-in types in type hints are not looked up as fields", function ()
+{
+	const readers = vscode.Uri.file("/ws/lib/readers.pluto").toString();
+	index.setFile(readers, "/ws/lib/readers.pluto", "local READERS = {}\nREADERS.int = function(x) end\nREADERS.bool = 1\nKIND_OF_TYPE = { int = 1 }\nreturn READERS\n");
+	try
+	{
+		for (const text of [
+			"function spawn(ped: i|nt = 0) end",
+			"function spawn(ped: ?i|nt) end",
+			"function spawn(ped): b|ool end",
+			"local count: i|nt = 0",
+			"class Car\n    public speed: flo|at = 0\nend",
+		])
+		{
+			const h = hover(text);
+			assert(h && h.includes("(type) " + /\w*\|\w*/.exec(text)[0].replace("|", "")), text + " → " + h);
+			assert(!/READERS|KIND_OF_TYPE|function\(x\)/.test(h), text + " → " + h);
+			assert.strictEqual(definition(text), undefined, text);
+		}
+		// Unions, lambdas and `->` (the test cursor marker can't be used next to `|`).
+		const typeAt = (line, word) => typeAnnotationAt(line, line.lastIndexOf(word), line.lastIndexOf(word) + word.length);
+		assert.deepStrictEqual(typeAt("function spawn(ped: string|int) end", "int"), { word: "int", primitive: true });
+		assert.deepStrictEqual(typeAt("function spawn(ped: string | ?int) end", "int"), { word: "int", primitive: true });
+		assert.deepStrictEqual(typeAt("local f = |x: number| -> bool", "bool"), { word: "bool", primitive: true });
+		assert.deepStrictEqual(typeAt("local f = |x: number| -> bool", "number"), { word: "number", primitive: true });
+		assert.strictEqual(typeAt("local f = |x| -> x", "x"), null);
+		assert.strictEqual(typeAt("local z = a | int", "int"), null);
+		assert.strictEqual(typeAt("obj:int()", "int"), null);
+		assert.strictEqual(typeAt("obj:int \"s\"", "int"), null);
+		assert.strictEqual(typeAt("t.int", "int"), null);
+		// A class used as a type resolves to the class, not to a member of the parameter.
+		assert(hover("function greetAll(h: Hu|man) end").includes("class Human"));
+		assert.strictEqual(definition("function greetAll(h: Hu|man) end")[0].uri.path, "/ws/lib/human.pluto");
+		// Method calls are still method calls.
+		assert(hover("local u = require(\"lib.util\")\nu:meth|od(1)").includes("method(x)"));
+		assert(!hover("local h = new Human(\"x\")\nh:getN|ame()").includes("(type)"));
+		// Field access and library calls are unaffected.
+		assert(hover("print(READERS.i|nt)").includes("READERS"));
+		assert(hover("local s = x and y or str|ing.format(\"\")").includes("library"));
+
+		// Completion in type hints suggests types instead of members.
+		for (const text of [
+			"function spawn(ped: |",
+			"function spawn(ped: i|",
+			"function M.f(a, b: ?|",
+			"function spawn(ped): |",
+			"local x = function(x: |",
+			"local x: i|",
+			"local a: int, b: |",
+			"class C\n    public name: |",
+			"class C\n    name: |",
+		])
+		{
+			const { labels } = complete(text);
+			assert(labels.includes("int") && labels.includes("Human"), text + " → " + labels.join(", "));
+			assert(!labels.includes("speak") && !labels.includes("split") && !labels.includes("greet"), text + " → " + labels.join(", "));
+		}
+		assert(complete("local h = new Human(\"x\")\nh:|").labels.includes("getName"));
+		assert(complete("function Human:test()\n    self:|").labels.includes("getName"));
+		assert(complete("print(READERS:|").labels.includes("int"));
+	}
+	finally
+	{
+		index.removeFile(readers);
+	}
+});
+
+const { formatFunctionSource } = require("../src/functionSource");
+
+test("function source: comments, spacing, indentation and blank lines", function ()
+{
+	const src = [
+		"    function does_last_exist(): bool   -- is there one?",
+		"        --- helper comment",
+		"        local   handle = self:get_last_handle()  -- trailing",
+		"        --[[ block",
+		"           comment ]]",
+		"",
+		"",
+		"        if handle == nil then",
+		"            return false -- none",
+		"        end",
+		"        return Atdar.natives.entity.vehicle.does_exist(handle, \"a   --  b\")",
+		"    end",
+	].join("\n");
+	assert.strictEqual(formatFunctionSource(src), [
+		"function does_last_exist(): bool",
+		"",
+		"  local handle = self:get_last_handle()",
+		"",
+		"  if handle == nil then",
+		"    return false",
+		"  end",
+		"",
+		"  return Atdar.natives.entity.vehicle.does_exist(handle, \"a   --  b\")",
+		"end",
+	].join("\n"));
+
+	// Short functions stay compact; tabs and odd indentation are normalized; trailing `,` is dropped.
+	assert.strictEqual(formatFunctionSource("\tfoo = function(a)\n\t\t\t-- x\n\t\t\treturn a  +  1\n\tend,"), "foo = function(a)\n  return a + 1\nend");
+	assert.strictEqual(formatFunctionSource("function M.add(a, b) return a + b end"), "function M.add(a, b) return a + b end");
+
+	// Strings keep their contents, long strings included.
+	assert.strictEqual(formatFunctionSource("function f()\n    return [[a\n  -- b]], '--'\nend"), "function f()\n  return [[a\n  -- b]], '--'\nend");
+
+	// Short nested blocks stay tight, long ones are spaced; `else` stays with its `if`.
+	const long = formatFunctionSource([
+		"function g(x)",
+		"    local a = 1",
+		"    local b = 2",
+		"    for i = 1, x do",
+		"        print(i)",
+		"        print(i)",
+		"    end",
+		"    if a then",
+		"        print(1)",
+		"    else",
+		"        print(2)",
+		"    end",
+		"    return a",
+		"end",
+	].join("\n"));
+	assert.strictEqual(long, [
+		"function g(x)",
+		"",
+		"  local a = 1",
+		"  local b = 2",
+		"",
+		"  for i = 1, x do",
+		"    print(i)",
+		"    print(i)",
+		"  end",
+		"",
+		"  if a then",
+		"    print(1)",
+		"  else",
+		"    print(2)",
+		"  end",
+		"",
+		"  return a",
+		"end",
+	].join("\n"));
+
+	// Line limit.
+	const cut = formatFunctionSource(long, { maxLines: 5 });
+	assert.strictEqual(cut, "function g(x)\n\n  local a = 1\n  local b = 2\n  -- ... (+14 строк)");
+});
+
+test("hover: shows the source of a function below a separator", function ()
+{
+	const body = hover("function greetAll(name: string)\n    -- say hello\n    print(\"hi\")\n    print(name)\n    return 1\nend\ngreet|All(\"x\")");
+	assert(body.includes("---\n\n```pluto\nfunction greetAll(name: string)\n  print(\"hi\")\n  print(name)\n  return 1\nend\n```"), body);
+	assert(!body.includes("say hello"));
+	// Declarations of other open files, too; closed files are read from disk.
+	const other = vscode.createDocument("/ws/lib/human.pluto", FILES["/ws/lib/human.pluto"]);
+	vscode.workspace.textDocuments.push(other);
+	try
+	{
+		const h = hover("local h = new Human(\"x\")\nh:getN|ame()");
+		assert(h.includes("```pluto\nfunction getName(): string\n  return self.name\nend\n```"), h);
+	}
+	finally
+	{
+		vscode.workspace.textDocuments.pop();
+	}
+	// Settings.
+	vscode.config["pluto.hover.maxBodyLines"] = 2;
+	vscode.config["pluto.hover.showFunctionBody"] = true;
+	assert(hover("function a()\n    print(1)\n    print(2)\n    print(3)\nend\n|a()").includes("-- ... (+"));
+	vscode.config["pluto.hover.showFunctionBody"] = false;
+	assert(!hover("function a()\n    print(1)\nend\n|a()").includes("---"));
+	delete vscode.config["pluto.hover.showFunctionBody"];
+	delete vscode.config["pluto.hover.maxBodyLines"];
+});
+
 // ---------------------------------------------------------------------------------------------
 // Diagnostics
 // ---------------------------------------------------------------------------------------------

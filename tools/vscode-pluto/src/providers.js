@@ -3,9 +3,11 @@
 "use strict";
 
 const vscode = require("vscode");
+const fs = require("fs");
+const { formatFunctionSource } = require("./functionSource");
 const builtins = require("./builtins");
 const { formatSignature, formatParams, computeFolding } = require("./parser");
-const { chainBefore, chainAt, requireAt, findCall } = require("./analysis");
+const { chainBefore, chainAt, requireAt, findCall, typeAnnotationAt, PRIMITIVE_TYPES } = require("./analysis");
 
 const SYMBOL_KINDS = {
 	class: vscode.SymbolKind.Class,
@@ -141,6 +143,71 @@ function createProviders(service)
 			md.appendMarkdown(sourceLink(sym, fromFile));
 		}
 		return md;
+	};
+
+	/**
+	 * Current text of a file of the index: an open editor wins over what is on disk.
+	 * @returns {string|null}
+	 */
+	const textOf = function (file, document)
+	{
+		if (document && file.key == document.uri.toString())
+		{
+			return document.getText();
+		}
+		const open = vscode.workspace.textDocuments.find(d => d.uri.toString() == file.key);
+		if (open)
+		{
+			return open.getText();
+		}
+		try
+		{
+			if (fs.statSync(file.path).size > 2 * 1024 * 1024)
+			{
+				return null;
+			}
+			return fs.readFileSync(file.path, "utf8");
+		}
+		catch (e)
+		{
+			return null;
+		}
+	};
+
+	/**
+	 * Appends the formatted source of a function below a separator.
+	 * @param {vscode.MarkdownString} md
+	 * @param {any} sym
+	 * @param {vscode.TextDocument} document
+	 */
+	const appendFunctionBody = function (md, sym, document)
+	{
+		const config = vscode.workspace.getConfiguration("pluto");
+		if (!config.get("hover.showFunctionBody", true) || !sym.file || sym.endLine === undefined || sym.endLine < sym.line)
+		{
+			return;
+		}
+		const text = textOf(sym.file, document);
+		if (text === null)
+		{
+			return;
+		}
+		const lines = text.split(/\r?\n/);
+		// The index may be older than the text: make sure this is still a function.
+		if (sym.endLine >= lines.length || !/\bfunction\b|->/.test(lines[sym.line]))
+		{
+			return;
+		}
+		const code = formatFunctionSource(lines.slice(sym.line, sym.endLine + 1).join("\n"), {
+			maxLines: Number(config.get("hover.maxBodyLines", 25)) || 0,
+		});
+		if (!code)
+		{
+			return;
+		}
+		const longest = Math.max(0, ...(code.match(/`+/g) || []).map(s => s.length));
+		const fence = "`".repeat(Math.max(3, longest + 1));
+		md.appendMarkdown("\n\n---\n\n" + fence + "pluto\n" + code + "\n" + fence + "\n");
 	};
 
 	const builtinMarkdown = function (entry)
@@ -308,6 +375,30 @@ function createProviders(service)
 			const file = service.getRecord(document);
 			const chain = chainBefore(lineText, position.character);
 			const prefixStart = position.character - chain.prefix.length;
+
+			// Type hint (`ped: |`, `function f(): |`): suggest types, not members of `ped`.
+			if (isTypeHintPosition(before.slice(0, prefixStart)))
+			{
+				const items = [];
+				for (const [name, doc] of PRIMITIVE_TYPES)
+				{
+					const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.TypeParameter || vscode.CompletionItemKind.Keyword);
+					item.detail = "(type) " + name;
+					item.documentation = new vscode.MarkdownString(doc);
+					item.sortText = "0" + name;
+					items.push(item);
+				}
+				const seen = new Set(PRIMITIVE_TYPES.keys());
+				for (const sym of [...analyzer.visibleLocals(file, position.line).values(), ...index.globals()])
+				{
+					if ((sym.kind == "class" || sym.kind == "enum") && !sym.container && !seen.has(sym.name))
+					{
+						seen.add(sym.name);
+						items.push(symbolItem(sym, "1", file));
+					}
+				}
+				return items;
+			}
 			const charBefore = before[prefixStart - 1];
 			const charBefore2 = before[prefixStart - 2];
 
@@ -513,19 +604,33 @@ function createProviders(service)
 				}
 				return undefined;
 			}
-			const chain = chainAt(lineText, position.character);
+			const chain = typeHintChain(chainAt(lineText, position.character), lineText);
 			if (!chain)
 			{
 				return undefined;
 			}
+			const range = new vscode.Range(position.line, chain.start, position.line, chain.end);
+			if (chain.primitive)
+			{
+				// `int` in `ped: int = 0`: a built-in type, not a field named `int`.
+				const md = new vscode.MarkdownString();
+				md.appendCodeblock("(type) " + chain.word, "pluto");
+				md.appendMarkdown(PRIMITIVE_TYPES.get(chain.word));
+				return new vscode.Hover(md, range);
+			}
 			const file = service.getRecord(document);
 			const resolved = analyzer.resolve(file, position.line, chain.parts, { lastSep: chain.lastSep });
-			const range = new vscode.Range(position.line, chain.start, position.line, chain.end);
 			const contents = [];
 			for (const sym of resolved.symbols.slice(0, 4))
 			{
 				// Hovering a class shows its constructor, too.
-				contents.push(symbolMarkdown(sym, file));
+				const md = symbolMarkdown(sym, file);
+				// The source is only shown when it is clear which function is meant.
+				if (resolved.symbols.length == 1 && (sym.kind == "function" || sym.kind == "method") && Array.isArray(sym.params))
+				{
+					appendFunctionBody(md, sym, document);
+				}
+				contents.push(md);
 				if (sym.kind == "class")
 				{
 					const ctor = analyzer.membersOf(sym.name, sym.file).find(s => s.name == "__construct");
@@ -703,10 +808,10 @@ function createProviders(service)
 					targetRange: new vscode.Range(0, 0, 0, 0),
 				}];
 			}
-			const chain = chainAt(lineText, position.character);
-			if (!chain)
+			const chain = typeHintChain(chainAt(lineText, position.character), lineText);
+			if (!chain || chain.primitive)
 			{
-				return undefined;
+				return undefined; // built-in types have no declaration
 			}
 			const file = service.getRecord(document);
 			const resolved = analyzer.resolve(file, position.line, chain.parts, { lastSep: chain.lastSep });
@@ -1127,6 +1232,46 @@ function createProviders(service)
 		workspaceSymbolProvider,
 		foldingProvider,
 	};
+}
+
+// The text before the type being typed, e.g. `function f(ped: ?int|` or `local count: `.
+const TYPE_TAIL = ":\\s*(?:[?\\w.]+\\s*\\|\\s*)*\\??\\s*$";
+const TYPE_HINT_POSITIONS = [
+	// parameter of a function declaration: `function f(a, ped: ` / `function(ped: `
+	new RegExp("\\bfunction\\b[\\w.:\\s]*\\([^()]*\\b\\w+\\s*" + TYPE_TAIL),
+	// return type: `function f(a): `
+	new RegExp("\\bfunction\\b[\\w.:\\s]*\\([^()]*\\)\\s*" + TYPE_TAIL),
+	// `local count: `, `local a: int, b: `, `public name: `, `static x: `
+	new RegExp("^\\s*(?:(?:local|export|public|private|protected|static|const)\\s+)+(?:\\w+\\s*(?::\\s*[^,=]+)?,\\s*)*\\w+\\s*" + TYPE_TAIL),
+	// class field without modifier, written with a space after the colon: `name: string`
+	new RegExp("^\\s*\\w+:\\s+(?:[?\\w.]+\\s*\\|\\s*)*\\??\\s*$"),
+];
+
+/**
+ * Whether completion at the end of `before` is inside a type hint.
+ * `self:` / `obj:` (method calls) don't count.
+ */
+function isTypeHintPosition(before)
+{
+	return TYPE_HINT_POSITIONS.some(re => re.test(before));
+}
+
+/**
+ * In a type hint (`ped: Ped`, `x: int`), the word is a type name on its own, not a member of what
+ * precedes the `:`. Returns the chain to resolve, with `primitive` set for built-in types.
+ */
+function typeHintChain(chain, lineText)
+{
+	if (!chain)
+	{
+		return null;
+	}
+	const hint = typeAnnotationAt(lineText, chain.start, chain.end);
+	if (!hint)
+	{
+		return chain;
+	}
+	return Object.assign({}, chain, { parts: [chain.word], seps: [], lastSep: null, primitive: hint.primitive });
 }
 
 function fuzzyContains(haystack, needle)

@@ -7,7 +7,7 @@ For information regarding the installation, features, & usage of this editor int
 Besides syntax highlighting and snippets, the VS Code extension provides language features for `.pluto` files:
 
 - **Completion** for Pluto keywords, the standard library (`string.split`, `table.contains`, `io.listdir`, `json.encode`, ...), built-in modules (`require "pluto:json"`), and everything declared in your workspace: classes, methods, fields, functions with their parameters and type hints, enums, and module ids from `info.json` manifests.
-- **Hover** with the signature, the comment written above the declaration, and the file it comes from.
+- **Hover** with the signature, the comment written above the declaration, the file it comes from and, for functions and methods, their source code in a compact form (comments removed, indentation normalized, logical blocks separated by blank lines; see `pluto.hover.showFunctionBody` and `pluto.hover.maxBodyLines`).
 - **Signature help** when typing `(`, highlighting the current argument.
 - **Go to Definition** (`F12` / `Ctrl+Click`) for classes, methods, functions, variables, and the file behind `require("...")`.
 - **Outline & breadcrumbs**, **Go to Symbol in Workspace** (`Ctrl+T`), and **folding** of blocks, comments and `--#region` markers.
@@ -47,6 +47,8 @@ All `.pluto` and `.lua` files of the workspace are indexed in the background and
 | `pluto.completion.documentWords` | `true` | Suggest other words of the current document. |
 | `pluto.autoCloseBlocks` | `true` | Insert `end` / `until` on Enter. |
 | `pluto.hover.sourcePath` | `short` | How links to declarations in other files look: `short`, `relative` or `none`. |
+| `pluto.hover.showFunctionBody` | `true` | Show the source of a function below its signature in hovers. |
+| `pluto.hover.maxBodyLines` | `25` | Longest function source shown in hovers; longer ones are cut with `-- ... (+N строк)`. `0` = no limit. |
 | `pluto.outline.showFunctionBody` | `true` | Show the contents of functions in the Outline (locals, nested functions, callbacks, calls). |
 | `pluto.outline.maxFileLines` | `1000` | In larger files, show only classes, methods and function signatures. `0` = no limit. |
 | `pluto.outline.calls` | `none` | List calls inside functions: `none`, `statements` (call statements and `return`), or `all` (also calls inside expressions, once per callee). |

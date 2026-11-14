@@ -10,7 +10,7 @@
 		"diagnostics",
 		"linter"
 	],
-	"version": "0.13.0",
+	"version": "0.13.2",
 	"publisher": "calamity-inc",
 	"icon": "icon.png",
 	"repository": "https://github.com/PlutoLang/Syntax-Highlighting",
@@ -217,6 +217,17 @@
 					],
 					"default": "short",
 					"markdownDescription": "How hovers and completion details link to a declaration in another file. Declarations in the current file always show just `Line N`."
+				},
+				"pluto.hover.showFunctionBody": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show the source code of a function or method below its signature in hovers: comments removed, indentation normalized and logical blocks separated by blank lines."
+				},
+				"pluto.hover.maxBodyLines": {
+					"type": "integer",
+					"default": 25,
+					"minimum": 0,
+					"markdownDescription": "Longest function source shown in hovers, in lines; longer functions are cut with a `-- ... (+N строк)` note. `0` means no limit. Requires `#pluto.hover.showFunctionBody#`."
 				},
 				"pluto.autoCloseBlocks": {
 					"type": "boolean",
