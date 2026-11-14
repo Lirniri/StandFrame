@@ -590,7 +590,7 @@
             "args": "Arguments",
             "args_help": "The arguments the function is called with",
             "template": "Call Template",
-            "template_help": "The call with its arguments in brackets. #1 is the argument field 1, #1(>1) says the call written in it has its argument 1 filled: get(#1(>1)). Arguments typed in the brackets go to the fields; taking #1 out clears the field. Commands: asstr(#1), asint(#1), allasstr(), astext(#1), allastext()",
+            "template_help": "The brackets of the call. #1 is the argument field 1, #1(>1) says the call written in it has its argument 1 filled: (#1(>1)). Arguments typed in the brackets go to the fields; taking #1 out clears the field. Commands: (asstr(#1)), asint(#1), allasstr(), astext(#1), allastext()",
             "settings": "Call Settings",
             "call_on_enter": {
                 "name": "Call After Typing",

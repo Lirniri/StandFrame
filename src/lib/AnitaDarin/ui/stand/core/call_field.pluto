@@ -1,6 +1,6 @@
 -- lib/AnitaDarin/ui/stand/core/call_field.pluto
 --
--- The Call field of a function: its name with the call written in brackets, util.toast(#1(>1)). It follows the
+-- The Call field of a function: the brackets of its call, (#1(>1)). It follows the
 -- argument fields (a call typed in a field shows as #1(>1)) and the fields follow it (arguments typed in the
 -- brackets go to the fields, taking #1 out clears the field). What the call gives is worked out when it is called
 -- (ui/logic/stand/call_template, ui/logic/stand/arguments). The same field is in every list that calls a function but
@@ -41,8 +41,22 @@ function module.add(list: table, spec: table): table
     local state = spec.state
     local item = nil
 
+    -- Only the brackets: the name of the function is in the title of the list, and Stand puts the cursor at the end
+    -- of the text, so what is to be changed is right there: (#1(>1))
     local function shown(): string
-        return call_template.show(spec.name(), state)
+        return $"({state.template ?? ""})"
+    end
+
+    -- What was typed as the brackets of the call: (#1) as it is, or only what is inside, #1
+    local function brackets_of(value: string): string
+
+        local trimmed = value:match("^%s*(.-)%s*$")
+
+        if trimmed:sub(1, 1) == "(" and trimmed:sub(-1) == ")" then
+            return trimmed
+        end
+
+        return $"({trimmed})"
     end
 
     item = list:text_input({
@@ -58,20 +72,21 @@ function module.add(list: table, spec: table): table
             end
 
             local name = spec.name()
+            local call = name .. brackets_of(value)
 
             -- A bracket or a quote not closed: what was typed isn't a call, and taking it in would clear the fields
-            if not arguments.is_closed(value) then
+            if not arguments.is_closed(call) then
                 log:warn(text("call.bad_args"):format(name, arguments_text("errors.template_unclosed")))
                 item:set_value(shown())
                 return
             end
 
             -- The rest is told, the call is kept as it was typed: a #N may point to a field that is made later
-            for _, problem in ipairs(call_template.problems(value, spec.sig)) do
+            for _, problem in ipairs(call_template.problems(call, spec.sig)) do
                 log:warn(text("call.bad_args"):format(name, problem))
             end
 
-            local inline = select(2, path_parser.split(value))
+            local inline = select(2, path_parser.split(call))
             local fields, synced = call_template.typed(state, spec.sig, inline, true)
 
             if synced then
