@@ -713,7 +713,7 @@
             "vector3": "Three numbers: 1, 2, 3, or an expression that gives a vector: v3.new(1, 2, 3). Empty: not given",
             "table": "Values separated by commas, or an expression that gives a table. Empty: not given",
             "userdata": "An expression that gives a Stand object: v3.new(1, 2, 3). Empty: not given",
-            "string": "The text as it is, without quotes. Empty: not given",
+            "string": "The text as it is, without quotes. To give a call's result, write the call here and point to it in Function Name: util.toast(#1). Empty: not given",
             "boolean": "true or false. Empty: not given"
         },
         "rest": {
@@ -727,7 +727,11 @@
             "one_value": "%s: one value is needed",
             "integer": "%s: a whole number is needed",
             "number": "%s: a number is needed",
-            "boolean": "%s: true or false is needed"
+            "boolean": "%s: true or false is needed",
+            "wrong_type": "%s: a %s is needed, got a %s.",
+            "bare_word": "A word without quotes is text: write a function with brackets to call it (user_ped()).",
+            "no_value": "a call gave no value where one is needed (it returns nothing)",
+            "no_field": "#%d: there is no such argument (the function has %d)"
         },
         "call": {
             "expression": "Expression",
@@ -891,7 +895,7 @@
             },
             "function": {
                 "name": "Function Name",
-                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame"
+                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame. In the brackets #1, #2 are the values of the argument fields: util.toast(#1), util.toast(tostring(#1))"
             },
             "args": {
                 "name": "Argument",
@@ -1204,6 +1208,7 @@
             "no_name": "No function name given",
             "not_found": "'%s' not found",
             "bad_args": "%s: error in the arguments: %s",
+            "template_no_fields": "#1, #2 point to the argument fields, and this function has none: write the arguments in its brackets",
             "failed": "%s: error: %s",
             "done": "%s: done",
             "result": "%s -> %s"

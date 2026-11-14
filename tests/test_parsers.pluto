@@ -48,6 +48,11 @@ stand.check(count == 2 and args[1] == 41 and args[2] == 42, "args.parse: resolve
 local _, _, unknown_err = pluto.args.parse("short_two()", short_names)
 stand.equal(unknown_err, "'short_two' isn't known", "args.parse: a name resolve doesn't know either is told")
 -- A mistyped name is told by the name, not by Lua's "attempt to call a nil value"
+args, count = pluto.args.parse("math.max(#1, #2), tostring(#1)", nil, |number| -> number * 10)
+stand.check(count == 2 and args[1] == 20 and args[2] == "10", "args.parse: #N is what the field function gives, inside a call too")
+local _, _, no_field_err = pluto.args.parse("tostring(#1)", nil, |number| -> error("no such field", 0))
+stand.equal(no_field_err, "no such field", "args.parse: what the field function throws is the error")
+
 local _, _, typo_err = pluto.args.parse("FAKE.addd(1, 2)")
 stand.equal(typo_err, "'FAKE.addd' isn't a function", "args.parse: a call of what isn't a function")
 local _, _, deep_err = pluto.args.parse("FAKE.nothing.deeper")

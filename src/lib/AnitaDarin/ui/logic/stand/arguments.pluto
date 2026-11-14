@@ -164,8 +164,100 @@ local function trim(value: string): string
     return value:match("^%s*(.-)%s*$")
 end
 
+-- What went wrong in a call, as the user can use it: Lua's "file.pluto:12: bad argument #1 to 'f' (number
+-- expected, got string)" says where in the code and not what to type. Another error is left as it is, without its place
+local function friendly(err): string
+
+    local message = (tostring(err):gsub("^%S+:%d+: ", ""))
+    local _, name, expected, got = message:match("bad argument #(%d+) to '([^']+)' %((%w+) expected, got (%w+)%)")
+
+    if name ~= nil then
+        local told = text("errors.wrong_type"):format(name, expected, got)
+        if got == "string" then
+            told ..= " " .. text("errors.bare_word")
+        end
+        return told
+    end
+
+    if message:match("bad argument #%d+ to '[^']+' %(value expected%)") then
+        return text("errors.no_value")
+    end
+
+    return message
+end
+
+-- "name: what was wrong" for a field (or the rest of the arguments)
+local function bad(name: string, err): string
+    return text("errors.bad"):format(name, friendly(err))
+end
+
 -- The kinds whose field never takes a bare word as text: there it can only be a short name
 local WORDLESS_KINDS = { integer = true, float = true, boolean = true, vector3 = true, userdata = true }
+
+-- Whether a path names a function (a short name too, whatever Use Short Names says)
+local function names_function(path: string): bool
+
+    local calls = registry()
+    local full = path
+
+    if calls ~= nil then
+        full = calls:expand(path, true)
+    end
+
+    local found, fn = path_parser.resolve(full)
+
+    return found and type(fn) == "function"
+end
+
+-- A field's text that is one whole call of a known function (handle_to_pointer(user_ped)), made: what it gives
+-- is the value. Its parameters say what each piece is (user_ped -> user_ped()); a function that says nothing of
+-- them (tostring, a C function of Stand's) has its pieces read as written
+-- @return Whether the text is such a call; then the value, or nil and what was wrong
+local function call_value(param: table, typed: string)
+
+    local path = args_parser.call_of(typed)
+
+    if path == nil or not names_function(path) then
+        return false
+    end
+
+    local call = module.call_in(typed)
+
+    if call == nil then
+        local args, count, err = args_parser.parse(typed, resolve_name)
+        if err ~= nil then
+            return true, nil, bad(param.name, err)
+        end
+
+        if count ~= 1 then
+            return true, nil, text("errors.one_value"):format(param.name)
+        end
+
+        return true, args[1]
+    end
+
+    local texts = {}
+
+    for i, piece in ipairs(call.pieces) do
+        if i <= #call.sig.params then
+            texts[i] = piece
+        else
+            texts.rest = texts.rest == nil and piece or $"{texts.rest}, {piece}"
+        end
+    end
+
+    local args, count, err = module.read(call.sig, texts)
+    if err ~= nil then
+        return true, nil, err
+    end
+
+    local given = table.pack(pcall(call.fn, table.unpack(args, 1, count)))
+    if not given[1] then
+        return true, nil, bad(param.name, given[2])
+    end
+
+    return true, given[2]
+end
 
 -- One field's text as a value of the kind. Never typed: the field's start value (default_of). Empty: nil
 -- @return The value, or nil and what was wrong
@@ -204,7 +296,7 @@ local function read_one(param: table, typed: ?string)
 
     local args, count, err = args_parser.parse(typed, resolve_name)
     if err ~= nil then
-        return nil, text("errors.bad"):format(param.name, err)
+        return nil, bad(param.name, err)
     end
 
     if kind == "table" then
@@ -271,7 +363,7 @@ function module.read(sig: table, texts: table)
         local rest, rest_count, err = args_parser.parse(texts.rest, resolve_name)
 
         if err ~= nil then
-            return {}, 0, text("errors.bad"):format(text("rest.name"), err)
+            return {}, 0, bad(text("rest.name"), err)
         end
 
         -- After the named parameters, those left empty in between are nil
@@ -281,6 +373,53 @@ function module.read(sig: table, texts: table)
         end
 
         count = first + rest_count
+    end
+
+    return args, count, nil
+end
+
+-- The value of the field a #N points at: a call written in it is made (even in a text field), else it is read
+-- as the field's kind says. Thrown as text, for the parser to give back as its error
+local function field_value(sig: table, texts: table, number: int)
+
+    local param = sig.params[number]
+
+    if param == nil then
+        error(text("errors.no_field"):format(number, #sig.params), 0)
+    end
+
+    local typed = texts[number]
+
+    if typed == nil or trim(typed) == "" then
+        typed = module.default_of(param)
+    end
+
+    if typed == nil or trim(typed) == "" then
+        return nil
+    end
+
+    local handled, value, err = call_value(param, typed)
+
+    if not handled then
+        value, err = read_one(param, typed)
+    end
+
+    if err ~= nil then
+        error(err, 0)
+    end
+
+    return value
+end
+
+-- The values to call with from a call written in the Function Name's brackets, where #1, #2 are the fields
+-- (util.toast(tostring(#1))): each is worked out, and its value goes where it stands
+-- @return The arguments, how many there are, and what was wrong (nil if nothing)
+function module.read_template(sig: table, texts: table, template: string)
+
+    local args, count, err = args_parser.parse(template, resolve_name, |number| -> field_value(sig, texts, number))
+
+    if err ~= nil then
+        return {}, 0, friendly(err)
     end
 
     return args, count, nil
@@ -346,7 +485,7 @@ function module.call_in(typed: ?string): ?table
         return nil
     end
 
-    return { path = path, sig = sig, pieces = pieces }
+    return { path = path, sig = sig, pieces = pieces, fn = fn }
 end
 
 -- "path(a, b)" from the texts of a called function's fields: a parameter never typed is its start value, an

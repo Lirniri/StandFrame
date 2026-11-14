@@ -366,6 +366,14 @@ function module.find(name: string): table
 
     scan(Atdar, "", FIND_DEPTH.atdar, name, out, seen)
 
+    -- resolve takes the first word as Stand's global when there is one (memory is Stand's too): the script's
+    -- own table of that name is reached with Atdar in front
+    for index, path in ipairs(out) do
+        if _G[path:match("^[^%.]+")] ~= nil then
+            out[index] = $"Atdar.{path}"
+        end
+    end
+
     for _, path in ipairs(natives_by_name()[name] or {}) do
         table.insert(out, path)
     end

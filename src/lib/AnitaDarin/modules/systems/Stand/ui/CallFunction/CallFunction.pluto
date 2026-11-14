@@ -116,7 +116,16 @@ local function read_args(spec: table, name: string)
 
     if spec.sig ~= nil then
         state.texts ??= {}
+
+        if state.template ~= nil then
+            return arguments().read_template(spec.sig, state.texts, state.template)
+        end
+
         return arguments().read(spec.sig, state.texts)
+    end
+
+    if state.template ~= nil then
+        return {}, 0, text("template_no_fields")
     end
 
     local typed = state.args
@@ -142,7 +151,7 @@ end
 local function history_key(entry: table): string
 
     local keys = {}
-    local parts = { entry.path, entry.args or "" }
+    local parts = { entry.path, entry.args or "", entry.template or "" }
 
     for key in pairs(entry.texts) do
         table.insert(keys, key)
@@ -174,6 +183,35 @@ local function end_loop(state: table, loop_run: table, kind: ?string): void
     show_loop(state, kind or "stopped")
 end
 
+-- What the brackets of the Function Name point to: #1(>1, >2) is the field 1 holding a call whose arguments
+-- 1 and 2 are filled. Number -> the numbers of the call's arguments written for it
+local function refs_of(template: ?string): table
+
+    local refs = {}
+    local from = 1
+
+    while template ~= nil do
+
+        local first, last, number = template:find("#(%d+)", from)
+
+        if first == nil then
+            break
+        end
+
+        local inner = {}
+        local shown = template:match("^%(([%s>%d,]*)%)", last + 1)
+
+        for inner_number in (shown or ""):gmatch(">(%d+)") do
+            inner[math.tointeger(tonumber(inner_number))] = true
+        end
+
+        refs[math.tointeger(tonumber(number))] = inner
+        from = last + 1
+    end
+
+    return refs
+end
+
 local class CallFunction extends Module
 
     function __construct()
@@ -189,6 +227,8 @@ local class CallFunction extends Module
                     "_write_saved",
                     "_switch_off_saved",
                     "_cache",
+                    "_found",
+                    "_clear_removed",
                     "_loaded",
                     "_last_id",
                     "_history",
@@ -220,6 +260,8 @@ local class CallFunction extends Module
         self._loaded = kept.loaded == true
         -- The path from store -> { data = the file's table or nil, at = when it was read }
         self._cache = {}
+        -- A short name -> { path = what the search found (nil: nothing), at = when }, for value_of
+        self._found = {}
         -- The last calls, newest first: { path, texts, args }. Kept while the script runs and through a Reload
         -- from the menu; not written to a file, so a restart of the game starts it empty
         self._history = kept.history ?? {}
@@ -351,7 +393,7 @@ local class CallFunction extends Module
     -- @param state What's typed for it: texts (a field per parameter) and args
     function remember(path: string, state: table): void
 
-        local entry = { path = path, texts = {}, args = state.args }
+        local entry = { path = path, texts = {}, args = state.args, template = state.template }
 
         for key, value in pairs(state.texts or {}) do
             entry.texts[key] = value
@@ -381,7 +423,7 @@ local class CallFunction extends Module
     function repeat_call(entry: table): void
 
         local paths = path_parser()
-        local copy = { texts = {}, args = entry.args }
+        local copy = { texts = {}, args = entry.args, template = entry.template }
 
         for key, value in pairs(entry.texts) do
             copy.texts[key] = value
@@ -408,7 +450,7 @@ local class CallFunction extends Module
     -- An entry of the history as a line: "get(1, 2)", the function as the list shows it and what was typed for it
     function describe_entry(entry: table): string
 
-        local typed = entry.args
+        local typed = entry.template or entry.args
         local keys = {}
 
         if typed == nil or typed == "" then
@@ -840,9 +882,10 @@ local class CallFunction extends Module
         return found[1], #found
     end
 
-    -- What a short name is, for an argument typed with one (user_ped() for players.user_ped()): the files only,
-    -- not a search through every table - an argument is worked out at every call
-    -- @return The value at the name's path; nil when no file has the name
+    -- What a short name is, for an argument typed with one (user_ped() for players.user_ped()): the files first,
+    -- then the first function of that name in Atdar or the globals (path.find). An argument is worked out at
+    -- every call, so what the search found is kept for REREAD_MS
+    -- @return The value at the name's path; nil when nothing has the name
     function value_of(name: string)
 
         local path = self:short_names()[name]
@@ -852,6 +895,19 @@ local class CallFunction extends Module
             if registered ~= nil then
                 path = registered.path
             end
+        end
+
+        if path == nil then
+
+            local now = util.current_time_millis()
+            local kept = self._found[name]
+
+            if kept == nil or now - kept.at >= REREAD_MS then
+                kept = { path = path_parser().find(name)[1], at = now }
+                self._found[name] = kept
+            end
+
+            path = kept.path
         end
 
         if path == nil then
@@ -907,9 +963,122 @@ local class CallFunction extends Module
         return sig
     end
 
+    -- What was taken out of the brackets is taken out of the fields: a #1 that's gone clears the field 1, a >2
+    -- gone from #1(>1, >2) clears the argument 2 of the call written in it
+    -- @return Whether a field was changed
+    function _clear_removed(old: ?string, current: ?string): bool
+
+        local state = self.main_state
+        local kept = refs_of(current)
+        local texts = state.texts
+        local changed = false
+
+        if texts == nil then
+            return false
+        end
+
+        for number, inner in pairs(refs_of(old)) do
+            if kept[number] == nil then
+                if texts[number] ~= nil then
+                    texts[number] = nil
+                    changed = true
+                end
+            else
+                local call = arguments().call_in(texts[number])
+
+                if call ~= nil then
+                    local pieces = arguments().texts_from(call.sig, table.concat(call.pieces, ", "))
+                    local cut = false
+
+                    for inner_number in pairs(inner) do
+                        if kept[number][inner_number] == nil and pieces[inner_number] ~= nil then
+                            pieces[inner_number] = ""
+                            cut = true
+                        end
+                    end
+
+                    if cut then
+                        texts[number] = arguments().compose(call.path, call.sig, pieces)
+                        changed = true
+                    end
+                end
+            end
+        end
+
+        return changed
+    end
+
+    -- The Function Name follows the fields: util.toast(#1(>1)) when the field 1 holds handle_to_pointer(user_ped).
+    -- The fields up to the last one filled are there (the arguments go by their place). A brackets text the user
+    -- wrote themselves (util.toast(tostring(#1))) is left as it is
+    -- @return The name to show; nil when it stays
+    function sync_main_template(): ?string
+
+        local state = self.main_state
+        local sig = self:main_signature()
+
+        if sig == nil or (state.template ~= nil and state.template ~= state.auto_template) then
+            return nil
+        end
+
+        local texts = state.texts or {}
+        local last = 0
+
+        for number, param in ipairs(sig.params) do
+
+            local typed = texts[number]
+            local filled = typed ~= nil and typed:match("%S") ~= nil and typed ~= arguments().default_of(param)
+
+            if filled or arguments().call_in(typed) ~= nil then
+                last = number
+            end
+        end
+
+        local parts = {}
+
+        for number = 1, last do
+
+            local part = $"#{number}"
+            local call = arguments().call_in(texts[number])
+
+            if call ~= nil then
+
+                local pieces = arguments().texts_from(call.sig, table.concat(call.pieces, ", "))
+                local inner = {}
+
+                for inner_number in ipairs(call.sig.params) do
+                    if pieces[inner_number] ~= nil and pieces[inner_number]:match("%S") ~= nil then
+                        table.insert(inner, $">{inner_number}")
+                    end
+                end
+
+                if #inner > 0 then
+                    part ..= $"({table.concat(inner, ", ")})"
+                end
+            end
+
+            table.insert(parts, part)
+        end
+
+        local auto = #parts > 0 and table.concat(parts, ", ") or nil
+
+        if auto == state.template then
+            return nil
+        end
+
+        state.template = auto
+        state.auto_template = auto
+        state.name = $"{(path_parser().split(state.name or ""))}({auto or ""})"
+
+        return state.name
+    end
+
     -- The Function Name was typed; the name taken away takes the result with it, whatever the toggles say
-    -- @return Whether there is a name now, and whether the fields of the arguments must be made again: the name
-    -- is another function than before, so what was typed for the last one doesn't belong to it
+    -- Arguments typed in the brackets (util.toast(handle_to_pointer(user_ped))) go to the fields, and the name
+    -- becomes what the fields hold: util.toast(#1(>1))
+    -- @return Whether there is a name now, whether the fields of the arguments must be made again (the name
+    -- is another function than before, so what was typed for the last one doesn't belong to it), and the name to
+    -- show when it was rewritten (nil: as typed)
     function set_main_name(value: string)
 
         local state = self.main_state
@@ -917,8 +1086,19 @@ local class CallFunction extends Module
         local inline = select(2, path_parser().split(value))
         local changed = path ~= state.path
         local with_inline = inline ~= nil and inline ~= ""
+        -- #1, #2 in the brackets point to the argument fields: util.toast(tostring(#1)). Not values to fill them with
+        local is_template = with_inline and inline:find("#%d") ~= nil
+
+        local cleared = false
+        local shown = nil
+
+        -- Another function has its own fields (below); for the same one what's gone from the brackets goes from the fields
+        if not changed then
+            cleared = self:_clear_removed(state.template, is_template and inline or nil)
+        end
 
         state.name = value
+        state.template = is_template and inline or nil
 
         if value == "" then
             results().clear(self.RESULT_KEY)
@@ -933,17 +1113,18 @@ local class CallFunction extends Module
 
         -- Typed as a call, "players.get_position(0)": what's in the brackets fills the fields (the Arguments
         -- field of a function whose parameters aren't known)
-        if with_inline then
+        if with_inline and not is_template then
             local sig = self:main_signature()
 
             if sig ~= nil then
                 state.texts = arguments().texts_from(sig, inline)
+                shown = self:sync_main_template()
             else
                 state.args = inline
             end
         end
 
-        return value ~= "", changed or with_inline
+        return value ~= "", changed or cleared or (with_inline and not is_template), shown
     end
 
     -- Saved functions

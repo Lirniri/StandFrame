@@ -3,6 +3,7 @@
 -- Arguments typed as text, as in a call in Lua: '5, true, "text", v3.new(1, 2, 3)'.
 --   parse(input) - worked out into values: numbers, true, false, nil, "text", names the script sees
 --                  (natives, entities, Atdar, v3, ...) with .field, :method(...) and calls (...)
+--                  and #1, #2 for the values the caller gives (parse's field)
 --   split(input) - only cut into the texts of the arguments, nothing worked out
 --   call_of(input) - "f(1, 2)" cut into the path called and the texts of its arguments
 --
@@ -171,6 +172,23 @@ local function read_expr(reader: table): table
         return { n = 1, value }
     end
 
+    -- #1: the value of the field with that number, from what the caller gives (parse's field)
+    if c == "#" then
+        local digits = reader.src:match("^#(%d+)", reader.pos)
+        if digits == nil or reader.field == nil then
+            unreadable(reader, "a field number expected after '#'")
+        end
+        reader.pos += #digits + 1
+
+        -- #1(>1): the arguments of the call written in the field, as the Function Name shows them; the field has them
+        local shown = reader.src:match("^%(([%s>%d,]*)%)", reader.pos)
+        if shown ~= nil then
+            reader.pos += #shown + 2
+        end
+
+        return { n = 1, reader.field(math.tointeger(tonumber(digits))) }
+    end
+
     local number_text = reader.src:match("^%-?%.?%d[%w%.]*", reader.pos)
     if number_text ~= nil then
         local number = tonumber(number_text)
@@ -276,10 +294,11 @@ end
 -- A bare word is its own text: adder -> "adder". What isn't an expression at all (hello world) is split
 -- by commas into texts instead
 -- @param resolve function(name) -> the value of a name nothing else has (a short name), or nil
+-- @param field function(number) -> the value of what #number stands for (#1 in the text); without it # isn't understood
 -- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
-function module.parse(input: string, resolve: ?function)
+function module.parse(input: string, resolve: ?function, field: ?function)
     expect("parse", "input", input, "string")
-    local ok, args, count = pcall(read_list, { src = input, pos = 1, resolve = resolve }, "")
+    local ok, args, count = pcall(read_list, { src = input, pos = 1, resolve = resolve, field = field }, "")
     if ok then
         return args, count, nil
     end

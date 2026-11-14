@@ -96,6 +96,7 @@ end
 -- spec.args_command:    the command of the Argument field (Stand's text fields need one); with spec.sig the
 --                       base of the commands of the parameters' fields ("<base>_1", "<base>_rest")
 -- spec.with_name:       Call After Typing Function is there (a list with a Function Name field)
+-- spec.on_args_changed: function() an argument's field was typed in (the Function Name follows what they hold)
 -- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
 -- @return { rebuild(), call(), opened(), name_typed() }: the panel made again, Call, what the list does when
 --         opened, and what a Function Name field does when typed
@@ -133,6 +134,12 @@ function module.panel(list: table, spec: table): table
 
     -- Typed in an argument's field, with Call After Typing Arguments on
     local function typed(): void
+
+        -- The Function Name shows what the fields hold (util.toast(#1(>1)))
+        if spec.on_args_changed ~= nil then
+            spec.on_args_changed()
+        end
+
         if state.on_enter then
             calls():call(spec)
         end
@@ -420,7 +427,12 @@ local function build_by_name(node: table): void
     -- reads a table or a variable) at once
     local function name_typed(value: string): void
 
-        local named, changed = calls():set_main_name(value)
+        local named, changed, shown = calls():set_main_name(value)
+
+        -- Arguments typed in the brackets went to the fields: the name shows them as #1(>1)
+        if shown ~= nil then
+            name_field:set_value(shown)
+        end
 
         -- Another function: its parameters are the fields now (a table or a variable has none: the one field)
         if changed and panel ~= nil then
@@ -453,6 +465,12 @@ local function build_by_name(node: table): void
         with_name = true,
         in_stand = || -> calls():in_stand(),
         kept = true,
+        on_args_changed = function()
+            local shown = calls():sync_main_template()
+            if shown ~= nil then
+                name_field:set_value(shown)
+            end
+        end,
     }
 
     panel = module.panel(list, spec)
