@@ -612,7 +612,8 @@ end
 -- The three numbers a field's text gives, when it gives a vector: 1, 2, 3 or an expression with .x, .y, .z
 -- (v3.new(1, 2, 3), a function that returns one). The text is worked out, so a call in it is made
 -- @param typed The field's text
--- @return { x, y, z = the numbers as texts, written = whether the text is only numbers }; nil when it isn't a vector
+-- @return { x, y, z = the axes as texts (as written when there are three, else the numbers it gives), values = the
+-- numbers it gives, written = whether the text is only numbers }; nil when it isn't a vector
 function module.vector_in(typed: ?string): ?table
 
     if typed == nil or trim(typed) == "" then
@@ -642,22 +643,22 @@ function module.vector_in(typed: ?string): ?table
         end
     end
 
-    local written = is_written_out(typed)
-    local texts = {}
+    local evaluated = {}
 
-    if written then
-        -- As the user wrote them, not as numbers
-        local pieces = args_parser.split(typed:match("^%s*v3%.new%s*%((.*)%)%s*$") or typed)
-        for i = 1, 3 do
-            texts[i] = pieces[i] or tostring(numbers[i])
-        end
-    else
-        for i = 1, 3 do
-            texts[i] = tostring(math.floor(numbers[i] * 1000 + 0.5) / 1000)
-        end
+    for i = 1, 3 do
+        evaluated[i] = tostring(math.floor(numbers[i] * 1000 + 0.5) / 1000)
     end
 
-    return { x = texts[1], y = texts[2], z = texts[3], written = written }
+    -- Three pieces (1, 2, 3 or v3.new(a, b, f(1))) are the axes as they were written; one text that gives the vector
+    -- (a call) has its numbers worked out
+    local pieces = args_parser.split(typed:match("^%s*v3%.new%s*%((.*)%)%s*$") or typed)
+    local texts = evaluated
+
+    if #pieces == 3 then
+        texts = pieces
+    end
+
+    return { x = texts[1], y = texts[2], z = texts[3], values = evaluated, written = is_written_out(typed) }
 end
 
 -- A call inside an argument

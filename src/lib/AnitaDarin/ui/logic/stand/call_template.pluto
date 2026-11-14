@@ -115,9 +115,10 @@ function module.clear_removed(state: table, old: ?string, current: ?string): boo
 end
 
 -- The template the fields give: #1(>1) when the field 1 holds handle_to_pointer(user_ped). The fields up to the
--- last one filled are there (the arguments go by their place)
+-- last one filled are there (the arguments go by their place). Also the name of a list of a call's arguments:
+-- get_coords(#1)
 -- @return The template; nil when no field is filled
-local function auto_of(sig: table, texts: table): ?string
+function module.auto_of(sig: table, texts: table): ?string
 
     local last = 0
 
@@ -172,7 +173,7 @@ function module.sync(state: table, sig: ?table): bool
         return false
     end
 
-    local auto = auto_of(sig, state.texts or {})
+    local auto = module.auto_of(sig, state.texts or {})
 
     if auto == state.template then
         return false

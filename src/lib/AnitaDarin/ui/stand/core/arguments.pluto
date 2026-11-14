@@ -22,6 +22,8 @@
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local logic = Atdar.loader.load("ui/logic/stand/arguments")
+-- The call written in brackets (#1(>1)): it names the lists of a call's arguments too
+local call_template = Atdar.loader.load("ui/logic/stand/call_template")
 local Logger = Atdar.loader.load("core/logger")
 
 local log = new Logger("Arguments")
@@ -166,6 +168,12 @@ function module.build(list: table, spec: table): void
         end)
     end
 
+    -- How a list of a call's arguments is named: the call with the arguments that are given, as in the Function Name -
+    -- get_coords(#1), get_coords(#1, #2(>1)); no arguments given: get_coords()
+    local function call_label(call: table, given: table): string
+        return $"{call.path}({call_template.auto_of(call.sig, given) ?? ""})"
+    end
+
     -- The name of a vector's list: the kind and what is typed, when something is
     local function vector_title(name_text: string, typed: ?string): string
 
@@ -182,53 +190,177 @@ function module.build(list: table, spec: table): void
     vector_view = function(typed: ?string): table
 
         if typed == nil or typed:match("%S") == nil then
-            return { x = "0", y = "0", z = "0", written = true, empty = true }
+            return { x = "0", y = "0", z = "0", values = { "0", "0", "0" }, written = true, empty = true }
         end
 
         local vec = module.vector_in(typed)
 
         if vec == nil then
-            return { x = "0", y = "0", z = "0", written = false, wrong = true }
+            return { x = "0", y = "0", z = "0", values = { "0", "0", "0" }, written = false, wrong = true }
         end
 
         return vec
     end
 
     -- The line under the axes: what the expression gives, or that it is no vector
-    local function values_text(vec: table, parts: table): string
+    local function values_text(vec: table): string
 
         if vec.wrong then
             return text("vector.wrong")
         end
 
-        return text("vector.values"):format(table.concat(parts, ", "))
+        return text("vector.values"):format(table.concat(vec.values, ", "))
     end
 
     -- A vector3 parameter: a list with the whole vector, then x, y, z as lines like a variable's that are fields too,
-    -- then what the text gives when it isn't written out. When the text is a call (get_coords(user_ped())) the whole
-    -- vector is a list - "Expression: get_coords(...)" - with its field first and the call's arguments under it.
-    -- What is inside is made by a section: when the text becomes a call or stops being one, only the inside is made
-    -- again, so the user stays in the list; the rest of what the text does is changed in place
+    -- then what the text gives when it isn't written out. When the whole vector - or an axis - is a call
+    -- (get_coords(user_ped())) it is a list: "Expression: get_coords(...)" with its field first and the call's arguments
+    -- under it. What is inside is made by a section: when a text becomes a call or stops being one, only the inside is
+    -- made again, so the user stays in the list; the rest of what a text does is changed in place
     -- @param call The text is a call that gives the vector (get_coords(user_ped()))
     local function vector_list(name_text: string, index, help: string, vec: table, call: ?table): void
 
         local nested = list:list({ name = vector_title(name_text, texts[index]), help = help })
+        -- The axes as texts (a number or a call that gives one)
         local parts = { vec.x, vec.y, vec.z }
-        local axes = {}
         local expression = nil
         local values_line = nil
-        local args_section = nil
         local content = nil
-        -- The call the text is now (nil: numbers), and the vector it gives
+        local whole_args = nil
+        -- The call the whole text is now (nil: numbers), and the vector it gives
         local current = call
         local view = vec
+        -- What each axis is now: its call (nil: a number), its field, the section with the call's arguments
+        local axis_calls = {}
+        local axis_items = {}
+        local axis_sections = {}
+
+        local function same_call(first: ?table, second: ?table): bool
+
+            if first == nil or second == nil then
+                return first == second
+            end
+
+            return first.path == second.path
+        end
+
+        -- The text of the whole vector, from the axes
+        local function write_axes(): void
+            texts[index] = table.concat(parts, ", ")
+            nested:set_name(vector_title(name_text, texts[index]))
+        end
+
+        -- What the vector gives is shown under the lines, when it isn't written out
+        local function show_values(): void
+            values_line:set_name(values_text(view))
+            values_line:set_visible(not view.written)
+        end
+
+        -- An axis was typed in (the field of an axis, or of its call)
+        local function axis_typed(number: int, value: string, click_type): void
+
+            if clicks.is_stopping() or not clicks.is_user_click(click_type) then
+                return
+            end
+
+            local call_now = module.call_in(value)
+            local was = axis_calls[number]
+            local whole_was_call = current ~= nil
+
+            parts[number] = value
+            write_axes()
+            view = vector_view(texts[index])
+            current = nil
+
+            -- The inside is made again when the whole was a call (the axes replace it) or this axis is another kind
+            -- of thing now; a call that stays one has only its arguments made again
+            if whole_was_call or not same_call(call_now, was) then
+                content.rebuild()
+            else
+                expression:set_value(texts[index])
+                show_values()
+
+                if axis_sections[number] ~= nil then
+                    axis_calls[number] = call_now
+                    axis_sections[number].rebuild()
+                end
+            end
+
+            if spec.on_typed ~= nil then
+                spec.on_typed()
+            end
+        end
+
+        -- An axis: a field named by it ("x: 1" in Stand), or - when it is a call - a list with the field and the call's
+        -- arguments
+        local function make_axis(node: table, number: int, axis: string): void
+
+            local shown = axis_calls[number]
+            local holder = node
+            local field_name = axis
+
+            if shown ~= nil then
+                holder = node:list({
+                    name = $"{axis}: {call_label(shown, module.texts_from(shown.sig, table.concat(shown.pieces, ", ")))}",
+                    help = text("call.expression_help") })
+                field_name = label("call.expression")
+            end
+
+            axis_items[number] = holder:text_input({
+                name = field_name,
+                help = text("help.float"),
+                commands = { $"{spec.command(index)}_{axis}" },
+                track = false,
+                default = parts[number],
+                on_change = function(value: string, click_type)
+                    axis_typed(number, value, click_type)
+                end,
+            })
+
+            if shown == nil then
+                return
+            end
+
+            axis_sections[number] = holder:section(function(inner_node)
+
+                local use = axis_calls[number]
+
+                if use == nil then
+                    return
+                end
+
+                local inner = module.texts_from(use.sig, table.concat(use.pieces, ", "))
+
+                module.build(inner_node, {
+                    sig = use.sig,
+                    texts = inner,
+                    verbatim = true,
+                    command = |sub| -> $"{spec.command(index)}_{axis}_{sub}",
+                    on_typed = function()
+                        parts[number] = module.compose(use.path, use.sig, inner)
+                        write_axes()
+                        view = vector_view(texts[index])
+                        holder:set_name($"{axis}: {call_label(use, inner)}")
+                        expression:set_value(texts[index])
+                        axis_items[number]:set_value(parts[number])
+                        show_values()
+
+                        if spec.on_typed ~= nil then
+                            spec.on_typed()
+                        end
+                    end,
+                    on_reshape = || -> axis_sections[number].rebuild(),
+                })
+            end)
+        end
 
         local function fill(node: table): void
 
             local start = nil
 
-            axes = {}
-            args_section = nil
+            axis_items = {}
+            axis_sections = {}
+            whole_args = nil
 
             if view.empty then
                 start = module.default_of(sig.params[index])
@@ -236,7 +368,8 @@ function module.build(list: table, spec: table): void
 
             if current ~= nil then
 
-                local call_node = node:list({ name = $"{text("call.expression")}: {current.path}(...)",
+                local call_node = node:list({
+                    name = $"{text("call.expression")}: {call_label(current, module.texts_from(current.sig, table.concat(current.pieces, ", ")))}",
                     help = text("call.expression_help") })
                 local fields = nil
 
@@ -262,6 +395,7 @@ function module.build(list: table, spec: table): void
                         on_typed = function()
                             texts[index] = module.compose(shown.path, shown.sig, inner)
                             nested:set_name(vector_title(name_text, texts[index]))
+                            call_node:set_name($"{text("call.expression")}: {call_label(shown, inner)}")
                             expression:set_value(texts[index])
 
                             if spec.on_typed ~= nil then
@@ -272,89 +406,65 @@ function module.build(list: table, spec: table): void
                     })
                 end)
 
-                args_section = fields
+                whole_args = fields
             else
                 expression = field(node, label("call.expression"), index, text("vector.expression_help"), start, true)
             end
 
             for number, axis in ipairs({ "x", "y", "z" }) do
-
-                -- Stand shows the field as "x: 1": the name is only the axis
-                axes[number] = node:text_input({
-                    name = axis,
-                    help = text("help.float"),
-                    commands = { $"{spec.command(index)}_{axis}" },
-                    track = false,
-                    default = parts[number],
-                    on_change = function(value: string, click_type)
-
-                        if clicks.is_stopping() or not clicks.is_user_click(click_type) then
-                            return
-                        end
-
-                        parts[number] = value
-                        texts[index] = table.concat(parts, ", ")
-                        nested:set_name(vector_title(name_text, texts[index]))
-
-                        -- The numbers replace the call: the expression is a field again
-                        if current ~= nil then
-                            current = nil
-                            view = { x = parts[1], y = parts[2], z = parts[3], written = true }
-                            content.rebuild()
-                        else
-                            expression:set_value(texts[index])
-                            values_line:set_visible(false)
-                        end
-
-                        if spec.on_typed ~= nil then
-                            spec.on_typed()
-                        end
-                    end,
-                })
+                axis_calls[number] = module.call_in(parts[number])
+                make_axis(node, number, axis)
             end
 
             -- What the expression gives, when it isn't written out as numbers (they are in the lines above); or that it
             -- gives no vector
-            values_line = node:divider({ name = values_text(view, parts) })
+            values_line = node:divider({ name = values_text(view) })
             values_line:set_visible(not view.written)
         end
 
         content = nested:section(fill)
 
-        -- The expression was typed: the lines follow it in place; the inside is made again only when the text became a
-        -- call or stopped being one (or is another call), the call's arguments only when the text is the same call
+        -- The whole expression was typed: the lines follow it in place; the inside is made again only when the text
+        -- became a call or stopped being one (or is another call) or an axis is another kind of thing now
         vector_updaters[index] = function(typed: string): void
 
             local now = vector_view(typed)
             local call_now = module.call_in(typed)
-            local same = (call_now == nil and current == nil)
-                or (call_now ~= nil and current ~= nil and call_now.path == current.path)
+            local same = same_call(call_now, current)
 
             -- A text that is no vector leaves the lines as they were
             if not now.wrong then
-                for number, value in ipairs({ now.x, now.y, now.z }) do
-                    parts[number] = value
-                end
+                parts = { now.x, now.y, now.z }
             end
 
             nested:set_name(vector_title(name_text, typed))
             current = call_now
             view = now
 
+            for number = 1, 3 do
+                if not same_call(module.call_in(parts[number]), axis_calls[number]) then
+                    same = false
+                end
+            end
+
             if not same then
                 content.rebuild()
                 return
             end
 
-            for number, axis_item in ipairs(axes) do
-                axis_item:set_value(parts[number])
+            for number, item in pairs(axis_items) do
+                item:set_value(parts[number])
             end
 
-            values_line:set_name(values_text(now, parts))
-            values_line:set_visible(not now.written)
+            show_values()
 
-            if args_section ~= nil then
-                args_section.rebuild()
+            for number, section in pairs(axis_sections) do
+                axis_calls[number] = module.call_in(parts[number])
+                section.rebuild()
+            end
+
+            if whole_args ~= nil then
+                whole_args.rebuild()
             end
         end
     end
