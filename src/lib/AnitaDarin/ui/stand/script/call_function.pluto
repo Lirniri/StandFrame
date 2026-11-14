@@ -192,6 +192,10 @@ function module.panel(list: table, spec: table): table
     -- Value list and table settings
     panel = list:section(function()
 
+        -- Made again with the panel: a function that takes nothing has neither the Call field nor the Arguments list
+        args_list = nil
+        call_field = nil
+
         if spec.with_name then
             state_toggle(ui, "on_enter_name", state, "on_enter_name", state.on_enter_name == true)
         end
@@ -210,12 +214,19 @@ function module.panel(list: table, spec: table): table
             })
         end
 
-        args_list = list:list({ name = mlabel("loop.args"), help = mlabel("loop.args_help") })
-        fill_args()
+        -- A function with no parameters has nothing to type: no Arguments list (an unknown one has the Arguments field)
+        if spec.sig == nil or arguments().has_fields(spec.sig) then
+            args_list = list:list({ name = mlabel("loop.args"), help = mlabel("loop.args_help") })
+            fill_args()
+        end
 
         -- The settings of calling, under the arguments
         list:divider({ name = mlabel("loop.settings") })
-        state_toggle(ui, "on_enter", state, "on_enter", state.on_enter == true)
+
+        -- Call After Typing Arguments: only where there are arguments to type, as in a module's function
+        if args_list ~= nil then
+            state_toggle(ui, "on_enter", state, "on_enter", state.on_enter == true)
+        end
 
         -- Call; with a number of ms picked, Call After
         Atdar.loader.load("ui/stand/core/call_slider").build(list, {
