@@ -198,6 +198,19 @@ function module.untrack(ref): void
     owner[ref] = nil
 end
 
+-- An item Stand gave a new ref (it was moved in its list) keeps its command names
+function module.move(before, after): void
+
+    -- Stand may give the same ref back (the old one stays valid after a move)
+    if before == after or tracked[before] == nil then
+        return
+    end
+
+    tracked[after] = tracked[before]
+    owner[after] = owner[before]
+    module.untrack(before)
+end
+
 -- Forgets items Stand doesn't have any more (deleted without untrack)
 local function prune(): void
     for ref in pairs(tracked) do

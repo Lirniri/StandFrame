@@ -15,14 +15,22 @@
 -- spec.name:    function() -> the name shown in front of the brackets
 -- spec.command: the field's command (Stand's text fields take their text through the command box, so each needs one)
 -- spec.rebuild: function() the argument fields were changed by the field: made again by the caller
--- Strings: core/language "modules" (loop.template)
+-- What is typed is looked at as it is typed (call_template.problems): a bracket not closed puts the field back, the other
+-- problems (a #N with no field, a name that is nothing, too many arguments) are told and the text is kept.
+-- Strings: core/language "modules" (loop.template, call.bad_args) and "arguments" (errors)
 
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local call_template = Atdar.loader.load("ui/logic/stand/call_template")
 local path_parser = Atdar.loader.load("parsers/proglang/pluto/path")
+local arguments = Atdar.loader.load("ui/logic/stand/arguments")
+local Logger = Atdar.loader.load("core/logger")
 
-local label = i18n.scope("modules")
+local log = new Logger("Modules")
+
+local label, text = i18n.scope("modules")
+-- Strings under "arguments"
+local arguments_text = select(2, i18n.scope("arguments"))
 
 local module = {}
 
@@ -47,6 +55,20 @@ function module.add(list: table, spec: table): table
 
             if clicks.is_stopping() or not clicks.is_user_click(click_type) then
                 return
+            end
+
+            local name = spec.name()
+
+            -- A bracket or a quote not closed: what was typed isn't a call, and taking it in would clear the fields
+            if not arguments.is_closed(value) then
+                log:warn(text("call.bad_args"):format(name, arguments_text("errors.template_unclosed")))
+                item:set_value(shown())
+                return
+            end
+
+            -- The rest is told, the call is kept as it was typed: a #N may point to a field that is made later
+            for _, problem in ipairs(call_template.problems(value, spec.sig)) do
+                log:warn(text("call.bad_args"):format(name, problem))
             end
 
             local inline = select(2, path_parser.split(value))

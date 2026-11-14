@@ -55,7 +55,9 @@ end
 --                 the function's Show Result On Screen is on; nil: on)
 -- @param is_current Whether this loop is still the wanted one: false once it's stopped or a newer one replaced it
 -- @param step One call; false ends the loop (it failed, or what it calls is gone)
-function module.start(loop_run: table, is_current: function, step: function): void
+-- @param on_fail function(err) a step threw an error: the caller ends the loop's status and tells the user; without it
+-- the error goes to the log as it came
+function module.start(loop_run: table, is_current: function, step: function, on_fail: ?function): void
     util.create_tick_handler(function()
         if clicks.is_stopping() or not is_current() then
             return false
@@ -79,7 +81,12 @@ function module.start(loop_run: table, is_current: function, step: function): vo
         local ok, go_on = pcall(step)
 
         if not ok then
-            log:error($"the loop stopped: {tostring(go_on)}")
+            if on_fail == nil then
+                log:error($"the loop stopped: {tostring(go_on)}")
+                return false
+            end
+
+            on_fail(go_on)
             return false
         end
 

@@ -233,7 +233,7 @@ local class CallFunction extends Module
                     "_commands_seen",
                     "_api_seen",
                     "_check_shape",
-                    "_check_refs",
+                    "_check_call",
                 }
             }
         })
@@ -390,7 +390,7 @@ local class CallFunction extends Module
     end
 
     -- Whether a table that is named is opened in the Value list: only when it is written with {} at the end
-    -- (Atdar.util{}), as in the Functions list; one without is only looked at: its entries are lines. A list of a table (spec.silent) is opened
+    -- (Atdar.util{}), as in the Functions list; one without is only looked at: nested tables are lists, but no function is called and no value is changed. A list of a table (spec.silent) is opened
     function _is_opened(spec: table, typed: string): bool
 
         if spec.silent then
@@ -427,18 +427,16 @@ local class CallFunction extends Module
         end
     end
 
-    -- Warns of every #N in the brackets that points to an argument field the function doesn't have
-    -- @param sig The function's signature; nil or with a vararg: nothing is told (the fields aren't known)
-    function _check_refs(inline: ?string, sig: ?table): void
+    -- Warns of what is wrong in a call as it is typed, not when it is called (call_template.problems): a bracket not
+    -- closed, a #N that points to no field, a name that is nothing (asstrr(#1)), too many arguments
+    -- @param value The whole text typed: the name with its brackets
+    -- @param sig The function's signature; nil: only the brackets and the names are looked at
+    function _check_call(value: string, sig: ?table): void
 
-        if sig == nil or sig.vararg then
-            return
-        end
+        local name = shown_name(value)
 
-        local count = #sig.params
-
-        for _, number in ipairs(call_template().missing_refs(inline, count)) do
-            self.log:warn(text("bad_ref"):format(number, count))
+        for _, problem in ipairs(call_template().problems(value, sig)) do
+            self.log:warn(text("bad_args"):format(name, problem))
         end
     end
 
@@ -462,11 +460,17 @@ local class CallFunction extends Module
             return
         end
 
+        -- Only a name that is typed (the Function Name): the names of the other lists are made, not typed
+        if spec.explicit_call and not arguments().is_closed(typed) then
+            self.log:error(text("bad_args"):format(name, text("unclosed")))
+            return
+        end
+
         -- Looking the name up walks tables and may run into a broken one: an error is a failed call, not a dead script
         local looked, found, value, owner = pcall(spec.target)
 
         if not looked then
-            self.log:error(text("failed"):format(name, tostring(found)))
+            self.log:error(text("failed"):format(name, arguments().explain(found)))
             return
         end
 
@@ -486,7 +490,7 @@ local class CallFunction extends Module
         local read, args, count, err, cmd = pcall(read_args, spec, typed)
 
         if not read then
-            self.log:error(text("bad_args"):format(name, tostring(args)))
+            self.log:error(text("bad_args"):format(name, arguments().friendly(args)))
             return
         end
 
@@ -506,7 +510,7 @@ local class CallFunction extends Module
         util.create_thread(function()
             local given = run(value, owner, args, count)
             if not given[1] then
-                self.log:error(text("failed"):format(name, tostring(given[2])))
+                self.log:error(text("failed"):format(name, arguments().explain(given[2])))
                 return
             end
 
@@ -699,6 +703,12 @@ local class CallFunction extends Module
             return
         end
 
+        if spec.explicit_call and not arguments().is_closed(typed) then
+            log:error(text("bad_args"):format(name, text("unclosed")))
+            show_loop(state, self:loop_status(state))
+            return
+        end
+
         -- Told once at the start, not at every tick of the loop
         local looked, found_now, value_now = pcall(spec.target)
 
@@ -750,7 +760,7 @@ local class CallFunction extends Module
             local given = call_loop.timed($"{name}()", || -> run(value, owner, args, count), state.show_time ~= false)
             if not given[1] then
                 end_loop(state, loop_run, "failed")
-                log:error(text("failed"):format(name, tostring(given[2])))
+                log:error(text("failed"):format(name, arguments().explain(given[2])))
                 return false
             end
 
@@ -763,6 +773,10 @@ local class CallFunction extends Module
 
             results().show(spec.key, given)
             return true
+        end, function(err)
+            -- Something the step didn't expect (a table that broke while it was read): the status says it failed too
+            end_loop(state, loop_run, "failed")
+            log:error(mtext("loop.crashed"):format(name, arguments().explain(err)))
         end)
     end
 
@@ -1190,7 +1204,8 @@ local class CallFunction extends Module
         end
 
         -- Told when the name is typed, not at every call
-        if path ~= "" and matches == 0 then
+        -- (a bracket not closed is told below: the whole text isn't a name)
+        if path ~= "" and matches == 0 and arguments().is_closed(value) then
             self.log:warn(text("not_found"):format(shown_name(value)))
         end
 
@@ -1215,7 +1230,7 @@ local class CallFunction extends Module
             sig = self:main_signature()
         end
 
-        self:_check_refs(inline, sig)
+        self:_check_call(value, sig)
 
         local carried = false
 
@@ -1359,8 +1374,16 @@ local class CallFunction extends Module
     -- @return The entry added and its number in the list; nil when nothing was (it's told why)
     function add(typed: string)
 
+        local written = typed:match("^%s*(.-)%s*$")
+
+        -- "util.toast(" is no name: the whole text would be looked for
+        if not arguments().is_closed(written) then
+            self.log:warn(text("bad_args"):format(written, text("unclosed")))
+            return nil
+        end
+
         local path, matches = self:expand(typed)
-        local as_table = select(3, path_parser().split(typed:match("^%s*(.-)%s*$"))) == true
+        local _, inline, as_table = path_parser().split(written)
 
         if path == "" then
             return nil
@@ -1374,6 +1397,18 @@ local class CallFunction extends Module
         if matches > 1 then
             self.log:notify(text("short_names.many"):format(path, matches))
         end
+
+        -- {} on a function, brackets on a table. The arguments typed in brackets aren't kept (the fields of the
+        -- function are for them), and the one who typed them is told
+        local _, value = path_parser().resolve(path)
+
+        self:_check_shape(written, shown_name(written), value)
+
+        if type(value) == "function" and inline ~= nil and inline:match("%S") ~= nil then
+            self.log:warn(text("add.args_dropped"):format(shown_name(written)))
+        end
+
+        as_table = as_table == true
 
         for _, entry in ipairs(self._added) do
             if entry.path == path and (entry.as_table == true) == as_table then

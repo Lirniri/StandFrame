@@ -669,8 +669,46 @@ stand.equal(stand.debug_texts[#stand.debug_texts], "counter.add(amount, note) ->
     "the same in what's drawn on screen")
 counter.add = function() return 2.5 end
 stand.frame()
-stand.check(vector_line.visible == false, "a value of another kind: the line is hidden")
+stand.equal(stand.find_item(add_node, "1.500, -2.000, 3.250"), nil, "a value of another kind: the line is taken away")
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "and Variable shows the value again")
+-- Whatever the results before were, the block stays in order: Variable, what is right under it, Table Depth last
+local function check_block_order(under: ?string, what: string): void
+
+    local children = add_node.children
+    local at = nil
+
+    for i, child in ipairs(children) do
+        if stand.name_of(child):find("Variable: ", 1, true) == 1 then
+            at = i
+        end
+    end
+
+    stand.check(at ~= nil, $"{what}: the Variable line is there")
+
+    if under ~= nil and at ~= nil then
+        stand.check(stand.name_of(children[at + 1]):find(under, 1, true) == 1, $"{what}: {under} is right under Variable")
+    end
+
+    stand.equal(stand.name_of(children[#children]), "Table Depth", $"{what}: Table Depth is the last item")
+end
+counter.add = function() return { 1, 2 } end
+stand.frame()
+check_block_order("Value (2)", "a table")
+counter.add = function() return 2.5 end
+stand.frame()
+check_block_order(nil, "a plain value after a table")
+counter.add = function() return { 1, 2, 3 } end
+stand.frame()
+check_block_order("Value (3)", "a table after a plain value")
+counter.add = function() return fake_vector end
+stand.frame()
+check_block_order("1.500", "a userdata after a table")
+counter.add = function() return { "a" } end
+stand.frame()
+check_block_order("Value (1)", "a table after a userdata")
+counter.add = function() return { "a", "b" } end
+stand.frame()
+check_block_order("Value (2)", "a table that changes in place")
 counter.add = real_add
 counter.count = 5
 stand.click(stand.child(add_node, "Loop"))

@@ -660,8 +660,8 @@ Atdar.test_holder = { 1, 2, 3 }
 function_name.on_change("test_holder", 0)
 stand.click(call_button)
 stand.frame()
-stand.check(stand.find_item(by_name, "Value (3)") ~= nil and stand.find_item(by_name, "Table Depth").visible == false,
-    "a table named without {}: only looked at, a Value list of lines and no Table Depth")
+stand.check(stand.find_item(by_name, "Value (3)") ~= nil and stand.find_item(by_name, "Table Depth").visible ~= false,
+    "a table named without {}: only looked at, a Value list and Table Depth like any table")
 function_name.on_change("test_holder{}", 0)
 stand.click(call_button)
 stand.frame()

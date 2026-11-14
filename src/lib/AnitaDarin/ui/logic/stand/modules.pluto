@@ -287,6 +287,19 @@ local function read_args(mod: table, fn: table, state: table)
     return arguments.read_template(fn.sig, state.texts, state.template, notice_name(mod.name, fn), returns)
 end
 
+-- read_args, with an error thrown while the arguments were worked out told as one that they can't be: nothing is called
+-- @return The same as read_args
+local function safe_args(mod: table, fn: table, state: table)
+
+    local read, args, count, err, cmd = pcall(read_args, mod, fn, state)
+
+    if not read then
+        return {}, 0, arguments.friendly(args), nil
+    end
+
+    return args, count, err, cmd
+end
+
 -- What the commands of the template said (astext, allasstr): the notice shown
 -- @return Whether nothing is to be called
 local function said(cmd: ?table): bool
@@ -319,7 +332,7 @@ function module.call(module_name: string, fn: table, args: table, count: int): v
 
         if not given[1] then
             -- An error, so it goes to Stand when Errors Always In Stand is on
-            log:error(text("call.failed"):format(name, tostring(given[2])))
+            log:error(text("call.failed"):format(name, arguments.explain(given[2])))
             return
         end
 
@@ -337,7 +350,7 @@ end
 -- The function with the arguments typed for it; arguments that can't be worked out are told, nothing is called
 function module.call_typed(mod: table, fn: table): void
 
-    local args, count, err, cmd = read_args(mod, fn, module.state_of(mod, fn))
+    local args, count, err, cmd = safe_args(mod, fn, module.state_of(mod, fn))
 
     if err ~= nil then
         log:error(text("call.bad_args"):format(notice_name(mod.name, fn), err))
@@ -444,7 +457,7 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
         end
 
         local current = modules.get(module_name)
-        local args, count, args_err, cmd = read_args(mod, fn, state)
+        local args, count, args_err, cmd = safe_args(mod, fn, state)
 
         if args_err ~= nil then
             end_loop(key, "failed")
@@ -464,7 +477,7 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
 
         if not given[1] then
             end_loop(key, "failed")
-            log:error(text("call.failed"):format(name, tostring(given[2])))
+            log:error(text("call.failed"):format(name, arguments.explain(given[2])))
             return false
         end
 
@@ -477,6 +490,12 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
 
         results.show(key, given)
         return true
+    end, function(err)
+        -- Something the step didn't expect: the status says it failed too
+        if loops[key] == run then
+            end_loop(key, "failed")
+        end
+        log:error(text("loop.crashed"):format(name, arguments.explain(err)))
     end)
 end
 
@@ -551,7 +570,10 @@ function module.keep_live(mod: table, fn: table, opened: function): void
     local module_name = mod.name
     local key = module.key_of(module_name, module.full_name(fn))
     local state = module.state_of(mod, fn)
+    local name = notice_name(module_name, fn)
     local next_call = 0
+    -- Told once for this opening, not at every call (they come four times a second)
+    local told = false
 
     util.create_tick_handler(function()
         if clicks.is_stopping() or not opened() then
@@ -570,9 +592,22 @@ function module.keep_live(mod: table, fn: table, opened: function): void
             return false
         end
 
-        -- Quietly: what the commands say isn't shown, and a call they stop isn't made
-        local args, count, err, cmd = read_args(mod, fn, state)
-        if err ~= nil or (cmd ~= nil and cmd.only) then
+        -- Quietly: what the commands say isn't shown, and a call they stop isn't made. Arguments that can't be worked
+        -- out leave the Variable line as it is, and the user is told why once
+        local args, count, err, cmd = safe_args(mod, fn, state)
+
+        -- Only when something was typed for it: a getter opened with its fields left empty is not at fault
+        local chosen = next(state.texts or {}) ~= nil or state.template ~= nil
+
+        if err ~= nil then
+            if chosen and not told then
+                told = true
+                log:warn(text("call.bad_args"):format(name, err))
+            end
+            return true
+        end
+
+        if cmd ~= nil and cmd.only then
             return true
         end
 
@@ -581,6 +616,9 @@ function module.keep_live(mod: table, fn: table, opened: function): void
 
         if given[1] then
             results.show(key, given)
+        elseif chosen and not told then
+            told = true
+            log:warn(text("call.failed"):format(name, arguments.explain(given[2])))
         end
 
         return true

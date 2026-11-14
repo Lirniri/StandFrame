@@ -13,8 +13,13 @@
 --     call_template.show(name, state)                       -- "get(#1(>1))"
 
 local arguments = Atdar.loader.load("ui/logic/stand/arguments")
+local args_parser = Atdar.loader.load("parsers/proglang/pluto/args")
+local path_parser = Atdar.loader.load("parsers/proglang/pluto/path")
 
 local module = {}
+
+-- Strings under "arguments"
+local text = select(2, Atdar.loader.load("core/i18n").scope("arguments"))
 
 -- What the brackets point to: #1(>1, >2) is the field 1 holding a call whose arguments 1 and 2 are filled.
 -- Number -> the numbers of the call's arguments written for it
@@ -68,6 +73,49 @@ function module.missing_refs(template: ?string, count: int): table
     table.sort(missing)
 
     return missing
+end
+
+-- What is wrong in a call typed as a name with its brackets, found when it is typed, not when it is called: a bracket
+-- or a quote not closed (nothing else is looked at then), a #N that points to no field, a name written as a call that is
+-- nothing (asstrr(#1)), more arguments than the function takes
+-- @param value The whole text typed: the name with its brackets
+-- @param sig The function's signature; nil: its fields aren't known, only the brackets and the names are looked at
+-- @return The problems as texts, without the function's name; empty when all is right
+function module.problems(value: string, sig: ?table): table
+
+    local problems = {}
+
+    if not arguments.is_closed(value) then
+        table.insert(problems, text("errors.template_unclosed"))
+        return problems
+    end
+
+    local inline = select(2, path_parser.split(value))
+
+    if inline == nil or inline:match("%S") == nil then
+        return problems
+    end
+
+    if sig ~= nil then
+        for _, number in ipairs(module.missing_refs(inline, #sig.params)) do
+            table.insert(problems, text("errors.no_field"):format(number, #sig.params))
+        end
+    end
+
+    for _, name in ipairs(arguments.unknown_calls(inline)) do
+        table.insert(problems, text("errors.unknown_name"):format(name))
+    end
+
+    if sig ~= nil and not sig.vararg then
+
+        local given = #args_parser.split(inline)
+
+        if given > #sig.params then
+            table.insert(problems, text("errors.too_many"):format(arguments.params_text(sig), #sig.params, given))
+        end
+    end
+
+    return problems
 end
 
 -- What was taken out of the brackets is taken out of the fields: a #1 that's gone clears the field 1, a >2

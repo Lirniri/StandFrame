@@ -356,6 +356,100 @@ MenuNode = class
         end
     end
 
+    -- Moving
+
+    -- Puts an item of this list right after (how "after") or right before (how "before") another of the same list.
+    -- Stand attaches only a detached command: menu.detach gives one, menu.attach_after / attach_before put it back,
+    -- and Stand gives it a new ref. The order in children follows the one on screen, which remove_range and a
+    -- section's rebuild go by
+    -- @return Whether it was moved; false, with nothing changed, when Stand has no such function, an item isn't of
+    -- this list or Stand refuses
+    private function reattach(item: table, anchor: table, how: string): bool
+
+        local attach = menu.attach_before
+
+        if how == "after" then
+            attach = menu.attach_after
+        end
+
+        if menu.detach == nil or attach == nil or item == anchor then
+            return false
+        end
+
+        local from = nil
+        local to = nil
+
+        for i, child in ipairs(self.children) do
+            if child == item then
+                from = i
+            elseif child == anchor then
+                to = i
+            end
+        end
+
+        if from == nil or to == nil then
+            return false
+        end
+
+        local old = item.ref
+        local detached_ok, detached = pcall(menu.detach, old)
+
+        if not detached_ok or detached == nil then
+            return false
+        end
+
+        local attached_ok, moved = pcall(attach, anchor.ref, detached)
+
+        -- Stand refused: the detached item goes back to the end of the list, so it isn't lost
+        if not attached_ok or moved == nil then
+            local back_ok, back = pcall(menu.attach, self.handle, detached)
+
+            if back_ok and back ~= nil then
+                item.ref = back
+                Commands.move(old, back)
+
+                if item.kind == "list" then
+                    item.handle = back
+                end
+            end
+
+            return false
+        end
+
+        item.ref = moved
+        Commands.move(old, moved)
+
+        if item.kind == "list" then
+            item.handle = moved
+        end
+
+        table.remove(self.children, from)
+
+        for i, child in ipairs(self.children) do
+            if child == anchor then
+
+                local at = i
+
+                if how == "after" then
+                    at = i + 1
+                end
+
+                table.insert(self.children, at, item)
+                break
+            end
+        end
+
+        return true
+    end
+
+    function move_after(item: table, anchor: table): bool
+        return self:reattach(item, anchor, "after")
+    end
+
+    function move_before(item: table, anchor: table): bool
+        return self:reattach(item, anchor, "before")
+    end
+
     -- Removes one item made through this node
     function remove_child(item: table): void
         for i = #self.children, 1, -1 do

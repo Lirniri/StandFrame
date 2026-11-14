@@ -107,7 +107,18 @@ local KIND_DEFAULT = { integer = "0", float = "0", boolean = "false", vector3 = 
 
 -- @return The text a parameter's field starts with: its default in the code, else one by its type; nil for none
 function module.default_of(param: table): ?string
+
     if param.default ~= nil then
+
+        -- A text's default is written with quotes in the code; the Text field holds the text as it is, without them
+        if module.kind_of(param.type) == "string" then
+            local unquoted = param.default:match("^\"(.*)\"$") or param.default:match("^'(.*)'$")
+
+            if unquoted ~= nil then
+                return unquoted
+            end
+        end
+
         return param.default
     end
 
@@ -164,11 +175,19 @@ local function trim(value: string): string
     return value:match("^%s*(.-)%s*$")
 end
 
--- What went wrong in a call, as the user can use it: Lua's "file.pluto:12: bad argument #1 to 'f' (number
--- expected, got string)" says where in the code and not what to type. Another error is left as it is, without its place
-local function friendly(err): string
+-- An error without the place Lua puts in front of it ("file.pluto:12: ")
+local function without_place(err): string
+    local message = tostring(err):gsub("^%S+:%d+: ", "")
+    message = message:gsub("^%a:[\\/].-:%d+: ", "")
+    return message
+end
 
-    local message = (tostring(err):gsub("^%S+:%d+: ", ""))
+-- What went wrong in a call, as the user can use it, when it is one of the common mistakes: Lua's "file.pluto:12:
+-- bad argument #1 to 'f' (number expected, got string)" says where in the code and not what to type
+-- @return The text; nil for an error that isn't known (it is better left as it is, with its place)
+local function explain(err): ?string
+
+    local message = without_place(err)
     local _, name, expected, got = message:match("bad argument #(%d+) to '([^']+)' %((%w+) expected, got (%w+)%)")
 
     if name ~= nil then
@@ -183,7 +202,66 @@ local function friendly(err): string
         return text("errors.no_value")
     end
 
-    return message
+    local indexed = message:match("attempt to index a (%w+) value")
+    if indexed ~= nil then
+        return text("errors.index"):format(indexed)
+    end
+
+    local called = message:match("attempt to call a (%w+) value")
+    if called ~= nil then
+        return text("errors.call"):format(called)
+    end
+
+    local compared = message:match("attempt to compare (.+)$")
+    if compared ~= nil then
+        return text("errors.compare"):format(compared)
+    end
+
+    local calculated = message:match("attempt to perform arithmetic on a (%w+) value")
+    if calculated ~= nil then
+        return text("errors.arithmetic"):format(calculated)
+    end
+
+    local joined = message:match("attempt to concatenate a (%w+) value")
+    if joined ~= nil then
+        return text("errors.concat"):format(joined)
+    end
+
+    if message:match("number has no integer representation") then
+        return text("errors.no_integer")
+    end
+
+    return nil
+end
+
+-- What went wrong in a call, as the user can use it: the common mistakes explained, another error as it is, without its place
+local function friendly(err): string
+
+    local explained = explain(err)
+
+    if explained ~= nil then
+        return explained
+    end
+
+    return without_place(err)
+end
+
+-- @return The error as the user can use it: a common mistake explained, another error as it came
+-- (with its place, so a fault in the function called can be found)
+function module.explain(err): string
+
+    local explained = explain(err)
+
+    if explained ~= nil then
+        return explained
+    end
+
+    return tostring(err)
+end
+
+-- @return The error as the user can use it, without its place in the code
+function module.friendly(err): string
+    return friendly(err)
 end
 
 -- "name: what was wrong" for a field (or the rest of the arguments)
@@ -291,6 +369,92 @@ local function is_closed(value: string): bool
     return quote == nil and #stack == 0
 end
 
+-- @return Whether a text has every bracket and quote closed, in order
+function module.is_closed(value: string): bool
+    return is_closed(value)
+end
+
+-- The function a field of the function kind names: a path, or a short name
+-- @return The function; nil when the path names nothing else than a function
+local function function_at(path: string): ?function
+
+    local found, fn = path_parser.resolve(path)
+
+    if not found then
+        fn = resolve_name(path)
+    end
+
+    if type(fn) ~= "function" then
+        return nil
+    end
+
+    return fn
+end
+
+-- The names written as a call in a template (asstrr(#1)) that are nothing: no global of Stand's, no module, nothing of
+-- the script's, no command of the script's, no short name. Only a name that starts an expression is looked at (what
+-- follows a . or : is a field of what comes before), and quoted texts are skipped
+-- @param template The text in the brackets; nil gives none
+-- @return The names, in order, each once
+function module.unknown_calls(template: ?string): table
+
+    local unknown = {}
+    local told = {}
+
+    if template == nil then
+        return unknown
+    end
+
+    local commands = Atdar.loader.load("ui/logic/stand/call_commands")
+    local calls = registry()
+    local aliases = {}
+    local quote = nil
+    local at = 1
+
+    if calls ~= nil then
+        aliases = commands.aliases(calls:commands())
+    end
+
+    while at <= #template do
+
+        local char = template:sub(at, at)
+        local word = template:match("^[%a_][%w_]*", at)
+        local number = template:match("^%d[%w%.]*", at)
+
+        if quote ~= nil then
+            if char == "\\" then
+                at += 1 -- the next character is escaped
+            elseif char == quote then
+                quote = nil
+            end
+            at += 1
+        elseif char == "\"" or char == "'" then
+            quote = char
+            at += 1
+        elseif number ~= nil then
+            at += #number
+        elseif word == nil then
+            at += 1
+        else
+
+            local before = template:sub(at - 1, at - 1)
+            local is_call = template:match("^%s*%(", at + #word) ~= nil
+
+            -- The slow search for a short name is the last thing asked
+            if is_call and before ~= "." and before ~= ":" and not told[word] and _G[word] == nil
+                and aliases[word] == nil and Atdar[word] == nil
+                and not (Atdar.modules ~= nil and Atdar.modules.has(word)) and resolve_name(word) == nil then
+                told[word] = true
+                table.insert(unknown, word)
+            end
+
+            at += #word
+        end
+    end
+
+    return unknown
+end
+
 -- Whether a parameter must be given: its type is written without ? and there's no default, in the code or by its kind.
 -- A parameter with no type written is not required (it isn't known)
 local function is_required(param: table): bool
@@ -340,6 +504,17 @@ function module.check_typed(param: table, typed: ?string): ?string
         return text("errors.vector"):format(param.name)
     end
 
+    -- A function is a path that names one (a call isn't looked at: it would be made)
+    if kind == "function" and function_at(value) == nil then
+        return text("errors.not_function"):format(param.name, value)
+    end
+
+    -- A Stand object is made by an expression: a text and a number aren't one (a word may name a global, it is a
+    -- call that tells)
+    if kind == "userdata" and (is_quoted or tonumber(value) ~= nil) then
+        return text("errors.userdata"):format(param.name)
+    end
+
     return nil
 end
 
@@ -366,11 +541,8 @@ local function read_one(param: table, typed: ?string)
     end
     if kind == "function" then
         local path = trim(typed)
-        local found, fn = path_parser.resolve(path)
-        if not found then
-            fn = resolve_name(path)
-        end
-        if type(fn) ~= "function" then
+        local fn = function_at(path)
+        if fn == nil then
             return nil, text("errors.not_function"):format(param.name, path)
         end
         return fn
@@ -417,6 +589,11 @@ local function read_one(param: table, typed: ?string)
 
     if kind == "boolean" and type(value) ~= "boolean" then
         return nil, text("errors.boolean"):format(param.name)
+    end
+
+    -- A Stand object is made by an expression: a text or a number typed for it is a mistake (nil is not given)
+    if kind == "userdata" and (type(value) == "string" or type(value) == "number" or type(value) == "boolean") then
+        return nil, text("errors.userdata"):format(param.name)
     end
 
     return value

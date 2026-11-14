@@ -244,13 +244,10 @@ local function function_list(entry: table, mod: table, fn: table): void
     ui:click_slider({ key = "loop.every", min = 100, max = 60000, default = 1000, step = 100, user_only = true,
         on_click = |ms| -> logic.start_loop(mod, fn, ms) })
 
-    -- What it gave last and, for a table, its Value list right under
-    values.add_result_lines(node, key)
-    values.add_depth(node, key)
-
-    -- The table settings, while the last result is a table, at the end: right under the Value list.
-    -- How deep a table it gave opens in the Value list, the functions in the table become lists with the
-    -- panel of Debug > Call Function, the other values become fields to type a new value in
+    -- What it gave last and, for a table, its Value list right under; Table Depth, while the last result is a table,
+    -- at the end: right under the Value list. How deep a table it gave opens in the Value list, the functions in the
+    -- table become lists with the panel of Debug > Call Function, the other values become fields to type a new value in
+    values.add_result_lines(node, key, nil, |inner| -> values.add_depth(inner, key))
 end
 
 -- The Module Functions list (its Variables, then a list per function of the module, as logic.layout puts

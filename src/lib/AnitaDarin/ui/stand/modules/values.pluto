@@ -39,17 +39,25 @@ local label, text = i18n.scope("modules")
 
 -- What a call gave
 
--- The items (MenuItems) of each key ("<module>.<function>") in the list open now:
+-- The items (MenuItems) of each key ("<module>.<function>") in the list open now. They are one block at the end of
+-- their list, made in the order they show in, and made again as a whole when the kind of the result changes (nothing,
+-- a plain value, a userdata, a table, a function): Stand puts an item that is hidden and shown, or made later, at the
+-- end of its list, so nothing in the block is hidden, shown or added alone. The order is the order they're made in:
 --   result_lines   the Variable line
---   detail_lines   the line under it with a userdata's value, hidden while the result isn't one
---   result_tables  the Value list: { list, shape, texts, lines, named }
---   result_functions  the Parameters list of a function that was read and not called: { list, shape }
---   depth_items    Table Depth, made last in its list (add_depth), there while the result is an opened table
+--   detail_lines   the line under it with a userdata's value, there while the result is one
+--   result_tables  the Value list: { node, list, shape, texts, lines, named }; list is there while the result is a table
+--   result_functions  the Parameters list of a function that was read and not called: { node, list, shape }
+--   (the tail of the block, made by the caller: the result tools of Call Function, ...)
+--   depth_items    Table Depth, right under the Value list (made last, then moved up); hidden while the result
+--                  isn't a table
+-- A list that is open stays as it is while the result keeps its kind: only what is in it is changed
 local result_lines = {}
 local detail_lines = {}
 local result_tables = {}
 local depth_items = {}
 local result_functions = {}
+-- key -> { node = the list the block is in, tail = function(node) made after the lists, kind = what the block holds }
+local blocks = {}
 
 -- The keys whose lines belong to a list outside Modules (Debug > Call Function): forget_lines leaves them
 local kept_keys = {}
@@ -57,40 +65,52 @@ local kept_keys = {}
 -- Makes the Value list show the key's table; set below, with the Variables list it builds like
 local update_result_list
 
--- The line under Variable with a userdata's value: there while the last result is one
-local function show_detail(key: string): void
+-- Table Depth is there while the result is a table, opened or only looked at
+local function show_depth(key: string): void
 
-    local line = detail_lines[key]
-    local detail = results.detail_of(key)
+    local item = depth_items[key]
 
-    if line == nil then
-        return
+    if item ~= nil then
+        item:set_visible(results.table_of(key) ~= nil)
     end
-
-    if detail ~= nil then
-        line:set_name(detail)
-    end
-
-    line:set_visible(detail ~= nil)
 end
 
--- The Parameters list under the Variable line: there while the last result is a function that was only read
+-- What the block holds for the last result: "d" a userdata's line, "t" a Value list, "f" a Parameters list
+local function kind_of(key: string): string
+
+    local kind = ""
+
+    if results.detail_of(key) ~= nil then
+        kind ..= "d"
+    end
+
+    if results.table_of(key) ~= nil then
+        kind ..= "t"
+    end
+
+    if results.function_lines(key) ~= nil then
+        kind ..= "f"
+    end
+
+    return kind
+end
+
+-- The Parameters list under the Variable line: there while the last result is a function that was only read.
+-- Made with the block; here only what is in it follows
 local function update_function_list(key: string): void
 
     local shown = result_functions[key]
 
-    if shown == nil then
+    if shown == nil or shown.list == nil then
         return
     end
 
     local lines, count = results.function_lines(key)
 
     if lines == nil then
-        shown.list:set_visible(false)
         return
     end
 
-    shown.list:set_visible(true)
     shown.list:set_name(text("loop.params_list"):format(count))
 
     local texts = {}
@@ -129,21 +149,104 @@ local function update_function_list(key: string): void
 
     -- The list is gone (its menu was left): nothing to show in
     if not ok then
-        result_functions[key] = nil
+        module.drop_lines(key)
         return
     end
 
     shown.shape = shape
 end
 
+-- Makes the whole block of the key in its list: the Variable line, the userdata's line, the Value list or the Parameters
+-- list (made empty, filled after), then the tail and Table Depth. Made in this order, so it shows in this order
+local function fill_block(key: string): void
+
+    local block = blocks[key]
+    local node = block.node
+    local detail = results.detail_of(key)
+
+    result_lines[key] = node:divider({ name = results.line(key) })
+    detail_lines[key] = nil
+
+    if detail ~= nil then
+        detail_lines[key] = node:divider({ name = detail })
+    end
+
+    result_tables[key] = { node = node, list = nil, shape = nil, texts = {}, lines = {} }
+    result_functions[key] = { node = node, list = nil, shape = nil }
+
+    if results.table_of(key) ~= nil then
+        result_tables[key].list = node:list({ name = text("loop.result_list"):format(0) })
+    end
+
+    if results.function_lines(key) ~= nil then
+        result_functions[key].list = node:list({ name = text("loop.params_list"):format(0) })
+    end
+
+    block.kind = kind_of(key)
+
+    if block.tail ~= nil then
+        block.tail(node)
+    end
+
+    update_result_list(key)
+    update_function_list(key)
+end
+
+-- The kind of the result changed: the block is taken away from the Variable line to the end of the list and made again
+local function rebuild_block(key: string): void
+
+    local block = blocks[key]
+    local node = block.node
+    local line = result_lines[key]
+    local index = nil
+
+    for i, child in ipairs(node.children) do
+        if child == line then
+            index = i
+            break
+        end
+    end
+
+    -- The line isn't in its list any more (the list was made again): nothing to change
+    if index == nil then
+        module.drop_lines(key)
+        return
+    end
+
+    local ok = pcall(function()
+        node:clear_from(index)
+        fill_block(key)
+    end)
+
+    -- The list is gone (its menu was left): nothing to show in
+    if not ok then
+        module.drop_lines(key)
+    end
+end
+
 -- What a key gave changed: its items follow
 results.on_change(function(key: string)
 
+    local block = blocks[key]
+
+    if block == nil then
+        return
+    end
+
+    if kind_of(key) ~= block.kind then
+        rebuild_block(key)
+        return
+    end
+
+    local detail = results.detail_of(key)
     local line = result_lines[key]
 
     update_result_list(key)
     update_function_list(key)
-    show_detail(key)
+
+    if detail ~= nil and detail_lines[key] ~= nil then
+        detail_lines[key]:set_name(detail)
+    end
 
     if line == nil then
         return
@@ -154,45 +257,25 @@ results.on_change(function(key: string)
     end
 end)
 
--- A function's Variable line, the line of a userdata's value and its Value list, made in its list (node)
+-- A function's Variable line, the line of a userdata's value, its Value list or Parameters list, made in its list (node)
+-- as one block at the end of it
 -- @param kept The lines belong to a list outside Modules (Debug > Call Function), so forget_lines leaves them
-function module.add_result_lines(node: table, key: string, kept: ?bool): void
+-- @param tail function(node): the items under them, made in the same block (the block is made again as a whole, and
+-- what is under it would be taken away); Table Depth (add_depth) is made by it
+function module.add_result_lines(node: table, key: string, kept: ?bool, tail: ?function): void
 
-    result_lines[key] = node:divider({ name = results.line(key) })
-
-    -- A userdata it gave: its value on a line of its own (hidden while it gave none)
-    detail_lines[key] = node:divider({ name = results.detail_of(key) or "-" })
-    show_detail(key)
-
-    -- A table it gave: its entries in a list right under (hidden while it gave none)
-    result_tables[key] = { list = node:list({ name = text("loop.result_list"):format(0) }), shape = nil,
-        texts = {}, lines = {} }
-
-
-    -- A function it gave without calling it: its parameters in a list right under (hidden while it gave none)
-    result_functions[key] = { list = node:list({ name = text("loop.params_list"):format(0) }), shape = nil }
+    blocks[key] = { node = node, tail = tail, kind = "" }
 
     if kept then
         kept_keys[key] = true
     end
 
-    update_result_list(key)
-    update_function_list(key)
+    fill_block(key)
 end
 
--- Table Depth is there while the result is a table that is opened (named with {}, or a function's)
-local function show_depth(key: string): void
-
-    local item = depth_items[key]
-
-    if item ~= nil then
-        item:set_visible(results.table_of(key) ~= nil and results.is_opened(key))
-    end
-end
-
--- Table Depth: how many levels of tables inside the table open as lists. Made by the caller as the last item of its
--- list (whatever the list has under the result lines), so it is always at the bottom. The user's change makes the
--- Value list again (its shape changes)
+-- Table Depth: how many levels of tables inside the table open as lists. Made by the caller after the tail, then moved
+-- right under what the result shows (node:move_after), above the tail. The user's change makes the Value list again
+-- (its shape changes)
 -- @param kept The item belongs to a list outside Modules, so forget_lines leaves it
 function module.add_depth(node: table, key: string, kept: ?bool): void
 
@@ -211,6 +294,26 @@ function module.add_depth(node: table, key: string, kept: ?bool): void
         kept_keys[key] = true
     end
 
+    -- Right under what the result shows (the Value list, the Parameters list, the userdata line or the Variable line),
+    -- above what the caller has under them (the result tools): the item is made last, so it is moved up
+    local anchor = result_lines[key]
+
+    if detail_lines[key] ~= nil then
+        anchor = detail_lines[key]
+    end
+
+    if result_tables[key] ~= nil and result_tables[key].list ~= nil then
+        anchor = result_tables[key].list
+    end
+
+    if result_functions[key] ~= nil and result_functions[key].list ~= nil then
+        anchor = result_functions[key].list
+    end
+
+    if anchor ~= nil then
+        node:move_after(depth_items[key], anchor)
+    end
+
     show_depth(key)
 end
 
@@ -218,6 +321,7 @@ end
 -- doesn't write into them (Stand says CommandRef is not valid for a deleted list)
 function module.drop_lines(key: string): void
     result_lines[key] = nil
+    blocks[key] = nil
     detail_lines[key] = nil
     result_tables[key] = nil
     result_functions[key] = nil
@@ -228,10 +332,11 @@ end
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
 
-    local lines, details, tables, depths, functions = {}, {}, {}, {}, {}
+    local lines, details, tables, depths, functions, kept_blocks = {}, {}, {}, {}, {}, {}
 
     for key in pairs(kept_keys) do
         lines[key] = result_lines[key]
+        kept_blocks[key] = blocks[key]
         details[key] = detail_lines[key]
         tables[key] = result_tables[key]
         depths[key] = depth_items[key]
@@ -239,6 +344,7 @@ function module.forget_lines(): void
     end
 
     result_lines = lines
+    blocks = kept_blocks
     detail_lines = details
     result_tables = tables
     depth_items = depths
@@ -381,7 +487,7 @@ local function set_line(line: ?table, item: table, named: ?bool): void
 end
 
 -- The Value list under a function's Variable line: what a table it gave holds, a line or list per entry
--- like Variables. Hidden when it gave no table; changed values change in place, entries that came or
+-- like Variables. Made with the block, only while it gave a table; changed values change in place, entries that came or
 -- went make the list again
 update_result_list = function(key)
 
@@ -395,15 +501,15 @@ update_result_list = function(key)
 
     show_depth(key)
 
-    if items == nil then
-        shown.list:set_visible(false)
+    -- The list is made with the block, while the result is a table: nothing to follow without it
+    if items == nil or shown.list == nil then
         return
     end
 
-    shown.list:set_visible(true)
     shown.list:set_name(text("loop.result_list"):format(count))
 
-    -- A table that is only looked at (named without {}): its entries are lines
+    -- A table that is only looked at (named without {}): nested tables are lists, but its functions can't be called
+    -- and its values can't be changed
     local call_on = results.is_opened(key)
     local edit_on = call_on
     local shape = logic.shape_of(items)

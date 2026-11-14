@@ -101,6 +101,8 @@ end
 -- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
 -- spec.explicit_call:   a function is called only when its name is written with brackets (the Function Name)
 -- spec.depth_later:     the list has more items under the panel: it makes Table Depth (values.add_depth) after them
+-- spec.tail:            function(list) the items under the panel, made in the same section (the panel is made again
+--                       when the function changes, and the items under it would be taken away)
 -- @return { rebuild(), call(), opened(), name_typed() }: the panel made again, Call, what the list does when
 --         opened, and what a Function Name field does when typed
 function module.panel(list: table, spec: table): table
@@ -243,13 +245,21 @@ function module.panel(list: table, spec: table): table
         loop:click_slider({ key = "every", min = 100, max = 60000, default = 1000, step = 100, user_only = true,
             on_click = |ms| -> calls():start_loop(spec, ms) })
 
-        -- What came out: the Variable line, and for a table the Value list under it
-        values().add_result_lines(list, spec.key, spec.kept)
+        -- What came out: the Variable line, and for a table the Value list under it, with what the list has under
+        -- them (Call A Function: the result tools and Table Depth). They are one block: it is made again as a whole
+        -- when the kind of the result changes, so what is under the lines is made by it (as the panel made again takes
+        -- away everything from its first item to the end of the list)
+        values().add_result_lines(list, spec.key, spec.kept, function(node)
 
-        -- Table Depth is the last item of its list: a list that has more under the panel makes it itself
-        if not spec.depth_later then
-            values().add_depth(list, spec.key, spec.kept)
-        end
+            if spec.tail ~= nil then
+                spec.tail(node)
+            end
+
+            -- Table Depth: a list that has more under the panel makes it itself (spec.tail)
+            if not spec.depth_later then
+                values().add_depth(node, spec.key, spec.kept)
+            end
+        end)
     end)
 
     return {
@@ -286,8 +296,7 @@ local function add_item(list: table, entry: table, number: int): void
     if item.is_table then
         list:list({ name = item.name, help = label("added.table_help"),
             fill = function(node)
-                values().add_result_lines(node, item.spec.key, true)
-                values().add_depth(node, item.spec.key, true)
+                values().add_result_lines(node, item.spec.key, true, |inner| -> values().add_depth(inner, item.spec.key, true))
             end,
             on_back = || -> values().drop_lines(item.spec.key),
             on_open = || -> calls():call(item.spec) })
@@ -506,6 +515,19 @@ local function build_by_name(node: table): void
         kept = true,
         depth_later = true,
         explicit_call = true,
+        -- What it gave, whole, and the files Call Function reads; Table Depth, which moves up under the Value list
+        tail = function(node)
+
+            local ui = node:scope(SCOPE)
+
+            ui:divider({ name = label("result_tools.divider") })
+            ui:action({ key = "copy_result", on_click = || -> calls():copy_result() })
+            ui:action({ key = "log_result", on_click = || -> calls():log_result() })
+            ui:action({ key = "open_logs", on_click = || -> open_in_editor("logs") })
+            ui:action({ key = "open_short_names", on_click = || -> open_in_editor("user/call_function/short_names.json") })
+
+            values().add_depth(node, calls().RESULT_KEY, true)
+        end,
         on_args_changed = function()
             local shown = calls():sync_main_template()
             if shown ~= nil then
@@ -515,18 +537,6 @@ local function build_by_name(node: table): void
     }
 
     panel = module.panel(list, spec)
-
-    -- What it gave, whole, and the files Call Function reads
-    local ui = list:scope(SCOPE)
-
-    ui:divider({ name = label("result_tools.divider") })
-    ui:action({ key = "copy_result", on_click = || -> calls():copy_result() })
-    ui:action({ key = "log_result", on_click = || -> calls():log_result() })
-    ui:action({ key = "open_logs", on_click = || -> open_in_editor("logs") })
-    ui:action({ key = "open_short_names", on_click = || -> open_in_editor("user/call_function/short_names.json") })
-
-    -- Table Depth: the last item of the list, whatever is above it
-    values().add_depth(list, calls().RESULT_KEY, true)
 end
 
 -- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added

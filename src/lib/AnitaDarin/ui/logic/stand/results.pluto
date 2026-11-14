@@ -15,6 +15,11 @@ local text = select(2, i18n.scope("modules"))
 -- The words of the argument fields: the names and helps of the kinds (3D Vector, Table, ...)
 local arg_text = select(2, i18n.scope("arguments"))
 
+-- The logic of the arguments, loaded when it is first needed (it needs this one's lists)
+local function arguments(): table
+    return Atdar.loader.load("ui/logic/stand/arguments")
+end
+
 local module = {}
 
 -- Longer results are cut in the Variable line (the notice and the debug text show them whole)
@@ -38,9 +43,10 @@ end
 -- @param results The call's results packed, pcall's true first: table.pack(pcall(fn))
 -- @param info A function it gave, read and not called: { sig = its signature, returns = its return type or nil }, for the
 -- Parameters list under the Variable line
--- @param open Whether a table it gave is opened in the Value list; false: it's only looked at, its entries are lines
--- with no nested lists, no functions to call and no values to change. A table named without {} is only looked at,
--- one named with {} is opened; what a function returns is always opened
+-- @param open Whether a table it gave is opened in the Value list; false: it's only looked at - nested tables are lists
+-- like in an opened one (as deep as Table Depth says), but its functions can't be called and its values can't be
+-- changed. A table named without {} is only looked at, one named with {} is opened; what a function returns is
+-- always opened
 function module.show(key: string, results: table, open: ?bool, info: ?table): void
 
     local value = results.n > 1 and values.results_text(results) or nil
@@ -232,12 +238,7 @@ function module.items(key: string)
 
     local entries = values.table_entries(tbl)
     local items = {}
-    -- Only looked at: one level, the entries as lines
-    local limit = 1
-
-    if module.is_opened(key) then
-        limit = module.depth(key)
-    end
+    local limit = module.depth(key)
 
     if #entries == 0 then
         table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
@@ -284,10 +285,16 @@ end
 -- @return Whether it was put there; what was wrong is told
 function module.edit(item: table, typed: string): bool
 
+    -- A bracket not closed is no value (a text with a quote in it and no brackets is fine): told as such, not read as text
+    if typed:find("[%(%{%[]") ~= nil and not arguments().is_closed(typed) then
+        log:error(text("edit.bad_value"):format(item.name, arg_text("errors.template_unclosed")))
+        return false
+    end
+
     local args, count, err = args_parser.parse(typed)
 
     if err ~= nil then
-        log:error(text("edit.bad_value"):format(item.name, err))
+        log:error(text("edit.bad_value"):format(item.name, arguments().friendly(err)))
         return false
     end
 
@@ -299,7 +306,7 @@ function module.edit(item: table, typed: string): bool
     local ok, why = pcall(function() item.holder[item.raw_key] = args[1] end)
 
     if not ok then
-        log:error(text("edit.failed"):format(item.name, tostring(why)))
+        log:error(text("edit.failed"):format(item.name, arguments().friendly(why)))
         return false
     end
 
