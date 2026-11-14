@@ -68,11 +68,11 @@ stand.equal(pointer_editor:get_values("roll"), nil, "and no values")
 end
 stand.check(Atdar.modules.has("CallFunction") and Atdar.modules.get("CallFunction"):is_running(), "CallFunction is running")
 stand.check(Atdar.modules.is_system("CallFunction"), "and it's a system module")
-stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, clear_history, copy_result, "
+stand.equal(functions_of("CallFunction"), "add, added, call, call_after, clear_all, clear_history, commands, copy_result, "
     .. "describe, describe_entry, expand, forget, history, in_stand, load_saved, log_result, loop_status, main_path, "
     .. "main_signature, main_target, module_functions, open_in_editor, registered_signature, registry, remember, remove, "
     .. "repeat_call, set_loop, set_main_name, set_save, short_names, show_guide, shown, signature_of_path, stand_api, "
-    .. "start_loop, stop_loop, value_of",
+    .. "start_loop, stop_loop, sync_main_template, value_of",
     "its functions; the helpers (_deliver, _read_file, _save_added...) aren't among them")
 local hidden = {}
 for _, name in ipairs(Atdar.modules.get("CallFunction").debug.hide) do
@@ -644,13 +644,26 @@ function_name.on_change("test_table", 0)
 stand.click(call_button)
 stand.frame()
 stand.check(stand.find_item(by_name, "Value (2)") ~= nil, "a table result: the Value list with how many entries it has")
-stand.equal(stand.find_item(by_name, "Table Depth"), nil, "no Table Depth")
+local table_depth = stand.find_item(by_name, "Table Depth")
+stand.check(table_depth ~= nil and table_depth.visible ~= false, "a table result: Table Depth under the Value list")
 stand.equal(stand.find_item(by_name, "Call Functions In Tables"), nil, "no Call Functions In Tables")
 stand.equal(stand.find_item(by_name, "Change Variable Values"), nil, "no Change Variable Values")
 function_name.on_change("test_plain_value", 0)
 stand.click(call_button)
 stand.frame()
-Atdar.test_table, Atdar.test_plain_value = nil, nil
+-- A table that is named: opened in the Value list only when written with {} at the end, else it is only read
+Atdar.test_holder = { 1, 2, 3 }
+function_name.on_change("test_holder", 0)
+stand.click(call_button)
+stand.frame()
+stand.check(stand.find_item(by_name, "Value (3)") ~= nil and stand.find_item(by_name, "Table Depth").visible == false,
+    "a table named without {}: only looked at, a Value list of lines and no Table Depth")
+function_name.on_change("test_holder{}", 0)
+stand.click(call_button)
+stand.frame()
+stand.check(stand.find_item(by_name, "Value (3)") ~= nil and stand.find_item(by_name, "Table Depth").visible ~= false,
+    "a table named with {}: opened in the Value list")
+Atdar.test_table, Atdar.test_plain_value, Atdar.test_holder = nil, nil, nil
 function_name.on_change("", 0)
 
 -- A loop draws what the function gave on screen (debug text), once a frame, like a module's loop

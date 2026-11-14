@@ -98,6 +98,7 @@ end
 -- spec.with_name:       Call After Typing Function is there (a list with a Function Name field)
 -- spec.on_args_changed: function() an argument's field was typed in (the Function Name follows what they hold)
 -- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
+-- spec.depth_later:     the list has more items under the panel: it makes Table Depth (values.add_depth) after them
 -- @return { rebuild(), call(), opened(), name_typed() }: the panel made again, Call, what the list does when
 --         opened, and what a Function Name field does when typed
 function module.panel(list: table, spec: table): table
@@ -222,6 +223,11 @@ function module.panel(list: table, spec: table): table
 
         -- What came out: the Variable line, and for a table the Value list under it
         values().add_result_lines(list, spec.key, spec.kept)
+
+        -- Table Depth is the last item of its list: a list that has more under the panel makes it itself
+        if not spec.depth_later then
+            values().add_depth(list, spec.key, spec.kept)
+        end
     end)
 
     return {
@@ -257,7 +263,10 @@ local function add_item(list: table, entry: table, number: int): void
     -- A table: a list with what's in it, read when it's opened. The entries are made as it's opened, level by level
     if item.is_table then
         list:list({ name = item.name, help = label("added.table_help"),
-            fill = |node| -> values().add_result_lines(node, item.spec.key, true),
+            fill = function(node)
+                values().add_result_lines(node, item.spec.key, true)
+                values().add_depth(node, item.spec.key, true)
+            end,
             on_back = || -> values().drop_lines(item.spec.key),
             on_open = || -> calls():call(item.spec) })
         return
@@ -465,6 +474,7 @@ local function build_by_name(node: table): void
         with_name = true,
         in_stand = || -> calls():in_stand(),
         kept = true,
+        depth_later = true,
         on_args_changed = function()
             local shown = calls():sync_main_template()
             if shown ~= nil then
@@ -483,6 +493,9 @@ local function build_by_name(node: table): void
     ui:action({ key = "log_result", on_click = || -> calls():log_result() })
     ui:action({ key = "open_logs", on_click = || -> open_in_editor("logs") })
     ui:action({ key = "open_short_names", on_click = || -> open_in_editor("user/call_function/short_names.json") })
+
+    -- Table Depth: the last item of the list, whatever is above it
+    values().add_depth(list, calls().RESULT_KEY, true)
 end
 
 -- The Functions list: Add, Clear, Clear All, Save Functions, the Functions divider, then the functions added

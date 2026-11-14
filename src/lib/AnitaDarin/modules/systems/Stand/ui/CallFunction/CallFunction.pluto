@@ -94,6 +94,11 @@ local function arguments(): table
     return Atdar.loader.load("ui/logic/stand/arguments")
 end
 
+-- The call written in the brackets of the Function Name (#1(>1)): shared with the Modules list
+local function call_template(): table
+    return Atdar.loader.load("ui/logic/stand/call_template")
+end
+
 -- What calls gave (kept for the lists that show it), and values as text
 local function results(): table
     return Atdar.loader.load("ui/logic/stand/results")
@@ -198,35 +203,6 @@ local function end_loop(state: table, loop_run: table, kind: ?string): void
     show_loop(state, kind or "stopped")
 end
 
--- What the brackets of the Function Name point to: #1(>1, >2) is the field 1 holding a call whose arguments
--- 1 and 2 are filled. Number -> the numbers of the call's arguments written for it
-local function refs_of(template: ?string): table
-
-    local refs = {}
-    local from = 1
-
-    while template ~= nil do
-
-        local first, last, number = template:find("#(%d+)", from)
-
-        if first == nil then
-            break
-        end
-
-        local inner = {}
-        local shown = template:match("^%(([%s>%d,]*)%)", last + 1)
-
-        for inner_number in (shown or ""):gmatch(">(%d+)") do
-            inner[math.tointeger(tonumber(inner_number))] = true
-        end
-
-        refs[math.tointeger(tonumber(number))] = inner
-        from = last + 1
-    end
-
-    return refs
-end
-
 local class CallFunction extends Module
 
     function __construct()
@@ -244,8 +220,9 @@ local class CallFunction extends Module
                     "_cache",
                     "_found",
                     "_notice",
+                    "_is_opened",
                     "_said",
-                    "_clear_removed",
+                    "_name_with_template",
                     "_loaded",
                     "_last_id",
                     "_history",
@@ -303,9 +280,10 @@ local class CallFunction extends Module
     end
 
     -- Gives the results out: to the lists (the Variable line, the Value list of a table) and as a notice
-    function _deliver(spec: table, given: table, was_call: bool): void
+    -- @param open Whether a table that is the result is opened in the Value list (a table named with {}); nil: it is
+    function _deliver(spec: table, given: table, was_call: bool, open: ?bool): void
 
-        results().show(spec.key, given)
+        results().show(spec.key, given, open)
 
         -- A table opened in its list (spec.silent): what's in it is there, no notice of it
         if spec.silent then
@@ -356,6 +334,17 @@ local class CallFunction extends Module
         return cmd.only == true
     end
 
+    -- Whether a table that is named is opened in the Value list: only when it is written with {} at the end
+    -- (Atdar.util{}), as in the Functions list; one without is only looked at: its entries are lines. A list of a table (spec.silent) is opened
+    function _is_opened(spec: table, typed: string): bool
+
+        if spec.silent then
+            return true
+        end
+
+        return select(3, path_parser().split(typed:match("^%s*(.-)%s*$"))) == true
+    end
+
     -- Whether the notices go to Stand (the Notice In Stand setting): a panel's spec.in_stand
     function in_stand(): bool
         return self.settings.stand
@@ -390,7 +379,7 @@ local class CallFunction extends Module
         end
 
         if type(value) ~= "function" then
-            self:_deliver(spec, table.pack(true, value), false)
+            self:_deliver(spec, table.pack(true, value), false, self:_is_opened(spec, typed))
             return
         end
 
@@ -634,7 +623,7 @@ local class CallFunction extends Module
             if type(value) ~= "function" then
                 local read = table.pack(true, value)
                 loop_run.result = $"{name} -> {values().results_text(read)}"
-                results().show(spec.key, read)
+                results().show(spec.key, read, self:_is_opened(spec, typed))
                 return true
             end
 
@@ -1014,112 +1003,26 @@ local class CallFunction extends Module
         return sig
     end
 
-    -- What was taken out of the brackets is taken out of the fields: a #1 that's gone clears the field 1, a >2
-    -- gone from #1(>1, >2) clears the argument 2 of the call written in it
-    -- @return Whether a field was changed
-    function _clear_removed(old: ?string, current: ?string): bool
-
-        local state = self.main_state
-        local kept = refs_of(current)
-        local texts = state.texts
-        local changed = false
-
-        if texts == nil then
-            return false
-        end
-
-        for number, inner in pairs(refs_of(old)) do
-            if kept[number] == nil then
-                if texts[number] ~= nil then
-                    texts[number] = nil
-                    changed = true
-                end
-            else
-                local call = arguments().call_in(texts[number])
-
-                if call ~= nil then
-                    local pieces = arguments().texts_from(call.sig, table.concat(call.pieces, ", "))
-                    local cut = false
-
-                    for inner_number in pairs(inner) do
-                        if kept[number][inner_number] == nil and pieces[inner_number] ~= nil then
-                            pieces[inner_number] = ""
-                            cut = true
-                        end
-                    end
-
-                    if cut then
-                        texts[number] = arguments().compose(call.path, call.sig, pieces)
-                        changed = true
-                    end
-                end
-            end
-        end
-
-        return changed
-    end
-
-    -- The Function Name follows the fields: util.toast(#1(>1)) when the field 1 holds handle_to_pointer(user_ped).
-    -- The fields up to the last one filled are there (the arguments go by their place). A brackets text the user
-    -- wrote themselves (util.toast(tostring(#1))) is left as it is
+    -- The Function Name follows the fields: util.toast(#1(>1)) when the field 1 holds handle_to_pointer(user_ped)
+    -- (ui/logic/stand/call_template). A brackets text the user wrote themselves is left as it is
     -- @return The name to show; nil when it stays
     function sync_main_template(): ?string
 
         local state = self.main_state
-        local sig = self:main_signature()
 
-        if sig == nil or (state.template ~= nil and state.template ~= state.auto_template) then
+        if not call_template().sync(state, self:main_signature()) then
             return nil
         end
 
-        local texts = state.texts or {}
-        local last = 0
+        return self:_name_with_template()
+    end
 
-        for number, param in ipairs(sig.params) do
+    -- The typed name with the template in its brackets; kept as the name
+    function _name_with_template(): string
 
-            local typed = texts[number]
-            local filled = typed ~= nil and typed:match("%S") ~= nil and typed ~= arguments().default_of(param)
+        local state = self.main_state
 
-            if filled or arguments().call_in(typed) ~= nil then
-                last = number
-            end
-        end
-
-        local parts = {}
-
-        for number = 1, last do
-
-            local part = $"#{number}"
-            local call = arguments().call_in(texts[number])
-
-            if call ~= nil then
-
-                local pieces = arguments().texts_from(call.sig, table.concat(call.pieces, ", "))
-                local inner = {}
-
-                for inner_number in ipairs(call.sig.params) do
-                    if pieces[inner_number] ~= nil and pieces[inner_number]:match("%S") ~= nil then
-                        table.insert(inner, $">{inner_number}")
-                    end
-                end
-
-                if #inner > 0 then
-                    part ..= $"({table.concat(inner, ", ")})"
-                end
-            end
-
-            table.insert(parts, part)
-        end
-
-        local auto = #parts > 0 and table.concat(parts, ", ") or nil
-
-        if auto == state.template then
-            return nil
-        end
-
-        state.template = auto
-        state.auto_template = auto
-        state.name = $"{(path_parser().split(state.name or ""))}({auto or ""})"
+        state.name = call_template().show((path_parser().split(state.name or "")), state)
 
         return state.name
     end
@@ -1136,20 +1039,7 @@ local class CallFunction extends Module
         local path = self:expand(value)
         local inline = select(2, path_parser().split(value))
         local changed = path ~= state.path
-        local with_inline = inline ~= nil and inline ~= ""
-        -- #1, #2 in the brackets point to the argument fields: util.toast(tostring(#1)). Not values to fill them with
-        local is_template = with_inline and inline:find("#%d") ~= nil
-
-        local cleared = false
-        local shown = nil
-
-        -- Another function has its own fields (below); for the same one what's gone from the brackets goes from the fields
-        if not changed then
-            cleared = self:_clear_removed(state.template, is_template and inline or nil)
-        end
-
-        state.name = value
-        state.template = is_template and inline or nil
+        local sig = nil
 
         if value == "" then
             results().clear(self.RESULT_KEY)
@@ -1162,20 +1052,22 @@ local class CallFunction extends Module
             state.args = nil
         end
 
-        -- Typed as a call, "players.get_position(0)": what's in the brackets fills the fields (the Arguments
-        -- field of a function whose parameters aren't known)
-        if with_inline and not is_template then
-            local sig = self:main_signature()
+        state.name = value
 
-            if sig ~= nil then
-                state.texts = arguments().texts_from(sig, inline)
-                shown = self:sync_main_template()
-            else
-                state.args = inline
-            end
+        if inline ~= nil and inline ~= "" then
+            sig = self:main_signature()
         end
 
-        return value ~= "", changed or cleared or (with_inline and not is_template), shown
+        -- Typed as a call, "players.get_position(0)": what's in the brackets fills the fields (the Arguments
+        -- field of a function whose parameters aren't known); #1, #2 point to the fields instead
+        local fields, synced = call_template().typed(state, sig, inline, not changed)
+        local shown = nil
+
+        if synced then
+            shown = self:_name_with_template()
+        end
+
+        return value ~= "", changed or fields, shown
     end
 
     -- Saved functions

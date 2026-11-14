@@ -16,6 +16,8 @@ local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
 -- What calls gave, and values as text
 local results = Atdar.loader.load("ui/logic/stand/results")
 local values = Atdar.loader.load("ui/logic/stand/values")
+-- The call written in brackets (#1(>1)): the same as Debug > Call Function's Function Name
+local call_template = Atdar.loader.load("ui/logic/stand/call_template")
 -- A module's on_tick run by hand
 local tick_runs = Atdar.loader.load("ui/logic/stand/ticks")
 
@@ -265,6 +267,66 @@ local function notice_name(module_name: string, fn: table): string
     return $"{module.short_name(module_name)}.{module.signature(fn)}"
 end
 
+-- The arguments to call with: from the fields, or from the call written in the brackets of the Call field when
+-- there is one (#1, asstr, ...)
+-- @return The arguments, how many there are, what was wrong, and what the commands of the template said
+local function read_args(mod: table, fn: table, state: table)
+
+    if state.template == nil then
+        return arguments.read(fn.sig, state.texts)
+    end
+
+    -- The return type is asked for only when a command shows it (it looks the source up)
+    local function returns(): ?string
+
+        if not Atdar.modules.has(mod.name) then
+            return nil
+        end
+
+        return source_parser.return_type(module.target_of(Atdar.modules.get(mod.name), fn)[fn.name])
+    end
+
+    return arguments.read_template(fn.sig, state.texts, state.template, notice_name(mod.name, fn), returns)
+end
+
+-- What the commands of the template said (astext, allasstr): the notice shown
+-- @return Whether nothing is to be called
+local function said(cmd: ?table): bool
+
+    if cmd == nil then
+        return false
+    end
+
+    if cmd.notice ~= nil then
+        log:notify(cmd.notice)
+    end
+
+    return cmd.only == true
+end
+
+-- The Call field
+
+-- The Call field's text: the function's name with the template in its brackets ("get(#1(>1))")
+function module.template_text(fn: table, state: table): string
+    return call_template.show(fn.name, state)
+end
+
+-- The fields were typed in: the template follows them
+-- @return Whether it changed (the field is to show it)
+function module.template_sync(fn: table, state: table): bool
+    return call_template.sync(state, fn.sig)
+end
+
+-- The Call field was typed in: its brackets' text (a template, or arguments that go to the fields)
+-- @return Whether the fields are to be made again, and whether the field is to show the template made
+function module.template_typed(fn: table, state: table, value: string)
+
+    local inline = select(2, Atdar.loader.load("parsers/proglang/pluto/path").split(value))
+    local fields, synced = call_template.typed(state, fn.sig, inline, true)
+
+    return fields, synced
+end
+
 -- Calls a function of the module by name: the module as it is now (Reload makes a new one).
 -- In a thread of its own, since a function may wait (e.g. for a model to load)
 function module.call(module_name: string, fn: table, args: table, count: int): void
@@ -300,10 +362,15 @@ end
 -- The function with the arguments typed for it; arguments that can't be worked out are told, nothing is called
 function module.call_typed(mod: table, fn: table): void
 
-    local args, count, err = arguments.read(fn.sig, module.state_of(mod, fn).texts)
+    local args, count, err, cmd = read_args(mod, fn, module.state_of(mod, fn))
 
     if err ~= nil then
         log:error(text("call.bad_args"):format(notice_name(mod.name, fn), err))
+        return
+    end
+
+    -- astext, allastext: the notice is all there is
+    if said(cmd) then
         return
     end
 
@@ -402,12 +469,16 @@ function module.start_loop(mod: table, fn: table, every: ?int): void
         end
 
         local current = modules.get(module_name)
-        local args, count, args_err = arguments.read(fn.sig, state.texts)
+        local args, count, args_err, cmd = read_args(mod, fn, state)
 
         if args_err ~= nil then
             end_loop(key, "failed")
             log:error(text("call.bad_args"):format(name, args_err))
             return false
+        end
+
+        if said(cmd) then
+            return true
         end
 
         -- How long a call takes, on screen (info text); Debug > Call Function > Settings decide what's shown
@@ -524,8 +595,9 @@ function module.keep_live(mod: table, fn: table, opened: function): void
             return false
         end
 
-        local args, count, err = arguments.read(fn.sig, state.texts)
-        if err ~= nil then
+        -- Quietly: what the commands say isn't shown, and a call they stop isn't made
+        local args, count, err, cmd = read_args(mod, fn, state)
+        if err ~= nil or (cmd ~= nil and cmd.only) then
             return true
         end
 

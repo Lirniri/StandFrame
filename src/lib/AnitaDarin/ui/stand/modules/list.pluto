@@ -112,7 +112,9 @@ end
 
 -- The Arguments list of a function: a field for each parameter, by its type. A field that becomes a list
 -- (a function called in it) makes the fields again
-local function arguments_list(node: table, mod: table, fn: table, state: table): void
+-- @param on_args_changed function() an argument's field was typed in (the Call field follows what they hold)
+-- @return The fields' section: rebuild() makes them again
+local function arguments_list(node: table, mod: table, fn: table, state: table, on_args_changed: function)
 
     local args_list = node:list({ name = label("loop.args"), help = label("loop.args_help") })
     local fields = nil
@@ -127,6 +129,8 @@ local function arguments_list(node: table, mod: table, fn: table, state: table):
             command = |index| -> $"moduleargsfor{logic.number_of(mod.name)}_{fn.number or 0}_{index}",
             -- Typed by the user (not Stand putting the field back), with Call After Typing on
             on_typed = function()
+                on_args_changed()
+
                 if state.on_enter then
                     logic.call_typed(mod, fn)
                 end
@@ -135,6 +139,8 @@ local function arguments_list(node: table, mod: table, fn: table, state: table):
             on_reshape = || -> fields.rebuild(),
         })
     end)
+
+    return fields
 end
 
 -- A function of the module: a list of its arguments (when it has parameters), Call Settings, Call, Call After,
@@ -172,7 +178,42 @@ local function function_list(entry: table, mod: table, fn: table): void
     end)
 
     if arguments.has_fields(fn.sig) then
-        arguments_list(node, mod, fn, state)
+
+        local template_field = nil
+        local args_fields = nil
+
+        -- Call: the function's name with what's called in its brackets. It follows the fields and the fields follow
+        -- it (ui/logic/stand/call_template); the same as the Function Name of Call Function. Stand's text fields take
+        -- their text through the command box, so it has one: "modulecallfor3_2"
+        template_field = node:text_input({
+            name = label("loop.template"),
+            help = label("loop.template_help"),
+            commands = { $"modulecallfor{logic.number_of(mod.name)}_{fn.number or 0}" },
+            track = false,
+            default = logic.template_text(fn, state),
+            on_change = function(value: string, click_type)
+
+                if clicks.is_stopping() or not clicks.is_user_click(click_type) then
+                    return
+                end
+
+                local fields, synced = logic.template_typed(fn, state, value)
+
+                if synced then
+                    template_field:set_value(logic.template_text(fn, state))
+                end
+
+                if fields and args_fields ~= nil then
+                    args_fields.rebuild()
+                end
+            end,
+        })
+
+        args_fields = arguments_list(node, mod, fn, state, function()
+            if logic.template_sync(fn, state) then
+                template_field:set_value(logic.template_text(fn, state))
+            end
+        end)
     end
 
     -- The settings of calling, under the arguments: Call After Typing (when there are arguments), Call, ...
@@ -223,6 +264,7 @@ local function function_list(entry: table, mod: table, fn: table): void
 
     -- What it gave last and, for a table, its Value list right under
     values.add_result_lines(node, key)
+    values.add_depth(node, key)
 
     -- The table settings, while the last result is a table, at the end: right under the Value list.
     -- How deep a table it gave opens in the Value list, the functions in the table become lists with the

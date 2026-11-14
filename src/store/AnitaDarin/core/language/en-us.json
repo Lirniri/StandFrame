@@ -589,6 +589,8 @@
             "help": "Calls the function: now, after a while, when its list is opened or hovered, in a loop",
             "args": "Arguments",
             "args_help": "The arguments the function is called with",
+            "template": "Call Template",
+            "template_help": "The call with its arguments in brackets. #1 is the argument field 1, #1(>1) says the call written in it has its argument 1 filled: get(#1(>1)). Arguments typed in the brackets go to the fields; taking #1 out clears the field. Commands: asstr(#1), asint(#1), allasstr(), astext(#1), allastext()",
             "settings": "Call Settings",
             "call_on_enter": {
                 "name": "Call After Typing",
@@ -634,6 +636,10 @@
                 "failed": "error"
             },
             "status_line": "Loop Status: %s",
+            "table_depth": {
+                "name": "Table Depth",
+                "help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables (Atdar) makes a great many items"
+            },
             "result_line": "Variable: %s",
             "result_list": "Value (%d)",
             "no_result": "—"
@@ -896,7 +902,7 @@
             },
             "function": {
                 "name": "Function Name",
-                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame. In the brackets #1, #2 are the values of the argument fields: util.toast(#1), util.toast(tostring(#1)). asstr(#1): the argument as text; asint(#1): as a whole number; allasstr(): all the arguments as text, with a notice of them; astext and allastext call nothing and only show the name and the arguments"
+                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame. A table is opened in the Value list only when written with {} at the end: Atdar.util{}; without them its entries are only shown as lines. In the brackets #1, #2 are the values of the argument fields: util.toast(#1), util.toast(tostring(#1)). asstr(#1): the argument as text; asint(#1): as a whole number; allasstr(): all the arguments as text, with a notice of them; astext and allastext call nothing and only show the name and the arguments"
             },
             "args": {
                 "name": "Argument",

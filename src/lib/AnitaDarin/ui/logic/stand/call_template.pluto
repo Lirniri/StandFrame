@@ -1,0 +1,210 @@
+-- lib/AnitaDarin/ui/logic/stand/call_template.pluto
+--
+-- The call written in brackets, shared by Debug > Call Function (its Function Name) and the Call field of a module's
+-- function in the Modules list: util.toast(#1(>1)). #1 is the field 1 of the arguments; (>1) says that the call
+-- written in it has its argument 1 filled. What the call gives is worked out when it's called
+-- (ui/logic/stand/arguments: read_template); here is only how the text and the fields follow each other.
+--
+-- The state is the table the caller keeps for the function: texts (a text per parameter), args, template (the
+-- brackets' text now) and auto_template (the one made from the fields: a template the user wrote is left as it is).
+--
+--     call_template.sync(state, sig)                        -- the fields changed: the template follows them
+--     call_template.typed(state, sig, inline, true)         -- the text in the brackets was typed: the fields follow it
+--     call_template.show(name, state)                       -- "get(#1(>1))"
+
+local arguments = Atdar.loader.load("ui/logic/stand/arguments")
+
+local module = {}
+
+-- What the brackets point to: #1(>1, >2) is the field 1 holding a call whose arguments 1 and 2 are filled.
+-- Number -> the numbers of the call's arguments written for it
+local function refs_of(template: ?string): table
+
+    local refs = {}
+    local from = 1
+
+    while template ~= nil do
+
+        local first, last, number = template:find("#(%d+)", from)
+
+        if first == nil then
+            break
+        end
+
+        local inner = {}
+        local shown = template:match("^%(([%s>%d,]*)%)", last + 1)
+
+        for inner_number in (shown or ""):gmatch(">(%d+)") do
+            inner[math.tointeger(tonumber(inner_number))] = true
+        end
+
+        refs[math.tointeger(tonumber(number))] = inner
+        from = last + 1
+    end
+
+    return refs
+end
+
+-- What was taken out of the brackets is taken out of the fields: a #1 that's gone clears the field 1, a >2
+-- gone from #1(>1, >2) clears the argument 2 of the call written in it
+-- @return Whether a field was changed
+function module.clear_removed(state: table, old: ?string, current: ?string): bool
+
+    local kept = refs_of(current)
+    local texts = state.texts
+    local changed = false
+
+    if texts == nil then
+        return false
+    end
+
+    for number, inner in pairs(refs_of(old)) do
+        if kept[number] == nil then
+            if texts[number] ~= nil then
+                texts[number] = nil
+                changed = true
+            end
+        else
+            local call = arguments.call_in(texts[number])
+
+            if call ~= nil then
+                local pieces = arguments.texts_from(call.sig, table.concat(call.pieces, ", "))
+                local cut = false
+
+                for inner_number in pairs(inner) do
+                    if kept[number][inner_number] == nil and pieces[inner_number] ~= nil then
+                        pieces[inner_number] = ""
+                        cut = true
+                    end
+                end
+
+                if cut then
+                    texts[number] = arguments.compose(call.path, call.sig, pieces)
+                    changed = true
+                end
+            end
+        end
+    end
+
+    return changed
+end
+
+-- The template the fields give: #1(>1) when the field 1 holds handle_to_pointer(user_ped). The fields up to the
+-- last one filled are there (the arguments go by their place)
+-- @return The template; nil when no field is filled
+local function auto_of(sig: table, texts: table): ?string
+
+    local last = 0
+
+    for number, param in ipairs(sig.params) do
+
+        local typed = texts[number]
+        local filled = typed ~= nil and typed:match("%S") ~= nil and typed ~= arguments.default_of(param)
+
+        if filled or arguments.call_in(typed) ~= nil then
+            last = number
+        end
+    end
+
+    local parts = {}
+
+    for number = 1, last do
+
+        local part = $"#{number}"
+        local call = arguments.call_in(texts[number])
+
+        if call ~= nil then
+
+            local pieces = arguments.texts_from(call.sig, table.concat(call.pieces, ", "))
+            local inner = {}
+
+            for inner_number in ipairs(call.sig.params) do
+                if pieces[inner_number] ~= nil and pieces[inner_number]:match("%S") ~= nil then
+                    table.insert(inner, $">{inner_number}")
+                end
+            end
+
+            if #inner > 0 then
+                part ..= $"({table.concat(inner, ", ")})"
+            end
+        end
+
+        table.insert(parts, part)
+    end
+
+    if #parts == 0 then
+        return nil
+    end
+
+    return table.concat(parts, ", ")
+end
+
+-- The template follows the fields. One the user wrote themselves (util.toast(tostring(#1))) is left as it is
+-- @return Whether the template changed
+function module.sync(state: table, sig: ?table): bool
+
+    if sig == nil or (state.template ~= nil and state.template ~= state.auto_template) then
+        return false
+    end
+
+    local auto = auto_of(sig, state.texts or {})
+
+    if auto == state.template then
+        return false
+    end
+
+    state.template = auto
+    state.auto_template = auto
+
+    return true
+end
+
+-- The text in the brackets was typed: the template is kept (a #1 in it), or its arguments go to the fields
+-- (util.toast(handle_to_pointer(user_ped)) fills the field 1) and the template becomes what the fields hold.
+-- What's gone from a template is gone from the fields
+-- @param inline The text in the brackets; nil without brackets
+-- @param same Whether it's the same function as before (another one has its own fields, nothing is cleared)
+-- @return Whether the fields changed (made again by the caller), and whether the template was made from them
+function module.typed(state: table, sig: ?table, inline: ?string, same: bool)
+
+    local with_inline = inline ~= nil and inline ~= ""
+    local is_template = with_inline and inline:find("#%d") ~= nil
+    local cleared = false
+
+    if same then
+        local kept = nil
+
+        if is_template then
+            kept = inline
+        end
+
+        cleared = module.clear_removed(state, state.template, kept)
+    end
+
+    state.template = nil
+
+    if is_template then
+        state.template = inline
+    end
+
+    if not with_inline or is_template then
+        return cleared, false
+    end
+
+    -- A function whose parameters aren't known has the one field of Arguments
+    if sig == nil then
+        state.args = inline
+        return true, false
+    end
+
+    state.texts = arguments.texts_from(sig, inline)
+
+    return true, module.sync(state, sig)
+end
+
+-- "get(#1(>1))": the name with the template in its brackets
+function module.show(name: string, state: table): string
+    return $"{name}({state.template or ""})"
+end
+
+return module

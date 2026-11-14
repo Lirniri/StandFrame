@@ -34,12 +34,16 @@ end
 
 -- Remembers what a call gave; the lists are told only when it changed (loops call this every frame)
 -- @param results The call's results packed, pcall's true first: table.pack(pcall(fn))
-function module.show(key: string, results: table): void
+-- @param open Whether a table it gave is opened in the Value list; false: it's only looked at, its entries are lines
+-- with no nested lists, no functions to call and no values to change. A table named without {} is only looked at,
+-- one named with {} is opened; what a function returns is always opened
+function module.show(key: string, results: table, open: ?bool): void
 
     local value = results.n > 1 and values.results_text(results) or nil
     local entry = last[key]
+    local opened = open ~= false
 
-    if entry ~= nil and entry.text == value then
+    if entry ~= nil and entry.text == value and entry.opened == opened then
         return
     end
 
@@ -49,7 +53,7 @@ function module.show(key: string, results: table): void
         table.insert(types, values.type_text(results[i]))
     end
 
-    entry = { text = value, types = table.concat(types, ", ") }
+    entry = { text = value, types = table.concat(types, ", "), opened = opened }
 
     if results.n == 2 and type(results[2]) == "table" then
         entry.tbl = results[2]
@@ -69,6 +73,12 @@ end
 -- Nothing: what was there is taken away (a call that gave nothing shows the same)
 function module.clear(key: string): void
     module.show(key, table.pack(true))
+end
+
+-- @return Whether the key's table is opened (nested lists, functions, values to change), not only looked at
+function module.is_opened(key: string): bool
+    local entry = last[key]
+    return entry == nil or entry.opened ~= false
 end
 
 -- @return The table the key gave last, nil when it gave something else
@@ -113,9 +123,16 @@ function module.line(key: string): string
     return text("loop.result_line"):format(value)
 end
 
+-- key -> how deep its table is made as lists (Table Depth), set by the user; not there: values.MAX_VARIABLE_DEPTH
+local depths = {}
+
 -- @return How deep tables inside the key's table are made as lists; deeper ones are lines
 function module.depth(key: string): int
-    return values.MAX_VARIABLE_DEPTH
+    return depths[key] or values.MAX_VARIABLE_DEPTH
+end
+
+function module.set_depth(key: string, depth: int): void
+    depths[key] = depth
 end
 
 -- The key's table as items to show, in menu order (values.collect_variable): its entries down to the depth
@@ -131,6 +148,12 @@ function module.items(key: string)
 
     local entries = values.table_entries(tbl)
     local items = {}
+    -- Only looked at: one level, the entries as lines
+    local limit = 1
+
+    if module.is_opened(key) then
+        limit = module.depth(key)
+    end
 
     if #entries == 0 then
         table.insert(items, { kind = "note", path = "/", parent = "", name = "{}" })
@@ -141,7 +164,7 @@ function module.items(key: string)
             table.insert(items, { kind = "note", path = "/...", parent = "", name = "..." })
             break
         end
-        values.collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, values.MAX_VARIABLE_DEPTH, tbl,
+        values.collect_variable(items, "", entry.key_text, entry.value, 1, { [tbl] = true }, limit, tbl,
             entry.raw_key)
     end
 

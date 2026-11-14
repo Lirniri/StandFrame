@@ -1,7 +1,7 @@
 -- lib/AnitaDarin/ui/stand/modules/values.pluto
 --
 -- The items that show values: what a call gave - a function's Variable line, the line with a userdata's value
--- and, for a table, the Value list under it with its table settings - and a module's Variables list, its
+-- and, for a table, the Value list under it with Table Depth - and a module's Variables list, its
 -- fields kept up to date while it's open. Used by the Modules list (ui/stand/modules/list) and by
 -- Debug > Call Function.
 --
@@ -43,9 +43,11 @@ local label, text = i18n.scope("modules")
 --   result_lines   the Variable line
 --   detail_lines   the line under it with a userdata's value, hidden while the result isn't one
 --   result_tables  the Value list: { list, shape, texts, lines, named }
+--   depth_items    Table Depth, made last in its list (add_depth), there while the result is an opened table
 local result_lines = {}
 local detail_lines = {}
 local result_tables = {}
+local depth_items = {}
 
 -- The keys whose lines belong to a list outside Modules (Debug > Call Function): forget_lines leaves them
 local kept_keys = {}
@@ -101,11 +103,46 @@ function module.add_result_lines(node: table, key: string, kept: ?bool): void
     result_tables[key] = { list = node:list({ name = text("loop.result_list"):format(0) }), shape = nil,
         texts = {}, lines = {} }
 
+
     if kept then
         kept_keys[key] = true
     end
 
     update_result_list(key)
+end
+
+-- Table Depth is there while the result is a table that is opened (named with {}, or a function's)
+local function show_depth(key: string): void
+
+    local item = depth_items[key]
+
+    if item ~= nil then
+        item:set_visible(results.table_of(key) ~= nil and results.is_opened(key))
+    end
+end
+
+-- Table Depth: how many levels of tables inside the table open as lists. Made by the caller as the last item of its
+-- list (whatever the list has under the result lines), so it is always at the bottom. The user's change makes the
+-- Value list again (its shape changes)
+-- @param kept The item belongs to a list outside Modules, so forget_lines leaves it
+function module.add_depth(node: table, key: string, kept: ?bool): void
+
+    depth_items[key] = node:scope("modules"):slider({ key = "loop.table_depth", min = 1, max = 8,
+        default = results.depth(key), step = 1, on_change = function(depth: int, previous, click_type)
+
+            if clicks.is_stopping() or not clicks.is_user_click(click_type) then
+                return
+            end
+
+            results.set_depth(key, depth)
+            update_result_list(key)
+        end })
+
+    if kept then
+        kept_keys[key] = true
+    end
+
+    show_depth(key)
 end
 
 -- The list the key's lines are in was gone back out of: they're gone, so a loop that still gives results
@@ -114,23 +151,26 @@ function module.drop_lines(key: string): void
     result_lines[key] = nil
     detail_lines[key] = nil
     result_tables[key] = nil
+    depth_items[key] = nil
     kept_keys[key] = nil
 end
 
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
 
-    local lines, details, tables = {}, {}, {}
+    local lines, details, tables, depths = {}, {}, {}, {}
 
     for key in pairs(kept_keys) do
         lines[key] = result_lines[key]
         details[key] = detail_lines[key]
         tables[key] = result_tables[key]
+        depths[key] = depth_items[key]
     end
 
     result_lines = lines
     detail_lines = details
     result_tables = tables
+    depth_items = depths
 end
 
 -- Variables: a table's entries and a module's fields
@@ -281,6 +321,8 @@ update_result_list = function(key)
 
     local items, count = results.items(key)
 
+    show_depth(key)
+
     if items == nil then
         shown.list:set_visible(false)
         return
@@ -289,8 +331,9 @@ update_result_list = function(key)
     shown.list:set_visible(true)
     shown.list:set_name(text("loop.result_list"):format(count))
 
-        local call_on = true
-    local edit_on = true
+    -- A table that is only looked at (named without {}): its entries are lines
+    local call_on = results.is_opened(key)
+    local edit_on = call_on
     local shape = logic.shape_of(items)
 
     if call_on then

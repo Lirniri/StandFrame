@@ -576,8 +576,9 @@ local value_list = stand.find_item(add_node, "Value (3)")
 stand.check(value_list ~= nil and value_list.visible ~= false, "a table result: a Value list with how many entries it has")
 stand.equal(names_in(value_list), '[1]: 1 | [2]: "a" | [3]{}: (1)', "its entries: a value is a field with it, a table inside a list")
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: table", "a table of mixed kinds: just table")
--- No settings to find: a table is opened as it is, its functions are lists and its values fields
-stand.equal(stand.find_item(add_node, "Table Depth"), nil, "a table result: no Table Depth")
+-- A table is opened as it is, its functions are lists and its values fields; Table Depth is the only setting
+local depth_item = stand.find_item(add_node, "Table Depth")
+stand.check(depth_item ~= nil and depth_item.visible ~= false, "a table result: Table Depth under the Value list")
 stand.equal(stand.find_item(add_node, "Call Functions In Tables"), nil, "no Call Functions In Tables")
 stand.equal(stand.find_item(add_node, "Change Variable Values"), nil, "no Change Variable Values")
 -- Change Variable Values: the values in the table are fields; a value typed is put into the table and told
@@ -652,7 +653,8 @@ stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: e
 counter.add = function() return 2.5 end
 stand.frame()
 stand.equal(stand.name_of(stand.find_item(add_node, "Variable: ")), "Variable: 2.5", "a plain value: the value, no type")
-stand.equal(stand.name_of(add_node.children[#add_node.children]), "Value (0)", "and the Value list is the last item")
+stand.equal(stand.name_of(add_node.children[#add_node.children]), "Table Depth", "and Table Depth is the last item, under the Value list")
+stand.check(stand.find_item(add_node, "Table Depth").visible == false, "hidden while the result isn't a table")
 -- A userdata it gave (Stand's vectors): its name on the Variable line, its value on a line right under.
 -- Stand's v3 isn't in the test: an open file with a vector's fields and name does
 local fake_vector = io.open(stand.tmpdir("modules_menu_userdata") .. "vector.txt", "w")
