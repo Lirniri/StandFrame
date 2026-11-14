@@ -642,7 +642,13 @@
             },
             "result_line": "Variable: %s",
             "result_list": "Value (%d)",
-            "no_result": "—"
+            "function": "Function",
+            "params_list": "Parameters (%d)",
+            "no_default": "No default value",
+            "no_params": "No parameters",
+            "params_unknown": "Parameters are not described",
+            "no_result": "—",
+            "returns": "Returns:"
         },
         "tick": {
             "help": "Runs on_tick by hand every frame; the time it takes shows on screen. A running module is stopped first",
@@ -720,7 +726,7 @@
             "table": "Values separated by commas, or an expression that gives a table. Empty: not given",
             "userdata": "An expression that gives a Stand object: v3.new(1, 2, 3). Empty: not given",
             "string": "The text as it is, without quotes. To give a call's result, write the call here and point to it in Function Name: util.toast(#1). Empty: not given",
-            "boolean": "true or false. Empty: not given"
+            "boolean": "true or false, or an expression that gives one (a call). Empty: not given"
         },
         "rest": {
             "name": "Arguments",
@@ -738,7 +744,15 @@
             "bare_word": "A word without quotes is text: write a function with brackets to call it (user_ped()).",
             "no_value": "a call gave no value where one is needed (it returns nothing)",
             "no_field": "#%d: there is no such argument (the function has %d)",
-            "not_integer": "%s can't be made a whole number"
+            "not_integer": "%s can't be made a whole number",
+            "too_many": "(%s) takes %d argument(s), got %d",
+            "required": "%s: the argument is required",
+            "unclosed": "%s: a bracket or a quote is not closed"
+        },
+        "vector": {
+            "values": "Values: %s",
+            "wrong": "Not a vector",
+            "expression_help": "The whole vector: three numbers, 1, 2, 3, or an expression that gives one (v3.new(1, 2, 3), Atdar.natives.entity.get_coords(user_ped())). x, y and z follow it"
         },
         "call": {
             "expression": "Expression",
@@ -902,7 +916,7 @@
             },
             "function": {
                 "name": "Function Name",
-                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame. A table is opened in the Value list only when written with {} at the end: Atdar.util{}; without them its entries are only shown as lines. In the brackets #1, #2 are the values of the argument fields: util.toast(#1), util.toast(tostring(#1)). asstr(#1): the argument as text; asint(#1): as a whole number; allasstr(): all the arguments as text, with a notice of them; astext and allastext call nothing and only show the name and the arguments"
+                "help": "A path with dots. Stand's tables: util.toast, entities.get_user_vehicle_as_handle. The script's: game.repair_vehicle; its tables named like Stand's are reached with Atdar in front: Atdar.util.hash. The first part may be a module's name: VehicleManager.get. With a colon the function is called as a method: VehicleManager:get. A name alone finds the function, the script's natives too: set_explosive_melee_this_frame. A function is called only when written with brackets: util.toast(); without them it is only read. A table is opened in the Value list only when written with {} at the end: Atdar.util{}; without them its entries are only shown as lines. In the brackets #1, #2 are the values of the argument fields: util.toast(#1), util.toast(tostring(#1)). asstr(#1): the argument as text; asint(#1): as a whole number; allasstr(): all the arguments as text, with a notice of them; astext and allastext call nothing and only show the name and the arguments"
             },
             "args": {
                 "name": "Argument",
@@ -1150,7 +1164,8 @@
                 "help": "A function in a table's list is written (amount): void instead of function(amount): void. The lists made after the change follow"
             },
             "registry": {
-                "bad_param": "%s (short_name.json): parameter %d has no \"name\", so the registry's parameters for it are left out"
+                "bad_param": "%s (short_name.json): parameter %d has no \"name\", so the registry's parameters for it are left out",
+                "no_path": "short_name.json: \"%s\" is left out, it has no \"path\" (a text)"
             },
             "show_time": {
                 "name": "Disable Call Time For All",
@@ -1192,7 +1207,7 @@
             "guide": {
                 "name": "Arguments Guide",
                 "help": "Sends to Stand how to write the functions' arguments in the argument fields",
-                "text": "Each argument has its own field, by the type written for it in the code. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text. Worked out at each call. An empty field is not given. In Function Name and Add a path may name a table: util{} opens it as a list (its tables are lists, its functions can be called, its values typed over), without {} it is only read; one item by its key in brackets: util.list[1], util[\"name\"]"
+                "text": "Each argument has its own field, by the type written for it in the code. Where an expression is taken it's worked out as in Lua: 5, true, \"text\", v3.new(1, 2, 3), entities.get_user_vehicle_as_handle(). A word without quotes is text: a call is always written with its brackets, user_ped(). Worked out at each call. An empty field is not given; a parameter written without ? and with no default must be given. A vector is a list: the whole vector, then x, y and z that can be typed over. In Function Name a function is called only when written with brackets, util.toast(); a table is opened as a list when written with {} at the end, util{} (its tables are lists, its functions can be called, its values typed over), without {} its entries are only shown as lines; one item by its key in brackets: util.list[1], util[\"name\"]. #1, #2 in the brackets of Function Name are the argument fields: util.toast(tostring(#1))"
             },
             "added": {
                 "help": "A field for each argument by the type the code says, then Call, Call After, Loop...",
@@ -1207,10 +1222,6 @@
             "table": {
                 "divider": "Tables"
             },
-            "depth": {
-                "name": "Table Depth",
-                "help": "How many levels of nested tables open in the Value list; deeper ones are a {...} line. A big depth on big tables (Atdar) makes a great many items"
-            },
             "empty": "%s: empty (nil)",
             "no_name": "No function name given",
             "not_found": "'%s' not found",
@@ -1218,7 +1229,18 @@
             "template_no_fields": "#1, #2 point to the argument fields, and this function has none: write the arguments in its brackets",
             "failed": "%s: error: %s",
             "done": "%s: done",
-            "result": "%s -> %s"
+            "result": "%s -> %s",
+            "bad_ref": "#%d: there is no such argument (the function has %d)",
+            "braces_on_function": "%s is a function: {} is not needed, it is called with brackets",
+            "brackets_on_table": "%s is a table: brackets are only for functions, a table is opened with {} at the end",
+            "file_bad": "%s: the file is damaged or is not a JSON object, it is read as empty",
+            "short_names_bad": "%s: \"%s\" is left out, the name and the path must both be texts",
+            "stand_api": {
+                "bad_entry": "stand_api.json: \"%s\" is not an object with a list of \"params\", it is not used"
+            },
+            "command_unknown": "command.json: \"%s\" is not a command of the script (known: %s)",
+            "command_names": "command.json: the names of \"%s\" must be a list of texts",
+            "command_duplicate": "command.json: the name \"%s\" is used by \"%s\" and by \"%s\", the first one is used"
         },
         "pointer_editor": {
             "name": "Pointer Editor",

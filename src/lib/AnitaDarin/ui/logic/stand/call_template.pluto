@@ -38,11 +38,36 @@ local function refs_of(template: ?string): table
             inner[math.tointeger(tonumber(inner_number))] = true
         end
 
-        refs[math.tointeger(tonumber(number))] = inner
+        -- A number too big for a whole number points to no field: it is left out
+        local field = math.tointeger(tonumber(number))
+
+        if field ~= nil then
+            refs[field] = inner
+        end
+
         from = last + 1
     end
 
     return refs
+end
+
+-- The #N in the brackets that point to a field the function doesn't have (a number under 1 or over the count)
+-- @param template The text in the brackets; nil gives none
+-- @param count How many parameters (argument fields) the function has
+-- @return The numbers, in order
+function module.missing_refs(template: ?string, count: int): table
+
+    local missing = {}
+
+    for number in pairs(refs_of(template)) do
+        if number < 1 or number > count then
+            table.insert(missing, number)
+        end
+    end
+
+    table.sort(missing)
+
+    return missing
 end
 
 -- What was taken out of the brackets is taken out of the fields: a #1 that's gone clears the field 1, a >2

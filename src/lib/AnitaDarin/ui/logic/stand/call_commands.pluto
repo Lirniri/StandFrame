@@ -14,7 +14,7 @@
 --   all_as_int        allasint()        the same as allasstr, with whole numbers; what is not a number (a text) is
 --                                       given as it is
 --   all_as_text       allastext()       the notice only, nothing is called
--- A command of all may be written with or without brackets. A name may have a dot (as.text): it is one name there.
+-- A command is written with its brackets, allasstr() too. A name may have a dot (as.text): it is one name there.
 --
 --   local cmd = { name = "toast", sig = sig, field = |number| -> value,
 --                 inspect = |key, label| -> "label = typed: result",
@@ -38,6 +38,9 @@ local KINDS = {
 
 -- Strings under "arguments"
 local text = select(2, Atdar.loader.load("core/i18n").scope("arguments"))
+
+-- The problems of command.json are told in Call Function's strings
+local file_text = select(2, Atdar.loader.load("core/i18n").scope("script_menu.call_function"))
 
 -- The arguments as texts; nil stays nil (it is "not given")
 local function as_texts(args: table, count: int): table
@@ -142,15 +145,52 @@ local function run(kind: table, cmd: table, args: table, count: int)
     return converted, last
 end
 
--- The names -> id, from the file's id -> names
+-- The ids of the file in order: the same order everywhere, so a name two ids have always means the same one
+local function ids_of(data: table): table
+
+    local ids = {}
+
+    for id in pairs(data) do
+        if type(id) == "string" then
+            table.insert(ids, id)
+        end
+    end
+
+    table.sort(ids)
+
+    return ids
+end
+
+-- Whether the names of an id are a list of texts
+local function is_names(names): bool
+
+    if type(names) ~= "table" then
+        return false
+    end
+
+    -- A list: its keys are 1..#names and nothing else, all texts
+    local count = 0
+
+    for key, alias in pairs(names) do
+        count += 1
+
+        if type(key) ~= "number" or type(alias) ~= "string" then
+            return false
+        end
+    end
+
+    return count == #names
+end
+
+-- The names -> id, from the file's id -> names. A name two ids have goes to the first of them (by the ids' order)
 function module.aliases(data: table): table
 
     local aliases = {}
 
-    for id, names in pairs(data) do
-        if type(id) == "string" and type(names) == "table" then
-            for _, alias in ipairs(names) do
-                if type(alias) == "string" then
+    for _, id in ipairs(ids_of(data)) do
+        if type(data[id]) == "table" then
+            for _, alias in ipairs(data[id]) do
+                if type(alias) == "string" and aliases[alias] == nil then
                     aliases[alias] = id
                 end
             end
@@ -158,6 +198,44 @@ function module.aliases(data: table): table
     end
 
     return aliases
+end
+
+-- What is wrong in the file: an id that is no command, names that aren't a list of texts, a name two ids have
+-- @return The problems as texts (empty when all is right)
+function module.problems(data: table): table
+
+    local problems = {}
+    local owners = {}
+    local known = {}
+
+    for id in pairs(KINDS) do
+        table.insert(known, id)
+    end
+
+    table.sort(known)
+
+    for _, id in ipairs(ids_of(data)) do
+
+        local names = data[id]
+
+        if KINDS[id] == nil then
+            table.insert(problems, file_text("command_unknown"):format(id, table.concat(known, ", ")))
+        end
+
+        if not is_names(names) then
+            table.insert(problems, file_text("command_names"):format(id))
+        else
+            for _, alias in ipairs(names) do
+                if owners[alias] ~= nil and owners[alias] ~= id then
+                    table.insert(problems, file_text("command_duplicate"):format(alias, owners[alias], id))
+                else
+                    owners[alias] = id
+                end
+            end
+        end
+    end
+
+    return problems
 end
 
 -- The function a name stands for, or nil when it is no command of the file
@@ -176,20 +254,6 @@ function module.function_of(name: string, aliases: table, cmd: table)
         local converted, count = run(kind, cmd, args, args.n)
         return table.unpack(converted, 1, count)
     end
-end
-
--- A command of all written without brackets (allasstr) gets them: the text the Function Name has in its brackets
-function module.with_brackets(template: string, aliases: table): string
-
-    local filled = template:gsub("%f[%w_]([%w_%.]+)%f[^%w_%.]()", function(word, position)
-        local kind = KINDS[aliases[word]]
-
-        if kind ~= nil and kind.all and template:sub(position):match("^%s*%(") == nil then
-            return word .. "()"
-        end
-    end)
-
-    return filled
 end
 
 return module

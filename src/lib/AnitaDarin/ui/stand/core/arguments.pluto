@@ -10,7 +10,9 @@
 -- more (...) or whose parameters aren't known (Stand's natives) has one field of Arguments at the end.
 -- A field whose text is one call of a function with known parameters - ENTITY.GET_ENTITY_COORDS(user_ped()) -
 -- becomes a list (when the caller gives spec.on_reshape): the expression itself, then a field for each
--- parameter of that function, made the same way; typing in one writes the expression again.
+-- parameter of that function, made the same way; typing in one writes the expression again. A vector3 field whose
+-- text gives a vector (1, 2, 3 or v3.new(1, 2, 3)) becomes a list the same way: the expression, then x, y and z;
+-- when the text isn't only numbers (a call that gives a vector) the values are there too, as a divider.
 --
 -- Only the fields are here. The signatures, the kinds and working the typed texts out into values are in
 -- ui/logic/stand/arguments; its functions are here too (arguments.read, arguments.signature_of...), for the
@@ -20,6 +22,9 @@
 local i18n = Atdar.loader.load("core/i18n")
 local clicks = Atdar.loader.load("ui/logic/stand/clicks")
 local logic = Atdar.loader.load("ui/logic/stand/arguments")
+local Logger = Atdar.loader.load("core/logger")
+
+local log = new Logger("Arguments")
 
 -- Everything of the logic, and build() below
 local module = setmetatable({}, { __index = logic })
@@ -45,14 +50,38 @@ function module.build(list: table, spec: table): void
 
     local sig, texts = spec.sig, spec.texts
 
-    -- What each field's text calls now (the path), to see when that changes
+    -- What each field's text calls now (the path), and whether it is a vector, to see when that changes
     local calls = {}
+    local vectors = {}
+
+    -- What a vector3 field shows (below, with the vector list); typed_in asks it too
+    local vector_view
+
+    -- The vector lists made: index -> function(typed) that makes the list follow the text in place. Typing the
+    -- expression doesn't make the list again (the user is in it): its lines and the call's arguments change
+    local vector_updaters = {}
 
     -- The user typed in a field: its text kept, the fields made again when what it calls changed
     -- @param whole The field is the expression of a call's list: its fields follow any change of it
-    local function typed_in(index, value: string, click_type, whole: bool): void
+    -- @param item The field's item, to put back what it had when what was typed isn't what the parameter takes
+    local function typed_in(index, value: string, click_type, whole: bool, item): void
         if clicks.is_stopping() then
             return
+        end
+
+        -- A boolean field takes true or false: anything else is told and the field goes back to what it had
+        local param = sig.params[index]
+
+        if param ~= nil and item ~= nil and clicks.is_user_click(click_type) then
+            local wrong = module.check_typed(param, value)
+
+            if wrong ~= nil then
+                local before = texts[index] ?? module.default_of(param) ?? ""
+
+                log:notify(wrong)
+                item:set_value(before)
+                return
+            end
         end
 
         texts[index] = value
@@ -61,10 +90,27 @@ function module.build(list: table, spec: table): void
             return
         end
 
+        -- A vector list stays where it is while the text is a vector: it follows the text in place
+        if vector_updaters[index] ~= nil then
+            vector_updaters[index](value)
+
+            if spec.on_typed ~= nil then
+                spec.on_typed()
+            end
+
+            return
+        end
+
         local call = spec.on_reshape ~= nil and index ~= "rest" and module.call_in(value) or nil
         local path = call?.path
+        local is_vector = false
 
-        if whole or path ~= calls[index] then
+        if spec.on_reshape ~= nil and index ~= "rest" and sig.params[index] ~= nil
+            and module.kind_of(sig.params[index].type) == "vector3" then
+            is_vector = vector_view(value) ~= nil
+        end
+
+        if whole or path ~= calls[index] or is_vector ~= (vectors[index] == true) then
             spec.on_reshape()
         end
 
@@ -76,14 +122,19 @@ function module.build(list: table, spec: table): void
     -- A field; its command isn't one of the found commands (not renamed with the prefix settings)
     -- @return The field's item
     local function field(node: table, name_label, index, help: string, start: ?string, whole: bool = false): table
-        return node:text_input({
+
+        local item = nil
+
+        item = node:text_input({
             name = name_label,
             help = help,
             commands = { spec.command(index) },
             track = false,
             default = texts[index] or start or "",
-            on_change = |value, click_type| -> typed_in(index, value, click_type, whole),
+            on_change = |value, click_type| -> typed_in(index, value, click_type, whole, item),
         })
+
+        return item
     end
 
     -- A parameter whose text is a call: a list named by the expression, with the expression's own field and
@@ -115,6 +166,199 @@ function module.build(list: table, spec: table): void
         end)
     end
 
+    -- The name of a vector's list: the kind and what is typed, when something is
+    local function vector_title(name_text: string, typed: ?string): string
+
+        if typed == nil or typed:match("%S") == nil then
+            return name_text
+        end
+
+        return $"{name_text}: {typed}"
+    end
+
+    -- What a vector3 field shows: the vector its text gives; an empty field is 0, 0, 0 (nothing is given until a number is typed);
+    -- a text that isn't a vector (a mistyped name, a call that gives no vector) is marked wrong: the list stays, so the
+    -- user is not thrown out of it, and says so
+    vector_view = function(typed: ?string): table
+
+        if typed == nil or typed:match("%S") == nil then
+            return { x = "0", y = "0", z = "0", written = true, empty = true }
+        end
+
+        local vec = module.vector_in(typed)
+
+        if vec == nil then
+            return { x = "0", y = "0", z = "0", written = false, wrong = true }
+        end
+
+        return vec
+    end
+
+    -- The line under the axes: what the expression gives, or that it is no vector
+    local function values_text(vec: table, parts: table): string
+
+        if vec.wrong then
+            return text("vector.wrong")
+        end
+
+        return text("vector.values"):format(table.concat(parts, ", "))
+    end
+
+    -- A vector3 parameter: a list with the whole vector, then x, y, z as lines like a variable's that are fields too,
+    -- then what the text gives when it isn't written out. When the text is a call (get_coords(user_ped())) the whole
+    -- vector is a list - "Expression: get_coords(...)" - with its field first and the call's arguments under it.
+    -- What is inside is made by a section: when the text becomes a call or stops being one, only the inside is made
+    -- again, so the user stays in the list; the rest of what the text does is changed in place
+    -- @param call The text is a call that gives the vector (get_coords(user_ped()))
+    local function vector_list(name_text: string, index, help: string, vec: table, call: ?table): void
+
+        local nested = list:list({ name = vector_title(name_text, texts[index]), help = help })
+        local parts = { vec.x, vec.y, vec.z }
+        local axes = {}
+        local expression = nil
+        local values_line = nil
+        local args_section = nil
+        local content = nil
+        -- The call the text is now (nil: numbers), and the vector it gives
+        local current = call
+        local view = vec
+
+        local function fill(node: table): void
+
+            local start = nil
+
+            axes = {}
+            args_section = nil
+
+            if view.empty then
+                start = module.default_of(sig.params[index])
+            end
+
+            if current ~= nil then
+
+                local call_node = node:list({ name = $"{text("call.expression")}: {current.path}(...)",
+                    help = text("call.expression_help") })
+                local fields = nil
+
+                expression = field(call_node, label("call.expression"), index, text("call.expression_help"), start, true)
+
+                -- The call's arguments: the same fields as a call in any argument; typing in one writes the call again.
+                -- Made from the call the text is when they are made, so the text typed since is in them
+                fields = call_node:section(function(inner_node)
+
+                    local shown = current
+
+                    if shown == nil then
+                        return
+                    end
+
+                    local inner = module.texts_from(shown.sig, table.concat(shown.pieces, ", "))
+
+                    module.build(inner_node, {
+                        sig = shown.sig,
+                        texts = inner,
+                        verbatim = true,
+                        command = |sub| -> $"{spec.command(index)}_{sub}",
+                        on_typed = function()
+                            texts[index] = module.compose(shown.path, shown.sig, inner)
+                            nested:set_name(vector_title(name_text, texts[index]))
+                            expression:set_value(texts[index])
+
+                            if spec.on_typed ~= nil then
+                                spec.on_typed()
+                            end
+                        end,
+                        on_reshape = || -> fields.rebuild(),
+                    })
+                end)
+
+                args_section = fields
+            else
+                expression = field(node, label("call.expression"), index, text("vector.expression_help"), start, true)
+            end
+
+            for number, axis in ipairs({ "x", "y", "z" }) do
+
+                -- Stand shows the field as "x: 1": the name is only the axis
+                axes[number] = node:text_input({
+                    name = axis,
+                    help = text("help.float"),
+                    commands = { $"{spec.command(index)}_{axis}" },
+                    track = false,
+                    default = parts[number],
+                    on_change = function(value: string, click_type)
+
+                        if clicks.is_stopping() or not clicks.is_user_click(click_type) then
+                            return
+                        end
+
+                        parts[number] = value
+                        texts[index] = table.concat(parts, ", ")
+                        nested:set_name(vector_title(name_text, texts[index]))
+
+                        -- The numbers replace the call: the expression is a field again
+                        if current ~= nil then
+                            current = nil
+                            view = { x = parts[1], y = parts[2], z = parts[3], written = true }
+                            content.rebuild()
+                        else
+                            expression:set_value(texts[index])
+                            values_line:set_visible(false)
+                        end
+
+                        if spec.on_typed ~= nil then
+                            spec.on_typed()
+                        end
+                    end,
+                })
+            end
+
+            -- What the expression gives, when it isn't written out as numbers (they are in the lines above); or that it
+            -- gives no vector
+            values_line = node:divider({ name = values_text(view, parts) })
+            values_line:set_visible(not view.written)
+        end
+
+        content = nested:section(fill)
+
+        -- The expression was typed: the lines follow it in place; the inside is made again only when the text became a
+        -- call or stopped being one (or is another call), the call's arguments only when the text is the same call
+        vector_updaters[index] = function(typed: string): void
+
+            local now = vector_view(typed)
+            local call_now = module.call_in(typed)
+            local same = (call_now == nil and current == nil)
+                or (call_now ~= nil and current ~= nil and call_now.path == current.path)
+
+            -- A text that is no vector leaves the lines as they were
+            if not now.wrong then
+                for number, value in ipairs({ now.x, now.y, now.z }) do
+                    parts[number] = value
+                end
+            end
+
+            nested:set_name(vector_title(name_text, typed))
+            current = call_now
+            view = now
+
+            if not same then
+                content.rebuild()
+                return
+            end
+
+            for number, axis_item in ipairs(axes) do
+                axis_item:set_value(parts[number])
+            end
+
+            values_line:set_name(values_text(now, parts))
+            values_line:set_visible(not now.written)
+
+            if args_section ~= nil then
+                args_section.rebuild()
+            end
+        end
+    end
+
     for i, param in ipairs(sig.params) do
 
         local kind = module.kind_of(param.type)
@@ -131,10 +375,20 @@ function module.build(list: table, spec: table): void
         end
 
         local call = spec.on_reshape ~= nil and module.call_in(texts[i]) or nil
+        local vec = nil
         calls[i] = call?.path
 
+        -- A vector3 parameter is a vector list even when its text is a call that gives one (get_coords(user_ped()))
+        if spec.on_reshape ~= nil and kind == "vector3" then
+            vec = vector_view(texts[i] ?? module.default_of(param))
+        end
+
+        vectors[i] = vec ~= nil
+
         list:divider({ name = param.name })
-        if call ~= nil then
+        if vec ~= nil then
+            vector_list(text($"types.{kind}"), i, help, vec, call)
+        elseif call ~= nil then
             call_list(text($"types.{kind}"), i, help, call)
         else
             field(list, label($"types.{kind}"), i, help, module.default_of(param))

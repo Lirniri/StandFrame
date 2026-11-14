@@ -43,11 +43,13 @@ local label, text = i18n.scope("modules")
 --   result_lines   the Variable line
 --   detail_lines   the line under it with a userdata's value, hidden while the result isn't one
 --   result_tables  the Value list: { list, shape, texts, lines, named }
+--   result_functions  the Parameters list of a function that was read and not called: { list, shape }
 --   depth_items    Table Depth, made last in its list (add_depth), there while the result is an opened table
 local result_lines = {}
 local detail_lines = {}
 local result_tables = {}
 local depth_items = {}
+local result_functions = {}
 
 -- The keys whose lines belong to a list outside Modules (Debug > Call Function): forget_lines leaves them
 local kept_keys = {}
@@ -72,12 +74,75 @@ local function show_detail(key: string): void
     line:set_visible(detail ~= nil)
 end
 
+-- The Parameters list under the Variable line: there while the last result is a function that was only read
+local function update_function_list(key: string): void
+
+    local shown = result_functions[key]
+
+    if shown == nil then
+        return
+    end
+
+    local lines, count = results.function_lines(key)
+
+    if lines == nil then
+        shown.list:set_visible(false)
+        return
+    end
+
+    shown.list:set_visible(true)
+    shown.list:set_name(text("loop.params_list"):format(count))
+
+    local texts = {}
+
+    for _, line in ipairs(lines) do
+        table.insert(texts, line.text)
+
+        for _, inner in ipairs(line.children or {}) do
+            table.insert(texts, inner.text)
+        end
+    end
+
+    local shape = table.concat(texts, "\n")
+
+    if shape == shown.shape then
+        return
+    end
+
+    -- A parameter is a divider, its default under it; a type made of more is a list
+    local ok = pcall(function()
+        shown.list:clear()
+        for _, line in ipairs(lines) do
+            if line.children ~= nil then
+                local inner = shown.list:list({ name = line.text })
+
+                for _, child in ipairs(line.children) do
+                    inner:readonly_name({ name = child.text })
+                end
+            elseif line.title then
+                shown.list:divider({ name = line.text })
+            else
+                shown.list:readonly_name({ name = line.text })
+            end
+        end
+    end)
+
+    -- The list is gone (its menu was left): nothing to show in
+    if not ok then
+        result_functions[key] = nil
+        return
+    end
+
+    shown.shape = shape
+end
+
 -- What a key gave changed: its items follow
 results.on_change(function(key: string)
 
     local line = result_lines[key]
 
     update_result_list(key)
+    update_function_list(key)
     show_detail(key)
 
     if line == nil then
@@ -104,11 +169,15 @@ function module.add_result_lines(node: table, key: string, kept: ?bool): void
         texts = {}, lines = {} }
 
 
+    -- A function it gave without calling it: its parameters in a list right under (hidden while it gave none)
+    result_functions[key] = { list = node:list({ name = text("loop.params_list"):format(0) }), shape = nil }
+
     if kept then
         kept_keys[key] = true
     end
 
     update_result_list(key)
+    update_function_list(key)
 end
 
 -- Table Depth is there while the result is a table that is opened (named with {}, or a function's)
@@ -151,6 +220,7 @@ function module.drop_lines(key: string): void
     result_lines[key] = nil
     detail_lines[key] = nil
     result_tables[key] = nil
+    result_functions[key] = nil
     depth_items[key] = nil
     kept_keys[key] = nil
 end
@@ -158,19 +228,21 @@ end
 -- The Modules list was gone back out of: its lines are gone, what the calls gave is still remembered
 function module.forget_lines(): void
 
-    local lines, details, tables, depths = {}, {}, {}, {}
+    local lines, details, tables, depths, functions = {}, {}, {}, {}, {}
 
     for key in pairs(kept_keys) do
         lines[key] = result_lines[key]
         details[key] = detail_lines[key]
         tables[key] = result_tables[key]
         depths[key] = depth_items[key]
+        functions[key] = result_functions[key]
     end
 
     result_lines = lines
     detail_lines = details
     result_tables = tables
     depth_items = depths
+    result_functions = functions
 end
 
 -- Variables: a table's entries and a module's fields

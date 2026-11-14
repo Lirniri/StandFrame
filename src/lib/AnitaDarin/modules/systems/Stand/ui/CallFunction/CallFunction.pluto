@@ -221,11 +221,19 @@ local class CallFunction extends Module
                     "_found",
                     "_notice",
                     "_is_opened",
+                    "_is_call",
+                    "_function_info",
                     "_said",
                     "_name_with_template",
                     "_loaded",
                     "_last_id",
                     "_history",
+                    "_told",
+                    "_tell",
+                    "_commands_seen",
+                    "_api_seen",
+                    "_check_shape",
+                    "_check_refs",
                 }
             }
         })
@@ -259,6 +267,12 @@ local class CallFunction extends Module
         -- The last calls, newest first: { path, texts, args }. Kept while the script runs and through a Reload
         -- from the menu; not written to a file, so a restart of the game starts it empty
         self._history = kept.history ?? {}
+        -- The problems of the settings files already told (message -> true): a file is read at every call, one problem is said once
+        self._told = {}
+        -- The commands table that was last checked by call_commands.problems
+        self._commands_seen = nil
+        -- The same for the Stand API file
+        self._api_seen = nil
     end
 
     -- A handover left by a Stop is dropped: this instance goes on with its own
@@ -281,9 +295,10 @@ local class CallFunction extends Module
 
     -- Gives the results out: to the lists (the Variable line, the Value list of a table) and as a notice
     -- @param open Whether a table that is the result is opened in the Value list (a table named with {}); nil: it is
-    function _deliver(spec: table, given: table, was_call: bool, open: ?bool): void
+    -- @param info A function that was read, not called: { sig, returns }, for its Parameters list
+    function _deliver(spec: table, given: table, was_call: bool, open: ?bool, info: ?table): void
 
-        results().show(spec.key, given, open)
+        results().show(spec.key, given, open, info)
 
         -- A table opened in its list (spec.silent): what's in it is there, no notice of it
         if spec.silent then
@@ -334,6 +349,46 @@ local class CallFunction extends Module
         return cmd.only == true
     end
 
+    -- What a function that is only read has to show: its signature (from its code, or from the files for Stand's own)
+    -- and return type
+    -- @return { sig, returns }; nil when the name names no function
+    function _function_info(spec: table, typed: string, value): ?table
+
+        if type(value) ~= "function" then
+            return nil
+        end
+
+        local path = typed
+
+        if spec.path ~= nil then
+            path = spec.path()
+        end
+
+        local sig, returns = self:signature_of_path(path)
+
+        if sig == nil then
+            return nil
+        end
+
+        return { sig = sig, returns = returns }
+    end
+
+    -- Whether what the name names is called: a function is, a table or a variable is read. With spec.explicit_call
+    -- (the Function Name) a function is called only when the name is written with brackets, util.toast(); without
+    -- them it is only read, as a table without {}
+    function _is_call(spec: table, typed: string, value): bool
+
+        if type(value) ~= "function" then
+            return false
+        end
+
+        if not spec.explicit_call then
+            return true
+        end
+
+        return select(2, path_parser().split(typed:match("^%s*(.-)%s*$"))) ~= nil
+    end
+
     -- Whether a table that is named is opened in the Value list: only when it is written with {} at the end
     -- (Atdar.util{}), as in the Functions list; one without is only looked at: its entries are lines. A list of a table (spec.silent) is opened
     function _is_opened(spec: table, typed: string): bool
@@ -343,6 +398,48 @@ local class CallFunction extends Module
         end
 
         return select(3, path_parser().split(typed:match("^%s*(.-)%s*$"))) == true
+    end
+
+    -- Warns of a problem of the settings files once: the files are read at every call, the same words would flood the log
+    function _tell(message: string): void
+
+        if self._told[message] then
+            return
+        end
+
+        self._told[message] = true
+        self.log:warn(message)
+    end
+
+    -- Warns when the name is written for another kind than it names: {} on a function (it is called with brackets), brackets
+    -- on a table (they are for functions). What the name names is still read as before
+    function _check_shape(typed: string, name: string, value): void
+
+        local _, inline, braces = path_parser().split(typed:match("^%s*(.-)%s*$"))
+
+        if braces == true and type(value) == "function" then
+            self.log:warn(text("braces_on_function"):format(name))
+            return
+        end
+
+        if inline ~= nil and type(value) == "table" then
+            self.log:warn(text("brackets_on_table"):format(name))
+        end
+    end
+
+    -- Warns of every #N in the brackets that points to an argument field the function doesn't have
+    -- @param sig The function's signature; nil or with a vararg: nothing is told (the fields aren't known)
+    function _check_refs(inline: ?string, sig: ?table): void
+
+        if sig == nil or sig.vararg then
+            return
+        end
+
+        local count = #sig.params
+
+        for _, number in ipairs(call_template().missing_refs(inline, count)) do
+            self.log:warn(text("bad_ref"):format(number, count))
+        end
     end
 
     -- Whether the notices go to Stand (the Notice In Stand setting): a panel's spec.in_stand
@@ -378,8 +475,11 @@ local class CallFunction extends Module
             return
         end
 
-        if type(value) ~= "function" then
-            self:_deliver(spec, table.pack(true, value), false, self:_is_opened(spec, typed))
+        self:_check_shape(typed, name, value)
+
+        if not self:_is_call(spec, typed, value) then
+            self:_deliver(spec, table.pack(true, value), false, self:_is_opened(spec, typed),
+                self:_function_info(spec, typed, value))
             return
         end
 
@@ -599,6 +699,13 @@ local class CallFunction extends Module
             return
         end
 
+        -- Told once at the start, not at every tick of the loop
+        local looked, found_now, value_now = pcall(spec.target)
+
+        if looked and found_now then
+            self:_check_shape(typed, name, value_now)
+        end
+
         local loop_run = { every = every, next = 0, shows_result = || -> state.show_result ~= false }
         state.loop = loop_run
 
@@ -620,10 +727,10 @@ local class CallFunction extends Module
                 return false
             end
 
-            if type(value) ~= "function" then
+            if not self:_is_call(spec, typed, value) then
                 local read = table.pack(true, value)
                 loop_run.result = $"{name} -> {values().results_text(read)}"
-                results().show(spec.key, read, self:_is_opened(spec, typed))
+                results().show(spec.key, read, self:_is_opened(spec, typed), self:_function_info(spec, typed, value))
                 return true
             end
 
@@ -705,10 +812,12 @@ local class CallFunction extends Module
 
         if file:exists() then
             data = file:read()
-        end
 
-        if type(data) ~= "table" then
-            data = nil
+            -- A list is not an object either: its entries have no names
+            if type(data) ~= "table" or #data > 0 then
+                self:_tell(text("file_bad"):format(relative))
+                data = nil
+            end
         end
 
         self._cache[relative] = { data = data, at = now }
@@ -729,15 +838,29 @@ local class CallFunction extends Module
         for name, path in pairs(self:_read_file(SHORT_NAMES_FILE) or {}) do
             if type(name) == "string" and type(path) == "string" then
                 names[name] = path
+            else
+                self:_tell(text("short_names_bad"):format(SHORT_NAMES_FILE, tostring(name)))
             end
         end
 
         return names
     end
 
-    -- @return The commands of the Function Name (COMMANDS_FILE): id -> its names; empty when there's no file
+    -- @return The commands of the Function Name (COMMANDS_FILE): id -> its names; empty when there's no file. What's
+    -- wrong in it is told once (call_commands.problems)
     function commands(): table
-        return self:_read_file(COMMANDS_FILE) or {}
+
+        local data = self:_read_file(COMMANDS_FILE) or {}
+
+        if data ~= self._commands_seen then
+            self._commands_seen = data
+
+            for _, problem in ipairs(Atdar.loader.load("ui/logic/stand/call_commands").problems(data)) do
+                self:_tell(problem)
+            end
+        end
+
+        return data
     end
 
     -- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or
@@ -749,15 +872,33 @@ local class CallFunction extends Module
         for name, entry in pairs(self:_read_file(REGISTRY_FILE) or {}) do
             if type(name) == "string" and type(entry) == "table" and type(entry.path) == "string" then
                 entries[name] = entry
+            else
+                self:_tell(text("registry.no_path"):format(tostring(name)))
             end
         end
 
         return entries
     end
 
-    -- @return The Stand API file (STAND_API_FILE): path -> { params, returns }; empty when there's no file or it's damaged
+    -- @return The Stand API file (STAND_API_FILE): path -> { params, returns }; empty when there's no file or it's damaged.
+    -- An entry that isn't an object, or whose params aren't a list, is told once (and not used)
     function stand_api(): table
-        return self:_read_file(STAND_API_FILE) or {}
+
+        local api = self:_read_file(STAND_API_FILE) or {}
+
+        if api == self._api_seen then
+            return api
+        end
+
+        self._api_seen = api
+
+        for path, entry in pairs(api) do
+            if type(entry) ~= "table" or (entry.params ~= nil and type(entry.params) ~= "table") then
+                self:_tell(text("stand_api.bad_entry"):format(tostring(path)))
+            end
+        end
+
+        return api
     end
 
     -- Signatures
@@ -1036,16 +1177,32 @@ local class CallFunction extends Module
     function set_main_name(value: string)
 
         local state = self.main_state
-        local path = self:expand(value)
+        local path, matches = self:expand(value)
         local inline = select(2, path_parser().split(value))
         local changed = path ~= state.path
         local sig = nil
+        -- What was typed for the function before, with the names of its parameters: another function with a parameter
+        -- of the same name keeps it (get_coords(user_ped()) -> set_coords: the entity stays user_ped())
+        local before = nil
 
         if value == "" then
             results().clear(self.RESULT_KEY)
         end
 
-        -- Another function: what was typed for the last one doesn't belong to it
+        -- Told when the name is typed, not at every call
+        if path ~= "" and matches == 0 then
+            self.log:warn(text("not_found"):format(shown_name(value)))
+        end
+
+        if changed and state.texts ~= nil then
+            local old_sig = self:main_signature()
+
+            if old_sig ~= nil then
+                before = { params = old_sig.params, texts = state.texts }
+            end
+        end
+
+        -- Another function: what was typed for the last one doesn't belong to it, except the arguments of the same name
         if changed then
             state.path = path
             state.texts = nil
@@ -1054,14 +1211,40 @@ local class CallFunction extends Module
 
         state.name = value
 
-        if inline ~= nil and inline ~= "" then
+        if (inline ~= nil and inline ~= "") or before ~= nil then
             sig = self:main_signature()
+        end
+
+        self:_check_refs(inline, sig)
+
+        local carried = false
+
+        if before ~= nil and sig ~= nil then
+            local kept = {}
+
+            for number, param in ipairs(sig.params) do
+                for old_number, old_param in ipairs(before.params) do
+                    if old_param.name == param.name and before.texts[old_number] ~= nil then
+                        kept[number] = before.texts[old_number]
+                        carried = true
+                    end
+                end
+            end
+
+            if carried then
+                state.texts = kept
+            end
         end
 
         -- Typed as a call, "players.get_position(0)": what's in the brackets fills the fields (the Arguments
         -- field of a function whose parameters aren't known); #1, #2 point to the fields instead
         local fields, synced = call_template().typed(state, sig, inline, not changed)
         local shown = nil
+
+        -- What was kept is in the brackets as #1(>1) again, unless the user wrote the brackets themselves
+        if carried and not synced then
+            synced = call_template().sync(state, sig)
+        end
 
         if synced then
             shown = self:_name_with_template()

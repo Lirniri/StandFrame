@@ -25,7 +25,7 @@
 -- past its parameters (...): several expressions separated by commas.
 --
 -- A name in an expression may be a short name of Debug > Call Function (its files): user_ped() for
--- players.user_ped(). Where no text is taken (integer, boolean, vector3...) the brackets may be left out: user_ped.
+-- players.user_ped(). A call is always written with its brackets: a word without them is text, never a call.
 -- Strings: core/language "arguments"
 
 local i18n = Atdar.loader.load("core/i18n")
@@ -191,9 +191,6 @@ local function bad(name: string, err): string
     return text("errors.bad"):format(name, friendly(err))
 end
 
--- The kinds whose field never takes a bare word as text: there it can only be a short name
-local WORDLESS_KINDS = { integer = true, float = true, boolean = true, vector3 = true, userdata = true }
-
 -- Whether a path names a function (a short name too, whatever Use Short Names says)
 local function names_function(path: string): bool
 
@@ -259,6 +256,93 @@ local function call_value(param: table, typed: string)
     return true, given[2]
 end
 
+-- Whether a text has every bracket and quote closed, in order: ( ) { } [ ]
+local function is_closed(value: string): bool
+
+    local closers = { [")"] = "(", ["}"] = "{", ["]"] = "[" }
+    local stack = {}
+    local quote = nil
+    local at = 1
+
+    while at <= #value do
+
+        local char = value:sub(at, at)
+
+        if quote ~= nil then
+            if char == "\\" then
+                at += 1 -- the next character is escaped
+            elseif char == quote then
+                quote = nil
+            end
+        elseif char == "\"" or char == "'" then
+            quote = char
+        elseif char == "(" or char == "{" or char == "[" then
+            table.insert(stack, char)
+        elseif closers[char] ~= nil then
+            if stack[#stack] ~= closers[char] then
+                return false
+            end
+            table.remove(stack)
+        end
+
+        at += 1
+    end
+
+    return quote == nil and #stack == 0
+end
+
+-- Whether a parameter must be given: its type is written without ? and there's no default, in the code or by its kind.
+-- A parameter with no type written is not required (it isn't known)
+local function is_required(param: table): bool
+    return param.type ~= nil and param.type:sub(1, 1) ~= "?" and module.default_of(param) == nil
+end
+
+-- What a function that takes no more arguments says when it is given more
+local function too_many(sig: table, given: int): string
+    return text("errors.too_many"):format(module.params_text(sig), #sig.params, given)
+end
+
+-- Whether what was typed in a field is what its kind takes at all, checked as it is typed (a call is checked when it is made).
+-- Strict for a boolean: true or false, or an expression (a call, a name with a dot); a word like "falsed", a number
+-- or a text in quotes isn't one. The same for a number (a word or a text isn't one) and a vector (a text isn't).
+-- Any kind but a text needs its brackets and quotes closed
+-- @return What is wrong (the text of the error); nil when it is fine or when only a call can tell
+function module.check_typed(param: table, typed: ?string): ?string
+
+    if typed == nil or trim(typed) == "" then
+        return nil
+    end
+
+    local value = trim(typed)
+    local kind = module.kind_of(param.type)
+    local is_quoted = value:match("^[\"'].*[\"']$") ~= nil
+    local is_word = value:match("^[%a_][%w_]*$") ~= nil
+
+    if kind ~= "string" and not is_closed(value) then
+        return text("errors.unclosed"):format(param.name)
+    end
+
+    if kind == "boolean" and value ~= "true" and value ~= "false"
+        and (value:match("^[%w_]+$") ~= nil or is_quoted) then
+        return text("errors.boolean"):format(param.name)
+    end
+
+    -- A word without brackets is text, never a call, and a text isn't a number
+    if kind == "integer" and (is_word or is_quoted) then
+        return text("errors.integer"):format(param.name)
+    end
+
+    if kind == "float" and (is_word or is_quoted) then
+        return text("errors.number"):format(param.name)
+    end
+
+    if kind == "vector3" and is_quoted then
+        return text("errors.vector"):format(param.name)
+    end
+
+    return nil
+end
+
 -- One field's text as a value of the kind. Never typed: the field's start value (default_of). Empty: nil
 -- @return The value, or nil and what was wrong
 local function read_one(param: table, typed: ?string)
@@ -267,12 +351,18 @@ local function read_one(param: table, typed: ?string)
     end
 
     if typed == nil or trim(typed) == "" then
+        if is_required(param) then
+            return nil, text("errors.required"):format(param.name)
+        end
         return nil
     end
 
     local kind = module.kind_of(param.type)
     if kind == "string" then
         return typed
+    end
+    if not is_closed(typed) then
+        return nil, text("errors.unclosed"):format(param.name)
     end
     if kind == "function" then
         local path = trim(typed)
@@ -284,14 +374,6 @@ local function read_one(param: table, typed: ?string)
             return nil, text("errors.not_function"):format(param.name, path)
         end
         return fn
-    end
-
-    -- A bare word where no text is taken: a short name of a function, called without its brackets
-    if WORDLESS_KINDS[kind] and trim(typed):match("^[%a_][%w_]*$") then
-        local fn = resolve_name(trim(typed))
-        if type(fn) == "function" then
-            typed = $"{trim(typed)}()"
-        end
     end
 
     local args, count, err = args_parser.parse(typed, resolve_name)
@@ -358,6 +440,10 @@ function module.read(sig: table, texts: table)
         end
     end
 
+    if not sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
+        return {}, 0, too_many(sig, #sig.params + #args_parser.split(texts.rest))
+    end
+
     if sig.vararg and texts.rest ~= nil and trim(texts.rest) ~= "" then
 
         local rest, rest_count, err = args_parser.parse(texts.rest, resolve_name)
@@ -395,6 +481,9 @@ local function field_value(sig: table, texts: table, number: int)
     end
 
     if typed == nil or trim(typed) == "" then
+        if is_required(param) then
+            error(text("errors.required"):format(param.name), 0)
+        end
         return nil
     end
 
@@ -477,11 +566,15 @@ function module.read_template(sig: table, texts: table, template: string, name: 
         return resolve_name(word)
     end
 
-    local args, count, err = args_parser.parse(commands.with_brackets(template, aliases), resolve, cmd.field,
+    local args, count, err = args_parser.parse(template, resolve, cmd.field,
         |dotted| -> commands.function_of(dotted, aliases, cmd))
 
     if err ~= nil then
         return {}, 0, friendly(err), cmd
+    end
+
+    if not sig.vararg and count > #sig.params then
+        return {}, 0, too_many(sig, count), cmd
     end
 
     return args, count, nil, cmd
@@ -500,6 +593,71 @@ function module.texts_from(sig: table, line: string): table
         end
     end
     return texts
+end
+
+-- A vector in an argument
+
+-- Whether a text is only numbers: "1, 2, 3", "v3.new(1.5, -2, 3)"
+local function is_written_out(typed: string): bool
+
+    local inner = typed:match("^%s*v3%.new%s*(%b())%s*$")
+
+    if inner ~= nil then
+        typed = inner:sub(2, -2)
+    end
+
+    return typed:match("^[%s%d%.,%-]+$") ~= nil
+end
+
+-- The three numbers a field's text gives, when it gives a vector: 1, 2, 3 or an expression with .x, .y, .z
+-- (v3.new(1, 2, 3), a function that returns one). The text is worked out, so a call in it is made
+-- @param typed The field's text
+-- @return { x, y, z = the numbers as texts, written = whether the text is only numbers }; nil when it isn't a vector
+function module.vector_in(typed: ?string): ?table
+
+    if typed == nil or trim(typed) == "" then
+        return nil
+    end
+
+    local args, count, err = args_parser.parse(typed, resolve_name)
+
+    if err ~= nil then
+        return nil
+    end
+
+    local numbers = {}
+
+    if count == 3 then
+        numbers = { args[1], args[2], args[3] }
+    elseif count == 1 and (type(args[1]) == "userdata" or type(args[1]) == "table") then
+        local ok, x, y, z = pcall(function() return args[1].x, args[1].y, args[1].z end)
+        if ok then
+            numbers = { x, y, z }
+        end
+    end
+
+    for i = 1, 3 do
+        if type(numbers[i]) ~= "number" then
+            return nil
+        end
+    end
+
+    local written = is_written_out(typed)
+    local texts = {}
+
+    if written then
+        -- As the user wrote them, not as numbers
+        local pieces = args_parser.split(typed:match("^%s*v3%.new%s*%((.*)%)%s*$") or typed)
+        for i = 1, 3 do
+            texts[i] = pieces[i] or tostring(numbers[i])
+        end
+    else
+        for i = 1, 3 do
+            texts[i] = tostring(math.floor(numbers[i] * 1000 + 0.5) / 1000)
+        end
+    end
+
+    return { x = texts[1], y = texts[2], z = texts[3], written = written }
 end
 
 -- A call inside an argument

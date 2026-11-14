@@ -611,6 +611,10 @@ stand.frame()
 stand.equal(called[2] and called[2].n, 2, "the brackets' content is the arguments when the Arguments field is empty")
 stand.equal(called[2] and called[2][1], 5, "the first one a number")
 stand.check(not stand.find_log("not found"), "and nothing is reported as missing")
+function_name.on_change("test_call", 0)
+stand.click(call_button)
+stand.frame()
+stand.equal(#called, 2, "a function named without brackets is only read, not called")
 -- A function typed by name with known parameters: the Arguments field becomes a field for each of them
 -- The fields are in the Arguments list of the panel
 local function args_list()
@@ -640,7 +644,7 @@ Atdar.test_fields = nil
 -- A table result: the Value list with what's in it; no settings of how it's shown
 Atdar.test_table = function() return { 1, 2 } end
 Atdar.test_plain_value = function() return 5 end
-function_name.on_change("test_table", 0)
+function_name.on_change("test_table()", 0)
 stand.click(call_button)
 stand.frame()
 stand.check(stand.find_item(by_name, "Value (2)") ~= nil, "a table result: the Value list with how many entries it has")
@@ -648,7 +652,7 @@ local table_depth = stand.find_item(by_name, "Table Depth")
 stand.check(table_depth ~= nil and table_depth.visible ~= false, "a table result: Table Depth under the Value list")
 stand.equal(stand.find_item(by_name, "Call Functions In Tables"), nil, "no Call Functions In Tables")
 stand.equal(stand.find_item(by_name, "Change Variable Values"), nil, "no Change Variable Values")
-function_name.on_change("test_plain_value", 0)
+function_name.on_change("test_plain_value()", 0)
 stand.click(call_button)
 stand.frame()
 -- A table that is named: opened in the Value list only when written with {} at the end, else it is only read
@@ -668,7 +672,7 @@ function_name.on_change("", 0)
 
 -- A loop draws what the function gave on screen (debug text), once a frame, like a module's loop
 Atdar.test_loop = function() return 7 end
-function_name.on_change("test_loop", 0)
+function_name.on_change("test_loop()", 0)
 stand.debug_texts = {}
 stand.click(stand.child(by_name, "Loop"))
 stand.frame()
@@ -1001,8 +1005,12 @@ end
 stand.equal(stand.name_of(fields_of(outer_item()).children[2]), "Number", "a parameter is one field")
 fields_of(outer_item()).children[2].on_change("seven()", 0)
 stand.equal(call_outer()[1], 7, "a short name of the files in an argument: seven() is test_seven()")
+stand.clear_logs()
 fields_of(outer_item()).children[2].on_change("seven", 0)
-stand.equal(call_outer()[1], 7, "in a field that takes no text the brackets may be left out")
+local calls_before = #outer_calls
+call_outer()
+stand.equal(#outer_calls, calls_before, "a bare short name is not called: a call is written with its brackets")
+stand.check(stand.find_log("whole number is needed"), "and the field says it needs a number")
 stand.clear_logs()
 fields_of(outer_item()).children[2].on_change("math.nothing(1)", 0)
 call_outer()

@@ -12,6 +12,8 @@ local values = Atdar.loader.load("ui/logic/stand/values")
 
 local log = new Logger("Modules")
 local text = select(2, i18n.scope("modules"))
+-- The words of the argument fields: the names and helps of the kinds (3D Vector, Table, ...)
+local arg_text = select(2, i18n.scope("arguments"))
 
 local module = {}
 
@@ -34,10 +36,12 @@ end
 
 -- Remembers what a call gave; the lists are told only when it changed (loops call this every frame)
 -- @param results The call's results packed, pcall's true first: table.pack(pcall(fn))
+-- @param info A function it gave, read and not called: { sig = its signature, returns = its return type or nil }, for the
+-- Parameters list under the Variable line
 -- @param open Whether a table it gave is opened in the Value list; false: it's only looked at, its entries are lines
 -- with no nested lists, no functions to call and no values to change. A table named without {} is only looked at,
 -- one named with {} is opened; what a function returns is always opened
-function module.show(key: string, results: table, open: ?bool): void
+function module.show(key: string, results: table, open: ?bool, info: ?table): void
 
     local value = results.n > 1 and values.results_text(results) or nil
     local entry = last[key]
@@ -57,6 +61,10 @@ function module.show(key: string, results: table, open: ?bool): void
 
     if results.n == 2 and type(results[2]) == "table" then
         entry.tbl = results[2]
+    end
+
+    if results.n == 2 and type(results[2]) == "function" then
+        entry.fn_info = info
     end
 
     if results.n == 2 then
@@ -79,6 +87,77 @@ end
 function module.is_opened(key: string): bool
     local entry = last[key]
     return entry == nil or entry.opened ~= false
+end
+
+-- The parameters of a function the key gave (read, not called), as lines: each parameter "name: type" (a title) and
+-- under it its default as the code writes it or "No default value", then what its type is when it is made of more
+-- (a vector3 is a list of x, y, z, a table, a function or a userdata a list or a line that says what it takes);
+-- then "Returns:" (a title) and the return type under it, when it is known. Without parameters one title says so;
+-- a function that says nothing of its parameters has "..." in place of them
+-- @return The lines - { text, title = whether it is a title } or { text, children = the lines of a list } - and how
+-- many parameters there are; nil when the key gave no function that was only read
+function module.function_lines(key: string)
+
+    local entry = last[key]
+    local info = nil
+
+    if entry ~= nil then
+        info = entry.fn_info
+    end
+
+    if info == nil then
+        return nil
+    end
+
+    local params = info.sig.params
+    local lines = {}
+
+    for number, param in ipairs(params) do
+
+        local title = param.name
+
+        if param.type ~= nil then
+            title = $"{param.name}: {param.type}"
+        end
+
+        table.insert(lines, { text = title, title = true })
+        table.insert(lines, { text = param.default ?? text("loop.no_default"), title = false })
+
+        local kind = Atdar.loader.load("ui/logic/stand/arguments").kind_of(param.type)
+
+        if kind == "vector3" then
+            table.insert(lines, { text = arg_text("types.vector3"), children = {
+                { text = "x: float", title = false },
+                { text = "y: float", title = false },
+                { text = "z: float", title = false },
+            } })
+        elseif kind == "table" then
+            table.insert(lines, { text = arg_text("types.table"), children = {
+                { text = arg_text("help.table"), title = false },
+            } })
+        elseif kind == "function" or kind == "userdata" then
+            table.insert(lines, { text = arg_text($"help.{kind}"), title = false })
+        end
+    end
+
+    if info.sig.vararg then
+        local rest = "..."
+
+        if #params == 0 then
+            rest = text("loop.params_unknown")
+        end
+
+        table.insert(lines, { text = rest, title = true })
+    elseif #params == 0 then
+        table.insert(lines, { text = text("loop.no_params"), title = true })
+    end
+
+    if info.returns ~= nil then
+        table.insert(lines, { text = text("loop.returns"), title = true })
+        table.insert(lines, { text = info.returns, title = false })
+    end
+
+    return lines, #params
 end
 
 -- @return The table the key gave last, nil when it gave something else
@@ -112,6 +191,11 @@ function module.line(key: string): string
 
     if entry.tbl ~= nil or entry.detail ~= nil then
         return text("loop.result_line"):format(entry.types)
+    end
+
+    -- A function that was read, not called: its parameters are in the list under
+    if entry.fn_info ~= nil then
+        return text("loop.result_line"):format(text("loop.function"))
     end
 
     local value = entry.text

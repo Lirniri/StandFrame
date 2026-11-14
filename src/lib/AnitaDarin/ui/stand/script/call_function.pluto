@@ -98,6 +98,7 @@ end
 -- spec.with_name:       Call After Typing Function is there (a list with a Function Name field)
 -- spec.on_args_changed: function() an argument's field was typed in (the Function Name follows what they hold)
 -- spec.kept:            the result lines belong to a list outside Modules (values.add_result_lines)
+-- spec.explicit_call:   a function is called only when its name is written with brackets (the Function Name)
 -- spec.depth_later:     the list has more items under the panel: it makes Table Depth (values.add_depth) after them
 -- @return { rebuild(), call(), opened(), name_typed() }: the panel made again, Call, what the list does when
 --         opened, and what a Function Name field does when typed
@@ -458,6 +459,14 @@ local function build_by_name(node: table): void
         user_only = true, on_change = name_typed })
 
     build_pick(list, function(path: string): void
+
+        -- A function is picked as a call: with its brackets
+        local found, value = Atdar.loader.load("parsers/proglang/pluto/path").resolve((calls():expand(path)))
+
+        if found and type(value) == "function" then
+            path ..= "()"
+        end
+
         name_field:set_value(path)
         name_typed(path)
     end)
@@ -475,6 +484,7 @@ local function build_by_name(node: table): void
         in_stand = || -> calls():in_stand(),
         kept = true,
         depth_later = true,
+        explicit_call = true,
         on_args_changed = function()
             local shown = calls():sync_main_template()
             if shown ~= nil then

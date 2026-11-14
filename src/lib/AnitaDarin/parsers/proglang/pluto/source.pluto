@@ -92,8 +92,12 @@ end
 -- one. Weak: a function that's gone takes its entry
 local headers = setmetatable({}, { __mode = "k" })
 
+-- How many lines a header may take (a function with many parameters has one per line, the closing bracket and the
+-- return type last)
+local MAX_HEADER_LINES = 40
+
 -- A function's header as written: the parameters in brackets and what follows them ("(a: int, b) : bool").
--- The header may take a few lines
+-- The header may take several lines (MAX_HEADER_LINES)
 -- @return The parameters' text without the brackets, the text after them, and the text before "function" on
 -- its line; nil if the source can't be found (lambdas and C functions have none)
 local function header_of(fn)
@@ -115,7 +119,7 @@ local function header_of(fn)
     end
 
     local joined = ""
-    for i = info.linedefined, math.min(info.linedefined + 5, #source.starts) do
+    for i = info.linedefined, math.min(info.linedefined + MAX_HEADER_LINES - 1, #source.starts) do
         joined ..= line_at(source, i) .. " "
         local before, inside, rest = joined:match("^(.-)function[^(]*(%b())(.*)")
         if inside ~= nil then
