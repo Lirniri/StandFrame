@@ -1,6 +1,6 @@
 {
     "as_text": ["asstr", "asstring"],
-    "as_text_only": ["asstr_only", "asstring_only"],
+    "as_text_only": ["asstronly", "asstr.only", "asstringonly", "asstring.only"],
     "all_as_text": ["allasstr", "allasstring"],
-    "all_as_text_only": ["allasstr_only", "allasstring_only"]
+    "all_as_text_only": ["allasstronly", "allasstr.only", "allasstringonly", "allasstring.only"]
 }

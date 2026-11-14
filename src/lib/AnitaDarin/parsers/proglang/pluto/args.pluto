@@ -206,7 +206,21 @@ local function read_expr(reader: table): table
     if KEYWORDS[name] ~= nil then
         return KEYWORDS[name]
     end
-    local values = { n = 1, _G[name] }
+
+    -- A name with a dot that the caller knows as one (asstr.only), not a field of what's before the dot
+    local joined = nil
+    local after = reader.src:match("^%.([%a_][%w_]*)", reader.pos)
+
+    if after ~= nil and reader.command ~= nil then
+        joined = reader.command($"{name}.{after}")
+    end
+
+    if joined ~= nil then
+        name = $"{name}.{after}"
+        reader.pos += #after + 1
+    end
+
+    local values = { n = 1, joined or _G[name] }
     local next_c = peek(reader)
     if values[1] == nil then
         if next_c ~= "." and next_c ~= ":" and next_c ~= "(" then
@@ -295,10 +309,11 @@ end
 -- by commas into texts instead
 -- @param resolve function(name) -> the value of a name nothing else has (a short name), or nil
 -- @param field function(number) -> the value of what #number stands for (#1 in the text); without it # isn't understood
+-- @param command function(name) -> the function of a name with a dot that is one name (asstr.only), or nil
 -- @return The arguments, how many there are (nil ones count too), and the error if working one out failed
-function module.parse(input: string, resolve: ?function, field: ?function)
+function module.parse(input: string, resolve: ?function, field: ?function, command: ?function)
     expect("parse", "input", input, "string")
-    local ok, args, count = pcall(read_list, { src = input, pos = 1, resolve = resolve, field = field }, "")
+    local ok, args, count = pcall(read_list, { src = input, pos = 1, resolve = resolve, field = field, command = command }, "")
     if ok then
         return args, count, nil
     end

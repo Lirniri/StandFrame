@@ -50,6 +50,9 @@ stand.equal(unknown_err, "'short_two' isn't known", "args.parse: a name resolve 
 -- A mistyped name is told by the name, not by Lua's "attempt to call a nil value"
 args, count = pluto.args.parse("math.max(#1, #2), tostring(#1)", nil, |number| -> number * 10)
 stand.check(count == 2 and args[1] == 20 and args[2] == "10", "args.parse: #N is what the field function gives, inside a call too")
+args, count = pluto.args.parse("join.up(1, 2)", nil, nil,
+    |name| -> name == "join.up" and function(a, b) return a + b end or nil)
+stand.check(count == 1 and args[1] == 3, "args.parse: a name with a dot the caller knows is one name, not a field")
 local _, _, no_field_err = pluto.args.parse("tostring(#1)", nil, |number| -> error("no such field", 0))
 stand.equal(no_field_err, "no such field", "args.parse: what the field function throws is the error")
 

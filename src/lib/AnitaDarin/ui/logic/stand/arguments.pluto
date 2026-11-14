@@ -477,7 +477,8 @@ function module.read_template(sig: table, texts: table, template: string, name: 
         return resolve_name(word)
     end
 
-    local args, count, err = args_parser.parse(commands.with_brackets(template, aliases), resolve, cmd.field)
+    local args, count, err = args_parser.parse(commands.with_brackets(template, aliases), resolve, cmd.field,
+        |dotted| -> commands.function_of(dotted, aliases, cmd))
 
     if err ~= nil then
         return {}, 0, friendly(err), cmd
