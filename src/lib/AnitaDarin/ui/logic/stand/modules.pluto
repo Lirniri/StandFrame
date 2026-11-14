@@ -16,8 +16,6 @@ local name_parser = Atdar.loader.load("parsers/proglang/pluto/name")
 -- What calls gave, and values as text
 local results = Atdar.loader.load("ui/logic/stand/results")
 local values = Atdar.loader.load("ui/logic/stand/values")
--- The call written in brackets (#1(>1)): the same as Debug > Call Function's Function Name
-local call_template = Atdar.loader.load("ui/logic/stand/call_template")
 -- A module's on_tick run by hand
 local tick_runs = Atdar.loader.load("ui/logic/stand/ticks")
 
@@ -302,29 +300,6 @@ local function said(cmd: ?table): bool
     end
 
     return cmd.only == true
-end
-
--- The Call field
-
--- The Call field's text: the function's name with the template in its brackets ("get(#1(>1))")
-function module.template_text(fn: table, state: table): string
-    return call_template.show(fn.name, state)
-end
-
--- The fields were typed in: the template follows them
--- @return Whether it changed (the field is to show it)
-function module.template_sync(fn: table, state: table): bool
-    return call_template.sync(state, fn.sig)
-end
-
--- The Call field was typed in: its brackets' text (a template, or arguments that go to the fields)
--- @return Whether the fields are to be made again, and whether the field is to show the template made
-function module.template_typed(fn: table, state: table, value: string)
-
-    local inline = select(2, Atdar.loader.load("parsers/proglang/pluto/path").split(value))
-    local fields, synced = call_template.typed(state, fn.sig, inline, true)
-
-    return fields, synced
 end
 
 -- Calls a function of the module by name: the module as it is now (Reload makes a new one).

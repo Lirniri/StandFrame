@@ -179,41 +179,23 @@ local function function_list(entry: table, mod: table, fn: table): void
 
     if arguments.has_fields(fn.sig) then
 
-        local template_field = nil
         local args_fields = nil
 
-        -- Call: the function's name with what's called in its brackets. It follows the fields and the fields follow
-        -- it (ui/logic/stand/call_template); the same as the Function Name of Call Function. Stand's text fields take
-        -- their text through the command box, so it has one: "modulecallfor3_2"
-        template_field = node:text_input({
-            name = label("loop.template"),
-            help = label("loop.template_help"),
-            commands = { $"modulecallfor{logic.number_of(mod.name)}_{fn.number or 0}" },
-            track = false,
-            default = logic.template_text(fn, state),
-            on_change = function(value: string, click_type)
-
-                if clicks.is_stopping() or not clicks.is_user_click(click_type) then
-                    return
-                end
-
-                local fields, synced = logic.template_typed(fn, state, value)
-
-                if synced then
-                    template_field:set_value(logic.template_text(fn, state))
-                end
-
-                if fields and args_fields ~= nil then
+        -- Call: the function's name with what's called in its brackets (ui/stand/core/call_field), the same as in a
+        -- function added to Call Function. Its command is short and the same each time: "modulecallfor3_2"
+        local call = Atdar.loader.load("ui/stand/core/call_field").add(node, {
+            state = state,
+            sig = fn.sig,
+            name = || -> fn.name,
+            command = $"modulecallfor{logic.number_of(mod.name)}_{fn.number or 0}",
+            rebuild = function()
+                if args_fields ~= nil then
                     args_fields.rebuild()
                 end
             end,
         })
 
-        args_fields = arguments_list(node, mod, fn, state, function()
-            if logic.template_sync(fn, state) then
-                template_field:set_value(logic.template_text(fn, state))
-            end
-        end)
+        args_fields = arguments_list(node, mod, fn, state, call.sync)
     end
 
     -- The settings of calling, under the arguments: Call After Typing (when there are arguments), Call, ...

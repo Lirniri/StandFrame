@@ -25,7 +25,8 @@
 -- found in a table of a Value list (ui/stand/modules/values):
 --
 --   in the order of a function in the Modules list:
---   Call After Typing Function (Call A Function only), Arguments, Call After Typing Arguments,
+--   Call After Typing Function (Call A Function only), Call (the call in brackets, not in Call A Function: its Function
+--   Name is that), Arguments, Call After Typing Arguments,
 --   Call, Call After (ms), Call When Opened, Call When Hovered,
 --   the Loop Status line, Loop, Loop With Interval, then the Variable line and, for a table, the Value list:
 --   a table inside is a list made when it's opened, a function in it a list with this same panel, a value a
@@ -115,6 +116,8 @@ function module.panel(list: table, spec: table): table
     local args_list = nil
     local fill_args
     local panel = nil
+    -- The Call field (ui/stand/core/call_field): in a panel that has no Function Name of its own
+    local call_field = nil
 
     -- The loop started, stopped or failed: the status line says it, the switch follows without starting
     -- or stopping anything
@@ -137,9 +140,13 @@ function module.panel(list: table, spec: table): table
     -- Typed in an argument's field, with Call After Typing Arguments on
     local function typed(): void
 
-        -- The Function Name shows what the fields hold (util.toast(#1(>1)))
+        -- The Function Name shows what the fields hold (util.toast(#1(>1))); so does the Call field of a function added
         if spec.on_args_changed ~= nil then
             spec.on_args_changed()
+        end
+
+        if call_field ~= nil then
+            call_field.sync()
         end
 
         if state.on_enter then
@@ -185,6 +192,20 @@ function module.panel(list: table, spec: table): table
 
         if spec.with_name then
             state_toggle(ui, "on_enter_name", state, "on_enter_name", state.on_enter_name == true)
+        end
+
+        -- Call: the function's name with what's called in its brackets, as in a module's function in the Modules list
+        if not spec.with_name and spec.sig ~= nil and arguments().has_fields(spec.sig) then
+            call_field = Atdar.loader.load("ui/stand/core/call_field").add(list, {
+                state = state,
+                sig = spec.sig,
+                name = spec.name,
+                command = $"{spec.args_command}_call",
+                rebuild = function()
+                    args_list:clear()
+                    fill_args()
+                end,
+            })
         end
 
         args_list = list:list({ name = mlabel("loop.args"), help = mlabel("loop.args_help") })

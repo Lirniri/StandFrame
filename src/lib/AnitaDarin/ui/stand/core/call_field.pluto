@@ -1,0 +1,74 @@
+-- lib/AnitaDarin/ui/stand/core/call_field.pluto
+--
+-- The Call field of a function: its name with the call written in brackets, util.toast(#1(>1)). It follows the
+-- argument fields (a call typed in a field shows as #1(>1)) and the fields follow it (arguments typed in the
+-- brackets go to the fields, taking #1 out clears the field). What the call gives is worked out when it is called
+-- (ui/logic/stand/call_template, ui/logic/stand/arguments). The same field is in every list that calls a function but
+-- Debug > Call Function's Function Name, which is it already: a module's function in the Modules list and a function
+-- added to Call Function (or found in a table of a Value list).
+--
+--     local call = call_field.add(list, { state, sig, name, command, rebuild })
+--     call.sync()   -- the argument fields were typed in: the field follows them
+--
+-- spec.state:   the table kept for the function: texts, template, auto_template (ui/logic/stand/call_template)
+-- spec.sig:     the function's signature (ui/logic/stand/arguments)
+-- spec.name:    function() -> the name shown in front of the brackets
+-- spec.command: the field's command (Stand's text fields take their text through the command box, so each needs one)
+-- spec.rebuild: function() the argument fields were changed by the field: made again by the caller
+-- Strings: core/language "modules" (loop.template)
+
+local i18n = Atdar.loader.load("core/i18n")
+local clicks = Atdar.loader.load("ui/logic/stand/clicks")
+local call_template = Atdar.loader.load("ui/logic/stand/call_template")
+local path_parser = Atdar.loader.load("parsers/proglang/pluto/path")
+
+local label = i18n.scope("modules")
+
+local module = {}
+
+-- Makes the field in list
+-- @return { sync() }
+function module.add(list: table, spec: table): table
+
+    local state = spec.state
+    local item = nil
+
+    local function shown(): string
+        return call_template.show(spec.name(), state)
+    end
+
+    item = list:text_input({
+        name = label("loop.template"),
+        help = label("loop.template_help"),
+        commands = { spec.command },
+        track = false,
+        default = shown(),
+        on_change = function(value: string, click_type)
+
+            if clicks.is_stopping() or not clicks.is_user_click(click_type) then
+                return
+            end
+
+            local inline = select(2, path_parser.split(value))
+            local fields, synced = call_template.typed(state, spec.sig, inline, true)
+
+            if synced then
+                item:set_value(shown())
+            end
+
+            if fields then
+                spec.rebuild()
+            end
+        end,
+    })
+
+    return {
+        sync = function()
+            if call_template.sync(state, spec.sig) then
+                item:set_value(shown())
+            end
+        end,
+    }
+end
+
+return module
