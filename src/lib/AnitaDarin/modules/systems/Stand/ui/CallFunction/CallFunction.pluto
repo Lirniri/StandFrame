@@ -47,6 +47,12 @@ local MAX_NOTICE_CHARS = 200
 -- { "ped": "PLAYER.PLAYER_PED_ID", "fix": "game.repair_vehicle" }
 local SHORT_NAMES_FILE = "user/call_function/short_names.json"
 
+-- The commands of the script's own for the brackets of the Function Name (asstr, allasstr), written by hand and
+-- shipped with the script: store/<script>/core/call_function/system/command.json, an id -> its names,
+--     { "as_text": ["asstr", "asstring"] }
+-- The ids are the ones of ui/logic/stand/call_commands, which has what they do
+local COMMANDS_FILE = "core/call_function/system/command.json"
+
 -- The registry of short names, written by hand and shipped with the script: store/<script>/core/call_function/short_name.json,
 --     { "user_vehicle": { "path": "entities.get_user_vehicle_as_handle" } }
 -- The name is what can be typed (with Use Short Names on) for the path. An entry may say the function's
@@ -118,7 +124,16 @@ local function read_args(spec: table, name: string)
         state.texts ??= {}
 
         if state.template ~= nil then
-            return arguments().read_template(spec.sig, state.texts, state.template)
+            -- The return type is asked for only when a command shows it (a call looks the source up)
+            local function returns(): ?string
+                if spec.path == nil then
+                    return nil
+                end
+
+                return select(2, Atdar.modules.get("CallFunction"):signature_of_path(spec.path()))
+            end
+
+            return arguments().read_template(spec.sig, state.texts, state.template, shown_name(name), returns)
         end
 
         return arguments().read(spec.sig, state.texts)
@@ -228,6 +243,8 @@ local class CallFunction extends Module
                     "_switch_off_saved",
                     "_cache",
                     "_found",
+                    "_notice",
+                    "_said",
                     "_clear_removed",
                     "_loaded",
                     "_last_id",
@@ -304,19 +321,39 @@ local class CallFunction extends Module
             message = text("empty"):format(name)
         end
 
-        -- A long one (a table) is cut: all of it is in the Value list
+        self:_notice(spec, message)
+    end
+
+    -- Shows a notice: cut when it is long (all of a table is in the Value list), in Stand (not the game's feed)
+    -- when the Notice In Stand setting is on
+    function _notice(spec: table, message: string): void
+
         local cut = utf8.offset(message, MAX_NOTICE_CHARS + 1)
         if cut ~= nil then
             message = message:sub(1, cut - 1) .. "..."
         end
 
-        -- In Stand (not the game's feed) when the Notice In Stand setting is on
         if spec.in_stand ~= nil and spec.in_stand() then
             self.log:notify(message, "stand")
             return
         end
 
         self.log:notify(message)
+    end
+
+    -- What the commands of the Function Name said (asstr, allasstr): the notice, and whether nothing is to be called
+    -- @return Whether the call is not to be made
+    function _said(spec: table, cmd: ?table): bool
+
+        if cmd == nil then
+            return false
+        end
+
+        if cmd.notice ~= nil then
+            self:_notice(spec, cmd.notice)
+        end
+
+        return cmd.only == true
     end
 
     -- Whether the notices go to Stand (the Notice In Stand setting): a panel's spec.in_stand
@@ -357,7 +394,7 @@ local class CallFunction extends Module
             return
         end
 
-        local read, args, count, err = pcall(read_args, spec, typed)
+        local read, args, count, err, cmd = pcall(read_args, spec, typed)
 
         if not read then
             self.log:error(text("bad_args"):format(name, tostring(args)))
@@ -371,6 +408,10 @@ local class CallFunction extends Module
 
         if spec.path ~= nil then
             self:remember(spec.path(), spec.state)
+        end
+
+        if self:_said(spec, cmd) then
+            return
         end
 
         util.create_thread(function()
@@ -597,11 +638,16 @@ local class CallFunction extends Module
                 return true
             end
 
-            local args, count, err = read_args(spec, typed)
+            local args, count, err, cmd = read_args(spec, typed)
             if err ~= nil then
                 end_loop(state, loop_run, "failed")
                 log:error(text("bad_args"):format(name, err))
                 return false
+            end
+
+            -- asstr_only, allasstr_only: the text is shown and nothing is called
+            if self:_said(spec, cmd) then
+                return true
             end
 
             -- How long a call takes, on screen (info text), while Show Call Time is on
@@ -698,6 +744,11 @@ local class CallFunction extends Module
         end
 
         return names
+    end
+
+    -- @return The commands of the Function Name (COMMANDS_FILE): id -> its names; empty when there's no file
+    function commands(): table
+        return self:_read_file(COMMANDS_FILE) or {}
     end
 
     -- @return The registry (REGISTRY_FILE): short name -> { path, params, returns }; empty when there's no file or

@@ -412,17 +412,78 @@ local function field_value(sig: table, texts: table, number: int)
 end
 
 -- The values to call with from a call written in the Function Name's brackets, where #1, #2 are the fields
--- (util.toast(tostring(#1))): each is worked out, and its value goes where it stands
--- @return The arguments, how many there are, and what was wrong (nil if nothing)
-function module.read_template(sig: table, texts: table, template: string)
+-- (util.toast(tostring(#1))): each is worked out, and its value goes where it stands. The commands of the
+-- script's own (asstr, allasstr: ui/logic/stand/call_commands) are understood there too
+-- @param name The function's name, for what the commands show
+-- @param returns function() -> the type the function returns, for the same; nil: none is shown
+-- @return The arguments, how many there are, what was wrong (nil if nothing), and what the commands said:
+-- { notice = the text to show, only = nothing is to be called }
+function module.read_template(sig: table, texts: table, template: string, name: ?string, returns: ?function)
 
-    local args, count, err = args_parser.parse(template, resolve_name, |number| -> field_value(sig, texts, number))
+    local commands = Atdar.loader.load("ui/logic/stand/call_commands")
+    local calls = registry()
+    local aliases = {}
 
-    if err ~= nil then
-        return {}, 0, friendly(err)
+    if calls ~= nil then
+        aliases = commands.aliases(calls:commands())
     end
 
-    return args, count, nil
+    local cmd = { name = name ?? "", sig = sig, returns = returns, field = |number| -> field_value(sig, texts, number) }
+
+    -- "label = what's in the field: what it gives" for a field (a parameter's number, or "rest"), for the commands'
+    -- notices; nil for an empty rest
+    cmd.inspect = function(key, label: string): ?string
+
+        local param = sig.params[key]
+        local typed = texts[key]
+
+        if typed == nil and param ~= nil then
+            typed = module.default_of(param)
+        end
+
+        if typed == nil or trim(typed) == "" then
+            if key == "rest" then
+                return nil
+            end
+            return $"{label} = nil"
+        end
+
+        if param == nil then
+            return $"{label} = {trim(typed)}"
+        end
+
+        local handled, value, err = call_value(param, typed)
+
+        if not handled then
+            return $"{label} = {trim(typed)}"
+        end
+
+        if err ~= nil then
+            return $"{label} = {trim(typed)}: {err}"
+        end
+
+        return $"{label} = {trim(typed)}: {Atdar.loader.load("ui/logic/stand/values").describe(value)}"
+    end
+
+    -- The commands first, then the short names
+    local function resolve(word: string)
+
+        local fn = commands.function_of(word, aliases, cmd)
+
+        if fn ~= nil then
+            return fn
+        end
+
+        return resolve_name(word)
+    end
+
+    local args, count, err = args_parser.parse(commands.with_brackets(template, aliases), resolve, cmd.field)
+
+    if err ~= nil then
+        return {}, 0, friendly(err), cmd
+    end
+
+    return args, count, nil, cmd
 end
 
 -- The texts for a signature from arguments written in one line, as a module gives its defaults ("42, true"):

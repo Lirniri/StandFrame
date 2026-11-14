@@ -1,0 +1,155 @@
+-- lib/AnitaDarin/ui/logic/stand/call_commands.pluto
+--
+-- The commands of the script's own that the Stand command box understands in the brackets of the Function Name
+-- (util.toast(asstr(#1))). Only there: they are not functions of the script. The names they go by are in
+-- store/<script>/core/call_function/system/command.json, an id -> its names:
+--     { "as_text": ["asstr", "asstring"] }
+--
+--   as_text       asstr(#1, #2)        each argument as a text; the function is called with the texts
+--   as_text_only  asstr_only(#1, #2)   the same, but nothing is called: the function's name and each argument's
+--                                      name with what's in it are shown as a notice
+--   all_as_text   allasstr             every argument of the function (no #N needed) as a text, the notice with
+--                                      the name and the arguments, and the function is called with the texts
+--   all_as_text_only                   the notice only, nothing is called
+-- allasstr may be written with or without brackets.
+--
+--   local cmd = { name = "toast", sig = sig, field = |number| -> value,
+--                 inspect = |key, label| -> "label = typed: result",
+--                 returns = || -> "void" }                                   -- what the call is
+--   local fn = commands.function_of("asstr", aliases, cmd)                 -- nil when it isn't a command
+--   cmd.notice, cmd.only                                                   -- set by what ran: the text to show, nothing to call
+
+local module = {}
+
+-- The command ids that take no arguments of their own: all the function's
+local ALL = { all_as_text = true, all_as_text_only = true }
+
+-- Ids that call nothing
+local ONLY = { as_text_only = true, all_as_text_only = true }
+
+-- The arguments as texts; nil stays nil (it is "not given")
+local function as_texts(args: table, count: int): table
+    local texts = {}
+
+    for i = 1, count do
+        if args[i] ~= nil then
+            texts[i] = tostring(args[i])
+        end
+    end
+
+    return texts
+end
+
+-- "toast(text = handle_to_pointer(user_ped): 2172642053072, bitflags = 0): void": the function's name, then every
+-- parameter by its name and what is written in its field - with what that gives when it's a call - and the
+-- type the function returns, as the Functions list writes it. A call that failed says why
+local function notice_of(cmd: table): string
+
+    local parts = {}
+
+    for number, param in ipairs(cmd.sig.params) do
+        table.insert(parts, cmd.inspect(number, param.name))
+    end
+
+    if cmd.sig.vararg then
+        local rest = cmd.inspect("rest", "...")
+        if rest ~= nil then
+            table.insert(parts, rest)
+        end
+    end
+
+    local notice = $"{cmd.name}({table.concat(parts, ", ")})"
+    local returns = nil
+
+    if cmd.returns ~= nil then
+        returns = cmd.returns()
+    end
+
+    if returns ~= nil then
+        notice ..= $": {returns}"
+    end
+
+    return notice
+end
+
+-- Runs a command: its own arguments, or (for the ones of all) every field of the function
+-- @return The texts and how many to call with
+local function run(id: string, cmd: table, args: table, count: int)
+
+    if ALL[id] then
+        count = #cmd.sig.params
+        args = {}
+
+        for i = 1, count do
+            args[i] = cmd.field(i)
+        end
+    end
+
+    cmd.only = ONLY[id] == true
+
+    -- Plain asstr says nothing: it only changes what the function gets
+    if ALL[id] or cmd.only then
+        cmd.notice = notice_of(cmd)
+    end
+
+    local texts = as_texts(args, count)
+    local last = 0
+
+    for i = 1, count do
+        if texts[i] ~= nil then
+            last = i
+        end
+    end
+
+    return texts, last
+end
+
+-- The names -> id, from the file's id -> names
+function module.aliases(data: table): table
+
+    local aliases = {}
+
+    for id, names in pairs(data) do
+        if type(id) == "string" and type(names) == "table" then
+            for _, alias in ipairs(names) do
+                if type(alias) == "string" then
+                    aliases[alias] = id
+                end
+            end
+        end
+    end
+
+    return aliases
+end
+
+-- The function a name stands for, or nil when it is no command of the file
+-- @param aliases name -> id (aliases)
+-- @param cmd The call: name, sig, field(number); notice and only are set on it by what ran
+function module.function_of(name: string, aliases: table, cmd: table)
+
+    local id = aliases[name]
+
+    if id == nil or (not ALL[id] and not id:match("^as_text")) then
+        return nil
+    end
+
+    return function(...)
+        local args = table.pack(...)
+        local texts, count = run(id, cmd, args, args.n)
+        return table.unpack(texts, 1, count)
+    end
+end
+
+-- A command of all written without brackets (allasstr) gets them: the text the Function Name has in its brackets
+function module.with_brackets(template: string, aliases: table): string
+
+    local filled = template:gsub("%f[%w_]([%w_]+)%f[^%w_]()", function(word, position)
+        if ALL[aliases[word]] and template:sub(position):match("^%s*%(") == nil then
+            return word .. "()"
+        end
+    end)
+
+    return filled
+end
+
+return module

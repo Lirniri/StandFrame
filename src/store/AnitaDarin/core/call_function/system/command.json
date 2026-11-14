@@ -1,0 +1,6 @@
+{
+    "as_text": ["asstr", "asstring"],
+    "as_text_only": ["asstr_only", "asstring_only"],
+    "all_as_text": ["allasstr", "allasstring"],
+    "all_as_text_only": ["allasstr_only", "allasstring_only"]
+}
